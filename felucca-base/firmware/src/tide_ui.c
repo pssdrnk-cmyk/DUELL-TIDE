@@ -875,7 +875,7 @@ static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t p
  *    only if the hit it holds does. The page draws an undecided step striped.
  * Returns the playhead's step (TV_NOPH: stopped). page 0xFF: the playhead's page */
 enum { TV_END, TV_REST, TV_DROP, TV_TIE, TV_HIT, TV_MOVE, TV_ADD };
-typedef struct { uint8_t k, n, maybe; } tv_t;
+typedef struct { uint8_t k, n, maybe, top; } tv_t;   /* (b11 note strip: top, the pitch it plays + 1, ui.c pv_top) */
 #define TV_NOPH 0xFFu
 static int tv_hit(const step_t *s) { return s->time == ST_NOTE && s->n; }
 /* step s (index j) of part t: 0 silent, 1 sounds, 2 undecided (its roll not made yet) */
@@ -917,7 +917,7 @@ static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
         int32_t at = -(int32_t)pos;
         const step_t *o = &t->step[idx < NSTEP ? idx : 0u], *v, *w;
         tv_t *e = &out[i];
-        e->k = TV_END, e->n = e->maybe = 0;
+        e->k = TV_END, e->n = e->maybe = e->top = 0;
         if (idx >= L)
             continue;
         if (ph != TV_NOPH) {
@@ -927,6 +927,7 @@ static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
         }
         v = seq_play_step_at(t, idx, bar);
         e->n = v->n;
+        e->top = pv_top(v, arp);
         e->k = tv_hit(v) ? (v == o || !memcmp(v, o, sizeof *v) ? TV_HIT : tv_hit(o) ? TV_MOVE : TV_ADD) : v->time == ST_TIE ? TV_TIE : TV_REST;
         if (e->k >= TV_HIT || e->k == TV_TIE) {
             st = arp && e->k == TV_TIE ? 0u : tv_state(t, v, idx, ph != TV_NOPH && idx <= ph, arp);
@@ -964,32 +965,45 @@ static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
  * where it is added, a dim outline where the variation, the thinning or a chance roll drops it; a tie a short bar, an empty step a
  * stub, the steps past the pattern's end a line; the playing step underlined. A chance step not rolled yet is striped. As they play
  * now (tide_views) */
+/* b11 note strip: the states of AUTO TIDE's 16 steps (page) as they play: the class from the views (a hit: a note, a chord with more), the pitch rank
+ * from the notes they play (an added or moved note: its own, not the stored rest's), the accent from the stored step */
+static void tide_strip_states(const track_t *t, const tv_t *tv, uint32_t page, uint8_t *st)
+{
+    uint8_t acc[16], top[16];
+    uint32_t i;
+    ns_states(acc, t, page * 16u);
+    for (i = 0; i < 16u; i++) {
+        const tv_t *e = &tv[i];
+        st[i] = e->k >= TV_HIT ? (uint8_t)((e->n > 1u ? NS_CHORD : NS_NOTE) | (acc[i] & 8u)) : 0u;
+        top[i] = e->k >= TV_HIT ? e->top : 0u;
+    }
+    pv_rank(st, top, 16u);
+}
 static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 {
     tv_t tv[16];
+    uint8_t st[16];
     uint32_t ph = tide_views(t, 0xFFu, tv), page = ph == TV_NOPH ? 0u : ph / 16u, i;
-    int32_t h1 = 6, hs = 3, r;                           /* (a single note, each further note of a chord) */
+    int32_t r;
+    tide_strip_states(t, tv, page, st);
     for (i = 0; i < 16u; i++) {
-        int32_t x = bar_x(i), h = h1 / 2;
+        int32_t x = bar_x(i), h = 3;
         const tv_t *e = &tv[i];
-        if (e->k == TV_END) {
-            cv_rect(x, y - 1, 9, 1, T_LINE);
-            continue;
-        }
-        if (e->k >= TV_HIT) {
-            h = h1 + hs * (int32_t)(e->n - 1u);
-            h = h > hmax ? hmax : h;
-            if (e->k == TV_ADD)
-                cv_frame(x, y - h, 9, h, T_ACCENT);
-            else
-                cv_rrect(x, y - h, 9, h, 2, e->k == TV_MOVE ? T_ACCENT : c, T_BG);
-        } else if (e->k == TV_TIE)
-            cv_rrect(x, y - h, 9, h, 1, T_MID, T_BG);
+        if (e->k >= TV_HIT)
+            h = ns_h(st[i], hmax);
+        if (e->k == TV_END)
+            ns_step(x, y, hmax, NS_END, c);
+        else if (e->k == TV_ADD)
+            cv_frame(x, y - h, 9, h, T_ACCENT);           /* (AUTO TIDE's own states over the standard: added outlined, moved in the accent, dropped dim) */
+        else if (e->k >= TV_HIT)
+            ns_step(x, y, hmax, st[i], e->k == TV_MOVE ? T_ACCENT : c);
+        else if (e->k == TV_TIE)
+            ns_step(x, y, hmax, NS_TIE, c);
         else if (e->k == TV_DROP)
-            cv_frame(x, y - h1, 9, h1, T_DIM);
+            cv_frame(x, y - 6, 9, 6, T_DIM);
         else
-            cv_rrect(x, y - 3, 9, 3, 1, T_DIM, T_BG);
-        if (e->maybe && e->k != TV_ADD)
+            ns_step(x, y, hmax, NS_REST, c);
+        if (e->maybe && e->k != TV_ADD && e->k != TV_END)
             for (r = 1; r < h; r += 2)
                 cv_rect(x, y - h + r, 9, 1, T_BG);
         if (ph == page * 16u + i)

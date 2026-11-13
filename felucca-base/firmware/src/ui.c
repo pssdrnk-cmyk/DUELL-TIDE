@@ -56,6 +56,32 @@ static uint8_t pv_bar_of(const step_t *s)
     uint8_t b = s->time == ST_NOTE && s->n ? (s->n > 1u ? 4u : 3u) : s->time == ST_TIE ? 2u : 1u;
     return (uint8_t)(b | (b >= 3u && (s->flags & SF_ACCENT) ? 8u : 0u));
 }
+/* b11 the standard note strip (LANGUAGE.md 5a; ui_graph.c note_strip): a note's height is its pitch, the step's top note ranked 0..15 between
+ * the lowest and the highest of the 16 shown, in the state's high nibble */
+static uint8_t pv_top(const step_t *s, uint32_t first)   /* the pitch a step sounds, + 1 (0: none): its top note; an ARP SEQ part's (first) only note[0], the one it plays (seq.c arp_seq_notes) */
+{
+    uint32_t j, m = 0;
+    if (s->time != ST_NOTE || !s->n)
+        return 0;
+    if (first)
+        return (uint8_t)(s->note[0] + 1u);
+    for (j = 0; j < s->n && j < 4u; j++)
+        if (s->note[j] + 1u > m)
+            m = s->note[j] + 1u;
+    return (uint8_t)m;
+}
+static void pv_rank(uint8_t *bar, const uint8_t *top, uint32_t n)   /* the ranks into bar's high nibble (one pitch only: the middle) */
+{
+    uint32_t i, lo = 255u, hi = 0;
+    for (i = 0; i < n; i++)
+        if (top[i]) {
+            lo = top[i] < lo ? top[i] : lo;
+            hi = top[i] > hi ? top[i] : hi;
+        }
+    for (i = 0; i < n; i++)
+        if ((bar[i] & 7u) >= 3u && top[i])
+            bar[i] = (uint8_t)((bar[i] & 15u) | (hi > lo ? (top[i] - lo) * 15u / (hi - lo) : 8u) << 4);
+}
 /* The PATCH SLOTS (upreset.c, the slot layer): ONE list of UP_SLOTS (128), slot k = its saved record, else the factory sound at browse position k */
 static uint32_t slot_of(const track_t *t);         /* the slot t's sound is in, UP_SLOTS = none */
 static uint32_t slot_home(const track_t *t);       /* .. where SAVE offers to write it */

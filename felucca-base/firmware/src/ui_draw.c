@@ -2165,24 +2165,14 @@ static void draw_foot(void)
             cv_text_x16((UT_BAT_X + UT_BAT_W) * 16 - uw, f1, &AF_S, FT_BPM, T_DIM, T_BG);
         }
     } else if (foot_steps()) {
-        uint32_t i, ph = foot_playhead(t);
+        uint32_t ph = foot_playhead(t), cur = 0xFFu;
+        uint8_t st[16];
         if ((ui.bank + 1u) * 16u <= (uint32_t)t->p[P_SLEN])
             GFX_HOOK_ALIGN(0, 0, 240, 0, AL_H | AL_CELLS | AL_N(16), "footer step bars centred");
-        for (i = 0; i < 16u; i++) {                   /* row 1: the cursor's bank, 16 bars in 4 groups */
-            uint32_t si = ui.bank * 16u + i;
-            int32_t sx = bar_x(i);                    /* (centred: x 12 .. 228) */
-            const step_t *st = &seq_steps(t)[si];
-            if (si >= (uint32_t)t->p[P_SLEN])
-                continue;
-            if (step_on(st))                          /* a note: a bar (accented: the accent) */
-                cv_rrect(sx, 1, 9, 11, 2, (st->flags & SF_ACCENT) ? T_ACCENT : T_THEME, T_BG);
-            else                                      /* empty: a stub (a tie: brighter) */
-                cv_rrect(sx, 9, 9, 3, 1, st->time == ST_TIE ? T_MID : T_DIM, T_BG);
-            if (song.seq_mode && !foot_arp_page() && si == ui.cursor)
-                cv_rect(sx, 14, 9, 2, T_ACCENT);        /* the step edited */
-            else if (si == ph)
-                cv_rect(sx, 14, 9, 2, T_TEXT);          /* the step sounding */
-        }
+        ns_states(st, t, ui.bank * 16u);                /* b11: the standard note strip (ui_graph.c note_strip), row 1: the cursor's bank */
+        if (song.seq_mode && !foot_arp_page() && ui.cursor / 16u == ui.bank)
+            cur = ui.cursor % 16u;                      /* (the step edited) */
+        note_strip(12, st, T_THEME, ph == 0xFFu ? 0xFFu : ph % 16u, cur);
     }
     {   /* row 2 (item 111, FINAL_V1 pictures; ui_tokens.h UT_FOOT_*): face F, the capitals' last row UT_FOOT_BASE on every page. The engine's name in the part colour at x UT_FOOT_X, the patch's name
          * UT_FOOT_WORD_GAP after it (alone at x UT_FOOT_X where the engine's is left out: foot_names), the page's number ending UT_FOOT_CT_R, the tempo (or REC) before it, the battery (draw_battery) at the

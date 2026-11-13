@@ -124,6 +124,69 @@ static void graph_lfo(const track_t *t, uint16_t c)
  * the row centred: x 12 .. 228 */
 static int32_t bar_x(uint32_t i) { return 12 + (int32_t)(i % 16u) * 13 + (int32_t)(i % 16u / 4u) * 4; }
 
+/* b11 THE NOTE STRIP (LANGUAGE.md 5a, owner's pick B): the one painter of a part's 16 steps, for the footer, AUTO TIDE, MULTIS and PATTERNS, in AUTO TIDE's
+ * look (owner: "kinda got used to this one"). A state byte a step: pv_bar_of's class (0 past the end, 1 rest, 2 tie, 3 note, 4 chord), |8 an accent,
+ * the high nibble the pitch rank (ui.c pv_rank). Bottom-aligned on row yb - 1, the bar_x columns, hmax the tallest bar (9: AUTO TIDE's).
+ * A note (a chord: its top note) is 9 x (3 .. hmax) by its pitch, in the part's colour; rest 9 x 3 DIM, tie 9 x 3 MID, past the end a 1 px LINE (as AUTO TIDE).
+ * The accent: the bar's top row TEXT. Marks 9 x 2 at yb + 2: the cursor ACCENT, else the playhead TEXT */
+enum { NS_END, NS_REST, NS_TIE, NS_NOTE, NS_CHORD };
+#define NS_HMAX 9
+static int32_t ns_h(uint32_t s, int32_t hmax)
+{
+    return 3 + (int32_t)(s >> 4) * (hmax - 3) / 15;
+}
+static void ns_step(int32_t x, int32_t yb, int32_t hmax, uint32_t s, uint16_t c)
+{
+    uint32_t k = s & 7u;
+    int32_t h;
+    if (k == NS_END) {
+        cv_rect(x, yb - 1, 9, 1, T_LINE);
+        return;
+    }
+    if (k < NS_NOTE) {
+        cv_rrect(x, yb - 3, 9, 3, 1, k == NS_TIE ? T_MID : T_DIM, T_BG);
+        return;
+    }
+    h = ns_h(s, hmax);
+    cv_rrect(x, yb - h, 9, h, 2, c, T_BG);
+    if (s & 8u)
+        cv_rect(x + 1, yb - h, 7, 1, T_TEXT);           /* the accent: the front edge brightest (inside the rounded corners) */
+}
+static void note_strip(int32_t yb, const uint8_t *st, uint16_t c, uint32_t play, uint32_t cur)
+{
+    uint32_t i;
+    for (i = 0; i < 16u; i++) {
+        int32_t x = bar_x(i);
+        ns_step(x, yb, NS_HMAX, st[i], c);
+        if (i == cur)
+            cv_rect(x, yb + 2, 9, 2, T_ACCENT);
+        else if (i == play)
+            cv_rect(x, yb + 2, 9, 2, T_TEXT);
+    }
+}
+/* a track's steps base .. base + 15 as states (0 past its LEN), the pitch ranked over those 16 */
+static void ns_states(uint8_t *st, const track_t *t, uint32_t base)
+{
+    uint32_t i, len = (uint32_t)t->p[P_SLEN];
+    uint8_t top[16];
+    for (i = 0; i < 16u; i++) {
+        const step_t *s = &seq_steps(t)[base + i];
+        st[i] = base + i < len ? pv_bar_of(s) : 0u;
+        top[i] = base + i < len ? pv_top(s, arp_mode(t) == AM_SEQ_ID) : 0u;
+    }
+    pv_rank(st, top, 16u);
+}
+/* a preview's playhead: where the part's loop is now (the step a loaded pattern would play), while playing; the preview shows the first 16 steps */
+static uint32_t ns_live(const uint8_t *bar, const track_t *t)
+{
+    uint32_t ph;
+    (void)bar;
+    if (!song.playing)
+        return 0xFFu;
+    ph = TIDE_PLAY_IDX(t);
+    return ph < 16u ? ph : 0xFFu;
+}
+
 /* STEP page (a melodic track): a piano roll of the cursor's 16-step page. PR_ROWS semitone rows of PR_RH px,
  * the highest on top; on the left the C rows named (S, DIM) and a keyboard strip (white keys RAISE, black keys a
  * shorter DIM; a key held on the track: its row ACCENT). Rows in the track's scale (SCL ROOT / SCALE; CHR: the white
@@ -1918,6 +1981,8 @@ static uint32_t graph_signature(void)
     h = (h ^ ((uint32_t)scale_g | (uint32_t)root_g << 4 | (uint32_t)offscale_g << 8)) * 16777619u;   /* (the global scale, core.h) */
     h ^= (uint32_t)TSEL->preset * 7u + (uint32_t)song.g[G_SLOT] * 13u + TSEL->user * 257u + up_gen * 7919u + list_mode() * 15485863u +
          ui.ppick * 1299709u;
+    if ((pg->graph == GR_SLOTS || pg->graph == GR_PATS) && song.playing)   /* (b11 note strip: a preview's playhead moves) */
+        h = (h ^ (TIDE_PLAY_IDX(&trk[0]) * 31u + TIDE_PLAY_IDX(&trk[1]) * 977u)) * 16777619u;
     if (pg->graph == GR_CHORD) {                     /* the last chord played */
         h = (h ^ (chord_last[song.sel].root + 131u * chord_last[song.sel].mask)) * 16777619u;
         for (i = 0; i < CHORD_MAX; i++)
@@ -2330,19 +2395,6 @@ static uint32_t list_first(uint32_t cur, uint32_t n)
     uint32_t f = cur > LR_ROWS / 2u ? cur - LR_ROWS / 2u : 0u;
     return f > n - LR_ROWS ? n - LR_ROWS : f;
 }
-/* 16 steps in a band of hmax rows from row y, from x0 in pitch p, w wide, colour c (bar: pv_bar_of, 0 past the end) */
-static void pv_bars(int32_t x0, int32_t y, int32_t hmax, int32_t p, int32_t w, const uint8_t *bar, uint16_t c)
-{
-    uint32_t i;
-    for (i = 0; i < 16u; i++) {
-        uint32_t bv = bar[i], k = bv & 7u;
-        int32_t x = x0 + p * (int32_t)i, h = k == 4u ? hmax : k == 3u ? hmax * (bv & 8u ? 9 : 6) / 10 : k == 2u ? hmax * 3 / 10 : 2;
-        if (!k)
-            cv_rect(x, y + hmax - 1, w, 1, T_LINE);
-        else
-            cv_rrect(x, y + hmax - h, w, h, 1, k >= 3u ? c : k == 2u ? T_MID : T_DIM, T_BG);
-    }
-}
 static mu_pv_t gsl_pv;
 static uint32_t gsl_key = 0xFFFFFFFFu;
 static void graph_slots(void)
@@ -2387,14 +2439,14 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
     cv_oy = -LP_Y;
     if (pats) {
         uint32_t cur = pat_pick();
-        if (gpp_key != (cur | ps_gen() << 8)) {
-            gpp_key = cur | ps_gen() << 8;
+        if (gpp_key != (cur | ps_gen() << 8 | (uint32_t)(arp_mode(TSEL) == AM_SEQ_ID) << 31)) {   /* (b11: the ranks follow the part's ARP SEQ: pv_top) */
+            gpp_key = cur | ps_gen() << 8 | (uint32_t)(arp_mode(TSEL) == AM_SEQ_ID) << 31;
             ps_preview(cur, &gpp_pv);
         }
         if (gpp_pv.state != 1u)
             cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "DAMAGED", T_MID, T_BG);   /* (audit C14: from the name column, no centred body text) */
         else if (gpp_pv.has)
-            pv_bars(UT_L5_NAME_X, LP_Y + 8, 52, 11, 8, gpp_pv.bar, T_THEME);   /* (the name column to x 225, inside the rows' pill) */
+            note_strip(LP_Y + 38, gpp_pv.bar, T_THEME, ns_live(gpp_pv.bar, TSEL), 0xFFu);   /* (b11: the standard note strip, AUTO TIDE's row, in the panel's middle) */
         else
             cv_text_on(UT_L5_NAME_X, UT_TY(S, LP_Y + 38), &AF_S, "NO SEQUENCE", T_MID, T_BG);
     } else {
@@ -2418,7 +2470,7 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
                 cv_free_text(UT_L5_NAME_X, UT_TY(M, y + 11), &AF_M, pnm, c, T_BG, LR_R - 30 - UT_L5_NAME_X);   /* (in the list's name column) */
                 lr_chip(LR_R, y, md, t, T_BG);
                 if (gsl_pv.p[t].has)
-                    pv_bars(UT_L5_NAME_X, y + 15, 12, 11, 8, gsl_pv.p[t].bar, md == 2u ? c : T_MID);   /* (only a SEQ part plays them: under an arp they are dimmed) */
+                    note_strip(y + 26, gsl_pv.p[t].bar, md == 2u ? c : T_MID, ns_live(gsl_pv.p[t].bar, &trk[t]), 0xFFu);   /* (b11: the standard note strip, its marks inside the panel: part 2's end on row 216; only a SEQ part plays them: under an arp dimmed) */
                 else
                     cv_text_on(UT_L5_NAME_X, UT_TY(S, y + 26), &AF_S, "NO SEQUENCE", T_MID, T_BG);
             }

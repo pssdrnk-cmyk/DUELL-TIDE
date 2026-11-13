@@ -556,6 +556,7 @@ static int ps_load_trk(track_t *t, uint32_t k)
 /* SAVE > PATTERNS' preview of slot k (read only: the record is read as a LOAD reads it, no write, no dip, and decoded into pat_pv_t; the tracks are not touched) */
 static void ps_preview(uint32_t k, pat_pv_t *o)
 {
+    uint8_t ps_top[16] = {0};                           /* (b11 note strip B: the steps' top notes) */
     const uint8_t *r, *p, *end;
     uint32_t i, nl, nst, len;
     uint8_t b[PS_STEP], tmp[PS_REC_MAX];
@@ -590,9 +591,12 @@ static void ps_preview(uint32_t k, pat_pv_t *o)
             return;
         if (s.time == ST_NOTE && s.n)
             o->has = 1;
-        if (i < 16u)
+        if (i < 16u) {
             o->bar[i] = pv_bar_of(&s);
+            ps_top[i] = pv_top(&s, arp_mode(TSEL) == AM_SEQ_ID);   /* (the part it would play on: ARP SEQ sounds note[0]) */
+        }
     }
+    pv_rank(o->bar, ps_top, 16u);
     o->state = 1;
 }
 static void ps_label(char *b, uint32_t k)       /* "P01" .. "P32" (b: 4 bytes) */

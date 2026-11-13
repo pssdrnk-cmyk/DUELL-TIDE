@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b10
+- **Changed (one note strip, owner 13 November):** every place that shows a part's steps now draws them the same way, in the look of the AUTO TIDE step lines: the footer step line (QUICK SEQ, SEQ STEP, PARAM LOCKS, ARP pages in SEQ mode), AUTO TIDE, and the MULTIS and PATTERNS previews. A note's height is its pitch, so a SWELL or RIPPLE that keeps the rhythm still shows. An accented note has a white top edge; a rest is a short grey stub, a tie a short light stub, and the end of a short pattern a thin line. The previews show where the loop is now. PATTERNS no longer draws its tall bars.
