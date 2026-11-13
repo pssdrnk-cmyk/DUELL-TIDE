@@ -28,7 +28,7 @@ static void one(const char *eng, const char *key)
     for (k = 0; k < 240u * 240u; k++)
         bad += host_screen[k] != ref[k];
     ncase[g & 63]++;
-    fillpx = 0; grid_fill(); gpx[g & 63] += fillpx; gn[g & 63]++;
+    fillpx = 0; grid_fill(); gut_flush(); gpx[g & 63] += fillpx; gn[g & 63]++;
     ntot++, nbadp += pz != 0u, nlive += bad;
     if (pz)
         printf("uigaps: FAIL %s|%s|grid %u: %u pixels left uncovered\n", eng, key, g, pz);
@@ -71,6 +71,51 @@ int main(void)
         ok &= grid_on == 14u && maxfill < 240ull * 190ull;                  /* EDIT 1 -> VOICE 1/2 (both 14): the gap prefill only */
         printf("uigaps: %s: another layout fills the whole body first, the same layout only its gaps" "%c", ok ? "ok" : "FAIL", 10);
         if (!ok) return 1;
+    }
+    {   /* b11 (owner on rc8: "when a screen is redrawn there are still 3 vertical lines for a couple of milliseconds"): a page change sends no vertical BG stripe through the old
+         * page. The gutters' fill (gfx.c GUT: x 0..3, 79..81, 119..120, 158..160, 236..239) went out before the strips and cut through whatever the old page had there; it now goes
+         * out at the end of the pass, only where nothing drew. Checked with ui_test.c host_fl, frame by frame: a stripe = gutter pixels that pass through a value that is neither
+         * the old page's nor the new one's, in a row where nothing else does, on a page change within one layout (another layout fills the whole body first, above) */
+        static const uint8_t BT[] = {B_HOME, B_HOME, B_HOME, B_FX, B_FX, B_ENV, B_LFO, B_EDIT, B_EDIT};
+        uint32_t b, f, y, x, n = 0, nb, g0;
+        prefill_on = 0;
+        ui_power_on(); go_main_to(HP_MORPH); frames(160);
+        for (b = 0; b < NELEM(BT); b++) {
+            nb = 0;
+            g0 = grid_on;
+            btn_down(BT[b]);
+            for (f = 0; f < 12u; f++) {
+                if (f == 1u)
+                    btn_up(BT[b]);
+                host_fl_begin();
+                frame();
+                for (y = GUT_Y0; y < GUT_Y0 + GUT_H; y++) {
+                    uint32_t ing = 0, outg = 0, i, gut;
+                    for (x = 0; x < 240u; x++) {
+                        const uint32_t k = y * 240u + x;
+                        if (host_fl_n[k] != 2u || host_fl_mid[k] == host_screen[k])
+                            continue;
+                        for (gut = 0, i = 0; i < 5u; i++)
+                            gut |= x >= GUT[i][0] && x < (uint32_t)GUT[i][0] + GUT[i][1];
+                        if (gut)
+                            ing++;
+                        else
+                            outg++;
+                    }
+                    if (!outg)
+                        nb += ing;
+                }
+                host_fl_on = 0;
+            }
+            if (g0 != grid_on)
+                nb = 0;                                 /* (another layout: the whole body's fill, one blank) */
+            if (nb)
+                printf("uigaps: page change %u (grid %u): %u stripe pixels\n", b, grid_on, nb);
+            n += nb;
+            frames(160);
+        }
+        printf("uigaps: %s: a page change sends no vertical stripe through the old page (%u stripe pixels)\n", n ? "FAIL" : "ok", n);
+        if (n) return 1;
     }
     for (g2 = 0; g2 < 64u; g2++) {
         if (!ncase[g2]) continue;
