@@ -168,6 +168,7 @@ static void tide_ghost_real(track_t *t);   /* (seq.c input_on: a real note start
  * upreset.c and project.c). Prototypes for the DUELL files that call them before they are compiled */
 static void graph_tide(void);
 static void graph_tidelist(void);
+static void tide_dance(int whole);                       /* (tide_ui.c: AUTO TIDE's dancing line, each frame) */
 static void tide_columns(void);
 static uint32_t tide_sig(void);
 static uint32_t tide_list_sig(void);
@@ -242,7 +243,7 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_LIVE_SIG(pg, t, h) ((h) = ((h) ^ live_sig((pg), (t))) * 16777619u)
 #define TIDE_LIVE_DRAW(pg, t) live_draw((pg), (t))
 #define TIDE_LIVE_MOD(t, y0) live_mod((t), (y0))
-#define TIDE_LIVE_STRIP(pg, t) live_strip((pg), (t))
+#define TIDE_LIVE_STRIP(pg, t) do { live_strip((pg), (t)); if ((pg)->graph == GR_TIDE) tide_dance(0); } while (0)   /* (b11: AUTO TIDE's dancing line) */
 #define TIDE_LIVE_CHORD(t) live_chord(t)
 #define TIDE_AMPDEST_FM6(pg, t) ((pg)->graph == GR_ADSR && (pg)->id[0] == P_ED_PIT && (t)->eng_req % NENGINES == ENGI_FM6 && fop_ok())
 /* H18 (ui_input.c first_boot_poll): the factory multi a new unit (or one after ERASE DATA, and the emulator) starts with: M02 DUB CHORD (M04 until D31, 2026-11-05: BASIC CHORD took M01 and the curated order moved it),

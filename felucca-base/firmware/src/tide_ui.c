@@ -1042,61 +1042,28 @@ static uint32_t tide_steps_sig(const track_t *t)
  * always both parts, the selected one in full and marked (tide_pc, tide_track). The glide's status is knob 1's line (tide_columns). Rows (capitals, knobs, bars, playhead marks):
  * the column heads 50 .. 60, faders 65 .. 75 and 79 .. 89; then the MODE line 94 .. 104, the steps 110 .. 122 and 124 .. 136, the glide's bar 139 .. 141: 4 px or more between them.
  * The steps and the part numbers take the part's own colour (T_PTHEME), not vt's text fallback, which turned one part black in the light palettes */
-/* b10 TIDE identity (item 4): ARC on screen. With ARC on (and the tide evolving the pattern), AUTO TIDE shows the arc's shape in place of the two step-mark
- * rows, its heights the phases' real intensity (seq_arc.c: RISE builds, tarc.t to full; PEAK the whole of it; DROP the drop's silence, the floor; BREAK the parts
- * thinned to their anchors, low; RECOVER part way back, tarc.t to 100 of 255): RISE a slope up to 60 %, PEAK a raised cap at the top, then DROP straight to the
- * floor or BREAK down to 20 %, RECOVER back up to 45 %. The phase names in ONE row under it, as an axis (owner on rc6, "eh", "the peak": the labels sat above and
- * inside the curve, the peak read as a flat line): the phase now bright, the others dim. The moment now one mark (a hairline and a dot), the arc so far filled;
- * the glide's own bar is not drawn under it (the TRAVEL line above says the trip's n/m: one progress mark in the picture). The phases' places are fixed (the
- * arc's lengths are rolled as it goes); the mark moves through the phase it is in by the phase's units (8 bars each) and the bar in the unit. After PEAK: DROP
- * or BREAK as the arc will take it (under ARC RISE always BREAK) */
+/* b10 TIDE identity (item 4): ARC on screen. b11 (owner, 2026-11-13: the parts' live lines under their lanes take the arc chart's rows): with ARC on (and the tide evolving
+ * the pattern) one 2 px line at the foot of the picture, the arc's progress: its four phases' places (RISE, PEAK, DROP or BREAK, RECOVER; each 8 bars a unit, their lengths
+ * rolled as it goes) split by a 1 px gap, dim, and the arc so far in the theme's colour. The phase now is named in words on knob 1's line (tide_columns) */
 #define AC_X0 9
 #define AC_W 222
-#define AC_YT 128                                        /* the curve's top (the peak) and its floor (b11: under both lanes) */
-#define AC_YB 140
-static const int16_t AC_E[4] = {80, 120, 164, AC_W};     /* the phases' ends: RISE, PEAK, DROP / BREAK, RECOVER (each wide enough for its name: RECOVER ~55 px) */
-static int32_t tide_arc_y(int32_t x, int drop)            /* the curve's row at x (0 .. AC_W) */
-{
-    const int32_t lo = drop ? 0 : 52;                    /* (the breakdown's level, 1/256: the floor after a DROP) */
-    int32_t lv, u;
-    if (x < AC_E[0])
-        lv = 64 + (154 - 64) * x / AC_E[0];              /* RISE: 25 % .. 60 % */
-    else if (x < AC_E[1])
-        lv = (u = x - AC_E[0]) < 4 ? 154 + (256 - 154) * u / 4 : 256;   /* PEAK: steps up to the top, a cap */
-    else if (x < AC_E[2])
-        lv = (u = x - AC_E[1]) < 5 ? 256 - (256 - lo) * u / 5 : lo;     /* DROP / BREAK: falls at once */
-    else
-        lv = lo + (115 - lo) * (x - AC_E[2]) / (AC_E[3] - AC_E[2]);    /* RECOVER: back up to 45 % */
-    return AC_YB - lv * (AC_YB - AC_YT) / 256;
-}
-static void tide_arc_chart(void)
+#define AC_Y (TB_Y1 - 2)
+static void tide_arc_line(void)
 {
     static const int16_t S0[5] = {0, 80, 120, 120, 164}, SW[5] = {80, 40, 44, 44, 58};   /* each phase's start and width (RISE PEAK DROP BREAK RECOVER) */
     const uint32_t ph = tarc.phase % 5u;
-    const int drop = ph == AP_DROP || (ph == AP_PEAK && tarc.next == AP_DROP) || (ph == AP_RISE && sqm_arc == 2u && tarc.cnt <= 1u);
-    const uint16_t c = T_THEME, cf = ux_mix(T_BG, c, 22), cd = ux_mix(T_BG, c, 45);
-    int32_t now = -1, x, py = 0;
-    if (tarc.run && tarc.len) {                           /* the mark: the phase's start + the units and the bar gone of its units */
-        uint32_t gone = ((uint32_t)tarc.len - tarc.left) * 8u + (sqm_bar & 7u);
-        now = S0[ph] + (int32_t)(gone * (uint32_t)SW[ph] / (tarc.len * 8u));
-    }
-    for (x = 0; x <= AC_W; x++) {                        /* the arc so far filled, the line (bright up to now, dim after) */
-        int32_t y = tide_arc_y(x, drop);
-        if (x <= now)
-            cv_rect(AC_X0 + x, y + 1, 1, AC_YB + 1 - y, cf);
-        if (x)
-            cv_line_t(AC_X0 + x - 1, py, AC_X0 + x, y, x <= now ? c : cd, 2);
-        py = y;
-    }
-    /* (b11, design review 2.2: no phase words; the shape shows them, knob 1's line names the phase) */
-    if (now >= 0) {                                      /* now: a hairline and a dot on the curve */
-        int32_t y = tide_arc_y(now, drop);
-        cv_rect(AC_X0 + now, AC_YT - 2, 1, AC_YB - AC_YT + 3, T_TEXT);
-        cv_rrect(AC_X0 + now - 2, y - 2, 5, 5, 2, T_TEXT, T_BG);
-    }
+    int32_t now = 0;
+    if (tarc.run && tarc.len)                            /* the phase's start + the units and the bar gone of its units */
+        now = S0[ph] + (int32_t)((((uint32_t)tarc.len - tarc.left) * 8u + (sqm_bar & 7u)) * (uint32_t)SW[ph] / (tarc.len * 8u));
+    cv_rect(AC_X0, AC_Y, AC_W, 2, ux_mix(T_BG, T_THEME, 35));
+    cv_rect(AC_X0, AC_Y, now, 2, T_THEME);
+    cv_rect(AC_X0 + 80, AC_Y, 1, 2, T_BG);
+    cv_rect(AC_X0 + 120, AC_Y, 1, 2, T_BG);
+    cv_rect(AC_X0 + 164, AC_Y, 1, 2, T_BG);
 }
-#define TL_TY(k) (70 + 30 * (int32_t)(k))                 /* b11: part k's lane: its tracks' row */
-#define TL_SY(k) (TL_TY(k) + 20)                         /* .. its steps' baseline */
+#define TL_TY(k) (69 + 38 * (int32_t)(k))                 /* b11: part k's lane: its tracks' row */
+#define TL_SY(k) (TL_TY(k) + 18)                         /* .. its steps' baseline (their playhead mark 2 .. 3 rows under it) */
+#define TL_LY(k) (TL_TY(k) + 22)                         /* .. its live line's rows TL_LY .. + 8 (tide_dance) */
 static void graph_tide(void)
 {
     uint32_t k;
@@ -1104,17 +1071,59 @@ static void graph_tide(void)
         cv_begin(240, TB_Y1 - TB_Y0, T_BG);
         cv_bg = T_BG;
         cv_oy = -TB_Y0;
-        for (k = 0; k < NSHOWN; k++) {                   /* b11 (design review 2.2): one lane a part, its A-B tracks and its steps tied by the part bar */
+        for (k = 0; k < NSHOWN; k++) {                   /* b11 (design review 2.2): one lane a part, its A-B tracks, its steps and its live line tied by the part bar */
             if (ui_part_hot(k))
-                cv_rect(1, TL_TY(k) - 6, 3, TL_SY(k) + 4 - (TL_TY(k) - 6), T_PFILL(k));
+                cv_rect(1, TL_TY(k) - 6, 3, TL_LY(k) + 9 - (TL_TY(k) - 6), T_PFILL(k));
             tide_track(TL_TY(k), JB_X0, JB_X0 + JB_W, GT_SOUND, k);
             tide_track(TL_TY(k), JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
             tide_steps(&trk[k], TL_SY(k), 9, tide_pc(k));
         }
-        if (sqm_arc && sqm_auto)                         /* (b11: the arc and the steps together; the status is on knob 1's line, tide_columns) */
-            tide_arc_chart();
+        if (sqm_arc && sqm_auto)                         /* (the status is on knob 1's line, tide_columns) */
+            tide_arc_line();
         cv_oy = 0;
         cv_blit(0, TB_Y0);
+    }
+    tide_dance(1);
+}
+/* b11 AUTO TIDE's live line (owner): each part's sound now, the MORPH page's front line alone (ui_scope.c: the same tap, reader and painter, wl_front), under its lane's steps,
+ * the part's colour, the selected part's full and the other's dimmed as their lanes, the waves' soft ends. A new picture with the page's step (mv_tick, ~16 a second), in the
+ * main loop while the page shows (the gate as the MORPH page opens it); only the rows that changed are sent */
+static uint32_t td_rh[NSHOWN][9] __attribute__((section(".pool")));   /* (each line row's hash as the panel holds it) */
+static void tide_dance(int whole)
+{
+    uint32_t k, r, s, h, i;
+    if (wl_tick()) {
+        wl_step(0, WL_FRONT_A);
+        wl_step(1, WL_FRONT_A);
+    } else if (!whole)
+        return;
+    for (k = 0; k < NSHOWN; k++) {
+        const int32_t y0 = TL_LY(k);
+        cv_begin(240, 9, T_BG);
+        cv_bg = T_BG;
+        cv_oy = -y0;
+        if (ui_part_hot(k))
+            cv_rect(1, y0, 3, 9, T_PFILL(k));            /* (the part bar runs through these rows: graph_tide) */
+        wl_front = 1;
+        wl_stack(k, y0 - 1, y0 + 9);                     /* (the front's middle 5 1/2 rows down) */
+        wl_front = 0;
+        cv_oy = 0;
+        GFX_HOOK_BLIT(0, (uint32_t)y0, 0u);
+        for (s = r = 0; r <= 9u; r++) {                  /* (the runs of changed rows; all of them after the page was drawn) */
+            uint32_t ch = 0;
+            if (r < 9u) {
+                const uint16_t *q = cv_px + r * 240u;
+                for (h = 2166136261u, i = 0; i < 240u; i++)
+                    h = (h ^ q[i]) * 16777619u;
+                ch = (td_rh[k][r] ^ h) | (uint32_t)whole;
+                td_rh[k][r] = h;
+            }
+            if (!ch) {
+                if (s < r)
+                    lcd_blit(0, (uint32_t)y0 + s, 240u, r - s, cv_px + s * 240u);
+                s = r + 1u;
+            }
+        }
     }
 }
 /* TIDE SETTINGS: the settings as the list pages' rows (PATCHES, template 9: UT_L5_*), from row UT_L5_Y0, 20 apart: the name (M) at the left,
