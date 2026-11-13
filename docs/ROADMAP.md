@@ -6,7 +6,7 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 ## Now: 1.0.0-b10 (jam11)
 
-jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads 1.0.0-b9. The unit runs b10-rc6.8-test, flashed 12 November at 22:21: jam11 plus live assist v2 (PR 55; the owner's feedback on it is still open). Flash free on the unit: 1,528 B, under the 2 KB warning line.
+jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads 1.0.0-b9. The unit runs rc7-test, flashed 13 November at 06:51 (after the sweep builds): jam11 `00ca7f6`, which has live assist v2 (PR 55; the owner's feedback on it is still open). Flash free on the unit: 7,968 B (it was 1,528 B on rc6.8-test; the multi packing of PR 67 gave the room). The version string still reads 1.0.0-b9.
 
 | What | State |
 |---|---|
