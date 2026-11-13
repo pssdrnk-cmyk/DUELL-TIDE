@@ -1,3 +1,0 @@
-## changelog
-### 1.0.0-b10
-- **Changed (DUB CHORD and DUB MINIMAL, after hearing them on the unit):** DUB CHORD's stab is cleaner and steadier: its phaser is half as deep and half as wet (it no longer pumps the stab's level), the lows under about 170 Hz are 9 dB down (the pad below carries the root), and the echo's colour swings less (COLR LFO 2, was 5), so the repeats stay dark. DUB MINIMAL's tape hiss is a quiet colour now: held without a break, about 15 dB under the blip and steady from bar to bar in every TIDE mode (it was only 5 dB under and dropped out one bar in four), its low rumble cut.

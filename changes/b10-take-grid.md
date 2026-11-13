@@ -1,3 +1,0 @@
-## changelog
-### 1.0.0-b10
-- **Fixed (live assist answers on ARP SEQ parts and low takes):** an answer written to a part that plays on the arp's rate (every ARP SEQ part: most factory multis' second part) is now written in that part's own steps, so it lands on the same moments instead of playing at the wrong speed or hardly at all (the owner's "doesn't play consistently" after a live take); a take recorded on an ARP SEQ part is read on its own grid too. A BASS LINE never goes below C1 and is not written at all when the take leaves no room under it (before: the other part's pattern was replaced by one inaudible note); a take whose grid cannot be converted into 64 steps of the other part leaves it alone. The header says NO ANSWER: NO ROOM UNDER IT when nothing is written.
