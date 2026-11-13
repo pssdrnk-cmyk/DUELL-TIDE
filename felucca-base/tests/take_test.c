@@ -286,6 +286,80 @@ static void take_roll_test(void)
     rec_off();
     CHECK("... REC off with no change: the rolled answer stays, no new take", psig(1) == a1 && tk_cnt == 1);
 }
+/* b11: ANSWER or ANSWER ON turned while a take stands: the answer is made again from the take, on the next bar line; no history step; OFF gives the pattern back (tide_take.c take_mode) */
+static void wait_not_due(void) { uint32_t n = 0; while ((clk_step & 15u) != 3u && n++ < 400u) run(16); }
+static void take_mode_change(void)
+{
+    uint32_t a0, a1, s2, p0, d0, e_ref, sdiv2, amode2;
+    boot(); setup(1, 0, V_POLY);
+    s2 = psig(1); sdiv2 = (uint32_t)trk[1].p[P_SDIV]; amode2 = (uint32_t)trk[1].p[P_AMODE];
+    first_take();
+    a0 = psig(1);
+    CHECK("mode change: the take stands (BASS LINE answer, one history step)", tk_cnt == 1 && tk_m.mode == TA_BASS && a0 != s2);
+    wait_not_due();
+    tide_answer = TA_DOUBLE; run(48);
+    CHECK("ANSWER turned to DOUBLE: the new answer waits for the bar line (the old one still stands)", tk_pend && psig(1) == a0 && tk_m.mode == TA_DOUBLE);
+    CHECK("... the header names it", said("DOUBLE"));
+    land();
+    d0 = psig(1);
+    CHECK("... on the bar line it lands: a different answer, still one history step, the take untouched", d0 != a0 && !tk_pend && tk_cnt == 1 && tk_pos == 1 && trk[0].step[2].note[0] == 69);
+    wait_not_due();
+    tide_answer = TA_BASS; run(48); land();
+    CHECK("... turned back to BASS LINE: exactly the first answer again (the take's own seed)", psig(1) == a0 && tk_m.mode == TA_BASS && tk_m.roll == 0u);
+    tide_answer = TA_DOUBLE; run(48); land();
+    CHECK("undo after a mode change goes back to before the take", d0 == psig(1) && take_undo(-1) == 1u && psig(1) == s2 && said("UNDO TAKE 1"));
+    CHECK("... redo brings the take with the DOUBLE answer", take_undo(1) == 1u && psig(1) == d0);
+    /* OFF gives the pattern back, on the bar line */
+    wait_not_due();
+    tide_answer_on = 1; run(48);
+    CHECK("ANSWER ON OFF: the other part gets its old pattern back on the bar line (not at once)", tk_pend && psig(1) == d0 && said("ANSWER OFF"));
+    land();
+    CHECK("... the pattern, the grid and the ARP mode it had before the take", psig(1) == s2 && (uint32_t)trk[1].p[P_SDIV] == sdiv2 && (uint32_t)trk[1].p[P_AMODE] == amode2 && !tk_m.ans && tk_cnt == 1);
+    wait_not_due();
+    tide_answer_on = 0; run(48); land();
+    CHECK("... ON again: the answer is made again from the take (DOUBLE)", psig(1) == d0 && tk_m.mode == TA_DOUBLE);
+    wait_not_due();
+    tide_answer = TA_OFF; run(48); land();
+    CHECK("ANSWER OFF: the same, the old pattern comes back", psig(1) == s2);
+    wait_not_due();
+    tide_answer = TA_BASS; run(48); land();
+    CHECK("... ANSWER BASS LINE again: the answer is made for a take that had none", psig(1) == a0 && tk_cnt == 1);
+    /* an answer edited by hand is the player's */
+    trk[1].step[3].n = 1; trk[1].step[3].note[0] = 50; trk[1].step[3].time = ST_NOTE;
+    p0 = psig(1);
+    tide_answer = TA_DOUBLE; run(48); land();
+    CHECK("a mode change after the answer was edited leaves it alone", psig(1) == p0);
+    tide_answer = TA_BASS;
+    /* turning the row through several values quickly: the value at the bar line counts */
+    first_take();
+    tide_answer = TA_ECHO; run(48); land();
+    e_ref = psig(1);
+    first_take();
+    wait_not_due();
+    tide_answer = TA_DOUBLE; run(16); tide_answer = TA_REPLY; run(16); tide_answer = TA_ECHO; run(16);
+    CHECK("turned fast through DOUBLE and REPLY to ECHO: one answer waits", tk_pend && psig(1) != e_ref);
+    land();
+    CHECK("... only ECHO lands (the same as setting ECHO at once), no history step", psig(1) == e_ref && tk_m.mode == TA_ECHO && tk_cnt == 1);
+    /* no take: nothing happens */
+    boot(); setup(1, 0, V_POLY); s2 = psig(1);
+    tide_answer = TA_DOUBLE; run(48); tide_answer = TA_BASS; run(48);
+    CHECK("no take stands: a mode change does nothing", psig(1) == s2 && !tk_pend && tk_cnt == 0);
+    /* REC armed: the change forces the next pass's re-make although the steps did not change */
+    first_take();
+    song.rec = 1; run(100);
+    a1 = psig(1);
+    tide_answer = TA_DOUBLE; run(48);
+    CHECK("REC armed: a mode change makes nothing at once, it forces the next re-make", psig(1) == a1 && tk_force);
+    {
+        uint32_t len = TIDE_PLAY_LEN(&trk[0]);
+        at_step(&trk[0], len - 1u);
+        run(48); land();
+    }
+    CHECK("... the last step of the pass: the answer is made again with the new mode although the steps did not change", tk_m.mode == TA_DOUBLE && psig(1) != a1 && !tk_force);
+    at_step(&trk[0], 3);
+    rec_off();
+    CHECK("... REC off with no change: no new take", tk_cnt == 1);
+}
 static uint32_t notes_in(uint32_t p, uint32_t a, uint32_t b) { uint32_t i, n = 0; for (i = a; i < b; i++) n += trk[p].step[i].n != 0; return n; }
 static void take_reply(void)
 {
@@ -465,7 +539,7 @@ static void take_hold(void)
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_mode_change(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }
