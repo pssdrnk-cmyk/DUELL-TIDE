@@ -3162,10 +3162,11 @@ static const struct { uint16_t y16, a16; uint32_t dx, ph; uint8_t w16, sp, mix, 
 static void spl_sea(uint32_t st, uint16_t c1, uint16_t c2)
 {
     const uint32_t t = 478495693u + st * 73819750u;      /* (0.7 rad, then 2 pi in 48 steps of the GIF's 80 ms, at the splash's 66 ms) */
+    const int hc = UI_PALETTES[ux.pal % NPALETTES].hc;   /* (POLICE: two flat colours, no blend: the far half part 1's, the near half part 2's, a pixel drawn whole or not) */
     uint16_t col[13];
     int32_t x, k;
     for (k = 0; k < 13; k++)
-        col[k] = ux_mix(c1, c2, SPL_SEA[k].mix);
+        col[k] = hc ? (k < 7 ? c1 : c2) : ux_mix(c1, c2, SPL_SEA[k].mix);
     for (x = 0; x < 240; x++) {
         const int32_t e = x < 239 - x ? x : 239 - x, f = e < 24 ? e : 24;   /* the sides fade over 24 px */
         int32_t cov = SPL_SEA_Y1 * 16;                    /* rows from here down are hidden by a nearer swell */
@@ -3177,8 +3178,8 @@ static void spl_sea(uint32_t st, uint16_t c1, uint16_t c2)
             int32_t y;
             for (y = lo >> 4; lo < hi && y <= (hi - 1) >> 4; y++) {
                 const int32_t a0 = y * 16, a1 = a0 + 16, c = (a1 < hi ? a1 : hi) - (a0 > lo ? a0 : lo);
-                if (c > 0)
-                    tide_put(x, y, col[k], (uint32_t)(c * SPL_SEA[k].al * f) / 2400u);
+                if (hc ? c >= 8 && f >= 12 : c > 0)
+                    tide_put(x, y, col[k], hc ? 16u : (uint32_t)(c * SPL_SEA[k].al * f) / 2400u);
             }
             cov = lo < cov ? lo : cov;
         }
