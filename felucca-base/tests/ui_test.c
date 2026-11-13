@@ -5832,7 +5832,7 @@ static int test_seq_tools(void)
     ok &= !memcmp(TSEL->step, ref, sizeof ref);
     bad += check("  OCT-: the track as the layer opened (steps, locks, LEN); KNOB 1..4 LEN DIV SWING GATE", ok);
 
-    /* RANDOM / COOK on a melodic track (fixed seeds): the rhythm stays, the notes in the scale, near the middle */
+    /* SWELL (was RANDOM) / RIPPLE (was COOK) on a melodic track (b11: a seed per press, each press one step of the take history): the rhythm stays, the notes in the scale, near the middle */
     ok = okc = 1;
     for (seed = 1; seed <= 40u; seed++) {
         ui_power_on();
@@ -5842,24 +5842,29 @@ static int test_seq_tools(void)
         go_page(GR_ROLL); frame();
         rng_state = 0x9E3779B9u * seed;
         btn_down(B_SEQ); frame();
-        tl_key(4);                                      /* C4: RANDOM */
-        ok &= msg_is("RANDOM NOTES") && tl_times_are(TSEL, ref, NSTEP) && tl_in_key(TSEL) && TSEL->step[20].note[0] == 72;
+        tl_key(4);                                      /* C4: SWELL */
+        ok &= msg_is("SWELL") && tl_times_are(TSEL, ref, NSTEP) && tl_in_key(TSEL) && TSEL->step[20].note[0] == 72;
         for (i = 0; i < 8u; i++)
             if (TSEL->step[i].n)
                 ok &= TSEL->step[i].note[0] >= 54 && TSEL->step[i].note[0] <= 72;
-        for (k = 0; k < 12u; k++) {                     /* D4: COOK, again and again */
+        for (k = 0; k < 12u; k++) {                     /* D4: RIPPLE, again and again */
             memcpy(mid, TSEL->step, sizeof mid);
             tl_key(5);
             okc &= tl_times_are(TSEL, ref, NSTEP) && tl_in_key(TSEL) && TSEL->step[20].note[0] == 72 &&
                    memcmp(mid, TSEL->step, sizeof mid) != 0;
         }
-        okc &= msg_is("COOKED 12");
+        okc &= msg_is("RIPPLE");
         btn_up(B_SEQ); frame();
     }
-    bad += check("  C4 RANDOM (melodic): the rhythm kept, new notes in the scale near the middle (40 seeds)", ok);
-    bad += check("  D4 COOK x12: each press changes it, the rhythm and the scale kept, \"COOKED 12\"", okc);
-    hold(B_SAVE);
-    bad += check("  SAVE held after COOKs: the last one undone only", !memcmp(TSEL->step, mid, sizeof mid));
+    bad += check("  C4 SWELL (melodic): the rhythm kept, new notes in the scale near the middle (40 seeds)", ok);
+    bad += check("  D4 RIPPLE x12: each press changes it, the rhythm and the scale kept, the header says RIPPLE", okc);
+    {
+        uint32_t p0 = tk_pos;                           /* (the panel gesture itself: OCT- held, a PRESETS turn to the left) */
+        btn_down(B_OCTDN); frame();
+        turn(EN_PRESET, -1); frame();
+        btn_up(B_OCTDN); frames(400);
+        bad += check("  OCT- + PRESETS after RIPPLEs: the last one undone only (the take history, one step a press)", tk_pos + 1u == p0 && !memcmp(TSEL->step, mid, sizeof mid));
+    }
     ui_power_on();
     track_defaults_steps(TSEL);
     TSEL->p[P_SLEN] = 16;
@@ -5867,15 +5872,13 @@ static int test_seq_tools(void)
     rng_state = 12345u;
     btn_down(B_SEQ); frame();
     tl_key(5);
-    ok = msg_is("NOTHING TO COOK") && !undo.trk;
+    ok = msg_is("NOTHING TO RIPPLE") && !undo.trk;
     tl_key(4);
-    for (k = 0, i = 0; i < 16u; i++) {
-        ok &= i % 2u ? TSEL->step[i].time == ST_REST : 1;
+    for (k = 0, i = 0; i < 16u; i++)
         k += (uint32_t)tl_gate(&TSEL->step[i]);
-    }
-    ok &= tl_gate(&TSEL->step[0]) && k >= 3u && tl_in_key(TSEL);
+    ok &= tl_gate(&TSEL->step[0]) && k >= 3u && k <= 12u && tl_in_key(TSEL);
     btn_up(B_SEQ); frame();
-    bad += check("  an empty pattern: COOK says NOTHING TO COOK; RANDOM writes 8ths with rests, in the scale", ok);
+    bad += check("  an empty pattern: RIPPLE says NOTHING TO RIPPLE; SWELL writes the genre's rhythm (step 1 always), in the scale", ok);
 
     ui_power_on();
     tl_melody();
@@ -5888,7 +5891,7 @@ static int test_seq_tools(void)
     key_down(black(2)); frame(); key_up(black(2)); frame();
     ok &= !memcmp(TSEL->step, ref, sizeof ref) && !gates();
     btn_up(B_SEQ); frame();
-    bad += check("  LEDs: the six tools breathe (CLEAR REVERSE SHIFT SHIFT RANDOM COOK); no other key does anything (0.2.14: no BEAT, no lane keys)", ok);
+    bad += check("  LEDs: the six tools breathe (CLEAR REVERSE SHIFT SHIFT SWELL RIPPLE); no other key does anything (0.2.14: no BEAT, no lane keys)", ok);
 
     /* the lock (a double tap), a song playing */
     ui_power_on();

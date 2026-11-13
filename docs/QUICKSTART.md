@@ -156,6 +156,8 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 
   A key held for a whole loop on a part without an arp fills the pattern with that note.
 
+  On TIDE the answer to a take is yours to re-roll: hold **SEQ** and press **C4 SWELL** (a whole new wave) or **D4 RIPPLE** (a few notes move); it lands at the start of the next loop (the header says SWELL  NEXT LOOP until then) and **OCT-** + a PRESETS turn takes it back.
+
   While a part is armed for recording, a red dot and REC show in the bottom row of every page, next to the page number.
 
   **PLAY/STOP** lights **green** when stopped and **red** when playing (it blinks red on each beat of the count-in).

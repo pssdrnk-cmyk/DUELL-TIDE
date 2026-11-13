@@ -286,6 +286,265 @@ static void take_roll_test(void)
     rec_off();
     CHECK("... REC off with no change: the rolled answer stays, no new take", psig(1) == a1 && tk_cnt == 1);
 }
+/* b11: SWELL (C4) and RIPPLE (D4) of SEQ TOOLS (tide_take.c tide_tl_swell): the buttons make the answer again, the menu changes nothing by itself; they land at the start of the next loop, one history step each */
+static uint32_t osig(const step_t *st) { uint32_t i, m = 17; for (i = 0; i < 64u; i++) m = m * 31u + ((uint32_t)st[i].time << 3) + st[i].n; return m; }   /* the onsets: what is a note, a tie or a rest, and how big a chord */
+static uint32_t changed_steps(const step_t *a, uint32_t p, uint32_t *nnotes)
+{
+    uint32_t i, k, c = 0, n = 0;
+    for (i = 0; i < 64u; i++) {
+        uint32_t d = 0;
+        n += trk[p].step[i].time == ST_NOTE && trk[p].step[i].n;
+        for (k = 0; k < 4u; k++)
+            d |= a[i].note[k] != trk[p].step[i].note[k];
+        c += d;
+    }
+    *nnotes = n;
+    return c;
+}
+static void sw_press(uint32_t part, uint32_t ripple) { (void)tl_do(&trk[part], ripple ? TL_COOK : TL_RANDOM); }
+static void to_loop_end(uint32_t part) { at_step(&trk[part], (uint32_t)TIDE_PLAY_LEN(&trk[part]) - 1u); run(48); }
+/* OCT- held + a PRESETS turn through the panel (ui_input.c: the take history), not take_undo: 1 when the history moved */
+static uint32_t gesture(int32_t dir)
+{
+    uint32_t pos = tk_pos;
+    btn_down(B_OCTDN); frame();
+    turn(EN_PRESET, dir); frame();
+    btn_up(B_OCTDN); frame();
+    run(400);
+    return tk_pos != pos;
+}
+static uint32_t h_off1, h_on1, h_off_n, h_on_n, h_trk;
+static void swell_hook(int on)                           /* the interrupt-off window of tl_sw_apply's write: the part's steps as they are when it opens and when it closes */
+{
+    if (on) { if (!h_on_n) h_on1 = steps_sig(&trk[h_trk]); h_on_n++; } else { if (!h_off_n) h_off1 = steps_sig(&trk[h_trk]); h_off_n++; }   /* (the first window: the take's write comes before the answer's) */
+}
+static int key_ok(const step_t *st, uint32_t part)
+{
+    uint32_t i, k;
+    int32_t off = tk_poff(&trk[part]);
+    for (i = 0; i < 64u; i++)
+        for (k = 0; k < st[i].n && k < 4u; k++)
+            if (st[i].note[k] && !tk_in_key((int32_t)st[i].note[k] + off))
+                return 0;
+    return 1;
+}
+static void take_swell(void)
+{
+    uint32_t a0, a1, s2, h0, on0, n, c, i, ok, pr = 0, bt = 0, mk = 0, w0, w1;
+    step_t keep[64];
+    static morph_part_t sv;
+    boot(); setup(1, 0, V_POLY);
+    s2 = psig(1);
+    first_take();
+    a0 = psig(1); h0 = psig(0);
+    /* the menu alone changes nothing */
+    tide_answer = TA_DOUBLE; run(48); land();
+    tide_answer_on = 1; run(48); land(); tide_answer_on = 0; run(48); land();
+    CHECK("ANSWER / ANSWER ON turned: a standing answer is left as it is (no re-make, no history step)", psig(1) == a0 && tk_m.mode == TA_BASS && !tk_pend && !tk_sw_k && tk_cnt == 1);
+    /* SWELL on the answer's part: the new mode, at the start of the next loop */
+    at_step(&trk[1], 6);
+    memcpy(&sv, &mph[1], sizeof sv);
+    sw_press(1, 0);
+    CHECK("SWELL on the answer: it waits for the loop start, the header says so", tk_sw_k == 1u && said("SWELL  NEXT LOOP") && psig(1) == a0);
+    CHECK("... and the tide line shows it (state 7, accent dots) until it lands", take_line(&pr) == 3u && tide_line_state(&pr, &bt, &mk) == 7);
+    at_step(&trk[1], 20); run(16);
+    CHECK("... not at once, not at the bar line: the answer is still the old one halfway through the loop", psig(1) == a0 && tk_sw_k == 1u);
+    to_loop_end(1);
+    a1 = psig(1);
+    CHECK("... at the loop start it lands: a new answer in the mode ANSWER shows now (DOUBLE), a history step", a1 != a0 && tk_m.mode == TA_DOUBLE && !tk_sw_k && tk_cnt == 2 && said("SWELL  DOUBLE"));
+    CHECK("... the tide line is back to nothing", take_line(&pr) == 0u && tide_line_state(&pr, &bt, &mk) == 0);
+    CHECK("... the take is untouched, the sound's End B too", psig(0) == h0 && !memcmp(&mph[1], &sv, sizeof sv));
+    CHECK("OCT- + PRESETS (the panel gesture): SWELL goes back one step (the first answer), then the take", gesture(-1) == 1u && said("UNDO SWELL") && psig(1) == a0 && gesture(-1) == 1u && said("UNDO TAKE 1") && psig(1) == s2);
+    CHECK("... redo twice brings them back", gesture(1) == 1u && gesture(1) == 1u && said("REDO SWELL") && psig(1) == a1);
+    /* a second press before the loop turns replaces the first (no queue) */
+    at_step(&trk[1], 4);
+    sw_press(1, 0); sw_press(1, 1);
+    CHECK("pressing again before the loop turns replaces the waiting press (RIPPLE now)", tk_sw_k == 2u);
+    memcpy(keep, trk[1].step, sizeof keep);
+    w0 = osig(keep);
+    to_loop_end(1);
+    CHECK("... one step lands, the header says RIPPLE", !tk_sw_k && said("RIPPLE  DOUBLE") && tk_cnt == 2 && (tk_hn[1] & 0x4000u));
+    /* RIPPLE: a quarter of the notes at most move, the rhythm stays, in the key, no rubs against the take */
+    c = changed_steps(keep, 1, &n);
+    CHECK("RIPPLE moves at least one note and at most a quarter of them (or one)", c >= 1u && c <= (n * 25u / 100u > 1u ? n * 25u / 100u : 1u));
+    CHECK("... the rhythm is kept: every onset, tie and chord size as before (compared)", osig(trk[1].step) == w0);
+    tk_events(&trk[0], seq_len(&trk[0])); tk_key();
+    for (i = 0, ok = 1; i < 64u; i++) {
+        uint32_t k;
+        for (k = 0; k < 4u; k++)
+            if (keep[i].note[k] != trk[1].step[i].note[k] && trk[1].step[i].note[k] && (!tk_in_key(trk[1].step[i].note[k]) || tk_rubs((int32_t)i, 1, trk[1].step[i].note[k])))
+                ok = 0;
+    }
+    CHECK("... the moved notes are in the key and free of rubs against the take", ok);
+    /* the same seed gives the same notes */
+    memcpy(keep, trk[1].step, sizeof keep);
+    on0 = tl_sw_apply(&trk[1], 0, 1234, 0); a0 = psig(1);
+    memcpy(trk[1].step, keep, sizeof keep);
+    (void)tl_sw_apply(&trk[1], 0, 1234, 0);
+    CHECK("the same seed gives the same notes (SWELL of a part); another seed another wave", on0 && psig(1) == a0 && (memcpy(trk[1].step, keep, sizeof keep), tl_sw_apply(&trk[1], 0, 4321, 0), psig(1) != a0));
+    /* SWELL on the take's part: the take changes (a scratch copy, written with the interrupt off), the answer follows, one step for both */
+    first_take();
+    a0 = psig(1); h0 = psig(0);
+    at_step(&trk[0], 5);
+    sw_press(0, 0);
+    CHECK("SWELL on the take's part waits for the loop start too", tk_sw_k == 1u && psig(0) == h0 && psig(1) == a0);
+    h_trk = 0; h_off_n = h_on_n = 0; host_irq_hook = swell_hook;
+    to_loop_end(0);
+    host_irq_hook = 0;
+    CHECK("... the take is a new one and the answer is made from it, one history step for the pair", psig(0) != h0 && psig(1) != a0 && tk_cnt == 2 && !tk_sw_k);
+    CHECK("... the playing part's steps are written whole inside the interrupt-off window (unchanged when it opens, new when it closes)", h_off_n >= 1u && h_on_n >= 1u && h_off1 == h0 && h_on1 != h0);
+    CHECK("... OCT- + PRESETS brings back both", gesture(-1) == 1u && psig(0) == h0 && psig(1) == a0);
+    /* UNDO TAKE, then a press on the part that held it: a plain tool at once (the identity went back with the history) */
+    first_take();
+    a0 = psig(1); h0 = psig(0);
+    CHECK("undo the take (the gesture)", gesture(-1) == 1u && psig(1) != a0);
+    a1 = psig(1);
+    sw_press(0, 0);
+    CHECK("... a press on the part that held the undone take is a plain tool: at once, the other part is not touched", !tk_sw_k && psig(0) != h0 && psig(1) == a1);
+    h0 = psig(0);
+    sw_press(0, 0);
+    CHECK("... and the next press too (the history step of the first one must not bring the undone take's identity back)", !tk_sw_k && psig(0) != h0 && psig(1) == a1);
+    /* stopped: at once */
+    first_take();
+    a0 = psig(1);
+    stop();
+    sw_press(1, 0);
+    CHECK("stopped: SWELL lands at once", !tk_sw_k && psig(1) != a0 && said("SWELL"));
+    /* STOP while pending: lands at once, once */
+    first_take();
+    a0 = psig(1);
+    at_step(&trk[1], 4);
+    sw_press(1, 0);
+    stop();
+    CHECK("STOP while a press waits: it lands at once, once (one history step)", !tk_sw_k && psig(1) != a0 && tk_cnt == 2);
+    /* a load while pending: nothing lands */
+    boot(); setup(1, 0, V_POLY); first_take();
+    a0 = psig(1);
+    at_step(&trk[1], 4);
+    sw_press(1, 0);
+    tk_reset_v = 1; run(48);
+    to_loop_end(1);
+    CHECK("a load while a press waits: it is dropped, nothing lands on the new music", !tk_sw_k && psig(1) == a0 && tk_cnt == 0);
+    /* undo while pending: dropped */
+    first_take();
+    s2 = psig(1);
+    at_step(&trk[1], 4);
+    sw_press(1, 0);
+    h0 = psig(1);
+    CHECK("the gesture while a press waits goes back to before the take", gesture(-1) == 1u && !tk_sw_k && psig(1) != h0);
+    a0 = psig(1);
+    to_loop_end(1);
+    CHECK("... and the dropped press does not land afterwards", psig(1) == a0 && tk_cnt == 1);
+    /* REC arms while pending: kept, lands at the end of the armed pass */
+    first_take();
+    a0 = psig(1);
+    at_step(&trk[1], 4);
+    sw_press(1, 0);
+    song.rec = 1; run(100);
+    to_loop_end(1);
+    CHECK("REC arms while a press waits: it is not dropped, the header says NEXT PASS", !tk_sw_k && tk_force == 1u && said("SWELL  NEXT PASS") && psig(1) == a0);
+    to_loop_end(0);
+    land();
+    CHECK("... it lands at the end of the armed pass: the answer is made again", psig(1) != a0 && !tk_force);
+    at_step(&trk[0], 3);
+    rec_off();
+    /* ANSWER OFF: SWELL gives the other part its old pattern back */
+    boot(); setup(1, 0, V_POLY); s2 = psig(1);
+    first_take();
+    tide_answer = TA_OFF; run(48);
+    CHECK("ANSWER OFF in the menu: the answer stays", psig(1) != s2);
+    at_step(&trk[1], 4);
+    sw_press(1, 0);
+    to_loop_end(1);
+    CHECK("... SWELL then puts the other part's old pattern back", psig(1) == s2 && !tk_m.ans);
+    tide_answer = TA_BASS;
+    /* no take: the stock tool with TIDE's rules, at once, one history step */
+    boot(); setup(1, 0, V_POLY); empty_part(0);
+    h0 = psig(0);
+    sw_press(0, 0);
+    CHECK("SWELL on a part with no take: a pattern in the genre's rhythm, at once, one history step", psig(0) != h0 && tk_cnt == 1 && said("SWELL"));
+    CHECK("... the gesture gives the empty part back", gesture(-1) == 1u && psig(0) == h0);
+    /* no key (SCL off, no key byte): chromatic notes are allowed; with SCL set they are in it */
+    boot(); setup(1, 0, V_POLY); empty_part(0);
+    root_g = 2; scale_g = 2;
+    sw_press(0, 0);
+    for (i = 0, ok = 1; i < 64u; i++)
+        if (trk[0].step[i].time == ST_NOTE && trk[0].step[i].n)
+            ok &= tl_in_scale(&trk[0], trk[0].step[i].note[0]);
+    CHECK("SWELL with SCL set: every note is in the scale", ok);
+    scale_g = 0;
+    /* MONO answer part */
+    boot(); setup(1, 0, V_MONO);
+    first_take();
+    memcpy(keep, trk[1].step, sizeof keep);
+    w0 = osig(keep);
+    at_step(&trk[1], 4);
+    sw_press(1, 1);
+    to_loop_end(1);
+    c = changed_steps(keep, 1, &n);
+    CHECK("MONO answer part: RIPPLE moves a note, in the key, the rhythm kept", c >= 1u && osig(trk[1].step) == w0 && key_ok(trk[1].step, 1));
+    /* ARP SEQ on the answer part: the steps are offsets, the rubs and the key are about what sounds */
+    boot(); setup(1, 0, V_POLY);
+    first_take();
+    trk[1].p[P_AMODE] = AM_SEQ_ID;
+    memcpy(keep, trk[1].step, sizeof keep);
+    w0 = osig(keep);
+    at_step(&trk[1], 4);
+    sw_press(1, 1);
+    to_loop_end(1);
+    c = changed_steps(keep, 1, &n);
+    CHECK("ARP SEQ answer part: RIPPLE moves a note, the rhythm kept, the notes in the key as they sound", c >= 1u && osig(trk[1].step) == w0 && key_ok(trk[1].step, 1));
+    /* TRN on the answer part: the notes are stored lower than they sound; RIPPLE keeps what SOUNDS in the key */
+    boot(); setup(1, 0, V_POLY);
+    first_take();
+    for (i = 0; i < 64u; i++)                            /* (the answer as it would be written for a part with TRN +3: stored 3 lower, sounding the same) */
+        for (ok = 0; ok < 4u; ok++)
+            if (trk[1].step[i].note[ok] > 3u)
+                trk[1].step[i].note[ok] = (uint8_t)(trk[1].step[i].note[ok] - 3u);
+    trk[1].p[P_TRANS] = 3;
+    tk_m.sig = steps_sig(&trk[1]);
+    memcpy(keep, trk[1].step, sizeof keep);
+    w0 = osig(keep);
+    at_step(&trk[1], 4);
+    sw_press(1, 1);
+    to_loop_end(1);
+    c = changed_steps(keep, 1, &n);
+    CHECK("answer part with TRN +3: RIPPLE moves a note and what sounds (stored + TRN) stays in the key, the rhythm kept", c >= 1u && osig(trk[1].step) == w0 && key_ok(trk[1].step, 1));
+    trk[1].p[P_TRANS] = 0;
+    /* what sounds, not what is stored: a part's TRN counts in the rub check */
+    boot(); setup(1, 0, V_POLY); empty_part(0);
+    trk[0].step[0].time = ST_NOTE; trk[0].step[0].n = 1; trk[0].step[0].note[0] = 60;
+    trk[1].p[P_SLEN] = 16; trk[1].step[0].time = ST_NOTE; trk[1].step[0].n = 1; trk[1].step[0].note[0] = 60;
+    trk[1].p[P_TRANS] = 0;
+    w0 = (uint32_t)tl_rub(&trk[0], 0, 60);
+    trk[1].p[P_TRANS] = 1;
+    w1 = (uint32_t)tl_rub(&trk[0], 0, 60);
+    trk[1].p[P_TRANS] = 0;
+    CHECK("rubs are about what sounds: the same stored notes rub when the other part's TRN makes them a semitone apart", w0 == 0u && w1 == 1u);
+    /* REC armed: SWELL and RIPPLE are remembered for the next pass, each with its own header */
+    first_take();
+    song.rec = 1; run(100);
+    a1 = psig(1);
+    sw_press(1, 0);
+    CHECK("REC armed: SWELL makes nothing at once, it forces the next pass's re-make", psig(1) == a1 && tk_force == 1u && said("SWELL  NEXT PASS"));
+    to_loop_end(0);
+    land();
+    CHECK("... the last step of the pass: the answer is made again", psig(1) != a1 && !tk_force);
+    at_step(&trk[0], 3);
+    rec_off();
+    first_take();
+    song.rec = 1; run(100);
+    memcpy(keep, trk[1].step, sizeof keep);
+    w0 = osig(keep);
+    sw_press(1, 1);
+    CHECK("REC armed: RIPPLE says RIPPLE (not SWELL) and is remembered as one", tk_force == 2u && said("RIPPLE  NEXT PASS"));
+    to_loop_end(0);
+    land();
+    c = changed_steps(keep, 1, &n);
+    CHECK("... at the end of the pass the answer is rippled, not made new: a few notes moved, the rhythm kept, the header says RIPPLE", c >= 1u && c <= (n * 25u / 100u > 1u ? n * 25u / 100u : 1u) && osig(trk[1].step) == w0 && said("RIPPLE") && !tk_force);
+    at_step(&trk[0], 3);
+    rec_off();
+}
 static uint32_t notes_in(uint32_t p, uint32_t a, uint32_t b) { uint32_t i, n = 0; for (i = a; i < b; i++) n += trk[p].step[i].n != 0; return n; }
 static void take_reply(void)
 {
@@ -465,7 +724,7 @@ static void take_hold(void)
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

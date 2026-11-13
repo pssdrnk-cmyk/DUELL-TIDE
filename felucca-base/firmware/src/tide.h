@@ -202,7 +202,10 @@ static uint32_t tide_roll_sig(const track_t *t);
 #define TIDE_FOOT_NAME(t, b) do { if (tide_foot_parts()) tide_part_name(trk_index(t), (b)); else sound_label((t), (b)); } while (0)
 static int tide_foot_two(void);
 #define TIDE_FOOT_PART(sel) (tide_foot_two() ? 1u : (sel))   /* the part footer row 2 names: on TIDE and TIDE SET part 2 (row 1: part 1) */
-#define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); } while (0)
+static const char *tide_tl_swell(track_t *t, uint32_t ripple);   /* (tide_take.c: SEQ held + C4 SWELL / D4 RIPPLE, b11) */
+static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t live);   /* (ui_tools.c; live: the part is playing, the result is built in a scratch copy and written with the interrupt off) */
+static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a step note of the part sounds at) */
+#define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); if ((p) == TL_RANDOM || (p) == TL_COOK) return tide_tl_swell((t), (p) == TL_COOK); } while (0)
 #define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* patch chunk 21's object: where earlier TIDE builds kept the settings (read once, never written: tide_store.c) */
 #define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */

@@ -132,7 +132,6 @@ static uint32_t ly_seen(uint32_t l) { return LAYERS[l % LAYER_N].kind == LK_QUIC
 static struct {
     uint8_t l, trk, loaded, oct;       /* SET: the layer and the track of the snapshot; EDIT: a sound loaded since
                                         * it opened (SEQ: a tool used); OCT- / OCT+ pressed in a SET layer (bits) */
-    uint8_t cook;                      /* SEQ: COOK pressed since it opened */
     uint8_t rp_dirty;                  /* REC: a setting changed (settings_save when the layer lets go) */
     uint8_t qid[4];                    /* QUICK EDIT: the ids of its four when it opened (OCT-: put back) */
     int16_t v[9];                      /* the values when it opened: SEQ LEN DIV SWING GATE; REC the settings
@@ -281,7 +280,6 @@ static void layer_opened(uint32_t l)
     lys.l = (uint8_t)l;
     lys.trk = song.sel;
     lys.loaded = 0;
-    lys.cook = 0;
     if (l == LAYER_SEQ || l == LAYER_REC) {             /* the track as it is now (OCT-) */
         memcpy(tl_open.step, TSEL->step, sizeof tl_open.step);
         motion_snapshot_track(TSEL, &tl_open.mo);
@@ -400,13 +398,9 @@ static void tools_key(uint32_t p)
         return;
     if (!(m = tl_do(TSEL, p)))
         return;
-    if (p == TL_COOK && lys.cook < 99u) {               /* "COOKED 3": the third since the layer opened */
-        lys.cook++;
-        fmt_int(n, lys.cook);
-        ui_say("COOKED ", n);
-    } else {
+    (void)n;
+    if (*m)                                              /* ("": SWELL / RIPPLE said it themselves, tide_take.c) */
         ui_message(m);
-    }
     lys.loaded = 1;
     ui.force = 1;
 }
@@ -592,7 +586,6 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
                         t->p[P_SLEN + k] = lys.v[k];
                 }
                 lys.loaded = 0;
-                lys.cook = 0;
                 ui_message(lys.l == LAYER_REC ? "REC PUT BACK" : "SEQUENCE PUT BACK");
             }
         }
@@ -918,11 +911,11 @@ static void layer_quick(uint32_t q, int32_t y, int32_t h)
         cv_text_in(x0, y + CAP_IN(M, h), x1 - x0, &AF_M, nm[g], ink, fill);
     }
 }
-/* SEQ TOOLS: the white keys' tools, 4 a row from F3 (the sequence's: CLEAR REVERSE SHIFT < SHIFT >, RANDOM COOK TRANS + TRANS -) */
-static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT >", "RANDOM", "COOK", "TRANS +", "TRANS -",
+/* SEQ TOOLS: the white keys' tools, 4 a row from F3 (the sequence's: CLEAR REVERSE SHIFT < SHIFT >, SWELL RIPPLE TRANS + TRANS -) */
+static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT >", "SWELL", "RIPPLE", "TRANS +", "TRANS -",
     "KEEP",
 };
-#define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and COOK in the larger size, the rest in the smaller */
+#define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and RIPPLE in the larger size, the rest in the smaller */
 /* DUELL 1.0 layout (QUICK_SEQ_NEW_LAYOUT.png): the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
  * keys F G A B over C D E F, the key letter in the corner, the names centred */
 static void layer_seq(void)

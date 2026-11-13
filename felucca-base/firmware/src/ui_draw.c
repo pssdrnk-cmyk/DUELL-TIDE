@@ -3630,7 +3630,11 @@ static void tide_line_draw(void)
         int32_t yc16 = TL_MID + (st == 2u ? sine_i((uint32_t)x * 44739243u - tl_ph) * TL_AMP >> 15 : 0);   /* the middle, 1/16 px (96 px a wavelength: 2.5 crests) */
         if ((st == 1u || st == 5u) && (x & 7) > 3)
             continue;                                   /* armed: dashes (5: the count-in of a take) */
-        if (st >= 5u)
+        if (st == 7u && (x & 3) > 1)
+            continue;                                   /* b11: a SWELL / RIPPLE waits for the loop start: finer dots, in the accent (not the armed dashes) */
+        if (st == 7u)
+            c = T_ACCENT;                               /* b11: the press registered, it lands at the next loop */
+        else if (st >= 5u)
             c = T_REC;                                  /* b10 round 9: a take records: REC red, filling with the loop */
         else if (grey && p2 && (x & 7) > 5)
             continue;                                   /* GREY / MONO: part 2 dashed (6 on, 2 off) */
