@@ -1,34 +1,48 @@
 # TIDE roadmap
 
-Updated 14 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
+Updated 13 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
-## Now: 1.0.0-b10 (jam11)
+## Now: 1.0.0-b12 (jam11)
 
-jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads 1.0.0-b9. The unit runs rc12b, jam11 `512f97d`, flashed 13 November at about 20:05 (backup `DUELL-backup-2026-11-13-2005.json`). Flash free on the unit: 3,012 B (1,528 B on rc6.8-test at the start of b11). The AUTO TIDE lanes and live lines (PR 90) were merged after that build and reach the unit with the next package. On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
+jam11 is the 1.0.0-b12 work (`TIDE_VERSION` reads 1.0.0-b12). The unit runs rc17-test, jam11 `b2a43e85`, flashed 13 November. Flash free on the unit: 1,404 B (3,012 B on rc12b, 1,528 B on rc6.8-test at the start of b11; the splash sea, M27 and the 175 slots took the room). What merged after that build (PR 102, test scenes; PR 95, the README guide and pictures) changes nothing on the unit. On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
 
 | What | State |
 |---|---|
 | Reverb on the second core, to free CPU (K4) | Built on the branch `fix/b6-k4` (head `98c8a38`, which holds `e5e0815` plus a console compile fix) only: it is not in jam11 and not on the unit. It costs +1,712 B of flash by its own commit message, so it makes room worse; it needs its own FM-1 sweep with K4 on and off |
+| The footer's patch number (for example "#131") is clipped by the REC mark | In progress (b13); rides with the next build |
+
+## B12: done (13 November)
+
+What the owner got in b12, all merged into jam11; the unit runs it as rc17-test (PR 95 and PR 102 came after that build and change nothing on the unit). State: Done.
+
+- **A TIDE home page.** HOME's round is MORPH, then AUTO TIDE, then TIDE SETTINGS; HOME still opens MORPH. AUTO TIDE shows the loop's bars beside each part's steps and, after a take, the answer on knob 1's line in the answering part's colour (PR 96, after the live lines of PR 90; the MORPH scene comes from another page, PR 100).
+- **The splash "sea".** The power-on splash is the sea at a third of the earlier speed (the owner's pick of 13 November; PR 97).
+- **EMPTY, multi M27.** A blank-slate template multi for live playing; the multis list is 27 long and K1 wraps (PR 98).
+- **Every factory sound is editable.** The patch list has 175 slots and the store holds 150 records, so a factory sound can be changed and saved like your own; backups and the web editor follow (PR 99).
+- **AUTO TIDE is the water page.** Each part's steps stand in the sea, as high as its tide, with a gentle swell behind them; knob 1's glide line, MODE, TIME and WAIT stay (PR 101, the owner's pick).
+- **Names.** Packages, backups and saves are called `tide-...`, and the version reads 1.0.0-b12 (PR 94).
+- **GitHub.** A short README, then the "How it works" guide with a block per function (PRs 92 and 95); every README, site and social picture is shot again from the current build with music playing (PR 95).
+- **CI.** A pull request runs the build and the fit check; the full test suite runs once per package, on a manual run (PR 91).
 
 ## B11: done (12 to 14 November)
 
-The owner's two tracks from the roadmap review of 12 November (room on the unit, test and tool debt), plus quality checks, housekeeping, a design pass, the web restyle and the DUELL 1.2 crackle fixes. State: Done, all merged into jam11 (all but PR 90 are on the unit in the build named under Now). What stays open is the splash (below) and Later 22 and 34 to 38.
+The owner's two tracks from the roadmap review of 12 November (room on the unit, test and tool debt), plus quality checks, housekeeping, a design pass, the web restyle and the DUELL 1.2 crackle fixes. State: Done, all merged into jam11 (all are on the unit in rc17-test, named under Now). What stays open is Later 22 and 34 to 38.
 
 - **Room on the unit.** Flash was 1,528 B free at the start of b11. Found: the 26 factory multis stored smaller (LZSS against a shared dictionary, -4,416 B, PR 67); the FM6 exp2 table at 513 entries (-2,052 B, PR 68, with the `fm6exp2` group and the third-octave tool of PR 69); one value size on card rows (-1,584 B: the 31 px number tables dropped, PR 87). The room report said SP5 (Later 18), HANDSKIP (Later 9), MOVECOST (Later 10) and GUARDS are not switched off: they have been ON by default since the rc3.1 package (`tools/build.py` and `tools/size_fns.py` default to `"1"`), so there is no saving left to win there; the 13 November unit sweep confirmed them (no worse; Later 22). Measured costs: SP5 -1,756 B, HANDSKIP -36 B, MOVECOST +228 B, GUARDS +80 B.
 - **Test and tool debt.** Done: Later 28 (a stale comment, PR 61), Later 30 (the store's cross-version fixture, PR 59), Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration, PR 57), the `benchsim` M17 finding, the live assist groups (`take`, `answer`, `guards`) now run in CI (PR 62), and the test tooling (PRs 63 to 65: every host group runs by default or says why not; `--changed` leaves out the slow tier; the WSL mirror's file mode). The one open point is the design for per-module host objects (the first open point under Tooling).
 - **Levels.** Eight factory sounds that read 6 to 9 LU louder than their role when chorded are 1.5 to 2.5 LU lower, within the quiet-body rule (PLATE CHOIR's level comes down through its reverb send); M21 with a chord held is 4.7 LU quieter (PR 75).
 - **SWELL and RIPPLE** (the sequence tools C4 and D4, formerly RANDOM and COOK): PR 74, with the quick layer redrawing when one lands (PR 77).
 - **One standard note strip** (owner's pick B): the footer, AUTO TIDE, MULTIS and PATTERNS draw a part's steps the same way, a note's height its pitch, never shorter than AUTO TIDE's 6 px note (PRs 79 and 80); no vertical lines on an in-place redraw (PR 78).
-- **Design pass:** the MORPH page (soft wave ends, ridges leaning to the target; PR 81), the mixer's mute chips and LOW / MID / HIGH meter (PR 88), AUTO TIDE's lanes, each part's live line and the ARC as a progress line (PR 90), QUICK ARP steps and the tide line under the quick layers (PR 85), one value size on card rows (PR 87), and the night-sea update screen (the screen the unit shows while it is updated, PR 89: drawing only). **Not built:** the power-on splash "sea" (the owner's pick of 13 November; the waves at a third of the earlier speed); the unit keeps today's splash (Planned, "Full design overhaul", part 5).
+- **Design pass:** the MORPH page (soft wave ends, ridges leaning to the target; PR 81), the mixer's mute chips and LOW / MID / HIGH meter (PR 88), AUTO TIDE's lanes, each part's live line and the ARC as a progress line (PR 90), QUICK ARP steps and the tide line under the quick layers (PR 85), one value size on card rows (PR 87), and the night-sea update screen (the screen the unit shows while it is updated, PR 89: drawing only). The power-on splash "sea" was built in b12 (PR 97, above).
 - **Web restyle:** the emulator, landing page, installer, cheat sheet and backup page wear TIDE's own palette; no pink (PR 86).
 - **DUELL 1.2 crackle fixes** (from the research in the workspace notes, items 1 to 3): the cost items that place the second core's deadline are worked out by the main loop, not the audio interrupt (PR 82); the second core pauses between looks (PR 83); an in-buffer guard fades the oldest released tails when a half is projected over 96 % (PR 84). Item 4 (`VS_MAX` 2 to 1) needs the owner's ear and is not done (Later 34); items 5 to 8 are not needed now.
 - **Quality and housekeeping.** One review pass per pull request; the workspace and the GitHub branches cleaned (47 worktrees removed, 255 items moved aside, merged branches deleted with backup refs); this page refreshed.
 
 ## On the unit
 
-The unit runs rc8-test. Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
+The unit runs rc17-test (see Now). Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
 
 | What | State |
 |---|---|
@@ -136,7 +150,7 @@ Name: TIDE (owner, 12 November: drop DUELL; the attribution line stays)
 4. **Packages and names** (b12: done except the update screen's text, which came with b11's new update screen): firmware file names (`duell-tide-beta-…` → `tide-…`), the version string ("DUELL 1.1" in the emulator header → the TIDE version), the update screen's text, backup file names, the web editor's title.
 5. **On the unit:** the flash screen in the TIDE look (owner, 12 November: the screen the unit shows while it is updated, with the wordmark and the water line filling as the progress bar; first check which part of it our firmware draws and which the stock updater does), a TIDE performance home page built around time (tide, ARC phase, bars, live assist's take and answer), then TIDE's shape language (water-line fills, wave-edged knob bars, a TIDE header on the global pages, one icon style). The power-on splash is redone here too, as part of the whole TIDE look (owner, 12 November: parked). Its three rounds of waves under the wordmark (A to J) are on the branch `b10-splash-parked` (each behind a build switch `SPLW`; the design report with their pictures, bytes and frame times is kept in the workspace notes, not shipped); the owner liked none of them, so it starts from a fresh brief. The unit keeps today's splash until then.
 
-Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat sheet and backup page wear the night sea, no pink (PR 86); the update screen is in the TIDE look (PR 89). Still open here: the power-on splash, the TIDE performance home page, the shape language, the docs pages and demo of part 3, and parts 1, 2 and 4 as listed.
+Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat sheet and backup page wear the night sea, no pink (PR 86); the update screen is in the TIDE look (PR 89). Done in b12: the power-on splash sea (PR 97) and the TIDE home page, HOME's round with the water AUTO TIDE page (PRs 96, 101). Still open here: the shape language, the docs pages and demo of part 3, and parts 1, 2 and 4 as listed.
 
 **Screens** (redundancy audit 8 November, all 433 screens rendered)
 - TIDE rows SYNC and ROLL renamed so they don't share words with tempo sync and MORPH's ROLL. (The rest of this audit was released in b4.)
