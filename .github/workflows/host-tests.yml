@@ -189,6 +189,10 @@ jobs:
           JIELI_TOOLCHAIN="$HOME/.jieli/toolchain" AC79_SDK="$HOME/fw-AC79_AIoT_SDK" python3 tools/build.py 2>&1 | tee build.out
           ls -l build/*.fwsc
 
+      - name: The build's last lines as annotations (readable without signing in)
+        if: failure()
+        run: tail -n 25 felucca-base/build.out | sed 's/%/%25/g' | while IFS= read -r l; do echo "::error title=device-build::$l"; done
+
       - name: Keep the build log
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9   # v7.0.2
