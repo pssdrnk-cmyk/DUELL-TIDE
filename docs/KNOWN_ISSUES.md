@@ -4,7 +4,7 @@ What is known to be broken or untested. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists
 
 ## TIDE (this fork)
 
-- **In the beta `beta-2026-11-04`, fixed in `1.0.0-b1`:** the SAVE > MULTIS page layout, the TIDE page's step bars not always matching what plays, and a latched arp playing on after STOP (use STOP ALL there: a double press or a 0.6 s hold). [The README](../README.md#builds-stable-and-beta) says which build is which.
+- **In the beta `beta-2026-11-04`, fixed in `1.0.0-b1`:** the SAVE > MULTIS page layout, the TIDE page's step bars not always matching what plays, and a latched arp playing on after STOP (use STOP ALL there: a double press or a 0.6 s hold). [The builds page](BUILDS.md) says which build is which.
 - **Fixed in `1.0.0-b1` (TIDE):**
   - ARC resumes where it was after STOP and PLAY (a load or a K1 stop starts it again).
   - A multi or pattern loaded after a WNDR or JRNY session starts as written.

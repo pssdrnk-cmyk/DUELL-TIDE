@@ -19,7 +19,8 @@ let html = readFileSync(ed("index.html"), "utf8");
 const logo = "data:image/png;base64," + readFileSync(ed("img/editor-header.png")).toString("base64");
 html = html.replace(/<link rel="stylesheet"[^>]*>\s*/g, "")
   .replace(/<script type="module"[^>]*><\/script>/, "")
-  .replace('src="./img/editor-header.png"', () => `src="${logo}"`)
+  .replace('src="../assets/tide-wordmark.svg"', () => `src="${logo}"`)
+  .replace(/<span class="tidesub">[^<]*<\/span>/, "")
   .replace(/<a id="backuplink"[^>]*>[^<]*<\/a>/, "")
   .replace("</head>", () => `<style>\n${css1}\n${css2.outputFiles[0].text}\n</style>\n</head>`)
   .replace("</body>", () => `<script>window.__DUELL_DEMO_FILE = true;</script>\n<script>\n${js.outputFiles[0].text.replace(/<\/script/gi, "<\\/script")}\n</script>\n</body>`);
