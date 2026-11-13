@@ -128,7 +128,7 @@ export async function importDialog(app, o) {
       clear(body).append(h("p", { text: "Writing to the unit. Do not unplug it." }), bar, line);
       let res;
       try {
-        res = await LIB.runPlan(u, pl, { safety: st.safety ? async (text, items) => { const name = `duell-safety-copy-${items.length}-patches.duell-patches.json`; saveText(app, name, text); line.textContent = `A safety copy was saved as ${name}.`; } : null,
+        res = await LIB.runPlan(u, pl, { safety: st.safety ? async (text, items) => { const name = `tide-safety-copy-${items.length}-patches.duell-patches.json`; saveText(app, name, text); line.textContent = `A safety copy was saved as ${name}.`; } : null,
           onProgress: (p) => { if (p.phase === "write") { bar.value = p.index; line.textContent = `${p.index + 1} of ${p.total}: ${label(p.slot)} ${p.name}`; } else bar.value = bar.max; } });
       } catch (e) { res = { done: [], failed: { error: e }, mismatched: [] }; }
       st.running = false;
@@ -382,7 +382,7 @@ export function buildPatches(app, wrap) {
     try {
       const items = await LIB.readItems(u, slots), plan = LIB.makePlan(u, items, slots.map((s, i) => to + i));
       if (plan.problems.length) { app.say(plan.problems[0], "warn"); return; }
-      app.say("Copying ..."); const r = await LIB.runPlan(u, plan, { safety: async (text) => saveText(app, "duell-safety-copy.duell-patches.json", text), onProgress: (p) => p.phase === "write" && app.say(`Copying ${p.index + 1} of ${p.total} ...`) });
+      app.say("Copying ..."); const r = await LIB.runPlan(u, plan, { safety: async (text) => saveText(app, "tide-safety-copy.duell-patches.json", text), onProgress: (p) => p.phase === "write" && app.say(`Copying ${p.index + 1} of ${p.total} ...`) });
       if (r.failed) throw r.failed.error;
       st.sel = new Set(slots.map((s, i) => to + i)); st.cur = to; await load(); app.say(`Copied to ${label(to)}${slots.length > 1 ? " and the slots after it" : ""}.`, "good");
     } catch (e) { app.fail(e); load(); }

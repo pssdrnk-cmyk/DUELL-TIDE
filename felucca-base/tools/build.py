@@ -6,11 +6,12 @@
   tools/build.py [--release]
 
 Outputs in build/: felucca.bin (app), loader/ota.bin (update loader),
-felucca.fwsc (package). A release build (--release; the version is always the VERSION file) writes duell-<VERSION>-beta.fwsc
-and a folder release-<VERSION>-beta/ with the package, the app, SHA256SUMS and the licence files (DUELL 0.2.9: no sample data, no sample
+and the package, named from TIDE's version (TIDE_VERSION): tide-beta-1.0.0-b12.fwsc for a beta, tide-stable-1.0.0.fwsc for a release
+(b12: the names the GitHub releases and the installer use; DUELL's duell-<VERSION>.fwsc before). A release build (--release) also writes
+a folder release-tide-<TIDE version>/ with the package, the app, SHA256SUMS and the licence files (DUELL 0.2.9: no sample data, no sample
 attribution any more); the device
-shows the version of the VERSION file at the DUELL root ("DUELL 0.2.1 beta"); the package is duell-<VERSION>-beta.fwsc
-(identity FM-1_901; on a TIDE build, the default, ABOUT shows the TIDE version from TIDE_VERSION, or DUELL_TIDE_ID). Every build also writes duell-latest.fwsc (the same bytes) and duell-version.json {"version": "0.2.1"}.
+reports the version of the VERSION file at the DUELL root ("DUELL 1.1") on the wire; ABOUT shows the TIDE version from TIDE_VERSION, or DUELL_TIDE_ID
+(identity FM-1_901). Every build also writes tide-latest.fwsc (the same bytes) and tide-version.json {"version": "1.0.0-b12", "duell": "1.1"}.
 See BUILDING.md for the toolchain and the SDK.
 
 The JieLi toolchain is Linux x86-64 only. JIELI_TOOLCHAIN points at it; on
@@ -21,7 +22,7 @@ the update loader always keeps -Os), FELUCCA_LLVM adds -mllvm options (e.g. "-pi
 link's LLVM plugin instead). -flto: felucca.o is LLVM bitcode, linked through the toolchain's LLVMgold.so with the same -O level and
 -mcpu. DUELL_VELO_CAPTURE=1 (only with FELUCCA_CDC=1, never --release; the velocity capture build, src/velocap.h and velocap.c, docs/VELO_CSV.md) sends the
 raw key readings over the USB serial console; it is never in a release or a normal test build. BENCH_TAG (with DUELL_BENCH=1, DUELL_TEST_MODE=1): the device shows "DUELL <VERSION> bench <TAG>" and the package is
-duell-<VERSION>-bench-<TAG>.fwsc (no duell-latest.fwsc / duell-version.json then: a bench package is never the latest).
+tide-<TIDE version>-bench-<TAG>.fwsc (no tide-latest.fwsc / tide-version.json then: a bench package is never the latest).
 DUELL_BENCH=1 builds MENU > SYSTEM > BENCH (src/bench.c, docs/BENCH_GUIDE.md; bench suite stage 0: e.g. BENCH_TAG=BENCHC0 with
 DUELL_RAMPLACE=1). DUELL_CORE1_PROBE=1 (BENCH-B's core 1 probe) is not in this line (core.h stops such a build).
 DUELL_TWOCORE (default 1 in every non-bench build since 1.0, with DUELL_RAMPLACE=1; 0 = one core; not with DUELL_CORE1_PROBE): the second core plays part 2, started at every power-on and left alone for the session after a fault (docs/TWOCORE_STAGE1.md, CPU_PLAN.md).
@@ -666,13 +667,14 @@ def main():
         generate()
         return
     ver = read_version()
-    tag = f"{ver}-beta" if ver.startswith("0.") else ver    # 1.0 and later: duell-1.0.fwsc, no -beta
+    tv = tide_version()                                     # the package is named from TIDE's version (b12), DUELL's VERSION is what the unit reports
+    chan = "beta" if "-b" in tv else "stable"               # (1.0.0-b12 = a beta, 1.0.0 = a release: web/releases.py reads tide-<channel>-<version>.fwsc)
     if a.release:
         print(f"note: --release {a.release} ignored; the version is {ver} (the VERSION file)")
     btag = bench_tag()
     if btag and a.release:
         raise SystemExit("build: a bench build (BENCH_TAG) is never a release")
-    name = f"duell-{ver}-bench-{btag}.fwsc" if btag else f"duell-{tag}.fwsc"   # the package of the VERSION file, release or not
+    name = f"tide-{tv}-bench-{btag}.fwsc" if btag else f"tide-{chan}-{tv}.fwsc"   # (before b12: duell-<VERSION>.fwsc)
     if not ldr_screen():
         name = name.replace(".fwsc", "-noscreen.fwsc")
     PRODUCT = "FM-1_901"                        # package identity (one digit each: the identity has room for two)
@@ -724,18 +726,18 @@ def main():
     pkg = fm1pkg_make.ufw(fm1pkg_make.flash_image(img, fm1pkg_make.KEY), ota, PRODUCT)
     (OUT / name).write_bytes(pkg)
     if not btag:
-        (OUT / "duell-latest.fwsc").write_bytes(pkg)                  # stable name for the installer page
-        (OUT / "duell-version.json").write_text(json.dumps({"version": ver}) + "\n")
+        (OUT / "tide-latest.fwsc").write_bytes(pkg)                  # the newest package under one name
+        (OUT / "tide-version.json").write_text(json.dumps({"version": tv, "duell": ver}) + "\n")
     opt, llvm = opt_flags()
     print(f"flags    {' '.join(opt + llvm)}" + (f"  (bench {btag}: DUELL {ver} bench {btag})" if btag else ""))
     print(f"app      {OUT / 'felucca.bin'}  {len(img)} B")
     print(f"loader   {LDR / 'ota.bin'}  {len(ota)} B")
     print(f"package  {OUT / name}  {len(pkg)} B, identity {PRODUCT}")
     if a.release:                   # what a release carries: the package, the app and every licence they need
-        rel = OUT / f"release-{tag}"
+        rel = OUT / f"release-tide-{tv}"
         shutil.rmtree(rel, ignore_errors=True)
         (rel / "LICENSES").mkdir(parents=True)
-        app = f"duell-{tag}-app.bin"
+        app = f"tide-{tv}-app.bin"
         (rel / name).write_bytes(pkg)
         (rel / app).write_bytes(img)
         (rel / "SHA256SUMS").write_text("".join(f"{hashlib.sha256(b).hexdigest()}  {n}\n"

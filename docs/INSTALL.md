@@ -44,12 +44,12 @@ The installer page is `felucca-base/web/install/index.html`. It keeps Felucca's 
 
 | Command | File written to `felucca-base/build/` |
 |---|---|
-| `tools/build.py --release` (recommended) | `duell-<VERSION>.fwsc` (`duell-1.1.fwsc`; the version is the `VERSION` file; a 0.x.y test version is named `duell-<VERSION>-beta.fwsc`), plus a folder `release-<VERSION>/` with the package, the app, `SHA256SUMS`, licences |
+| `tools/build.py --release` (recommended) | `tide-beta-<TIDE version>.fwsc` (`tide-beta-1.0.0-b12.fwsc`; the version is the `TIDE_VERSION` file; a release `1.0.0` is `tide-stable-1.0.0.fwsc`), plus a folder `release-tide-<TIDE version>/` with the package, the app, `SHA256SUMS`, licences |
 | `tools/build.py` (no flag) | the same package, without the release folder |
 
-Every build also writes `duell-latest.fwsc` (the same file) and `duell-version.json` next to it.
+Every build also writes `tide-latest.fwsc` (the same file) and `tide-version.json` next to it.
 
-- The package name starts with `duell-` (for example `duell-1.1.fwsc`). The installer page also still finds the older name `felucca-0.1-beta.fwsc`.
+- The package name starts with `tide-` (for example `tide-beta-1.0.0-b12.fwsc`; `duell-1.1.fwsc` before b12).
 - The device shows the version as **DUELL 1.1** (from the `VERSION` file); TIDE does not change that text.
 - The AUTO TIDE page in HOME's round shows that TIDE is on the unit.
 - **MENU > SYSTEM > ABOUT** shows TIDE's own version beside the date (for example `1.0.0-b1`, from the file `TIDE_VERSION`).

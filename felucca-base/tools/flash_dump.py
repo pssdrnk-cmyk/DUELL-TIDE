@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List the objects in a DUELL emulator saved-data file (duell-flash-*.bin, from the emulator page's
+"""List the objects in a DUELL emulator saved-data file (tide-flash-*.bin, duell-flash-*.bin before b12, from the emulator page's
 "Download saved data"), and optionally extract the multis.
 
 File: "DUELLFLASH1", u16 range count, per range u32 address + u32 length (little endian), then the bytes.
