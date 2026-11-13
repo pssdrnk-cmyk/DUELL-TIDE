@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b13
+- **Live assist, CHORDS:** ANSWER (TIDE SETTINGS) gets a fifth choice after ECHO: the other part holds the chord of each bar of your take as a pad (the triad the take weighs most, three notes tied for the whole bar, C3 to C5, dropped under your lowest note where you play there, the nearest inversion to the bar before, velocity 80, a note that rubs left out). A ROLL or SWELL sometimes plays the same chords as short stabs in the genre's rhythm (DUB, HSE, TECH, ELEC; ACID and AMB keep the pad). The header says CHORDS and the key; the saved ANSWER byte is unchanged (an older value loads as it was). Host tests `take` and `answer` cover it.
