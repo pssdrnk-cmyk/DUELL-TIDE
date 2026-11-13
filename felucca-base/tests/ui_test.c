@@ -8006,7 +8006,7 @@ static int test_item157_pc(void)
     if (i157_find("MORPH", &ta))
         ty0 = txt_log[ta].y0;
     for (part = 0; part < 2u; part++)
-        for (i = 0; i < UP_SLOTS; i++) {
+        for (i = 0; i < UP_BANK; i++) {                    /* (bank 0 / 1: programs 0..127, the bank's 128; b12 has 175 slots) */
             uint32_t s0 = song.sel;
             int32_t aw = (AF_T_CAP_H + 1) / 2, ag = text_w(&AF_T, " ");
             ui.msg_t = 0;
@@ -8232,7 +8232,7 @@ static int test_item158_pc(void)
         if (glob) go_title("MIXER"); else go_main_to(HP_MORPH);   /* (a global screen, no capsules: GLO's MIXER; TIDE has no MODE page) */
         frames(160);
         for (part = 0; part < 2u; part++)
-            for (i = 0; i < UP_SLOTS; i++) {
+            for (i = 0; i < UP_BANK; i++) {                /* (bank 0: programs 0..127) */
                 char want[40];
                 ui.msg_t = 0;
                 pc_recall(part, i, 0);

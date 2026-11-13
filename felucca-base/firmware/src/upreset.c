@@ -258,7 +258,8 @@ _Static_assert(PT_CAP + ST_PAYLOAD_OFF == ST_PAYLOAD_END && PT_CAP <= ST_PAYLOAD
 #endif
 _Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX == 150u && PT_MAX <= UP_SLOTS && AK_WORST <= AK_MAX, "the store's limit: 6 records of the worst size fit a chunk; b12: 25 chunks, 150 records for the 175 slots");
 _Static_assert(TIDE_PT_NOLD * PT_K == 126u && (PT_NCH - TIDE_PT_NOLD) * PT_K == 24u, "b12: the two rooms, 126 records for slots 1..128 and 24 for 129..175 (editor duellbackup.js PATCH_CAP_*)");
-_Static_assert(UP_SLOTS == UP_VSLOTS && UP_SLOTS <= 255u && TIDE_PT_NOLD < PT_NCH, "b12: a slot per place (the record's slot byte, pt_dir; UP_SLOTS itself is pt_write's 'no slot to cut')");
+_Static_assert(UP_SLOTS <= UP_VSLOTS && UP_SLOTS <= 255u && TIDE_PT_NOLD < PT_NCH, "b12: a slot per place (the record's slot byte, pt_dir; UP_SLOTS itself is pt_write's 'no slot to cut'); the shipped"
+               " list has exactly 175 places (patch_test), a test list with more (xvalues' extra sound) has read-only places past the slots, as before b12");
 _Static_assert(PT_NCH == TIDE_PT_NCH, "pt_obj, the erase list (erase_data.c), the backup (editor_backup.c)");   /* TIDE hook (21: chunk 21 is left to the earlier TIDE builds' settings record) */
 _Static_assert(PT_FIX + PT_VB + PT_VMAX + MBV_MAX + 32u + UPF_PK + AK_MAX <= 768u, "pt_enc holds a record");
 _Static_assert(EXT_P_LEN <= PT_VB * 8u && P_COUNT < 255u, "the values' bitmap holds every wide id");

@@ -112,7 +112,7 @@ const info = parseInfo(await A.request([1, []]));
 const seen = []; const rqA = (r, o) => A.request(r, o);
 const file = await captureBackup(rqA, info, (d, t) => seen.push([d, t]));
 const archive = readArchive(JSON.stringify(file));
-ok(file.format === "duell-backup" && file.version === 6 && VERSION === 7 && file.firmware === info.version && file.objects.length === 20 && file.patchRecords === true && !Number.isNaN(Date.parse(file.created)), "file: format duell-backup, version 6 from a 128-slot unit (7 only from a b12 one), firmware, date, 20 objects (16 others and the 4 saved patches)");
+ok(file.format === "duell-backup" && file.version === 7 && VERSION === 7 && file.slots175 === false && file.firmware === info.version && file.objects.length === 20 && file.patchRecords === true && !Number.isNaN(Date.parse(file.created)), "file: format duell-backup, version 7, firmware, date (slots175 false: a 128-slot unit), 20 objects (16 others and the 4 saved patches)");
 ok(file.objects.slice(16).every((o, i) => o.id === 40 && o.slot === [0, 1, 5, 64][i] && o.size >= 20 && o.size <= 580) && file.objects.slice(0, 16).every((o) => o.id !== 40) && archive.hasPatches && archive.oldPatchChunks === 0 && !archive.notes.length, "file: the patches are {id: 40, slot, size, crc, data} objects, sorted by slot, after the other objects");
 ok(seen.at(-1)[0] === seen.at(-1)[1] && seen.length > 10, "capture: progress ends at the total");
 ok(IDS63.every((id) => same(archive.objects.get(id).bytes, A.objs.get(id) || new Uint8Array(0))) && [...A.patches.keys()].every((k) => same(archive.objects.get(patchKey(k)).bytes, A.patchBytes(k))) && archive.objects.size === 20,
@@ -169,7 +169,7 @@ ok(await athrows(() => captureBackup((r, o) => { const x = new MockUnit(); x.pla
 {   // a unit without caps bit 5 gives no patches, and the result says so
   const U = new MockUnit({ caps: 31 }), inf = parseInfo(await U.request([1, []]));
   const f = await captureBackup((r, o) => U.request(r, o), inf), a = readArchive(JSON.stringify(f));
-  ok(f.version === 6 && f.patchRecords === false && !f.objects.some((o) => o.id === 40) && a.hasPatches === false && /cannot back up patches one at a time/.test(f.notes?.[0] ?? "") && a.notes.length === 1 && a.objects.size === 16,
+  ok(f.version === 7 && f.patchRecords === false && !f.objects.some((o) => o.id === 40) && a.hasPatches === false && /cannot back up patches one at a time/.test(f.notes?.[0] ?? "") && a.notes.length === 1 && a.objects.size === 16,
      "capture: a unit without caps bit 5 (an older firmware) gives no patches; the file says so (a note, patchRecords false) and holds the rest");
 }
 {   // 0.2.25, the owner's report: "The backup failed. Nothing was saved. Object 13: damaged multi." (firmware 0.2.23 with an editor that refused version 6)
@@ -415,7 +415,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   const K = new MockUnit({ caps: 3 });                           // 0.2.13: 16 ids (six of them patch chunks), no multis / patterns
   const f13 = await captureBackup((r, o) => K.request(r, o), parseInfo(await K.request([1, []])));
   const a13 = readArchive(f13);
-  ok(f13.objects.length === 2 && f13.version === 6 && !a13.objects.has(13) && !a13.hasPatches && !describe(bytesOf(a13)).has.multis && !describe(bytesOf(a13)).has.patches && /cannot back up patches/.test(a13.notes[0]),
+  ok(f13.objects.length === 2 && f13.version === 7 && !a13.objects.has(13) && !a13.hasPatches && !describe(bytesOf(a13)).has.multis && !describe(bytesOf(a13)).has.patches && /cannot back up patches/.test(a13.notes[0]),
      "0.2.13 unit: the backup holds settings and music only (no patches: it cannot give them one at a time, and the file says so), and the preview says no multis");
   const L = new MockUnit();
   L.setRecord(9, buildPatchRecord({ name: "NEWER ONE" })); L.rebuild();
@@ -439,7 +439,7 @@ const KEYS = [1000, 1001, 1005, 1064];
     const run = await runRestore(rq, pl), v = await verifyRestore(rq, pl);
     ok(run.failed === null && v.differ.length === 0 && U.patches.size === 0 && bkCrc(U.objs.get(14)) === bkCrc(A.objs.get(14)), `v${version} file: the rest restores and verifies, the unit's patches are untouched`);
   }
-  ok(throwsMsg(() => readArchive(JSON.stringify({ ...clone(file), objects: [...clone(file).objects, { id: 6, size: 0, crc: 0, data: "" }] })), /version [67].*patch chunks.*damaged/), "file: a version 5 file with a physical patch chunk (id 6) is refused");
+  ok(throwsMsg(() => readArchive(JSON.stringify({ ...clone(file), objects: [...clone(file).objects, { id: 6, size: 0, crc: 0, data: "" }] })), /version 7.*patch chunks.*damaged/), "file: a version 5 file with a physical patch chunk (id 6) is refused");
   ok(throwsMsg(() => readArchive(JSON.stringify({ ...clone(file), objects: [...clone(file).objects, { id: 39, size: 0, crc: 0, data: "" }] })), /patch chunks/) && throwsMsg(() => readArchive(JSON.stringify({ ...mk(4, OLD_PATCH_IDS), objects: [...mk(4, OLD_PATCH_IDS).objects, file.objects.at(-1)] })), /version 4.*no patch records/), "file: a version 5 file with chunk 39 is refused, and so is a version 4 file with a patch record (id 40)");
 }
 {   // a version 5 file: every refusal about the patches comes before any write
@@ -577,7 +577,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   const A = new MockUnit({ caps: 127 });
   A.objs.set(42, buildMultiObject(["SEVENTEEN", null])); A.objs.set(45, buildMultiObject([null, "TWENTYFOUR"]));
   const inf = parseInfo(await A.request([1, []])), f = await captureBackup((r, o) => A.request(r, o), inf), arch = readArchive(JSON.stringify(f));
-  ok(inf.caps === 127 && f.version === 6 && [42, 43, 44, 45, 46].every((id) => arch.objects.has(id)) && arch.objects.get(42).size > 8 && arch.objects.get(43).size === 0 && arch.objects.get(45).size > 8,
+  ok(inf.caps === 127 && f.version === 7 && [42, 43, 44, 45, 46].every((id) => arch.objects.has(id)) && arch.objects.get(42).size > 8 && arch.objects.get(43).size === 0 && arch.objects.get(45).size > 8,
      "U4: a unit with caps 127 lists the multi objects 42..46; the version 7 file carries all five (M17 and M24 stored, the rest empty)");
   const dsc = describe(bytesOf(arch));
   ok(dsc.multis.some((m) => m.label === "M17" && m.name === "SEVENTEEN") && dsc.multis.some((m) => m.label === "M24" && m.name === "TWENTYFOUR") && objectLabel(42) === "multis M17 and M18" && objectLabel(46) === "multis M25 and M26",
@@ -616,6 +616,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   // capture -> file version 7 with id 47 objects and slot bytes slot - 128
   const f7 = await captureBackup(rA, inf);
   const ids47 = f7.objects.filter((o) => o.id === 47);
+  ok(f7.slots175 === true && readArchive(JSON.stringify(f7)).slots175 === true, "b12: a backup of a b12 unit says slots175 (it carries slots 129..175)");
   ok(f7.version === 7 && ids47.map((o) => o.slot).join() === "0,32,46" && f7.objects.filter((o) => o.id === 40).map((o) => o.slot).join() === "3" && f7.patchRecords === true, "b12: the backup is version 7: slot 3 is id 40, slots 128 / 160 / 174 are id 47 with the bytes 0 / 32 / 46");
   const a7 = readArchive(JSON.stringify(f7));
   ok(a7.version === 7 && [...a7.objects.keys()].filter(isPatchKey).sort((x, y) => x - y).join() === "1003,1128,1160,1174" && a7.hasPatches && !a7.problems.length, "b12: the version 7 file reads back: the patch keys are 1000 + the real slot");
@@ -638,8 +639,8 @@ const KEYS = [1000, 1001, 1005, 1064];
     const T = new MockB12({ seed: false }); recs(T, [3, 130, 140]);
     const pl = planRestore(ao, await listUnit(rqOf(T), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true, patchCap: 150 });
     await runRestore(rqOf(T), pl);
-    ok(fo.version === 6 && !pl.steps.some((s) => s.key === 1130 || s.key === 1140) && T.patches.has(130) && T.patches.has(140) && T.patches.has(9),
-       "b12 (review PR 99, 3): a backup of a 128-slot unit is version 6; restored onto a b12 unit it keeps the unit's saved #126 and #136 (slots 130, 140)");
+    ok(fo.version === 7 && fo.slots175 === false && !ao.slots175 && !pl.steps.some((s) => s.key === 1130 || s.key === 1140) && T.patches.has(130) && T.patches.has(140) && T.patches.has(9),
+       "b12 (review PR 99, 3): a backup of a 128-slot unit says slots175 false; restored onto a b12 unit it keeps the unit's saved #126 and #136 (slots 130, 140)");
   }
   {   // review PR 99, 4: the two rooms (126 for slots 1..128, 24 for 129..175) are checked apart, before anything is written
     const big = new MockB12({ seed: false }), ks = [...Array(126).keys(), ...Array.from({ length: 25 }, (_, i) => 128 + i)];

@@ -248,9 +248,10 @@ export function objectsToFile(objects, info, opt = {}) {
   const ordered = [...objects.filter((o) => !isPatchKey(o.id)), ...objects.filter((o) => isPatchKey(o.id)).sort((a, b) => a.id - b.id)];
   const problems = ordered.filter((o) => o.raw).map((o) => ({ ...wire(o), problem: o.problem || "not checked" }));
   return {
-    // (version 7 = the file holds slots 129..175 when they are saved: only a unit with them writes it; a version 7 file from a 128-slot unit would remove a b12 unit's
-    // saved #125..#171 on restore, review PR 99 finding 3)
-    format: FORMAT, version: info.slots175 ? VERSION : 6, firmware: info.version, created: new Date().toISOString(), engines: info.engines,
+    format: FORMAT, version: VERSION, firmware: info.version, created: new Date().toISOString(), engines: info.engines,
+    // slots175 (b12, review PR 99 finding 3): the unit had the 175 slots, so the file holds slots 129..175 too (the saved ones; none saved is none). Only such a file
+    // makes a unit's #125..#171 the file's on restore; a file without it (an older unit's, any version) leaves them as they are
+    slots175: !!info.slots175,
     patchRecords: opt.patchRecords ?? objects.some((o) => isPatchKey(o.id)),
     ...(opt.notes?.length ? { notes: opt.notes } : {}),
     ...(problems.length ? { problems } : {}),
@@ -315,9 +316,10 @@ export function readArchive(file) {
   if (!objects.has(0) || !objects.has(1) || (!objects.get(0).size && !objects.get(0).raw) || (!objects.get(1).size && !objects.get(1).raw)) throw new Error("This backup has no current music or no settings: it is not complete.");
   const problems = [...objects.values()].filter((o) => o.raw).map((o) => ({ id: o.id, problem: o.problem }));
   const hasPatches = version >= 5 && (file.patchRecords === true || [...objects.keys()].some(isPatchKey));
+  const slots175 = version >= 7 && file.slots175 === true;   // (b12: the file carries slots 129..175; review PR 99, 3)
   const notes = [...(Array.isArray(file.notes) ? file.notes.map(String) : []), ...(oldPatchChunks ? [OLD_CHUNKS_NOTE] : [])];
   return { version, source, firmware: String(file.firmware || ""), created: String(file.created || ""),
-           engines: Array.isArray(file.engines) ? file.engines.map(String) : [], objects, problems, notes, hasPatches, oldPatchChunks };
+           engines: Array.isArray(file.engines) ? file.engines.map(String) : [], objects, problems, notes, hasPatches, oldPatchChunks, slots175 };
 }
 
 // ---- the unit
@@ -485,8 +487,8 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
         if (cut) stripped++;                           // counted only when it is written: a patch that is identical on the unit is skipped and loses nothing
         steps.push({ id: patchWireId(patchSlot(key)), slot: patchSlot(key) & 127, key, size, crc, bytes, group: g.key });
       }
-      for (const key of [...list.keys()].filter(isPatchKey))   // (a file before version 7 has no patches of slots 129..175: those stay as they are)
-        if (!archive.objects.has(key) && (archive.version >= 7 || patchSlot(key) < PATCH_SLOTS_OLD)) steps.push({ id: patchWireId(patchSlot(key)), slot: patchSlot(key) & 127, key, size: 0, crc: 0, bytes: new Uint8Array(0), group: g.key });
+      for (const key of [...list.keys()].filter(isPatchKey))   // (a file without slots175, of any version, has no patches of slots 129..175: those stay as they are)
+        if (!archive.objects.has(key) && (archive.slots175 || patchSlot(key) < PATCH_SLOTS_OLD)) steps.push({ id: patchWireId(patchSlot(key)), slot: patchSlot(key) & 127, key, size: 0, crc: 0, bytes: new Uint8Array(0), group: g.key });
       continue;
     }
     for (const id of g.ids) {
