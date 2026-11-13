@@ -918,45 +918,6 @@ static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT 
 #define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and RIPPLE in the larger size, the rest in the smaller */
 /* DUELL 1.0 layout (QUICK_SEQ_NEW_LAYOUT.png): the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
  * keys F G A B over C D E F, the key letter in the corner, the names centred */
-/* b11: the selected part's pattern as bars, in the part's own colour: every step the same width and the same gap (16, 32 and 64 steps fill 128 px evenly, another LEN uses the whole px a step it can and is centred),
- * a note a bar whose height is its place between the pattern's lowest and highest note (3 px at least), a tie the same bar without the gap, an empty step one baseline px in the dim text colour. So what SWELL, RIPPLE
- * or any tool just wrote is on the layer itself the moment it lands. */
-static void layer_spark(int32_t x0, int32_t y0, int32_t w, int32_t h)
-{
-    const track_t *t = TSEL;
-    const uint16_t ink = T_PTHEME(trk_index(t));
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), i;
-    int32_t lo = 127, hi = 0, unit = w / (int32_t)len, gap, bw, hgt = 0, x, y, j, top, k;
-    for (i = 0; i < len; i++)
-        if (t->step[i].time == ST_NOTE && t->step[i].n) {
-            lo = t->step[i].note[0] < lo ? t->step[i].note[0] : lo;
-            hi = t->step[i].note[0] > hi ? t->step[i].note[0] : hi;
-        }
-    unit = unit < 1 ? 1 : unit;
-    gap = unit >= 6 ? 2 : unit >= 3 ? 1 : unit >= 2 ? 1 : 0;
-    bw = unit - gap;
-    x0 += (w - (int32_t)len * unit) / 2;                /* (centred when LEN does not divide the width) */
-    for (i = 0; i < len; i++) {
-        x = x0 + (int32_t)i * unit;
-        if (t->step[i].time == ST_NOTE && t->step[i].n) {
-            hgt = 3 + (hi > lo ? (t->step[i].note[0] - lo) * (h - 3) / (hi - lo) : (h - 3) / 2);
-            k = 0;
-        } else if (!(t->step[i].time == ST_TIE && hgt)) {
-            hgt = 0;
-        } else {
-            k = gap;                                    /* (a tie: the same height, no gap to the bar before it) */
-        }
-        if (!hgt) {
-            for (j = 0; j < bw; j++)
-                cv_pset(x + j, y0 + h - 1, T_DIM);      /* (empty: the baseline px) */
-            continue;
-        }
-        top = y0 + h - hgt;
-        for (y = top; y < y0 + h; y++)
-            for (j = -k; j < bw; j++)
-                cv_pset(x + j, y, ink);
-    }
-}
 static void layer_seq(void)
 {
     box_t b[8];
@@ -970,8 +931,7 @@ static void layer_seq(void)
     box_grid(UT_BOX_QS_Y0, 2u, 4u, UT_BOX_QS_DY, UT_BOX_QS_H, b);
     int32_t ay, ah;
     area_rect(&ay, &ah);
-    cv_text_in(8, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 2 - ay, 90, &AF_M, "G4 KEEP", T_ACCENT, T_BG);
-    layer_spark(104, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 3 - ay, 128, 14);
+    cv_text_in(8, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 2 - ay, 224, &AF_M, "G4 KEEP", T_ACCENT, T_BG);
 }
 
 /* QUICK GLO's and the MIXER's four cards (item 117, TEMPLATE 4): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (the part's colour; DIM when it is muted; PAN not drawn in DUEL; PAN shows its own signed
