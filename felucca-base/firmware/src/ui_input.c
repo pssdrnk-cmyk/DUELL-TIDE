@@ -817,6 +817,14 @@ static void morph_settings(void)
  * (0.2.9: not MORPH SET any more) (OCT+ saves: upreset.c patch_save_do; OCT- cancels). Every slot always holds something (a saved record or the
  * factory sound), so this is the only way to save: no 'new' sound, no NAME screen, no 'full'. It replaces the undo of
  * the last load SAVE held was (now OCT- held + a PRESETS turn: load_undo_gate, ui.c undo_swap) */
+static int mu_template_pick(uint32_t k)                 /* b12: SAVE with M27 EMPTY picked: the pick moves to the multi that was loaded before it (else M01) and the normal save goes on from there; 1 = handled */
+{
+    if (k < MU_SLOTS)
+        return 0;
+    song.g[G_SLOT] = (int16_t)(project_prev_slot() + 1u);
+    ui_message("PICK A SLOT, SAVE");
+    return 1;
+}
 static void patch_save_ask(void)
 {
     if (cur_page()->graph == GR_PATS) {     /* PATTERNS (DUELL 0.2.2): the pattern slot picked, the part's pattern over it (the slot's */
@@ -832,6 +840,8 @@ static void patch_save_ask(void)
         uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
         if (transport_busy())
             ui_message("STOP TO SAVE");
+        else if (mu_template_pick(k))
+            ;
         else if (project_used(k))
             confirm_open(CF_HOLD_MULTI, k);
         else
@@ -1672,6 +1682,8 @@ static void act_do(void)
         } else if (c == 2u) {
             if (transport_busy())
                 ui_message("STOP TO SAVE");
+            else if (mu_template_pick(k))
+                ;
             else if (project_used(k))
                 confirm_open(CF_OVR_PROJ, k);             /* OVERWRITE M05? */
             else
@@ -2435,6 +2447,12 @@ static void ui_input(void)
             oct_mod |= 2u;
             kr_on[k] = 1;
             kr_t[k] = fm1_ms;
+            continue;
+        }
+        if (k == 0u && pg->graph == GR_SLOTS) {         /* b12: MULTIS knob 1 wraps (M27 EMPTY is one step from M01) */
+            mu_slot_turn(s);
+            ui.hot_col = 0u;
+            ui.hot_t = 40;
             continue;
         }
         if (k == 3u && pg->graph == GR_SLOTS) {         /* b10 item 7: SAVE > MULTIS, knob 4: the next / previous genre's first multi (ui_draw.c mu_genre_jump) */

@@ -4,7 +4,7 @@
  * round(2 x (dB + 37)), half dB: what TRAVEL sets a destination's level to (morph_tide.c morph_to_sound). Rows in DF_SLOT order. */
 #ifndef JRNY_MU_H
 #define JRNY_MU_H
-#define JRNY_MU_N 26u
+#define JRNY_MU_N 27u
 static const uint8_t JRNY_MU[JRNY_MU_N][2] = {
     { 46,  52},   /* M01: -14.2 / -11.0 dB */
     { 46,  52},   /* M02: -14.0 / -11.2 dB */
@@ -32,5 +32,6 @@ static const uint8_t JRNY_MU[JRNY_MU_N][2] = {
     { 40,  25},   /* M13: -16.9 / -24.6 dB */
     { 65,  51},   /* M03: -4.6 / -11.5 dB */
     { 52,  57},   /* M07: -10.8 / -8.5 dB */
+    { 42,  24},   /* M27: -16.1 / -24.9 dB */
 };
 #endif

@@ -30,6 +30,7 @@ static int project_name(uint32_t slot, char *b);
 static int project_info(uint32_t slot, char *b);
 static int project_rename(uint32_t slot, const char *name);
 static void project_cur_name(char *b);
+static uint32_t project_prev_slot(void);          /* .. b12: the multi loaded before EMPTY (M27) */
 static uint32_t project_cur_slot(void);           /* .. the multi the music came from (0..MU_SHOWN - 1; 0xFF none) */
 static int project_factory(uint32_t slot);         /* .. an empty slot: shows its factory multi */
 static int erase_data_run(void);                   /* DUELL 0.2.2: MENU > SYSTEM > ERASE DATA (erase_data.c) */
