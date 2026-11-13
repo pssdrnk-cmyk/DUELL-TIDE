@@ -1485,7 +1485,7 @@ def do_backup(conn: Conn, out_dir: Path, prefix: str, out) -> tuple[Path, Archiv
 
 
 def cmd_backup(a, conn: Conn, out, ask) -> int:
-    do_backup(conn, Path(a.out), "DUELL-backup", out)
+    do_backup(conn, Path(a.out), "TIDE-backup", out)
     return EXIT_OK
 
 
@@ -1531,7 +1531,7 @@ def cmd_restore(a, conn: Conn, out, ask) -> int:
         print("Cancelled. Nothing was written.", file=out)
         return EXIT_FAIL
     try:
-        safety, _ = do_backup(conn, Path(a.out), "DUELL-safety-backup", out)
+        safety, _ = do_backup(conn, Path(a.out), "TIDE-safety-backup", out)
     except DuellError as e:
         print(f"error: the safety backup failed, nothing was written: {e}", file=sys.stderr)
         return EXIT_FAIL
@@ -1581,7 +1581,7 @@ def cmd_flash(a, conn: Conn, out, ask, opener: Opener) -> int:
         print("cancelled", file=out)
         return EXIT_FAIL
     try:
-        do_backup(conn, Path(a.out), "DUELL-backup", out)
+        do_backup(conn, Path(a.out), "TIDE-backup", out)
     except DuellError as e:
         print(f"error: the backup failed, nothing was installed: {e}", file=sys.stderr)
         return EXIT_FAIL
@@ -1728,7 +1728,7 @@ FM1_RECOVERY = WORK.parent / "fm1-recovery"                  # (beside the work 
 
 def recovery_text(normal: Optional[Path]) -> str:
     """The steps that always work when the unit does not come back by itself (the chip's mask-ROM mode and fm1_unbrick.py: an Administrator PowerShell)."""
-    pkg = str(Path(normal).resolve()) if normal else "<the normal package: duell-1.1.fwsc of the tree or of a checkpoint>"
+    pkg = str(Path(normal).resolve()) if normal else "<the normal package: tide-beta-<version>.fwsc of the tree or of a checkpoint>"
     return ("  1. The unit must be in the chip's own mode: Windows shows a USB disk 'WL82 UBOOT1.00'. It falls into it by itself when no firmware starts; from a running bench build\n"
             "     hold OCT- and OCT+ together for 5 seconds (or send the console word `uboot yes`).\n"
             f"  2. In an ADMINISTRATOR PowerShell:   cd \"{FM1_RECOVERY}\"   then   py fm1_unbrick.py restore \"{pkg}\"\n"
@@ -1771,7 +1771,7 @@ def measure_tide(a, out_dir: Path, out, ask, opener: Opener) -> tuple[int, list[
                                  + (f"put {normal.name} back" if normal else "leave the bench build installed") + "? [y/N] "):
             print("cancelled", file=out)
             return EXIT_FAIL, []
-        do_backup(conn, DEFAULT_OUT if not a.out_backups else Path(a.out_backups), "DUELL-backup", out)
+        do_backup(conn, DEFAULT_OUT if not a.out_backups else Path(a.out_backups), "TIDE-backup", out)
     finally:
         conn.t.close()
     rc = install(bench, a.port or found, a.installer, out, a.mock)

@@ -4,6 +4,7 @@
 """Host test of the measurement kit (audit A01 / Q14): tools/gen_measure_suites.py, the suites TIDE-DSP and PHYS-MODELS, the bench words `tide ...` and the stage timers (src/bench.c, run
 here through the host twin build/host/bench_sim --serve), bench_run.py's `report tide` columns and tools/tide_measure.py's analysis. The twin's clock does not move, so its timer figures are 0:
 what is checked is the structure (which stage ran how often in which scene), the suites and the analysis on rows made up with known figures."""
+import glob
 import io
 import math
 import os
@@ -111,7 +112,7 @@ check("preflight: 0.0 voices is refused with the reason (MIDI IN / GLO > MIDI)",
 check("preflight: 4.0 voices passes", tm.preflight(fake_bench("4.0"), tempfile.mkdtemp()) == (True, "preflight: 4.0 voices sounding in the test chord"))
 
 # ---- the update loader of a package (the bench build's way back, firmware/src/bench_updl.c: the staged loader is checked against ota.bin's data CRC)
-pkg = os.path.join(ROOT, "build", "duell-1.1-bench-TDSP1.fwsc")
+pkg = (glob.glob(os.path.join(ROOT, "build", "*-bench-TDSP1.fwsc")) or [""])[0]
 if os.path.exists(pkg):
     info = tm.package_loader(pkg)
     check(f"package_loader: Felucca's own loader found in a built package (CRC16 {info['crc']:#06x}, {info['len']} bytes)", info["marker"] and 0 < info["crc"] < 65536 and 4000 < info["len"] < 0x4B00)

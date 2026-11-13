@@ -1,6 +1,6 @@
 # Building Felucca (TIDE)
 
-> **TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is the firmware (the plain `DUELL_TIDE=0` build and `jam/check_off.sh` were retired in b10). The package is `build/duell-1.1.fwsc`, named from the `VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
+> **TIDE.** This is Felucca's build guide, with DUELL's changes. TIDE is the firmware (the plain `DUELL_TIDE=0` build and `jam/check_off.sh` were retired in b10). The package is `build/tide-beta-<TIDE version>.fwsc` (b12; `build/duell-1.1.fwsc` before), named from the `TIDE_VERSION` file. `python3 tools/build.py` does the same as `./build.sh` where the toolchain is installed. On Windows, `. jam/env.sh` in Git Bash points the build at a local toolchain folder (no Docker or WSL); see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 
 The build makes three files in `build/`:
 
@@ -46,9 +46,10 @@ On Linux x86-64 the toolchain runs natively and Docker is not needed.
 (`~/.jieli/toolchain`, `~/fw-AC79_AIoT_SDK`).
 
 The version comes from the `VERSION` file at the repository root (1.1, shown as "DUELL 1.1"; a `0.x.y` test version
-is named `...-beta`). Every build writes `build/duell-<VERSION>.fwsc` (identity `FM-1_901`), `build/duell-latest.fwsc` and
-`build/duell-version.json`. `./build.sh --release` also makes `build/release-<VERSION>/`, which holds what a
-release ships: the package, the app (`duell-<VERSION>-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
+is named `...-beta`); that is what the unit reports. The package is named from TIDE's own version (`TIDE_VERSION`): every build writes
+`build/tide-beta-<TIDE version>.fwsc` for a beta (`tide-stable-<TIDE version>.fwsc` for a release; identity `FM-1_901`), `build/tide-latest.fwsc` and
+`build/tide-version.json`. `./build.sh --release` also makes `build/release-tide-<TIDE version>/`, which holds what a
+release ships: the package, the app (`tide-<TIDE version>-app.bin`), `SHA256SUMS`, `LICENSE`, `LICENSING.md` and
 `LICENSES/` (the package contains Apache-2.0 SDK files, so the licence texts travel with it).
 
 Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `core.h` and `icons.c`):
