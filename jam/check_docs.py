@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Document checks that need no build: python3 jam/check_docs.py (from the repository root).
 
-1. The STYLE tables of README.md and docs/TIDE_GUIDE.md equal STY[] in tide_ui.c (the new-unit default is STY[0]).
+1. The STYLE table of docs/TIDE_GUIDE.md equals STY[] in tide_ui.c (the new-unit default is STY[0]).
 2. No document that ships names a workspace path (`work/...`) or a local drive path.
 3. docs/PATCH_NUMBERS.md lists exactly the factory sounds the generator builds (DS_N): the count, and each number's name.
 4. The printed cheat sheet's TIDE rows (the TIDE SETTINGS rows and the AUTO TIDE knobs) carry the same names as docs/TIDE_GUIDE.md and tide_ui.c.
@@ -61,7 +61,7 @@ def doc_styles(path):
 
 
 want = code_styles()
-for path in ("README.md", "docs/TIDE_GUIDE.md"):
+for path in ("docs/TIDE_GUIDE.md",):  # the short README (b12) links the guide instead of copying the table
     got = doc_styles(path)
     for i, name in enumerate(NAMES):
         if name not in got:
