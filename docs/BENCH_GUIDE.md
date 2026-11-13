@@ -128,8 +128,8 @@ If the unit misbehaves:
 
 ```
 cd felucca-base
-DUELL_BENCH=1 BENCH_TAG=A1 tools/build.py                        # build/duell-0.2.25-bench-A1.fwsc
-DUELL_BENCH=1 DUELL_CORE1_PROBE=1 BENCH_TAG=B1 tools/build.py    # build/duell-0.2.25-bench-B1.fwsc
+DUELL_BENCH=1 BENCH_TAG=A1 tools/build.py                        # build/tide-<TIDE version>-bench-A1.fwsc (duell-<VERSION>-bench-A1.fwsc before b12)
+DUELL_BENCH=1 DUELL_CORE1_PROBE=1 BENCH_TAG=B1 tools/build.py    # build/tide-<TIDE version>-bench-B1.fwsc
 ```
 
 (with `JIELI_TOOLCHAIN`, `AC79_SDK`, and `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib` for the generators). A plain `tools/build.py` from the same branch gives the T0225 package byte for byte. The host side: `./host_tests.sh benchsim` (the bench run on the Mac); `BENCH_MODEL_UPDATE=1 felucca-base/build/host/bench_sim1` rewrites `firmware/src/bench_model.h` after a change of the sound code.

@@ -1,5 +1,6 @@
-# Demo 2: TIDE SETTINGS (HOME, second press): each row selected with K1, its value changed with OCT+ / OCT-; a screen for each, then AUTO TIDE.
+# Demo 2: TIDE SETTINGS (HOME, third press): each row selected with K1, its value changed with OCT+ / OCT-; a screen for each, then AUTO TIDE.
 boot
+button HOME
 button HOME
 button HOME
 shot ts_open
@@ -51,5 +52,5 @@ shot ts_row5_c
 button OCTDN
 button OCTDN
 enc K1 1
-enc SELECT 1
+enc SELECT -1
 shot auto_tide

@@ -73,7 +73,7 @@
 #define MU_PART_FIX (4u + 1u + P_COUNT + NX + 8u) /* a part without its End B block, steps and patch: engine, preset, AMOUNT, flags, End B's length, the values, the slots, the step map */
 _Static_assert(sizeof proj_wire_u.raw >= MU_OBJ_MAX && PROJ_NAME_LEN == 12u && NSHOWN == 2u, "multi object staging");
 #if FELUCCA_FLASH
-_Static_assert(MU_OBJ_MAX <= ST_PAYLOAD_MAX && OBJ_PATCH0 == OBJ_MULTI0 + MU_NOBJ0 && MU_NOBJ <= MU_OBJ_ALL && OBJ_COUNT == OBJ_MULTIX0 + (MU_OBJ_ALL - MU_NOBJ0), "a multi object is one storage object");
+_Static_assert(MU_OBJ_MAX <= ST_PAYLOAD_MAX && OBJ_PATCH0 == OBJ_MULTI0 + MU_NOBJ0 && MU_NOBJ <= MU_OBJ_ALL && OBJ_PATCHY0 == OBJ_MULTIX0 + (MU_OBJ_ALL - MU_NOBJ0), "a multi object is one storage object (b12: the patch chunks 21..24 right after them)");
 #endif
 /* the globals a multi loads (the music's; not the device's: clock source, TUNE, MIDI, the SAVE pages' own) */
 #define MU_GLOBAL(i) ((i) == G_BPM || (i) == G_SWING || ((i) >= G_DTIME && (i) <= G_CDEPTH) || (i) == G_RTYPE || \
@@ -451,6 +451,7 @@ static void mu_note_all(void)                     /* every slot from flash (the 
         mu_obj_read(o);
         mu_note(o);
     }
+    mu_note1(MU_SLOTS, 0, 0);                         /* (b12: M27 EMPTY, the template: no flash object, always its factory record) */
 }
 static void multi_boot(void)                      /* persist_boot: the names from flash */
 {
@@ -486,8 +487,11 @@ static void multi_preview(uint32_t slot, mu_pv_t *o)
     if (!project_used(k))
         return;
     o->state = 2;
-    mu_obj_read(k / 2u);
-    r = mu_rec(k & 1u, &len);
+    r = 0;
+    if (k < MU_SLOTS) {                                /* (M27 has no object) */
+        mu_obj_read(k / 2u);
+        r = mu_rec(k & 1u, &len);
+    }
     ok = len && mu_unpack(&proj_scratch, amt, set, r, len);
     if (!ok && df_of(k) < DF_N)                        /* (as mu_note: a slot that holds nothing it loads shows its factory multi) */
         ok = mu_unpack(&proj_scratch, amt, set, df_rec(df_of(k), DF_TAIL), DM_LEN[df_of(k)]);
@@ -531,6 +535,8 @@ static int project_info(uint32_t slot, char *b)
 }
 static int project_name(uint32_t slot, char *b) { return project_info(slot, b); }
 static uint32_t project_key(void) { uint32_t f = proj_cur < MU_SHOWN ? df_of(proj_cur) : DF_N; return f < DF_N ? DF_KEY[f] : 0xFFu; }   /* b10 round 9: the loaded multi's key (DF_KEY: 0xFF none, else root | 16 minor; TAKE + ANSWER) */
+static uint8_t mu_prev;                           /* b12: the stored multi that was loaded before EMPTY (M01 at power-on) */
+static uint32_t project_prev_slot(void) { return mu_prev; }
 static uint32_t project_cur_slot(void) { return proj_cur; }   /* (0..MU_SHOWN - 1, PROJ_NO_SLOT none) */
 static void project_cur_name(char *b) { str_cpy(b, proj_name, PROJ_NAME_LEN + 1u); }   /* b: 13 bytes */
 
@@ -575,6 +581,10 @@ static int project_save_as(uint32_t slot, const char *name)
 {
     uint32_t k = MU_K(slot), o = k / 2u, len, cut, pi;
     project_t *p = &proj_scratch;
+    if (k >= MU_SLOTS) {                               /* b12: M27 EMPTY is a template, never a save target (the UI moves the pick; a MIDI editor's save lands here) */
+        ui_message("PICK ANOTHER SLOT");
+        return 1;
+    }
     if (transport_busy()) {                            /* a flash erase silences the audio and stalls the */
         ui_message("STOP TO SAVE");                     /* sequencer (storage_hw.c): only while stopped */
         return 1;
@@ -645,6 +655,10 @@ static int project_rename(uint32_t slot, const char *name)
 {
     uint32_t k = MU_K(slot), o = k / 2u, len, n;
     uint8_t *r;
+    if (k >= MU_SLOTS) {                               /* b12: M27 EMPTY keeps its name */
+        ui_message("PICK ANOTHER SLOT");
+        return 1;
+    }
     if (transport_busy()) {
         ui_message("STOP TO SAVE");
         return 1;
@@ -689,8 +703,14 @@ static void project_load(uint32_t slot)
     const uint8_t *r;
     int rc;
     uint32_t fact = 0;
-    mu_obj_read(k / 2u);
-    r = mu_rec(k & 1u, &len);
+    r = 0;
+    if (k >= MU_SLOTS) {                               /* b12: M27 EMPTY (no object): remember the multi the player was on, SAVE offers it first */
+        if (proj_cur < MU_SLOTS)
+            mu_prev = proj_cur;
+    } else {
+        mu_obj_read(k / 2u);
+        r = mu_rec(k & 1u, &len);
+    }
     if (!len && df_of(k) < DF_N) {                     /* nothing stored: the factory multi */
         r = df_rec(df_of(k), DF_TAIL);
         len = DM_LEN[df_of(k)];

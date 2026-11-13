@@ -335,15 +335,15 @@ int main(void)
     for (k = 0; k < NENG_SHOWN; k++)
         printf("%s%u", k ? "," : "", (unsigned)eng_vis(k));
     /* 0.2.17: place i holds the factory sound at browse position i: [engine, factory index]. With the USER slots (tide.h UP_NUSER) the last UP_NUSER slots are null (USER EMPTY until saved)
-     * and the factory sounds they displace follow the slots as read-only places, then the sounds past the bank's 128 (upreset.c sl_fac), numbered as the unit does */
+     * and the factory sounds they displace follow them, then the sounds past the bank's 128 (upreset.c sl_fac), numbered as the unit does; b12: every place is a slot (SLOTS 175) */
     printf("],\n\"SLOTS\":%u,\n\"BROWSE\":[", (unsigned)UP_SLOTS);
     for (k = 0; k < ds_list_n() + UP_NUSER; k++) {
         uint32_t fk, fe;
-        if (k >= UP_SLOTS - UP_NUSER && k < UP_SLOTS) {
+        if (k >= UP_USER0 && k < UP_BANK) {
             printf("%snull", k ? "," : "");
             continue;
         }
-        fe = ds_list_at(k >= UP_SLOTS ? k - UP_NUSER : k, &fk);
+        fe = ds_list_at(k >= UP_BANK ? k - UP_NUSER : k, &fk);
         printf("%s[%u,%u]", k ? "," : "", (unsigned)fe, (unsigned)fk);
     }
     printf("],\n\"INS\":[");                            /* the INSERT's A B C by TYPE 0..8 */

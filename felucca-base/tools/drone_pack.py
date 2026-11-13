@@ -135,6 +135,12 @@ MORE = [
                 dict(sound="ROTOR HAZE", set={"P_AMODE": "SEQ", "P_ARATE": "4BAR", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "POW", "P_VOIC": "CLOSE", "P_TRANS": 0,
                                                "P_FREEA": 50, "P_CHOR": 80, "P_SPRD": 100, "P_DLY": 10, "P_REV": 50, "P_TRIM": 110, "P_LEVEL": 92},
                      steps="-17 -", len=2, bseed=50923, amt=30, b={"P_FREEA": 58})]),
+    # b12 EMPTY (owner 2026-11-13: "an empty multi for easy clearance and performance"): a blank slate to play live from. Two plain sounds, no steps, no arp, the sends at 0, short tails.
+    dict(rom=27, slot=11, name="EMPTY", mode="LAYER", empty=True,
+         what="a blank slate for live playing: one plain FM6 electric piano on part 1, one plain ANALOG square lead on part 2, nothing in either pattern, no arp, no sends, short tails; AUTO TIDE idle (a load starts both parts at A)",
+         g=dict(G_BPM=120, G_DTIME="8D", G_DFDBK=0, G_DMIX=0, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=60, G_RDAMP=60),
+         parts=[dict(sound="TINE ROOM", set=dict(P_AMODE="OFF", P_AHOLD="OFF", P_CHOR=0, P_DLY=0, P_REV=0, P_LEVEL=100), bseed=14977, amt=0, b={}),
+                dict(sound="SQUARE LEAD", set=dict(P_AMODE="OFF", P_AHOLD="OFF", P_REL=40, P_CHOR=0, P_DLY=0, P_REV=0, P_LEVEL=96), bseed=64088, amt=0, b={})]),
 ]
 ROM_MULTIS = DRONES + MORE                    # (tools/gen_duell_multis.py reads this list: every ROM-only multi, M17 ..)
 

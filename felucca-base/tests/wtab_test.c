@@ -255,7 +255,7 @@ int main(void)
             }
         bad += check("the slots: USR1 0xA0000/0xA1000, USR2 0xA2000/0xA3000, USR3 0xA4000/0xA5000; no other object has these sectors; inside [0x97000, 0xE0000), the loader's keep-out store", seen);
         bad += check("a wavetable object is 1228 bytes (12 header + 19 x 64), one A/B payload (<= 3840), object numbers below the voice bank's commit records",
-                     sizeof(wt_obj_t) == 1228u && sizeof(wt_obj_t) <= ST_PAYLOAD_MAX && OBJ_WTAB0 + 3u <= OBJ_FM6VB && OBJ_COUNT == OBJ_MULTIX0 + 5u && OBJ_MULTIX0 == OBJ_VELO + 1u && OBJ_VELO == OBJ_PATCHX0 + 16u && OBJ_PATCHX0 > OBJ_FM6VB);
+                     sizeof(wt_obj_t) == 1228u && sizeof(wt_obj_t) <= ST_PAYLOAD_MAX && OBJ_WTAB0 + 3u <= OBJ_FM6VB && OBJ_COUNT == OBJ_PATCHY0 + 4u && OBJ_PATCHY0 == OBJ_MULTIX0 + 5u &&   /* (b12: the patch chunks 21..24 after M17..M26) */ OBJ_MULTIX0 == OBJ_VELO + 1u && OBJ_VELO == OBJ_PATCHX0 + 16u && OBJ_PATCHX0 > OBJ_FM6VB);
     }
 
     /* a fresh unit: every slot EMPTY, the list says so, a GET refuses */

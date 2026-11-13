@@ -30,6 +30,7 @@ static int project_name(uint32_t slot, char *b);
 static int project_info(uint32_t slot, char *b);
 static int project_rename(uint32_t slot, const char *name);
 static void project_cur_name(char *b);
+static uint32_t project_prev_slot(void);          /* .. b12: the multi loaded before EMPTY (M27) */
 static uint32_t project_cur_slot(void);           /* .. the multi the music came from (0..MU_SHOWN - 1; 0xFF none) */
 static int project_factory(uint32_t slot);         /* .. an empty slot: shows its factory multi */
 static int erase_data_run(void);                   /* DUELL 0.2.2: MENU > SYSTEM > ERASE DATA (erase_data.c) */
@@ -1823,13 +1824,13 @@ static const char *list_name(uint32_t m)
 {
     return m == 0u ? "ALL" : m == 1u ? "FAV" : m <= CAT_N ? CAT_NAME[m - 1u] : eng_shown(ENGINES[eng_vis(m - CAT_N - 1u)]->name);
 }
-/* FAV is the slot's flag (favorites.c: the bits of the 128 slots): it stays through a save and a restore. A read-only place past the slots (the displaced
- * #125..#128 and the sounds past the 128, audit G13) has no slot: its flag is its factory sound's own, (engine, factory index) in the settings record's
+/* FAV is the slot's flag (favorites.c: the bits of the bank's 128 slots): it stays through a save and a restore. A place past them (the displaced
+ * #125..#128 and the sounds past the 128, audit G13; slots since b12) has no bit: its flag is its factory sound's own, (engine, factory index) in the settings record's
  * per-engine bytes (favorites.c fav_byte; the editor's ED_FAV_SET writes the same): no new field */
 static int list_fav(uint32_t k)
 {
     uint32_t e, fk;
-    return k < UP_SLOTS ? favorite_has(NENGINES, k) : sl_fac(k, &e, &fk) && favorite_has(e, fk);
+    return k < UP_BANK ? favorite_has(NENGINES, k) : sl_fac(k, &e, &fk) && favorite_has(e, fk);
 }
 static int list_keep(uint32_t k)
 {
@@ -1965,7 +1966,7 @@ static void preset_mark(int on)
         ui_message("NO SLOT");
         return;
     }
-    if (s < UP_SLOTS ? favorite_set(NENGINES, s, on) : sl_fac(s, &e, &fk) && favorite_set(e, fk, on)) {
+    if (s < UP_BANK ? favorite_set(NENGINES, s, on) : sl_fac(s, &e, &fk) && favorite_set(e, fk, on)) {
         ui_refresh();
         settings_save();
     }
@@ -1997,7 +1998,8 @@ static void preset_go(uint32_t n)                    /* load place n of the list
 /* DUELL (SPEC 4.2a): a PROGRAM CHANGE midi_control.c midi_pc queued, run here in the main loop. A multi: the MULTI page's
  * LOAD (project_load: both parts, each MORPH at A with its End B, every note off, playing goes on), an empty slot nothing.
  * A sound for part pi: program n = patch slot n (#n + 1), bank 0 and bank 1 alike (0.2.17: one list of slots; the banks were two lists before);
- * bank 2 (audit G13): program n = the read-only place #129 + n (the factory sounds past the 128; none past the last);
+ * bank 2 (audit G13): program n = the place #129 + n (the factory sounds past the 128; none past the last); b12: programs 124..127 = #125..#128, the places the
+ * USER slots displaced (their bank 0 numbers); each loads its slot: the saved version, else the factory sound;
  * whatever TYPE the PATCHES page shows (a program number must not move with a browsing filter); loaded as the PRESETS knob loads it
  * (load_begin / load_end: the part's notes off, an engine change fades, the MORPH at A from the new sound), the part's other settings kept,
  * the selection too (the load's functions work on the selected part: it is pointed at pi for the load only).
@@ -2017,9 +2019,9 @@ static void pc_recall(uint32_t pi, uint32_t prog, uint32_t bank)
         }
         return;
     }
-    if (bank == 2u)                                  /* audit G13: bank 2, program n = the read-only place past the 128 (#129 + n; sl_load: 0 for none) */
-        prog += UP_SLOTS + UP_NUSER;
-    if (pi >= NSHOWN || bank > 2u || prog >= (bank == 2u ? UP_VSLOTS : UP_SLOTS))
+    if (bank == 2u)                                  /* audit G13: bank 2, program n = the place past the 128 (#129 + n; sl_load: 0 for none); b12: 124..127 = #125..#128 */
+        prog = prog >= UP_USER0 && prog < UP_BANK ? prog + UP_NUSER : prog + UP_BANK + UP_NUSER;
+    if (pi >= NSHOWN || bank > 2u || prog >= (bank == 2u ? UP_VSLOTS : UP_BANK))
         return;
     song.sel = (uint8_t)pi;
     if (sl_load(prog)) {

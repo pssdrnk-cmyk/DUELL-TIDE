@@ -194,7 +194,7 @@ static void sweep_seq_round(void)
  * longer on it); SELECT right and HOME's taps go round it the same way, SELECT left backwards */
 static void sweep_home(void)
 {
-    static const char *const ORDER[] = {"MORPH", "TIDE SETTINGS", "AUTO TIDE"};   /* (MODE, XFADE and SPLIT are the last rows of TIDE SETTINGS) */
+    static const char *const ORDER[] = {"MORPH", "AUTO TIDE", "TIDE SETTINGS"};   /* (b12, owner: AUTO TIDE 2nd; MODE, XFADE and SPLIT are the last rows of TIDE SETTINGS) */
     uint8_t r[8];
     uint32_t m, k, ok, c;
     ui_power_on();
@@ -204,12 +204,12 @@ static void sweep_home(void)
     ok = m == sizeof ORDER / sizeof ORDER[0];
     for (k = 0; ok && k < m; k++)
         ok &= str_eq(PAGES[r[k]].title, ORDER[k]);
-    expect("HOME's round: MORPH, MORPH SET, MODE (TIDE: MORPH, TIDE SETTINGS, AUTO TIDE) (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
+    expect("HOME's round: MORPH, MORPH SET, MODE (TIDE: MORPH, AUTO TIDE, TIDE SETTINGS) (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok);
     {   /* item 155: MODE SPLIT in LAYER (item 158: on K3, the cards line up to the left): OFF, the first turn right starts at the middle key F#4 (stored 67), then goes on; the bottom is OFF again and stays */
         uint8_t m0 = duell_mode_req, s0 = mix_split;
         int ok2;
         uint8_t p0 = ui.page;
-        enter(r[1]);                                              /* (the SPLIT row: every knob 2 .. 4 turns it) */
+        enter(r[2]);                                              /* (TIDE SETTINGS, the round's 3rd since b12; the SPLIT row: every knob 2 .. 4 turns it) */
         jl_sel = JL_SPLIT;
         duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
         song.both = 1;                                    /* (1.0.0-b7 TIDE_PLAYSEL: SPLIT acts in ALGORITHM's middle) */

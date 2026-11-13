@@ -9,6 +9,8 @@
 //   40 + slot the saved patches, ONE PATCH AT A TIME as logical records (job A of the cloud plan, INFO 42 01 caps bit 5, value 32): the record PATCH_RAW moves, 20..534 bytes,
 //             its slot and revision bytes 0 (a patch is the same bytes in any slot). The wire id is 40 and the slot a byte after it; in memory a patch is the Map key 1000 + slot
 //             (patchKey / patchSlot), so the rest of the code keeps numeric ids. A slot that holds its factory sound has no record. Listed by LIST page 1..4, not by the plain LIST
+//   47 + slot b12 (INFO 44 01 bit 2, "version 7"): the patches of slots 128..174 (#125..#171) travel as id 47 with the slot byte slot - 128, the same record, GET and PUT as id 40; LIST pages 5 and 6
+//             list slots 128..159 and 160..174 (each entry's byte is slot - 128). Only a unit with the bit has them; a version 5 or 6 file has none and its restore leaves those slots alone
 //   6 7 9..12 27..31 35..39  the patch store's PHYSICAL chunks of before (DUELL 0.2.14 .. 0.2.25): gone from the unit's ids; a file of version 1..4 may carry them, it is read
 //             and they are kept out of the patches (they are of the old record and chunk format and cannot go to a unit with the new store)
 //   13..20    the multis, two to an object, M01-02 .. M15-16 (magic MUL1; DUELL 0.2.14, INFO 42 01 caps bit 2)
@@ -23,9 +25,10 @@ import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc, readBackup } from ".
 import { checkObject as wtCheck, parseObject as wtParse } from "./wavetable.js";
 import { recordProblem, stripEndBFmt, WORST, FIX as REC_FIX } from "./patchrecord.js";
 import { PS, parsePatObject } from "./patslot.js";
+import { slotLabel } from "./proto.js";
 
 export const FORMAT = "duell-backup";
-export const VERSION = 6;                      // 6 adds the multis M17 to M26 (ids 42..46, caps bit 6); 5 carries the patches as logical records (id 40 + slot); 4 adds the ten more patch chunks (ids 27..31, 35..39); 3 adds the user wavetables (ids 24..26); 2 is read as it was; 1 is the installer's "felucca-backup" file of a DUELL unit (read here, never written)
+export const VERSION = 7;                      // 7 adds the patches of slots 129..175 (id 47, b12); 6 adds the multis M17 to M26 (ids 42..46, caps bit 6); 5 carries the patches as logical records (id 40 + slot); 4 adds the ten more patch chunks (ids 27..31, 35..39); 3 adds the user wavetables (ids 24..26); 2 is read as it was; 1 is the installer's "felucca-backup" file of a DUELL unit (read here, never written)
 export const CAPS_MULTI_PATTERN = 4;           // INFO 42 01 caps, bit 2
 export const CAPS_MULTI_MORE = 64;             // bit 6 (b10): the multis M17 to M26, ids 42..46
 export const MULTI2_IDS = [42, 43, 44, 45, 46];   // two multis an object, M17-18 .. M25-26 (the unit has all of them since MR9; a unit with fewer slots lists the last object empty)
@@ -36,7 +39,11 @@ export const CAPS_PATCH16 = 16;                // bit 4: the unit holds 128 patc
 export const CAPS_PATCH_RECORDS = 32;          // bit 5: the patches are backed up and restored one at a time, as records (id 40, LIST page)
 export const PATCH_ID = 40;                    // the wire id of a patch record (the slot is a byte after it)
 export const PATCH_KEY0 = 1000;                // the Map key of the patch in slot k is PATCH_KEY0 + k
-export const PATCH_SLOTS = 128, PATCH_PAGE = 32, PATCH_PAGES = PATCH_SLOTS / PATCH_PAGE, PATCH_MAX = WORST;
+export const PATCH_ID2 = 47;                   // b12: the wire id of the patch records of slots 128..174 (the byte after it is slot - 128)
+export const CAPS_SLOTS175 = 4;                // INFO tag 44 01 bit 2: 175 patch slots
+export const PATCH_CAP_BANK = 126, PATCH_CAP_HI = 24;   // b12: the records a unit with the 175 slots takes: slots 1..128 (chunks 0..20) and slots 129..175 (chunks 21..24), apart
+export const PATCH_SLOTS_OLD = 128, PATCH_SLOTS = 175, PATCH_PAGE = 32, PATCH_PAGES_OLD = 4, PATCH_PAGES = 6, PATCH_MAX = WORST;   // (a unit without the bit has 128 slots and LIST pages 1..4)
+export const patchWireId = (slot) => (slot < PATCH_SLOTS_OLD ? PATCH_ID : PATCH_ID2);   // the wire id and slot byte of the patch in `slot`: patchWireId(slot), slot & 127
 export const patchKey = (slot) => PATCH_KEY0 + slot;
 export const isPatchKey = (key) => Number.isInteger(key) && key >= PATCH_KEY0 && key < PATCH_KEY0 + PATCH_SLOTS;
 export const patchSlot = (key) => key - PATCH_KEY0;
@@ -165,7 +172,7 @@ export function multiVersions(b) {
 export const MULTI_VERSION = MUL_VER;
 // a short name of what object id holds, for the messages ("multis M01 and M02"); bytes (a patch record) adds the patch's name
 export function objectLabel(id, bytes = null) {
-  if (isPatchKey(id)) return `patch #${String(patchSlot(id) + 1).padStart(2, "0")}${bytes && bytes.length >= REC_FIX && bytes[7] ? " " + text(bytes, 7, 12) : ""}`;
+  if (isPatchKey(id)) return `patch ${patchSlot(id) < 124 ? "#" + String(patchSlot(id) + 1).padStart(2, "0") : slotLabel(patchSlot(id))}${bytes && bytes.length >= REC_FIX && bytes[7] ? " " + text(bytes, 7, 12) : ""}`;
   if (id === 0) return "the current music";
   if (id === 1) return "the settings";
   if (id >= 13 && id <= 20) { const a = 2 * (id - 13) + 1; return `multis M${String(a).padStart(2, "0")} and M${String(a + 1).padStart(2, "0")}`; }
@@ -219,16 +226,16 @@ export function parseInfo(a) {
     engines.push(String.fromCharCode(...a.slice(pos, end))); pos = end + 1;
   }
   pos += 2;                                            // NTRK, song rows
-  let caps = null, patchCap = null, tide = false, tideAnswer, fvBank = false;
+  let caps = null, patchCap = null, tide = false, tideAnswer, fvBank = false, slots175 = false;
   while (pos < a.length && TAG_LEN[a[pos]]) {
     if (a[pos] === 0x42 && a[pos + 1] === 1) caps = a[pos + 2];
-    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; tideAnswer = tide; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; }   // TIDE; bit 1: GET 41, the FM6 voice bank
+    if (a[pos] === 0x44 && a[pos + 1] === 1) { tide = (a[pos + 2] & 1) !== 0; tideAnswer = tide; fvBank = (a[pos + 2] & CAPS_FVBANK) !== 0; slots175 = (a[pos + 2] & CAPS_SLOTS175) !== 0; }   // TIDE; bit 1: GET 41, the FM6 voice bank
     if (a[pos] === 0x58 && a[pos + 1] === 1) patchCap = a[pos + 2] | a[pos + 3] << 7;   // the patch capacity (DUELL 0.2.15)
     pos += TAG_LEN[a[pos]];
   }
   // tide: for the display (no tag = false). tideAnswer: what the unit SAID: true / false = tag 44 01 present with bit 0 set / clear; undefined = no tag 44 (plain DUELL 1.1 and the TIDE builds before the tag, stable-2026-11-03 and
   // beta-2026-11-04, look the same: the restore planner must not take it for plain DUELL)
-  return { version, engines, caps, patchCap, tide, tideAnswer, fvBank };
+  return { version, engines, caps, patchCap, tide, tideAnswer, fvBank, slots175 };
 }
 
 // ---- the file
@@ -237,11 +244,14 @@ const B64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 // objects: [{id (a patch: its key), bytes, raw?, problem?}] (raw: kept as read, not checked: 0.2.25). opt.patchRecords: the unit gave its patches as records (the file says so even with
 // none: a file without the flag and without patches leaves a unit's patches alone); opt.notes: lines for the user
 export function objectsToFile(objects, info, opt = {}) {
-  const wire = (o) => (isPatchKey(o.id) ? { id: PATCH_ID, slot: patchSlot(o.id) } : { id: o.id });
+  const wire = (o) => (isPatchKey(o.id) ? { id: patchWireId(patchSlot(o.id)), slot: patchSlot(o.id) & 127 } : { id: o.id });
   const ordered = [...objects.filter((o) => !isPatchKey(o.id)), ...objects.filter((o) => isPatchKey(o.id)).sort((a, b) => a.id - b.id)];
   const problems = ordered.filter((o) => o.raw).map((o) => ({ ...wire(o), problem: o.problem || "not checked" }));
   return {
     format: FORMAT, version: VERSION, firmware: info.version, created: new Date().toISOString(), engines: info.engines,
+    // slots175 (b12, review PR 99 finding 3): the unit had the 175 slots, so the file holds slots 129..175 too (the saved ones; none saved is none). Only such a file
+    // makes a unit's #125..#171 the file's on restore; a file without it (an older unit's, any version) leaves them as they are
+    slots175: !!info.slots175,
     patchRecords: opt.patchRecords ?? objects.some((o) => isPatchKey(o.id)),
     ...(opt.notes?.length ? { notes: opt.notes } : {}),
     ...(problems.length ? { problems } : {}),
@@ -261,6 +271,7 @@ export function readArchive(file) {
     if (version < 4 && items.some((o) => o && [27, 28, 29, 30, 31, 35, 36, 37, 38, 39].includes(o.id))) throw new Error("This backup holds patch chunks a version 3 file does not have: it is damaged.");
     if (version >= 5 && items.some((o) => o && OLD_PATCH_IDS.includes(o.id))) throw new Error(`This backup is version ${version}, which carries patches as records, but it holds patch chunks (ids 6, 7, 9 to 12, 27 to 31, 35 to 39): it is damaged.`);
     if (version < 5 && items.some((o) => o && o.id === PATCH_ID)) throw new Error(`This backup is version ${version}, which has no patch records (id ${PATCH_ID}): it is damaged.`);
+    if (version < 7 && items.some((o) => o && o.id === PATCH_ID2)) throw new Error(`This backup is version ${version}, which has no patches of slots 129 to 175 (id ${PATCH_ID2}): it is damaged.`);
     if (version < 6 && items.some((o) => o && MULTI2_IDS.includes(o.id))) throw new Error(`This backup is version ${version}, which has no multis M17 and up (ids 42 to 46): it is damaged.`);
   } else if (file.format === "felucca-backup" && file.version === 1) {
     if (!/DUELL|TIDE/i.test(String(file.firmware || ""))) throw new Error("This is a Felucca backup, not a TIDE one: its objects mean other things. It was not read.");
@@ -270,9 +281,9 @@ export function readArchive(file) {
   const objects = new Map(); let oldPatchChunks = 0;
   for (const o of items) {
     if (!o || !Number.isInteger(o.id)) throw new Error("A backup object has no id.");
-    const patch = o.id === PATCH_ID;
-    if (patch && !(Number.isInteger(o.slot) && o.slot >= 0 && o.slot < PATCH_SLOTS)) throw new Error("A patch object has no valid slot.");
-    const key = patch ? patchKey(o.slot) : o.id, name = patch ? `Patch ${objectLabel(key).slice(6)}` : `Object ${o.id}`;   // (the message names)
+    const patch = o.id === PATCH_ID || o.id === PATCH_ID2, base = o.id === PATCH_ID2 ? PATCH_SLOTS_OLD : 0;   // (id 47: the slot byte is slot - 128)
+    if (patch && !(Number.isInteger(o.slot) && o.slot >= 0 && o.slot < (o.id === PATCH_ID2 ? PATCH_SLOTS - PATCH_SLOTS_OLD : PATCH_SLOTS_OLD))) throw new Error("A patch object has no valid slot.");
+    const key = patch ? patchKey(base + o.slot) : o.id, name = patch ? `Patch ${objectLabel(key).slice(6)}` : `Object ${o.id}`;   // (the message names)
     if (!patch && !KNOWN_IDS.includes(o.id)) throw new Error(`Unknown object id ${o.id} in this backup.`);
     const old = OLD_PATCH_IDS.includes(o.id);
     if (!patch && !old && !DUELL_IDS.includes(o.id) && o.id !== FVB_ID) {   // a retired object: must be empty, then it is left out
@@ -305,9 +316,10 @@ export function readArchive(file) {
   if (!objects.has(0) || !objects.has(1) || (!objects.get(0).size && !objects.get(0).raw) || (!objects.get(1).size && !objects.get(1).raw)) throw new Error("This backup has no current music or no settings: it is not complete.");
   const problems = [...objects.values()].filter((o) => o.raw).map((o) => ({ id: o.id, problem: o.problem }));
   const hasPatches = version >= 5 && (file.patchRecords === true || [...objects.keys()].some(isPatchKey));
+  const slots175 = version >= 7 && file.slots175 === true;   // (b12: the file carries slots 129..175; review PR 99, 3)
   const notes = [...(Array.isArray(file.notes) ? file.notes.map(String) : []), ...(oldPatchChunks ? [OLD_CHUNKS_NOTE] : [])];
   return { version, source, firmware: String(file.firmware || ""), created: String(file.created || ""),
-           engines: Array.isArray(file.engines) ? file.engines.map(String) : [], objects, problems, notes, hasPatches, oldPatchChunks };
+           engines: Array.isArray(file.engines) ? file.engines.map(String) : [], objects, problems, notes, hasPatches, oldPatchChunks, slots175 };
 }
 
 // ---- the unit
@@ -332,7 +344,7 @@ export function parseList(a) {
   }
   return m;
 }
-// LIST page (1..4) -> Map patch key -> {size, crc}: per saved patch of the page's 32 slots, slot (the id byte), size u32, crc u32, in slot order
+// LIST page (1..4; 5 and 6 with INFO 44 01 bit 2) -> Map patch key -> {size, crc}: per saved patch of the page's 32 slots, slot (the id byte; pages 5 and 6: slot - 128), size u32, crc u32, in slot order
 export function parsePage(a, page) {
   if (a[0] !== 1) throw new Error("Unexpected answer from the unit");
   rcCheck(a[1]);
@@ -340,18 +352,18 @@ export function parsePage(a, page) {
   if (n > PATCH_PAGE || a.length !== 3 + n * 11) throw new Error("The unit sent an incomplete list of patches");
   const m = new Map(); let last = -1;
   for (let i = 0; i < n; i++) {
-    const p = 3 + i * 11, slot = a[p], size = bkR32(a, p + 1), crc = bkR32(a, p + 6);
-    if (slot < PATCH_PAGE * (page - 1) || slot >= PATCH_PAGE * page || slot <= last) throw new Error(`The unit lists a patch (slot ${slot}) that does not belong on page ${page}.`);
+    const p = 3 + i * 11, slot = a[p] + (page > PATCH_PAGES_OLD ? PATCH_SLOTS_OLD : 0), size = bkR32(a, p + 1), crc = bkR32(a, p + 6);
+    if (slot < PATCH_PAGE * (page - 1) || slot >= Math.min(PATCH_SLOTS, PATCH_PAGE * page) || slot <= last) throw new Error(`The unit lists a patch (slot ${slot}) that does not belong on page ${page}.`);
     if (size < REC_FIX || size > PATCH_MAX) throw new Error("The unit lists a patch record of a size this editor does not know. Use a newer editor.");
     m.set(patchKey(slot), { size, crc }); last = slot;
   }
   return m;
 }
-// the plain LIST, and with caps bit 5 the four pages of patches merged into the same Map under their keys (the pages need the plain LIST before)
-export async function listUnit(request, caps = null) {
+// the plain LIST, and with caps bit 5 the four pages (six with `wide`: INFO 44 01 bit 2) of patches merged into the same Map under their keys (the pages need the plain LIST before)
+export async function listUnit(request, caps = null, wide = false) {
   const list = parseList(await request([BACKUP_CMD.LIST, []], { timeout: 4000, retries: 0 }));
   if ((caps ?? 0) & CAPS_PATCH_RECORDS)
-    for (let page = 1; page <= PATCH_PAGES; page++)
+    for (let page = 1; page <= (wide ? PATCH_PAGES : PATCH_PAGES_OLD); page++)   // (pages 5 and 6 only on a unit with INFO 44 01 bit 2)
       for (const [k, v] of parsePage(await request([BACKUP_CMD.LIST, [page]], { timeout: 4000, retries: 0 }), page)) list.set(k, v);
   return list;
 }
@@ -393,15 +405,15 @@ async function restoreBank(request, bytes) {
 // stop. Its bytes (as far as they were read) go into the file flagged raw, with the reason in the file's `problems`; everything else is saved
 // as usual. A restore skips a raw object unless the user asks for it (planRestore opt.includeRaw). Only a refused LIST stops the backup.
 export async function captureBackup(request, info, onProgress = () => {}) {
-  const list = await listUnit(request, info.caps), ids = [...DUELL_IDS.filter((id) => list.has(id)), ...[...list.keys()].filter(isPatchKey).sort((a, b) => a - b)];
+  const list = await listUnit(request, info.caps, info.slots175), ids = [...DUELL_IDS.filter((id) => list.has(id)), ...[...list.keys()].filter(isPatchKey).sort((a, b) => a - b)];
   if (!list.has(0) || !list.has(1)) throw new Error("The unit does not list its music and settings: is it running TIDE?");
   if (info.fvBank && await hasBank(request)) { list.set(FVB_ID, { size: FVB_OBJ, crc: 0 }); ids.splice(ids.indexOf(0), 0, FVB_ID); }   // the voice bank is not in the plain LIST; its own CRC is its last four bytes
   const total = ids.reduce((n, id) => n + list.get(id).size, 0); let done = 0; const got = [];
   const readOne = async (id, size) => {
-    const bytes = new Uint8Array(size), patch = isPatchKey(id), wire = patch ? PATCH_ID : id;
+    const bytes = new Uint8Array(size), patch = isPatchKey(id), wire = patch ? patchWireId(patchSlot(id)) : id;
     for (let off = 0; off < size; off += CHUNK) {
       const n = Math.min(CHUNK, size - off);
-      const a = await request([BACKUP_CMD.GET, [wire, ...bkU32(off), n & 127, n >>> 7, ...(patch ? [patchSlot(id)] : [])]], { timeout: 1500, retries: 1 });
+      const a = await request([BACKUP_CMD.GET, [wire, ...bkU32(off), n & 127, n >>> 7, ...(patch ? [patchSlot(id) & 127] : [])]], { timeout: 1500, retries: 1 });
       if (a[1] === 3) throw Object.assign(new Error(NOTES[3]), { rc: 3, fatal: true });   // (playing: nothing more can be read)
       rcCheck(a[1]);
       if (a[0] !== wire || bkR32(a, 2) !== off || (a[7] | a[8] << 7) !== n) throw new Error("Unexpected answer from the unit");
@@ -438,11 +450,13 @@ export const rawLines = (problems, objects = null) => (problems || []).map((p) =
 // for each patch whose size or CRC differs on the unit (an identical one is not written again) and a removal for each slot the unit has saved and the file has not.
 // opt.includeRaw (0.2.25): also send the objects the backup could not check (the unit checks them at commit and refuses what it cannot load).
 // opt.tide (INFO tag 44 01, info.tideAnswer): true = the unit says it is TIDE: a patch's FM6 MORPH TO target (End B flag 4) is kept. false (tag 44 present, bit 0 clear) or undefined (no tag 44: plain DUELL 1.1 and the TIDE builds before the tag look the same) = the target is taken out before the PUT (patchrecord.js stripEndBFmt; plain DUELL 1.1 would drop the whole record, D02); plan.stripped counts those patches, the confirm text says so.
+// opt.slots175 (INFO 44 01 bit 2, b12): the unit has the slots 129..175. A version 7 file's patches of those slots (id 47) go to such a unit only; to another they are left out and the plan says so (excluded). A file of version 5 or 6 has none:
+// its restore leaves the slots 129..175 as they are (no removals there). plan.wide tells verifyRestore which LIST pages to read.
 // opt.patchCap (INFO tag 58 01, the patch records the store takes: 126 with TIDE): a file with more patches than that cannot be restored whole, so the patches are left out
 // with that reason and the other groups still go (D05). The removals of the slots the file does not have come BEFORE the patches that are written, so a nearly full store has the room.
 // A multi object whose records are of another version than this editor's firmware writes is left out unless includeRaw (the unit would refuse it).
 export function planRestore(archive, list, caps, sel, opt = {}) {
-  const steps = [], excluded = [], skipped = [];
+  const steps = [], excluded = [], skipped = [], wide = !!opt.slots175;
   let stripped = 0;
   for (const g of GROUPS) {
     if (!sel.has(g.key) || (g.optional && !g.ids.every((id) => archive.objects.has(id)))) continue;
@@ -450,14 +464,19 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
     if (g.key === "patches") {
       if (!archive.hasPatches) reason = archive.oldPatchChunks ? OLD_CHUNKS_NOTE.replace(/^P/, "p").replace(/\.$/, "") : "not in this file";
       else if (!((caps ?? 0) & g.caps)) reason = "this unit's firmware cannot restore patches one at a time (update it first)";
-      else if (opt.patchCap && idsOf(g, archive.objects).length > opt.patchCap) reason = `the file holds ${idsOf(g, archive.objects).length} patches and this unit stores at most ${opt.patchCap} (STORE FULL); remove some from the file or restore them later in parts`;
+      else if ((() => { const ks = idsOf(g, archive.objects), lo = ks.filter((k) => patchSlot(k) < PATCH_SLOTS_OLD).length, hi = ks.length - lo;   // (b12: two rooms, the bank's slots 126, the slots past it 24)
+        if (wide ? lo > PATCH_CAP_BANK || hi > PATCH_CAP_HI : opt.patchCap && lo > opt.patchCap)
+          return (reason = wide ? `the file holds ${lo} patches of slots 1..128 and ${hi} of slots 129..175, and this unit stores at most ${PATCH_CAP_BANK} and ${PATCH_CAP_HI} (STORE FULL)`
+                                : `the file holds ${lo} patches and this unit stores at most ${opt.patchCap} (STORE FULL)`);
+        return false; })()) { /* (reason set) */ }
     } else if (g.caps && ((caps ?? 0) & g.caps) !== g.caps) reason = "this unit's firmware cannot restore them (update it first)";
     else if (!g.ids.every((id) => archive.objects.has(id))) reason = "not in this file";
     else if (g.needs && !opt[g.needs]) reason = "this unit's firmware cannot restore it (it needs TIDE, a build with the FM6 voice bank in its backup)";
     else if ((g.key === "settings" || g.key === "music") && list.get(g.ids[0])?.size !== archive.objects.get(g.ids[0]).size) reason = "the file was made by another version (its size differs from the unit's)";
     if (reason) { excluded.push({ key: g.key, label: g.label, reason }); continue; }
     if (g.dynamic) {
-      const inFile = idsOf(g, archive.objects);
+      const all = idsOf(g, archive.objects), inFile = all.filter((k) => wide || patchSlot(k) < PATCH_SLOTS_OLD), hidden = all.length - inFile.length;
+      if (hidden) excluded.push({ key: g.key, label: "Patches in slots 129 to 175", reason: `${hidden} ${hidden === 1 ? "patch of slots 129..175 needs" : "patches of slots 129..175 need"} TIDE b12 or newer; ${hidden === 1 ? "it is" : "they are"} not restored` });
       for (const key of inFile) {
         const o = archive.objects.get(key), label = `${g.label}: ${objectLabel(key, o.bytes)}`;
         if (o.raw && (!opt.includeRaw || !o.size)) { excluded.push({ key: g.key, id: key, label, reason: `it could not be checked when the backup was made (${o.problem}); the unit keeps what it holds there` }); continue; }
@@ -466,10 +485,10 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
         const now = list.get(key);
         if (now && now.size === size && now.crc === crc) { skipped.push(key); continue; }
         if (cut) stripped++;                           // counted only when it is written: a patch that is identical on the unit is skipped and loses nothing
-        steps.push({ id: PATCH_ID, slot: patchSlot(key), key, size, crc, bytes, group: g.key });
+        steps.push({ id: patchWireId(patchSlot(key)), slot: patchSlot(key) & 127, key, size, crc, bytes, group: g.key });
       }
-      for (const key of [...list.keys()].filter(isPatchKey))
-        if (!archive.objects.has(key)) steps.push({ id: PATCH_ID, slot: patchSlot(key), key, size: 0, crc: 0, bytes: new Uint8Array(0), group: g.key });
+      for (const key of [...list.keys()].filter(isPatchKey))   // (a file without slots175, of any version, has no patches of slots 129..175: those stay as they are)
+        if (!archive.objects.has(key) && (archive.slots175 || patchSlot(key) < PATCH_SLOTS_OLD)) steps.push({ id: patchWireId(patchSlot(key)), slot: patchSlot(key) & 127, key, size: 0, crc: 0, bytes: new Uint8Array(0), group: g.key });
       continue;
     }
     for (const id of g.ids) {
@@ -480,9 +499,9 @@ export function planRestore(archive, list, caps, sel, opt = {}) {
       steps.push({ id, size: o.size, crc: o.crc, bytes: o.bytes, group: g.key });
     }
   }
-  const rank = (s) => (s.key !== undefined ? (s.size ? s.slot : s.slot - 200) : 200 + (s.id === FVB_ID ? RESTORE_ORDER.indexOf(1) - 0.5 : RESTORE_ORDER.indexOf(s.id)));   // the removals first (they free room), then the patches by slot, then the rest
+  const rank = (s) => (s.key !== undefined ? (s.size ? patchSlot(s.key) : patchSlot(s.key) - 200) : 200 + (s.id === FVB_ID ? RESTORE_ORDER.indexOf(1) - 0.5 : RESTORE_ORDER.indexOf(s.id)));   // the removals first (they free room), then the patches by slot, then the rest
   steps.sort((a, b) => rank(a) - rank(b));
-  return { steps, excluded, skipped, caps, stripped };
+  return { steps, excluded, skipped, caps, stripped, wide };
 }
 // The confirm line for the patches that lose their FM6 MORPH TO target ("" when none). tideAnswer: true TIDE, false plain DUELL, undefined no tag 44 (unknown).
 export function strippedNote(stripped, tideAnswer) {
@@ -493,7 +512,7 @@ export function strippedNote(stripped, tideAnswer) {
 `;
 }
 // Send the steps, one object at a time (begin, 256-byte pieces, commit: the unit checks the CRC and the content, then writes; the old copy
-// stays valid until the new one is complete). A patch is a PUT of id 40 with its slot byte at the begin; every patch is its own atomic sequence. An object that fails (a full
+// stays valid until the new one is complete). A patch is a PUT of id 40 (47 for slots 129..175) with its slot byte at the begin; every patch is its own atomic sequence. An object that fails (a full
 // store, a flash error) is reported and the others still go (D05); only "the unit is playing" (rc 3) or no answer from the unit stops the run (`stopped`), as nothing more can be written then.
 // Never aborts silently: the result says what was written (a patch by its key) and every failure: { written, failed (the first or null), failures: [{id, message, rc}], stopped }.
 export async function runRestore(request, plan, onProgress = () => {}) {
@@ -531,7 +550,7 @@ export async function runRestore(request, plan, onProgress = () => {}) {
 // After a restore: a fresh LIST (the patch pages too). The patch, multi and pattern objects must equal the file's (size and CRC; a removed patch must be gone). The music and the settings are
 // checked by the unit at commit but may read back in the unit's own normal form (an older record is brought up to date), so they are not compared.
 export async function verifyRestore(request, plan) {
-  const list = await listUnit(request, plan.caps), same = [], differ = [], notCompared = [];
+  const list = await listUnit(request, plan.caps, plan.wide), same = [], differ = [], notCompared = [];
   for (const s of plan.steps) {
     if (s.id === 0 || s.id === 1) { notCompared.push(s.id); continue; }
     if (s.id === FVB_ID) { const now = await readBank(request).catch(() => null); (now && now.length === s.bytes.length && now.every((v, i) => v === s.bytes[i]) ? same : differ).push(s.id); continue; }

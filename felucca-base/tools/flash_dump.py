@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List the objects in a DUELL emulator saved-data file (duell-flash-*.bin, from the emulator page's
+"""List the objects in a DUELL emulator saved-data file (tide-flash-*.bin, duell-flash-*.bin before b12, from the emulator page's
 "Download saved data"), and optionally extract the multis.
 
 File: "DUELLFLASH1", u16 range count, per range u32 address + u32 length (little endian), then the bytes.
@@ -16,7 +16,7 @@ MAGIC = b"DUELLFLASH1"
 SECTOR, PAYLOAD_OFF, PAYLOAD_MAX = 4096, 256, 4096 - 256
 ST_MAGIC = 0x554C4546
 MU_MAGIC = b"MUL1"
-OBJ_SETTINGS, OBJ_UPRESET0, OBJ_UPFM6, OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_MULTI0, OBJ_PATCH0, OBJ_WTAB0, OBJ_PATCHX0, OBJ_VELO, OBJ_MULTIX0, OBJ_COUNT = 0, 5, 8, 9, 10, 13, 21, 27, 33, 49, 50, 55   # (ids 30..32: unused, and the FM6 voice bank's commit records)
+OBJ_SETTINGS, OBJ_UPRESET0, OBJ_UPFM6, OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_MULTI0, OBJ_PATCH0, OBJ_WTAB0, OBJ_PATCHX0, OBJ_VELO, OBJ_MULTIX0, OBJ_PATCHY0, OBJ_COUNT = 0, 5, 8, 9, 10, 13, 21, 27, 33, 49, 50, 55, 59   # (b12: 55..58 the patch chunks 21..24 at 0xF4000, after the multis' stride)   # (ids 30..32: unused, and the FM6 voice bank's commit records)
 ENGINES = ["ANALOG", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN", "PHYS",
            "DRUM", "NOISE", "FM6", "SLICE"]
 MODES = ["DUEL", "STEREO", "LAYER"]
@@ -139,11 +139,12 @@ def main():
     # settings record (its reserved tail), which this tool lists as "settings" without decoding it
     names = {OBJ_SETTINGS: "settings (TIDE's settings are in its tail)", OBJ_PATCHX0 + 15: "chunk 21 (older TIDE settings, or patches)", OBJ_AUTOSAVE: "autosave", OBJ_UPFM6: "user presets' FM6 patches (retired)", OBJ_VELO: "velocity calibration"}
     for obj in range(OBJ_COUNT):
-        if OBJ_MULTI0 <= obj < OBJ_PATCH0 or obj >= OBJ_MULTIX0 or 1 <= obj <= 4 or obj == 7 or OBJ_WTAB0 + 3 <= obj < OBJ_PATCHX0:
+        if OBJ_MULTI0 <= obj < OBJ_PATCH0 or OBJ_MULTIX0 <= obj < OBJ_PATCHY0 or 1 <= obj <= 4 or obj == 7 or OBJ_WTAB0 + 3 <= obj < OBJ_PATCHX0:
             continue
         c = current(flash, obj)
         if c:
-            label = names.get(obj) or ("patch store chunk %d" % (obj - OBJ_PATCHX0 + 6) if obj >= OBJ_PATCHX0 else
+            label = names.get(obj) or ("patch store chunk %d (slots 129..175)" % (obj - OBJ_PATCHY0 + 21) if obj >= OBJ_PATCHY0 else
+                                       "patch store chunk %d" % (obj - OBJ_PATCHX0 + 6) if obj >= OBJ_PATCHX0 else
                                        "user wavetable %d" % (obj - OBJ_WTAB0 + 1) if obj >= OBJ_WTAB0 else
                                        "patch store chunk %d" % (obj - OBJ_PATCH0) if obj >= OBJ_PATCH0 else
                                        "pattern slots %d" % (obj - OBJ_PATSLOT0) if obj >= OBJ_PATSLOT0 else "user presets %d (retired)" % (obj - OBJ_UPRESET0))

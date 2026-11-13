@@ -109,7 +109,7 @@ def make_sandbox(root):
         s = os.path.join(bsrc, n)
         if n in ("gen", "gen_test"):
             shutil.copytree(s, os.path.join(bdst, n))
-        elif os.path.isfile(s):                    # device-build packages etc. (build/duell-*.fwsc: ldrscreen)
+        elif os.path.isfile(s):                    # device-build packages etc. (build/tide-*.fwsc: ldrscreen)
             shutil.copy2(s, os.path.join(bdst, n))
 
 

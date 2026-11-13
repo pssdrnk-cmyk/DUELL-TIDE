@@ -688,8 +688,9 @@ for t in $want; do case $t in
         uint32_t n = len - off > 256u ? 256u : len - off;
         if ((rc = st_prog(base + ST_PAYLOAD_OFF + off, st_buf + off, n)) != 0)'
            xb_mut "PT_K 7 records a chunk, the _Static_assert still in place (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u'
-           xb_mut "PT_K 7 records a chunk with the _Static_assert taken out: the 128-slot guarantee must break at run time (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u' \
-              firmware/src/upreset.c '_Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS' '_Static_assert(PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS'
+           xb_mut "PT_K 7 records a chunk with the _Static_asserts taken out: the store's guarantee (every record of a full store fits) must break at run time (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u' \
+              firmware/src/upreset.c '_Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX == 150u && PT_MAX <= UP_SLOTS' '_Static_assert(PT_MAX <= UP_SLOTS' \
+              firmware/src/upreset.c '_Static_assert(TIDE_PT_NOLD * PT_K == 126u && (PT_NCH - TIDE_PT_NOLD) * PT_K == 24u,' '_Static_assert(1,'
            xb_mut "End B's AMOUNT check removed (morph.c morph_bv_size, the block check pt_rec_ok's layout runs: PT_VER 4 has no extension block)" patchraw_test.c firmware/src/morph.c ' || b[1] > 101u || ' ' || '
            xb_mut "PATCH_RAW's length check removed (editor_patchraw.c BEGIN: PT_FIX .. PT_WORST)" patchraw_test.c firmware/src/editor_patchraw.c 'if (n != 9u || a[8] > 15u || len < PT_FIX || len > PT_WORST)' 'if (n != 9u || a[8] > 15u)' ;;
   fuzz)    SAN=; cc -fsanitize=address,undefined -fno-sanitize=shift -w -x c -o "$OUT/sanprobe" - 2>/dev/null <<'EOF2' && SAN="-fsanitize=address,undefined -fno-sanitize=shift"
@@ -898,8 +899,8 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
              done
              [ "$vb" = 0 ] && echo "   PASS" || { echo "   FAIL"; fail=1; }
            fi ;;
-  ldrscreen) P=$(ls -t build/duell-*.fwsc 2>/dev/null); O=${LDR_OLD:-$(echo "$P" | sed -n 2p)}; N=${LDR_NEW:-$(echo "$P" | sed -n 1p)}; [ -n "$O" ] || O=$N   # (LDR_OLD and LDR_NEW, else the newest two packages in build/; one package is used as both)
-           if [ -z "$N" ]; then run ldrscreen echo "SKIP no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
+  ldrscreen) P=$(ls -t build/tide-*.fwsc build/duell-*.fwsc 2>/dev/null); O=${LDR_OLD:-$(echo "$P" | sed -n 2p)}; N=${LDR_NEW:-$(echo "$P" | sed -n 1p)}; [ -n "$O" ] || O=$N   # (LDR_OLD and LDR_NEW, else the newest two packages in build/; one package is used as both)
+           if [ -z "$N" ]; then run ldrscreen echo "SKIP no update package (build/tide-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
            $CC -O1 -DLDR_SCREEN_TEST=1 -o $OUT/ldr_test_screen tests/ldr_test.c -lm && $CC -O1 -o $OUT/ldr_test_plain tests/ldr_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }"; fi ;;
   lcdboot) cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_late -DFM1_LCD_BL_LATE=1 tests/lcd_boot_test.c && cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_ldr tests/lcd_boot_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&

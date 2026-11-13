@@ -50,7 +50,9 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define ENGI_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 10u || (e) == 13u)
 #define NENG_RETIRED 5
 #define NENG_SHOWN (NENGINES - NENG_RETIRED)   /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the display order of engines.c ENGINE_ORDER */
-#define UP_SLOTS 128u            /* stored patches (upreset.c): shadows of factory sounds and user patches, 128 in all */
+#define UP_BANK 128u             /* the bank of 128 (program change bank 0 / 1, the favorites' slot bits): #1..#124 and the USER slots U1..U4 (tide.h) */
+#define UP_SLOTS 175u            /* b12 (every factory sound editable): the patch slots (upreset.c), one per place of the PATCHES list: the bank's 128, then the
+                                 * factory sounds the USER slots displaced and the ones past the 128 (#125..#171); each holds its saved record, else its factory sound */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 /* The velocity ACCENT LIFT (DUELL 1.1, release_drafts/VELOCITY_AFTERTOUCH_V1.md): above velocity ACCENT_V0 the envelope opens the filter / the engine's tone
  * (cutoff += envq15 x ACCENT_MAX >> 7). It was one step at 111 (full lift), and it made 24 of 127 sounds QUIETER at a harder key (up to 5 dB). Now it grows
@@ -588,7 +590,7 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 
 /* The multis SHOWN (lists, labels, pickers, previews, MIDI program change) are the stored ones: since b10 U4 every position has a flash slot (storage.c), the factory multi shows
  * while it holds nothing (multi.c mu_fact), and SAVE writes over it */
-#define MU_SHOWN MU_SLOTS
+#define MU_SHOWN (MU_SLOTS + 1u)                 /* b12: one more than the stored ones: M27 EMPTY (multi.c: ROM only, no flash object; SAVE on it picks another slot) */
 #define MU_DRONE(k) ((uint32_t)(k) - 24u < 2u)   /* M25, M26: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M24 are ROM-only multis of other genres */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */

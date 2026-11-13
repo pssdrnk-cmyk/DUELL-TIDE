@@ -168,7 +168,9 @@ static void tide_ghost_real(track_t *t);   /* (seq.c input_on: a real note start
  * upreset.c and project.c). Prototypes for the DUELL files that call them before they are compiled */
 static void graph_tide(void);
 static void graph_tidelist(void);
-static void tide_dance(int whole);                       /* (tide_ui.c: AUTO TIDE's dancing line, each frame) */
+static void tide_water(int whole);                       /* (tide_ui.c: AUTO TIDE's water rolling, each frame) */
+static uint16_t aw_under(int32_t y);                     /* (tide_ui.c: the water's tone at row y of the lane being drawn, or the ground: under a step's corners, ui_graph.c ns_rr) */
+static uint8_t aw_wet;                                   /* (the steps being drawn stand in AUTO TIDE's water) */
 static void tide_columns(void);
 static uint32_t tide_sig(void);
 static uint32_t tide_list_sig(void);
@@ -209,7 +211,11 @@ static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t
 static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a step note of the part sounds at) */
 #define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); if ((p) == TL_RANDOM || (p) == TL_COOK) return tide_tl_swell((t), (p) == TL_COOK); } while (0)
 #define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* patch chunk 21's object: where earlier TIDE builds kept the settings (read once, never written: tide_store.c) */
-#define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
+#define TIDE_PT_NCH 25u                                  /* the patch store's chunks with TIDE: 0..20 and, b12, 21..24 (objects 55..58 at 0xF4000): 150 saved patches at most (126 + 24: TIDE_PT_NOLD) */
+#define TIDE_PT_NEXT(k) ((k) + 1u == TIDE_PT_NOLD * 6u ? UP_BANK : (k) + 1u)   /* (the tests: the slots a full store holds, in order: 1..126, then 129..152) */
+#define TIDE_PT_END (UP_BANK + (TIDE_PT_NCH - TIDE_PT_NOLD) * 6u)
+#define TIDE_PT_LAST (TIDE_PT_END - 1u)
+#define TIDE_PT_NOLD 21u                                 /* the chunks an earlier build reads (0..20): slots 1..128 live there (126 records), the slots past them only in 21..24 (24) */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
 #define TIDE_PAGE(pg) ((pg)->scope == SC_TIDE)
 #define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), FILTER / RESONANCE / ECHO on the slim row (1.0.0-b7) */
@@ -231,7 +237,10 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u ^ (uint32_t)duell_mode_req * 0x9E3779B1u) * 16777619u; } while (0)   /* (1.0.0-b7: the MODE, AUTO TIDE names the play mode) */
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
-#define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
+#ifndef TIDE_HOME_ANSWER
+#define TIDE_HOME_ANSWER 1                               /* .. the answer on knob 1's line (tide_ui.c tide_answer_line; the take's header message is not repeated there, tide_take.c); 0 drops it */
+#endif
+#define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; b12, owner: AUTO TIDE is the round's 2nd, TIDE SETTINGS the 3rd) */
 #define TIDE_HOME_MODE_NAME "SETTINGS"                  /* (b4, UI audit 9: HOME OPENS' second value names the page it opens, TIDE SETTINGS; MULTI LOAD keeps or sets the PLAY MODE row) */
 #define TIDE_MLOAD_NAMES {"KEEPS PLAY MODE", "SETS PLAY MODE"}
 #define TIDE_HOME_MODE(pg) ((pg)->graph == GR_TIDELIST)   /* HOME OPENS = MODE: TIDE has no MODE page (no PAGES row); its MODE is a row of TIDE SETTINGS, which opens with that row picked */
@@ -243,7 +252,7 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_LIVE_SIG(pg, t, h) ((h) = ((h) ^ live_sig((pg), (t))) * 16777619u)
 #define TIDE_LIVE_DRAW(pg, t) live_draw((pg), (t))
 #define TIDE_LIVE_MOD(t, y0) live_mod((t), (y0))
-#define TIDE_LIVE_STRIP(pg, t) do { live_strip((pg), (t)); if ((pg)->graph == GR_TIDE) tide_dance(0); } while (0)   /* (b11: AUTO TIDE's dancing line) */
+#define TIDE_LIVE_STRIP(pg, t) do { live_strip((pg), (t)); if ((pg)->graph == GR_TIDE) tide_water(0); } while (0)   /* (b12: AUTO TIDE's water) */
 #define TIDE_LIVE_CHORD(t) live_chord(t)
 #define TIDE_AMPDEST_FM6(pg, t) ((pg)->graph == GR_ADSR && (pg)->id[0] == P_ED_PIT && (t)->eng_req % NENGINES == ENGI_FM6 && fop_ok())
 /* H18 (ui_input.c first_boot_poll): the factory multi a new unit (or one after ERASE DATA, and the emulator) starts with: M02 DUB CHORD (M04 until D31, 2026-11-05: BASIC CHORD took M01 and the curated order moved it),
@@ -252,13 +261,13 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_FIRST_MULTI 1u
 
 
-/* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots and PS_NUSER pattern slots are USER slots, empty until saved. The factory
- * sounds / patterns they displace stay listed after them as read-only places (voice places UP_SLOTS.., pattern places PS_SLOTS..). No record moves.
- * The factory sounds past the 128 of the bank (sounds.c DS_N, tools/duell_sounds.py N_BASE) follow the displaced ones as read-only voice places too (UP_NXTRA);
- * none has a slot: they are for the PATCHES list, TIDE and the editor's sound lists, and SAVE offers USER 1 for them */
-#define UP_NXTRA (DS_N > UP_SLOTS ? DS_N - UP_SLOTS : 0u)
-#define UP_USER0 (UP_SLOTS - UP_NUSER)
-#define UP_VSLOTS (UP_SLOTS + UP_NUSER + UP_NXTRA)
+/* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots of the bank and PS_NUSER pattern slots are USER slots, empty until saved. The factory
+ * sounds / patterns they displace stay listed after them (voice places UP_BANK.., pattern places PS_SLOTS.., read-only). No record moves.
+ * The factory sounds past the 128 of the bank (sounds.c DS_N, tools/duell_sounds.py N_BASE) follow the displaced ones (UP_NXTRA). b12: every voice place is a
+ * slot (UP_SLOTS = UP_VSLOTS): the displaced #125..#128 and #129..#171 are slots 128..174, saved over and restored as any other */
+#define UP_NXTRA (DS_N > UP_BANK ? DS_N - UP_BANK : 0u)
+#define UP_USER0 (UP_BANK - UP_NUSER)
+#define UP_VSLOTS (UP_BANK + UP_NUSER + UP_NXTRA)
 #define PS_USER0 (PS_SLOTS - PS_NUSER)
 #define PS_VSLOTS (PS_SLOTS + PS_NUSER)
 #endif

@@ -613,7 +613,7 @@ function buildColumn(p) {
   const sel = h("span", { class: "seldot", title: "This is the part the unit has selected (ALGORITHM)" });
   const snd = h("span", { class: "pname" }), cat = h("span", { class: "pcat" });
   // the CURRENT patch in a box of its own (DUELL 1.1, owner item 11): arrows step the slots, the NUMBER can be typed (click, write 5, Enter), the NAME next to it
-  const num = h("button", { type: "button", class: "pnum", title: "Patch number: click, type 1 to 128, press Enter", onclick: () => typePatch(p) });
+  const num = h("button", { type: "button", class: "pnum", title: "Patch number: click, type its place in the list (1 to 128, or 1 to 175 with TIDE b12), press Enter", onclick: () => typePatch(p) });
   const stepB = (d) => h("button", { type: "button", class: "step " + (d < 0 ? "prev" : "next"), "aria-label": d < 0 ? "Previous patch" : "Next patch", title: d < 0 ? "Previous patch (the slot before)" : "Next patch (the slot after)", onclick: () => stepPatch(p, d) });
   const curPatch = h("div", { class: "curpatch", "aria-label": `PART ${p + 1} current patch` }, stepB(-1), num, snd, stepB(1));
   const undoBtn = h("button", { class: "ghost small", text: "Undo", title: `Undo the last edit of PART ${p + 1} (Ctrl+Z or Cmd+Z: the last edit of any part)`, onclick: () => doUndo(p) });
@@ -623,7 +623,7 @@ function buildColumn(p) {
   const patch = h("section", { class: "block patchblock", "aria-label": `Part ${p + 1} patch` }, h("h3", {}, h("span", { class: "ttl", text: "PATCH" }), h("span", { class: "grow" }), cat),
     h("div", { class: "hgrid pgrid2" }, curPatch,
       btnCell(
-        h("button", { class: "ghost small", text: "Browse...", title: "Browse the unit's 128 patch slots and recall one into this part (the PATCHES tab of the GLOBAL column)", onclick: () => { app.target = p; setGlobalTab("patches", true); } }),
+        h("button", { class: "ghost small", text: "Browse...", title: "Browse the unit's patch slots (128; 175 with TIDE b12) and recall one into this part (the PATCHES tab of the GLOBAL column)", onclick: () => { app.target = p; setGlobalTab("patches", true); } }),
         h("button", { class: "ghost small", text: "Init...", title: "Init patch: the engine's basic sound, every common setting at its default (on the unit: SAVE > TOOLS > INIT SOUND)", onclick: () => initPatch(p) })),
       partCell(p, ID.P_TRIM).el));
   building = prev;
@@ -638,7 +638,7 @@ function buildColumn(p) {
   dropZone(col, { accept: (e) => hasFiles(e) || hasSlot(e), onDrop: async (e) => {
     if (hasFiles(e)) { for (const f of filesOf(e)) await handleFile(app, f, { part: p }); return; }
     const slot = slotOf(e); if (slot == null) return;
-    try { app.say(`Loading slot #${slot + 1} into PART ${p + 1} ...`); await u.loadSlot(p, slot); u.parts[p].name = u.slots?.[slot]?.name ?? null; app.refresh(); app.say(`#${slot + 1} ${u.slots?.[slot]?.name ?? ""} is loaded in PART ${p + 1} (not saved).`, "good"); } catch (err) { app.fail(err); }
+    try { app.say(`Loading slot ${u.label(slot)} into PART ${p + 1} ...`); await u.loadSlot(p, slot); u.parts[p].name = u.slots?.[slot]?.name ?? null; app.refresh(); app.say(`${u.label(slot)} ${u.slots?.[slot]?.name ?? ""} is loaded in PART ${p + 1} (not saved).`, "good"); } catch (err) { app.fail(err); }
   } });
   return col;
 }
@@ -665,7 +665,7 @@ async function initPatch(p) {
 // ---- the current patch box (DUELL 1.1): step with the arrows, type the number
 async function loadPatchSlot(p, slot) {
   const u = app.unit; if (!u) return;
-  await app.run(`Loading #${slot + 1} into PART ${p + 1}`, async () => {
+  await app.run(`Loading ${u.label(slot)} into PART ${p + 1}`, async () => {
     if (!u.slots) await u.listSlots();
     await u.loadSlot(p, slot); u.parts[p].name = u.slots?.[slot]?.name ?? null;
   });
@@ -673,17 +673,17 @@ async function loadPatchSlot(p, slot) {
 }
 function stepPatch(p, d) {
   const u = app.unit; if (!u) return;
-  const n = u.slots?.length ?? 128, k = u.parts[p].slot;
+  const n = u.slots?.length ?? u.nslots, k = u.parts[p].slot;
   return loadPatchSlot(p, ((k == null ? (d > 0 ? 0 : n - 1) : k + d) % n + n) % n);
 }
 function typePatch(p) {
   const c = app.cols[p], u = app.unit; if (!c || !u || c.numEditing) return;
-  const inp = h("input", { type: "text", class: "valin pnin", inputmode: "numeric", "aria-label": "Patch number 1 to 128", value: String((u.parts[p].slot ?? 0) + 1) });
+  const inp = h("input", { type: "text", class: "valin pnin", inputmode: "numeric", "aria-label": `Patch number 1 to ${u.nslots}`, value: String((u.parts[p].slot ?? 0) + 1) });
   c.numEditing = true; c.num.replaceChildren(inp); inp.focus(); inp.select();
   let done = false;
   const end = (commit) => {
     if (done) return; done = true; c.numEditing = false;
-    const n = parseInt(inp.value, 10), max = u.slots?.length ?? 128;
+    const n = parseInt(inp.value, 10), max = u.slots?.length ?? u.nslots;
     inp.remove(); app.refresh();
     if (commit && n >= 1 && n <= max && n - 1 !== u.parts[p].slot) loadPatchSlot(p, n - 1);
   };
@@ -693,7 +693,7 @@ function typePatch(p) {
 // "#12 FOLD BASS": the slot's number when the editor knows it, then the name; a sound recalled on the unit (the protocol does not report the slot): "#--  ON THE UNIT"
 function patchLabel(p) {
   const part = app.unit.parts[p], k = part.slot;
-  if (k != null) return `#${k + 1} ${soundName(p)}`;
+  if (k != null) return `${app.unit.label(k)} ${soundName(p)}`;
   return part.fromUnit && !part.name ? "#--  ON THE UNIT" : soundName(p);
 }
 function soundName(p) {
@@ -804,12 +804,12 @@ function refreshAll() {
     if (![...c.engSel.options].some((o) => +o.value === u.parts[p].eng)) { c.engSel.append(h("option", { value: u.parts[p].eng, text: "(retired engine)" })); c.engSel.value = u.parts[p].eng; }
     c.engSel.title = L.ENG[u.parts[p].eng]?.name === "-" ? "This part plays a retired engine: it is silent and keeps its values. Pick an engine." : "";
     c.sel.classList.toggle("on", u.selected === p);
-    { const k = u.parts[p].slot; if (!c.numEditing) c.num.textContent = k != null ? `#${k + 1}` : "#--"; c.snd.textContent = soundName(p); c.num.classList.toggle("none", k == null); }
+    { const k = u.parts[p].slot; if (!c.numEditing) c.num.textContent = k != null ? u.label(k) : "#--"; c.snd.textContent = soundName(p); c.num.classList.toggle("none", k == null); }
     c.snd.title = u.parts[p].fromUnit && u.parts[p].slot == null ? "Recalled on the unit: the unit does not tell the editor which slot it plays." : "";
     {   // CATEGORY: the slot's, when the editor knows the slot (it loaded or stored it); the protocol does not say which slot a recall on the unit played
       const k = u.parts[p].slot, s = k != null ? u.slots?.[k] : null;
       c.cat.textContent = s && s.cat != null ? `CATEGORY ${CATEGORY_NAMES[s.cat] ?? "-"}` : "";
-      c.cat.title = s ? `The category of slot #${k + 1} (set when saving, on the PATCHES tab).` : "";
+      c.cat.title = s ? `The category of slot ${u.label(k)} (set when saving, on the PATCHES tab).` : "";
     }
     const rt = c.strip.querySelector('[data-key="roll"]'); if (rt) rt.title = rollTabTip(p);
   }
@@ -954,7 +954,7 @@ async function connect() {
     let link;
     if (MOCK) {
       const { MockUnit, MockLink } = await import("./mockunit.js");
-      app.mock = new MockUnit({ pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : MOCK === "u4" ? 127 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
+      app.mock = new MockUnit({ slots175: MOCK !== "128" && MOCK !== "old", pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : MOCK === "u4" ? 127 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
       link = new MockLink(app.mock, 2);
       if (DEMO) seedDemo(app.mock);
     } else {

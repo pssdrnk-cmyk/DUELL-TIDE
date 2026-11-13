@@ -273,7 +273,7 @@ static void test_footer_number(void)
 static void test_footer_number_past_slots(void)
 {
     char b[20], want[20], num[8];
-    uint32_t n, e = 0, j = 0, ranks = 0, last = UP_SLOTS + UP_NXTRA - 1u;
+    uint32_t n, e = 0, j = 0, ranks = 0, last = UP_BANK + UP_NXTRA - 1u;
     ui_power_on(); frame();
     for (n = UP_USER0; n <= last; n++) {                 /* ranks 124 .. : the first and the last are tried */
         uint32_t ee, jj = 0;

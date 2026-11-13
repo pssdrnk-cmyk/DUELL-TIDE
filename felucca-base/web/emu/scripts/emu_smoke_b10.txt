@@ -3,26 +3,27 @@
 boot
 button HOME
 button HOME
+button HOME
 enc K1 4
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
 shot knobs_ELEC_row
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
 shot knobs_AMB_row
 # the COLR LFO page (GLO page 6: CLFO 0..15, the default multi M02 holds 5) and the same page with the knob turned down to 0
@@ -31,9 +32,8 @@ enc SELECT 5
 shot colr_lfo
 enc K1 -5
 shot colr_lfo_off
-# the built-in multis M19 .. M24 on the MULTIS page (K1 walks the slots; the list ends at M24)
+# the built-in multis M19 .. M24 on the MULTIS page (K1 walks the slots from M01, where the page opens; since b12 K1 wraps one step at a time, so no walk to the left to find the start)
 button SAVE
-enc K1 -30
 enc K1 18
 shot multis_m19
 enc K1 1

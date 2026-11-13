@@ -533,9 +533,12 @@ static void tk_hold(void)
     tk_mu = fm1_ms + (uint32_t)clamp((int32_t)(bpm ? 960000u / bpm : 8000u), 4000, 8000);
 }
 static void tk_cat(char *b, const char *s) { str_cpy(b + str_len(b), s, 48u - str_len(b)); }
+static void tk_words(char *b);
 static void tk_say(const char *pre, uint32_t no)
 {
     char b[48], n[8];
+    if (!pre && TIDE_HOME_ANSWER && PAGES[ui.page % NPAGES].graph == GR_TIDE)   /* (the page under a quick layer too: REC is pressed with SEQ held) */
+        return;                                          /* (b12: a take's answer on AUTO TIDE: the title stays, knob 1's line says it, tide_ui.c tide_answer_line; a ROLL, SWELL or RIPPLE still says its own) */
     b[0] = 0;
     if (pre) {
         tk_cat(b, pre);
@@ -545,6 +548,13 @@ static void tk_say(const char *pre, uint32_t no)
         }
         tk_cat(b, "  ");
     }
+    tk_words(b);
+    ui_say(b, "");
+    tk_hold();
+}
+/* the live answer in words, appended to b (48): "BASS LINE  A MINOR" (b12: AUTO TIDE's knob-1 line says it too, tide_ui.c tide_columns) */
+static __attribute__((noinline)) void tk_words(char *b)
+{
     tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : "BASS LINE  ");
     tk_cat(b, N_NOTE[tk_m.key % 12u]);
     tk_cat(b, (tk_m.flags & 4u) ? " " : tk_m.flags & 1u ? " MINOR" : " MAJOR");
@@ -552,8 +562,6 @@ static void tk_say(const char *pre, uint32_t no)
         tk_cat(b, N_SCALE[(tk_m.flags >> 3) & 15u]);
     if (tk_m.flags & 2u)
         tk_cat(b, "?");
-    ui_say(b, "");
-    tk_hold();
 }
 
 /* ---- the history ---- */

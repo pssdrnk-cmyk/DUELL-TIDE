@@ -18,7 +18,7 @@ export class Link {
   }
   request([cmd, args = []], opt = {}) {
     if (this.closed) return Promise.reject(new Error("The connection is closed"));
-    return new Promise((resolve, reject) => { this.queue.push({ cmd, args, resolve, reject, timeout: opt.timeout || 1500 }); this.pump(); });
+    return new Promise((resolve, reject) => { this.queue.push({ cmd, args, resolve, reject, timeout: opt.timeout || 1500, hi: !!opt.hi }); this.pump(); });
   }
   pump() {
     if (this.pending || !this.queue.length || this.closed) return;
@@ -26,7 +26,7 @@ export class Link {
     const r = this.queue.shift();
     const timer = setTimeout(() => { this.pending = null; r.reject(new Error(`No answer to command ${r.cmd} (timed out)`)); this.pump(); }, r.timeout);
     this.pending = { cmd: r.cmd, timer, resolve: r.resolve, reject: r.reject };
-    try { this.output.send([240, 125, 70, 76, r.cmd, ...r.args, 247]); }
+    try { if (r.hi) this.output.send([240, 125, 70, 76, 90, 1, 247]); this.output.send([240, 125, 70, 76, r.cmd, ...r.args, 247]); }   // hi (b12): SLOT_HI [1] (cmd 90, no reply) right before the command, in the same turn
     catch (e) { clearTimeout(timer); this.pending = null; r.reject(e); this.pump(); }
   }
   fail(err) {

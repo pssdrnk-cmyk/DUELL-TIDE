@@ -76,8 +76,10 @@ def tearDownModule():
 
 
 class Base(unittest.TestCase):
+    MOCK = {"slots175": False}                  # the unit of before b12 (128 slots); B12Tests use the default mock, the b12 unit
+
     def setUp(self):
-        ctl("reset")
+        ctl("reset", options=self.MOCK)
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
 
@@ -87,7 +89,7 @@ class Base(unittest.TestCase):
     def backup_file(self) -> Path:
         rc, out, err = run_main(["backup", "--out", str(self.dir)])
         self.assertEqual(rc, 0, err)
-        files = sorted(self.dir.glob("DUELL-backup-*.json"))
+        files = sorted(self.dir.glob("TIDE-backup-*.json"))
         self.assertEqual(len(files), 1)
         return files[0]
 
@@ -185,16 +187,16 @@ class BackupTests(Base):
         created = json.loads(js)["created"]
         py = jd.file_text(capture(created))
         self.assertEqual(py, js)
-        self.assertRegex(js, r'^\{"format":"duell-backup","version":6,"firmware":"FELUCCA DUELL 0\.2\.25 bet","created":"[^"]+","engines":\[')
+        self.assertRegex(js, r'^\{"format":"duell-backup","version":7,"firmware":"FELUCCA DUELL 0\.2\.25 bet","created":"[^"]+","engines":\[')
 
     def test_cli_backup_read_by_web_editor(self):
         p = self.backup_file()
-        self.assertRegex(p.name, r"^DUELL-backup-\d{4}-\d\d-\d\d-\d{4}\.json$")
+        self.assertRegex(p.name, r"^TIDE-backup-\d{4}-\d\d-\d\d-\d{4}\.json$")
         text = p.read_bytes()
         self.assertFalse(text.endswith(b"\n") or b"\r" in text)
         r = ctl("readArchive", text=text.decode())
         self.assertTrue(r["accepted"], r.get("reason"))
-        self.assertEqual((r["version"], r["objects"], r["patches"], r["problems"], r["hasPatches"]), (6, 20, [0, 1, 5, 64], [], True))
+        self.assertEqual((r["version"], r["objects"], r["patches"], r["problems"], r["hasPatches"]), (7, 20, [0, 1, 5, 64], [], True))
         f = json.loads(text)
         self.assertRegex(f["created"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
         self.assertEqual([o["id"] for o in f["objects"]], [i for i in jd.DUELL_IDS if i not in jd.MULTI2_IDS] + [40] * 4)
@@ -323,7 +325,7 @@ class BankTests(Base):
         self.assertEqual(rc, 0, err)
         self.assertEqual(state()["bank"], before)
         self.assertIn("FM6 voice bank", out)
-        self.assertTrue(ctl("readArchive", text=next(self.dir.glob("DUELL-safety-backup-*.json")).read_text())["accepted"])   # (the safety backup was made first)
+        self.assertTrue(ctl("readArchive", text=next(self.dir.glob("TIDE-safety-backup-*.json")).read_text())["accepted"])   # (the safety backup was made first)
 
     def test_no_bank_in_file_leaves_the_unit_alone(self):
         ctl("reset", options={"fvBank": True})
@@ -380,11 +382,11 @@ class RestoreTests(Base):
         self.assertEqual((after["objs"], after["patches"]), (before["objs"], before["patches"]))
         self.assertIn("Patches: 3 written, 1 saved on the unit but not in the file removed, 2 already identical.", out)
         self.assertRegex(out, r"Done: 20 objects written, 18 read back equal")
-        self.assertTrue(any(re.match(r"DUELL-safety-backup-.*\.json$", f.name) for f in self.dir.iterdir()))
+        self.assertTrue(any(re.match(r"TIDE-safety-backup-.*\.json$", f.name) for f in self.dir.iterdir()))
         log = after["log"]
         self.assertEqual([x for x in log if "patch" in x], ["remove patch 9", "write patch 0", "write patch 5", "write patch 10"])   # (the removals first: they free room, D05)
         self.assertEqual(log[-2:], ["write 1", "write 0"])                    # the settings, then the live music last
-        safety = next(self.dir.glob("DUELL-safety-backup-*.json"))
+        safety = next(self.dir.glob("TIDE-safety-backup-*.json"))
         self.assertTrue(ctl("readArchive", text=safety.read_text())["accepted"])
         self.assertIn(9, ctl("readArchive", text=safety.read_text())["patches"])   # (the safety backup holds the unit as it was)
 
@@ -430,7 +432,7 @@ class RestoreTests(Base):
         self.assertEqual(rc, 1)
         self.assertIn("the safety backup failed, nothing was written", err)
         self.assertEqual(state()["sent"], [])
-        self.assertEqual(list(self.dir.glob("DUELL-safety-backup-*")), [])
+        self.assertEqual(list(self.dir.glob("TIDE-safety-backup-*")), [])
         ctl("playing", on=True)                                  # (playing: LIST answers rc 3, not even a plan)
         rc, _, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
         self.assertEqual(rc, 1)
@@ -461,6 +463,88 @@ class RestoreTests(Base):
         self.assertIn("another version", dict(jd.plan_restore(a, jd.list_unit(t, 63), 63).excluded)["Settings"])
 
 
+class B12Tests(Base):
+    """TIDE b12: 175 patch slots (INFO 44 01 bit 2), slots 129..175 as id 47, file version 7 with slots175."""
+    MOCK = {}
+
+    def test_info(self):
+        i = jd.read_info(NoClose(BRIDGE))
+        self.assertTrue(i.slots175 and i.tide)
+        self.assertEqual(i.patch_cap, 150)
+        rc, out, _ = run_main(["info"])
+        self.assertEqual(rc, 0)
+        self.assertIn("175 slots", out)
+        self.assertIn("150", out)
+
+    def test_backup_byte_identical_with_id47(self):
+        ctl("setPatch", slot=128, name="HI FIRST")
+        ctl("setPatch", slot=160, name="HI MID")
+        ctl("setPatch", slot=174, name="HI LAST")
+        js = ctl("captureJs")["text"]
+        f = json.loads(js)
+        self.assertEqual(jd.file_text(capture(f["created"])), js)
+        self.assertIs(f["slots175"], True)
+        self.assertEqual(f["version"], 7)
+        self.assertEqual([(o["id"], o["slot"]) for o in f["objects"] if o["id"] in (40, 47)],
+                         [(40, 0), (40, 1), (40, 5), (40, 64), (47, 0), (47, 32), (47, 46)])
+        a = jd.read_archive(js)
+        self.assertTrue(a.slots175)
+        self.assertEqual(sorted(k for k in a.objects if k >= 1000), [1000, 1001, 1005, 1064, 1128, 1160, 1174])
+        r = ctl("readArchive", text=js)
+        self.assertTrue(r["accepted"], r.get("reason"))
+        self.assertEqual(r["patches"], [0, 1, 5, 64, 128, 160, 174])
+
+    def test_file_without_slots175_keeps_unit_high_slots(self):
+        a = jd.read_archive(ctl("captureJs")["text"])
+        f = json.loads(ctl("captureJs")["text"])
+        del f["slots175"]
+        ctl("setPatch", slot=160, name="MINE HI")
+        before = state()["patches"]["160"]
+        arch = jd.read_archive(json.dumps(f, separators=(",", ":")))
+        self.assertFalse(arch.slots175)
+        plan = jd.plan_restore(arch, jd.list_unit(NoClose(BRIDGE), 63, True), 63, patch_cap=150, slots175=True)
+        self.assertNotIn(1160, [s.key for s in plan.steps])
+        p = self.dir / "old.json"
+        p.write_text(json.dumps(f, separators=(",", ":")), encoding="utf-8")
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(state()["patches"]["160"], before)
+
+    def test_high_slots_restored_and_removed_with_slots175(self):
+        ctl("setPatch", slot=150, name="KEEP ME")
+        p = self.backup_file()
+        ctl("deletePatch", slot=150)
+        ctl("setPatch", slot=160, name="EXTRA")
+        want = {k: v for k, v in state()["patches"].items() if k != "160"}
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        st = state()
+        self.assertIn("150", st["patches"])
+        self.assertNotIn("160", st["patches"])                  # slots175 in the file: the unit's extra patch there is removed
+        self.assertIn(47, [a[1] for a in st["sent"] if a[0] == 0])
+        self.assertTrue(want.keys() <= st["patches"].keys())
+
+    def test_store_rooms_apart(self):
+        a = jd.read_archive(ctl("captureJs")["text"])
+        for k in range(1100 + 1, 1100 + 26):                       # 25 records in slots 129..175 are one over the room
+            a.objects[1000 + 128 + (k - 1101)] = a.objects[1000]
+        plan = jd.plan_restore(a, {}, 63, patch_cap=150, slots175=True)
+        why = dict(plan.excluded)["Patches"]
+        self.assertEqual(why, "the file holds 4 patches of slots 1..128 and 25 of slots 129..175, and this unit stores at most 126 and 24 (STORE FULL)")
+
+    def test_v7_file_to_old_unit_skips_high_slots(self):
+        ctl("setPatch", slot=130, name="HI A")
+        ctl("setPatch", slot=170, name="HI B")
+        p = self.backup_file()
+        ctl("reset", options={"slots175": False})
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        self.assertIn("2 patches of slots 129..175 need TIDE b12 or newer; they are not restored", out)
+        st = state()
+        self.assertEqual(sorted(st["patches"]), ["0", "1", "5", "64"])
+        self.assertNotIn(47, [a[1] for a in st["sent"] if a[0] == 0])
+
+
 class FlashTests(Base):
     FAKE = ("import json, sys, pathlib\n"
             "pathlib.Path(sys.argv[0]).with_suffix('.ran').write_text(json.dumps(sys.argv[1:]))\n"
@@ -481,7 +565,7 @@ class FlashTests(Base):
         self.assertIn("writing 100%", out)
         self.assertIn("now running: DUELL 0.2.25", out)
         self.assertLess(out.index("saved "), out.index("running: "))                 # the backup comes first
-        self.assertEqual(len(list(self.dir.glob("DUELL-backup-*.json"))), 1)
+        self.assertEqual(len(list(self.dir.glob("TIDE-backup-*.json"))), 1)
 
     def test_backup_failure_stops_flash(self):
         ctl("playing", on=True)
@@ -577,7 +661,7 @@ class MeasureTests(Base):
         self.assertIn("fm1_unbrick.py restore", out, "the recovery is printed up front")
         self.assertIn("ADMINISTRATOR PowerShell", out)
         self.assertIn("preflight: 4.0 voices sounding", out)
-        self.assertTrue(list((self.d / "bk").glob("DUELL-backup-*.json")), "a backup is made before the unit is touched")
+        self.assertTrue(list((self.d / "bk").glob("TIDE-backup-*.json")), "a backup is made before the unit is touched")
         text = (self.d / "m" / "report.md").read_text(encoding="utf-8")
         self.assertIn("## A01", text)
         self.assertIn("| valley, SPREAD off | 1 (core 0) |", text)
@@ -613,7 +697,7 @@ class MeasureTests(Base):
         self.assertIn("could not come back by itself", err)
         self.assertFalse(self.installs.exists(), "the unit is not touched")
         self.assertEqual(self.sent, [])
-        self.assertFalse(list((self.d / "bk").glob("DUELL-backup-*.json")), "not even a backup: nothing was started")
+        self.assertFalse(list((self.d / "bk").glob("TIDE-backup-*.json")), "not even a backup: nothing was started")
 
     def test_back_step_only_goes_back(self):
         rc, out, err = self.run_measure("back", "--yes", "--com", "COM9")
