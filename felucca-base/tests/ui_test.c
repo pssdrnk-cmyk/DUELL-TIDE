@@ -8942,19 +8942,20 @@ static int test_item158_cells(void)
 }
 
 /* ---------------------------------------------------------------- item 164 (owner): a value too wide for its card keeps the Bold weight (T, 15 px), never Medium; WHEEL's ENGINE page is the bars alone --- */
+static uint32_t c164_at;                                 /* (the capture's index of the last text c164_find found) */
 static int c164_find(const char *str, const void **f)    /* a value text in the capture: its face */
 {
     uint32_t i;
     for (i = 0; i < txt_n; i++)
-        if (txt_log[i].y0 >= 27 && txt_log[i].y1 <= 216 && !strcmp(txt_log[i].s, str)) { *f = txt_log[i].f; return 1; }
+        if (txt_log[i].y0 >= 27 && txt_log[i].y1 <= 216 && !strcmp(txt_log[i].s, str)) { *f = txt_log[i].f; c164_at = i; return 1; }
     return 0;
 }
 static int test_item164(void)
 {
     static const char *const WANT[] = {"TRIANGLE", "3 BARS", "MELLOW", "STRING", "SQUARE", "3xSAW"};   /* (item 165: LOFI's BASS 1 / BASS 2 / HOLLOW and NOISE's ANALOG are in cells now, Bold 23 fits them (test_item165 F); ANALOG's TRIANGLE is new) */
-    uint32_t e, k, i, n_m = 0, n_t = 0, seen[sizeof WANT / sizeof WANT[0]] = {0};
+    uint32_t e, k, i, n_m = 0, n_t = 0, n_l = 0, n_wide = 0, seen[sizeof WANT / sizeof WANT[0]] = {0};
     int bad = 0, ok_wheel = 1, ok_all = 1;
-    char first_bad[48] = "";
+    char first_bad[48] = "", first_wide[48] = "";
     for (e = 0; e < (uint32_t)NENGINES + 1u; e++) {       /* every engine's ENGINE page, then every other card page once */
         uint32_t np = e < (uint32_t)NENGINES ? 1u : (uint32_t)NPAGES, id;
         for (id = 0; id < np; id++) {
@@ -8991,6 +8992,13 @@ static int test_item164(void)
                         if (!first_bad[0]) snprintf(first_bad, sizeof first_bad, "%s / %s = '%s'", st.title, d->label ? d->label : "?", vb);
                     }
                     n_t += f == (const void *)&AF_T;
+                    if (f == (const void *)&AF_L && txt_log[c164_at].cw > 0) {   /* (b11, QC PR 87: a value kept in L, tightened or not, ends inside its card) */
+                        n_l++;
+                        if (txt_log[c164_at].rx0 < 0 || txt_log[c164_at].rx1 > txt_log[c164_at].cw) {
+                            n_wide++;
+                            if (!first_wide[0]) snprintf(first_wide, sizeof first_wide, "%s / %s = '%s'", st.title, d->label ? d->label : "?", vb);
+                        }
+                    }
                     if (f == (const void *)&AF_T || f == (const void *)&AF_L)   /* (b11 text sizes: a long value tightens its letters in L before it would take T) */
                         for (i = 0; i < sizeof WANT / sizeof WANT[0]; i++)
                             if (!strcmp(vb, WANT[i])) seen[i]++;
@@ -9003,6 +9011,8 @@ static int test_item164(void)
     for (i = 0; i < sizeof WANT / sizeof WANT[0]; i++)
         printf(" %s%s", WANT[i], seen[i] ? "" : "(NOT SEEN)");
     printf("\n");
+    printf("    item 164 (info): %u values in Bold 23 with a canvas, %u of them past its edge (first: %s)\n", n_l, n_wide, first_wide[0] ? first_wide : "-");
+    bad += check("item 164:   .. a value kept in Bold 23 (tightened or not) ends inside its card", n_l > 0u && n_wide == 0u);
     bad += check("item 164: no value on any card page (every ENGINE page of every engine, every other card page; every option of every list) is drawn in Medium 15: too wide for Bold 23 it tightens its letters (b11), else takes Bold 15 (T), same weight (rule C2)", ok_all);
     {
         int all = 1;
