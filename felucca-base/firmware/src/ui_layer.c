@@ -132,7 +132,6 @@ static uint32_t ly_seen(uint32_t l) { return LAYERS[l % LAYER_N].kind == LK_QUIC
 static struct {
     uint8_t l, trk, loaded, oct;       /* SET: the layer and the track of the snapshot; EDIT: a sound loaded since
                                         * it opened (SEQ: a tool used); OCT- / OCT+ pressed in a SET layer (bits) */
-    uint8_t cook;                      /* SEQ: COOK pressed since it opened */
     uint8_t rp_dirty;                  /* REC: a setting changed (settings_save when the layer lets go) */
     uint8_t qid[4];                    /* QUICK EDIT: the ids of its four when it opened (OCT-: put back) */
     int16_t v[9];                      /* the values when it opened: SEQ LEN DIV SWING GATE; REC the settings
@@ -281,7 +280,6 @@ static void layer_opened(uint32_t l)
     lys.l = (uint8_t)l;
     lys.trk = song.sel;
     lys.loaded = 0;
-    lys.cook = 0;
     if (l == LAYER_SEQ || l == LAYER_REC) {             /* the track as it is now (OCT-) */
         memcpy(tl_open.step, TSEL->step, sizeof tl_open.step);
         motion_snapshot_track(TSEL, &tl_open.mo);
@@ -588,7 +586,6 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
                         t->p[P_SLEN + k] = lys.v[k];
                 }
                 lys.loaded = 0;
-                lys.cook = 0;
                 ui_message(lys.l == LAYER_REC ? "REC PUT BACK" : "SEQUENCE PUT BACK");
             }
         }

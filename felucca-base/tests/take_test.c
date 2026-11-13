@@ -356,10 +356,10 @@ static void take_swell(void)
     CHECK("... the moved notes are in the key and free of rubs against the take", ok);
     /* the same seed gives the same notes */
     memcpy(keep, trk[1].step, sizeof keep);
-    on0 = tl_sw_apply(&trk[1], 0, 1234); a0 = psig(1);
+    on0 = tl_sw_apply(&trk[1], 0, 1234, 0); a0 = psig(1);
     memcpy(trk[1].step, keep, sizeof keep);
-    (void)tl_sw_apply(&trk[1], 0, 1234);
-    CHECK("the same seed gives the same notes (SWELL of a part); another seed another wave", on0 && psig(1) == a0 && (memcpy(trk[1].step, keep, sizeof keep), tl_sw_apply(&trk[1], 0, 4321), psig(1) != a0));
+    (void)tl_sw_apply(&trk[1], 0, 1234, 0);
+    CHECK("the same seed gives the same notes (SWELL of a part); another seed another wave", on0 && psig(1) == a0 && (memcpy(trk[1].step, keep, sizeof keep), tl_sw_apply(&trk[1], 0, 4321, 0), psig(1) != a0));
     /* SWELL on the take's part: the take changes, the answer follows, one step for both */
     first_take();
     a0 = psig(1); h0 = psig(0);

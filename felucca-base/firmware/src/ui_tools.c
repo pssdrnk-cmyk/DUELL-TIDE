@@ -10,8 +10,8 @@
  * the copy taken just before it (ui.c undo, UNDO_PAT; unlike a load the track's automation stays), so after a few
  * COOKs that undo takes back the last one only; the layer's OCT- puts back the track as the layer opened (tl_open).
  * A step that held something and is empty after loses its locks (as EDIT's step clear); REVERSE and SHIFT move the
- * steps' automation and locks with them. RANDOM and COOK draw from libc.c rng(): no seed is kept, each press
- * differs. A sequence of ties reversed keeps its note first: N T T -> N T T at the mirrored place */
+ * steps' automation and locks with them. SWELL and RIPPLE (b11) have a seed a press (tl_sd; same seed, same notes), the key of the multi when SCL is off
+ * and no rubs against the other part. A sequence of ties reversed keeps its note first: N T T -> N T T at the mirrored place */
 enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_TUP, TL_TDN TIDE_TL_KEEP, TL_N };   /* TIDE hook (H14: G4 KEEP) */
 
 /* the track as the layer opened (OCT-): in the pool (RAM's .bss is tight), taken by layer_opened */
@@ -20,7 +20,9 @@ static struct { step_t step[NSTEP]; motion_store_t mo; } tl_open __attribute__((
 static uint32_t tl_len(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
 /* b11 (SWELL / RIPPLE, TIDE's rules): a press has a seed (tl_sd, never 0: the same seed, the same notes; 0 = libc rng(), the stock dice), the part's key (SCL, else the multi's key byte), and it keeps clear of semitone rubs
  * against the other part (tl_rub) */
-static uint32_t tl_sd __attribute__((section(".pool"))), tl_ms __attribute__((section(".pool"))), tl_rt __attribute__((section(".pool")));   /* (the pool: the RAM rule's .bss has no room; tl_rules sets the key before every press) */
+static uint32_t tl_sd __attribute__((section(".pool"))), tl_ms __attribute__((section(".pool"))), tl_rt __attribute__((section(".pool")));
+static int32_t tl_off __attribute__((section(".pool")));                                    /* with the multi's key: what the part's steps sound above their notes (TRN, an ARP SEQ part's stand-in) */
+static step_t *tl_dst __attribute__((section(".pool")));                                     /* the steps SWELL / RIPPLE write: the track's, or a scratch copy (tl_sw_apply) */   /* (the pool: the RAM rule's .bss has no room; tl_rules sets the key before every press) */
 static uint32_t tl_rr(void)
 {
     if (!tl_sd)
@@ -36,9 +38,11 @@ static void tl_rules(const track_t *t)                  /* the key of this press
     uint32_t k = project_key();
     tl_ms = scale_mask(t);
     tl_rt = (uint32_t)root_of(t) % 12u;
+    tl_off = 0;
     if (tl_ms == 0xFFFu && k != 0xFFu) {
         tl_rt = k & 15u;
         tl_ms = (k >> 4) ? 0x5ADu : 0xAB5u;
+        tl_off = tk_poff(t);                            /* (the key is about what sounds) */
     }
 }
 /* a semitone, major seventh or minor ninth between note n at step i of t and what the other part sounds there (a NOTE step, or the NOTE a run of ties belongs to) */
@@ -56,7 +60,7 @@ static int tl_rub(const track_t *t, uint32_t i, int32_t n)
     if (o->step[j].time != ST_NOTE)
         return 0;
     for (k = 0; k < o->step[j].n && k < 4u; k++) {
-        int32_t d = (n + t->p[P_TRANS]) - ((int32_t)o->step[j].note[k] + o->p[P_TRANS]);
+        int32_t d = (n + tk_poff(t)) - ((int32_t)o->step[j].note[k] + tk_poff(o));          /* (what both parts sound: TRN, an ARP SEQ part's stand-in) */
         d = d < 0 ? -d : d;
         if (d < 24 && (d % 12 == 1 || d % 12 == 11))
             return 1;
@@ -158,7 +162,7 @@ static void tl_shift(track_t *t, uint32_t len, uint32_t d)
 }
 
 /* ----------------------------------------------------------- melodic --- */
-static int32_t tl_in_scale(const track_t *t, int32_t n) { (void)t; return (int32_t)((tl_ms >> (uint32_t)((n - (int32_t)tl_rt + 120) % 12)) & 1u); }
+static int32_t tl_in_scale(const track_t *t, int32_t n) { (void)t; return (int32_t)((tl_ms >> (uint32_t)((n + tl_off - (int32_t)tl_rt + 240) % 12)) & 1u); }
 /* the next note of the scale above (d 1) or below (d -1) n */
 static int32_t tl_neigh(const track_t *t, int32_t n, int32_t d)
 {
@@ -178,8 +182,8 @@ static void tl_random_notes(track_t *t, uint32_t len)
     int32_t c = 0, lo, d, x;
     uint32_t i, k, g = 0, nd = 0, at;
     for (i = 0; i < len; i++)
-        if (tl_gate(&t->step[i])) {
-            c += t->step[i].note[0];
+        if (tl_gate(&tl_dst[i])) {
+            c += tl_dst[i].note[0];
             g++;
         }
     if (g) {
@@ -190,11 +194,11 @@ static void tl_random_notes(track_t *t, uint32_t len)
         c = 60 + (int32_t)tl_rt;
         c -= c > 66 ? 12 : 0;
         for (i = 0; i < len; i++) {
-            step_clear(&t->step[i]);
+            step_clear(&tl_dst[i]);
             if (TL_RB[gn % 6u][i % 16u] == 'x' && (!i || tl_rnd(8))) {
-                t->step[i].time = ST_NOTE;
-                t->step[i].n = 1;
-                t->step[i].vel = 96;
+                tl_dst[i].time = ST_NOTE;
+                tl_dst[i].n = 1;
+                tl_dst[i].vel = 96;
             }
         }
     }
@@ -206,7 +210,7 @@ static void tl_random_notes(track_t *t, uint32_t len)
     at = nd / 2u + tl_rnd(5);
     at = at >= 2u ? at - 2u : 0u;
     for (i = 0; i < len; i++) {
-        step_t *s = &t->step[i];
+        step_t *s = &tl_dst[i];
         if (!tl_gate(s))
             continue;
         at = at >= nd ? nd - 1u : at;
@@ -239,15 +243,16 @@ static void tl_random_notes(track_t *t, uint32_t len)
 
 /* COOK on a melodic track: 15..25 % of the NOTE steps (at least one; more when they undid each other): a note to the
  * next scale note up or down (mostly) or an octave, an accent on / off, a chance of 50 / 75 % or back to 100 */
+static uint32_t tl_ssig(void) { return fnv(2166136261u, tl_dst, NSTEP * sizeof(step_t)); }   /* (steps_sig of the steps being written) */
 static void tl_cook_notes(track_t *t, uint32_t len, uint32_t g)
 {
-    uint32_t m = g * (15u + tl_rnd(11)) / 100u, i, k, r, n, sig = steps_sig(t), tries = 64;
-    for (m = m ? m : 1u; tries-- && (m || steps_sig(t) == sig); m -= m != 0u) {   /* (undone again: one more) */
+    uint32_t m = g * (15u + tl_rnd(11)) / 100u, i, k, r, n, sig = tl_ssig(), tries = 64;
+    for (m = m ? m : 1u; tries-- && (m || tl_ssig() == sig); m -= m != 0u) {   /* (undone again: one more) */
         step_t *s;
         n = tl_rnd(g);
-        for (i = 0; i < len && (!tl_gate(&t->step[i]) || n--); i++)
+        for (i = 0; i < len && (!tl_gate(&tl_dst[i]) || n--); i++)
             ;
-        s = &t->step[i % NSTEP];
+        s = &tl_dst[i % NSTEP];
         r = tl_rnd(8);
         if (r == 6u) {
             s->flags ^= SF_ACCENT;
@@ -297,7 +302,7 @@ static void tl_trans(track_t *t, uint32_t len, int32_t d)
 }
 
 /* SWELL (a whole new wave: C4, was RANDOM) or RIPPLE (a few notes move: D4, was COOK) of t with the press's seed: 1 when the steps changed, 0 nothing (RIPPLE with no notes says so) */
-static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed)
+static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t live)
 {
     uint32_t len = tl_len(t), i, n = 0, sig = steps_sig(t);
     uint64_t was = tl_used(t, len);
@@ -308,12 +313,24 @@ static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed)
         ui_message("NOTHING TO RIPPLE");
         return 0;
     }
+    if (live) {                                         /* a part that plays (the loop wrap): built in a copy, written whole with the interrupt off (as tk_land) */
+        memcpy(tk_out, t->step, sizeof tk_out);
+        tl_dst = tk_out;
+    } else {
+        tl_dst = t->step;
+    }
     tl_sd = seed | 1u;
     if (ripple)
         tl_cook_notes(t, len, n);
     else
         tl_random_notes(t, len);
     tl_sd = 0;
+    if (live) {
+        fm1_irq_off();
+        memcpy(t->step, tk_out, sizeof t->step);
+        fm1_irq_on();
+    }
+    tl_dst = 0;
     tl_unlock(t, was, len);
     return steps_sig(t) != sig;
 }
@@ -327,6 +344,7 @@ static const char *tl_do(track_t *t, uint32_t p)
     const char *msg = 0;
     TIDE_TL_DO(t, p, was, len);                          /* TIDE hook (H14; SWELL / RIPPLE) */
     tl_rules(t);
+    tl_dst = t->step;
     if (p == TL_TUP || p == TL_TDN) {                   /* (no note in 1..LEN: nothing to transpose, no undo copy) */
         for (i = 0; i < len; i++)
             n += (uint32_t)tl_gate(&t->step[i]);
