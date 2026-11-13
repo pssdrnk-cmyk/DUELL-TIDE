@@ -80,11 +80,14 @@ static uint32_t sounding(void)                 /* part voices sounding (not the 
 
 /* one block of the mix into the hash and the numbers */
 static int32_t last_out[2 * CTL];
+static FILE *render_dump;                      /* REGRESS_DUMP=DIR: a render's output as int32 left / right pairs to DIR/<name>.i32 (a proof for a change that moves the goldens by a few LSB) */
 static void blk(void)
 {
     int32_t *o = last_out;
     uint32_t i, k;
     mix_block(o, CTL);
+    if (render_dump)
+        fwrite(o, 4, 2u * CTL, render_dump);
     for (i = 0; i < 2u * CTL; i++) {
         int32_t x = o[i], a = x < 0 ? -x : x;
         uint32_t u = (uint32_t)x;
@@ -312,6 +315,14 @@ static void job_cpu(const job_t *j)
 static int run_job_body(job_t *j)
 {
     memset(&R, 0, sizeof R);
+    if (getenv("REGRESS_DUMP")) {
+        char fn[256], *c;
+        snprintf(fn, sizeof fn, "%s/%s.i32", getenv("REGRESS_DUMP"), j->name);
+        for (c = fn + strlen(getenv("REGRESS_DUMP")) + 1; *c; c++)
+            if (*c == '/')
+                *c = '_';
+        render_dump = fopen(fn, "wb");
+    }
     switch (j->kind) {
     case J_PRESET:
         job_preset(j);
@@ -336,6 +347,8 @@ static int run_job_body(job_t *j)
         R.ok = (uint32_t)j->check(R.msg, sizeof R.msg);
         break;
     }
+    if (render_dump)
+        fclose(render_dump);
     return 0;
 }
 
