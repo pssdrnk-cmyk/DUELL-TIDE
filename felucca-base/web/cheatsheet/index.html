@@ -15,7 +15,8 @@ body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 "Barlow Semi C
 main{max-width:1100px;margin:0 auto;padding:20px 16px}
 header{padding:18px 0 10px;border-bottom:2px solid var(--line)}
 header h1{margin:0;font:700 clamp(40px,9vw,72px)/1 "Barlow Semi Condensed",sans-serif;letter-spacing:.01em;color:var(--fg)}
-header .tag{margin:10px 0 0;font-size:clamp(16px,3.4vw,22px);text-transform:uppercase;color:var(--fg)}
+header .tag{margin:10px 0 0;font-size:clamp(18px,3.4vw,24px);font-weight:600;color:var(--fg)}
+header h1 .wm{display:block;width:clamp(180px,30vw,260px);height:auto}header h1 .pt{display:none}
 header .tag i{font-weight:400}header .tag b{font-weight:700}
 header .by{margin:6px 0 0;font-size:clamp(15px,3vw,18px);letter-spacing:.03em;color:var(--mute)}
 header .sub{margin:8px 0 0;color:var(--mute)}
@@ -47,6 +48,8 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
  main{max-width:none;padding:0}
  header{padding:0 0 1.5mm;border-bottom:1.5px solid var(--a1)}
  header h1{font-size:20pt;color:#000}
+ header h1 .wm{display:none}
+ header h1 .pt{display:inline}
  header .tag{font-size:10pt;margin-top:1mm;color:#000}
  header .by{font-size:9pt;margin-top:.5mm;color:var(--mute)}
  header .sub{margin-top:1mm}
@@ -65,8 +68,8 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <body>
 <main>
 <header>
- <h1>TIDE</h1>
- <p class="tag"><i>Multi</i><b>Morphing</b> Bitimbral Synthesizer</p>
+ <h1><img class="wm" src="../assets/tide-wordmark.svg" alt="TIDE" width="260" height="79"><span class="pt">TIDE</span></h1>
+ <p class="tag">A morph that plays and evolves by itself.</p>
  <p class="by">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</p>
  <p class="sub">cheat sheet for the M-VAVE FM-1</p>
  <p class="stamp">The gestures first, TIDE's pages at the end &middot; a quick reference, not by OSCILL/R; full details in docs/QUICKSTART.md and docs/TIDE_GUIDE.md</p>

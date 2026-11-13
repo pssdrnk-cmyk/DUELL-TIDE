@@ -18,6 +18,14 @@
   :root { color-scheme: dark; --bg: #040B13; --surface: #0A1824; --raised: #102A3C; --fg: #F2FBFF; --dim: #9CC2D3; --line: #1D5E77; --accent: #3BE8D6; --ink: #02070D; --warn: #FF5A5A; --ok: #3BE8D6; --amber: #FFB547; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 500 18px/1.55 "Barlow Semi Condensed", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
   main { max-width: 680px; margin: 0 auto; padding: 40px 16px 64px; }
+  header.site { border-bottom: 1px solid var(--line); }
+  header.site .bar { max-width: 680px; margin: 0 auto; padding: 6px 16px; min-height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap; }
+  header.site .brand { display: inline-flex; margin-right: auto; }
+  header.site .brand img { display: block; height: 26px; width: auto; }
+  header.site nav { display: flex; gap: 4px 16px; flex-wrap: wrap; }
+  header.site nav a { color: var(--fg); text-decoration: none; padding: 8px 2px; font-weight: 500; }
+  header.site nav a:hover { color: var(--accent); text-decoration: underline; }
+  main { padding-top: 24px; }
   h1 { font-size: 36px; font-weight: 700; margin: 0; letter-spacing: .01em; }
   .tag { margin: 4px 0 8px; color: var(--dim); }
   h2 { font-size: 20px; font-weight: 700; margin: 0 0 8px; letter-spacing: .06em; text-transform: uppercase; }
@@ -51,8 +59,12 @@
 </head>
 <body>
 <div id="mockbar" class="mockbar" hidden>SIMULATED UNIT: nothing on this page touches a real FM-1.</div>
+<header class="site"><div class="bar">
+  <a class="brand" href="../" aria-label="TIDE, home"><img src="../assets/tide-wordmark.svg" alt="" width="87" height="26"></a>
+  <nav aria-label="Main"><a href="./">Sound editor</a><a href="../install/">Install</a><a href="../emu/">Emulator</a></nav>
+</div></header>
 <main>
-  <h1>TIDE for FM-1</h1>
+  <h1>Backup</h1>
   <p class="tag">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0.<br>The TIDE pages are not editable here; their settings are in the backup.</p>
   <p><b>Editor: Backup</b> for the M-VAVE FM-1 running TIDE. <a id="tosound" href="./">Back to the sound editor</a></p>
 
