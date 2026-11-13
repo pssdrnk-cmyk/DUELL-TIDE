@@ -3161,7 +3161,7 @@ static const struct { uint16_t y16, a16; uint32_t dx, ph; uint8_t w16, sp, mix, 
 #define SPL_SEA_Y1 218                                   /* the sea's last row + 1 (the credit line below it) */
 static void spl_sea(uint32_t st, uint16_t c1, uint16_t c2)
 {
-    const uint32_t t = 478495693u + st * 73819750u;      /* (0.7 rad, then 2 pi in 48 steps of the GIF's 80 ms, at the splash's 66 ms) */
+    const uint32_t t = 478495693u + st * 24606583u;      /* (0.7 rad, then 2 pi in 144 steps of 66 ms: a slow swell, a third of the drawing's speed; owner: "too fast") */
     const int hc = UI_PALETTES[ux.pal % NPALETTES].hc;   /* (POLICE: two flat colours, no blend: the far half part 1's, the near half part 2's, a pixel drawn whole or not) */
     uint16_t col[13];
     int32_t x, k;
