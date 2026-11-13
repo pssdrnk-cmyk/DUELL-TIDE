@@ -7,7 +7,7 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { synthBank, synthSingle, synthVoice } from "./test_dx7_synth.mjs";
 import { L, ID, P_E0 } from "./editor/layout.js";
-import { MockUnit, MockLink, defaultPart } from "./editor/mockunit.js";
+import { MockUnit as MockB12, MockLink, defaultPart, factoryBrowse } from "./editor/mockunit.js";
 import { Unit } from "./editor/unit.js";
 import { CMD } from "./editor/proto.js";
 import { buildRecord, buildEndB, endBSize, parseRecord, describeRecord, packPatch, unpackPatch, storeDefaults, engineIndex, rangeOf, PTF, recordProblem, XB_DEFS, NX, WORST } from "./editor/patchrecord.js";
@@ -17,6 +17,8 @@ import { FM6 } from "./editor/fm6voice.js";
 import { parseDx7File, voiceToPatch, cleanVoiceName, guessCategory, neutralValues, SOURCE_LABEL } from "./editor/dx7import.js";
 import { WT, ampToByte, tableToFile, parseTableFile, TABLE_FORMAT } from "./editor/wavetable.js";
 import { bkCrc } from "./fm1backup.js";
+// The default mock is the b12 unit (175 slots, SLOT_HI, a store of 150, backup id 47). The tests of the unit of before run on the 128 slot one; the b12 tests (end of file) use MockB12.
+const MockUnit = class extends MockB12 { constructor(o = {}) { super({ slots175: false, ...o }); } };
 
 let fails = 0;
 const ok = (c, what) => { console.log(`${what.padEnd(118)} ${c ? "ok" : "FAIL"}`); if (!c) fails++; };
@@ -298,6 +300,66 @@ function storeDefault0() { const d = storeDefaults(0); return d[45] === 0 && d[4
   ok(!parseTableFile("{").ok && /patch/.test(parseTableFile('{"format":"duell-patches"}').error) && !parseTableFile(JSON.stringify({ ...JSON.parse(text), frames: 20 })).ok, "wavetable file: not JSON, a patch file, another size: refused");
   const z = tableToFile("ZERO", new Uint8Array(WT.BYTES));
   ok(!parseTableFile(z).ok, "wavetable file: an all-zero table is refused (the unit would)");
+}
+
+// ---- b12: 175 slots, the librarian on slots past 127 (SLOT_HI before every message)
+{
+  const cB = async (opt = {}) => { const m = new MockB12(opt), u = new Unit(new MockLink(m)); await u.connect(); await u.listSlots(); return { m, u }; };
+  const { m, u } = await cB(), o = await connect();
+  const hiPairs = (l) => { const c = l.filter((x) => x.startsWith("cmd")); return c.length >= 2 && c.length % 2 === 0 && c.every((x, i) => x === (i % 2 ? "cmd 84" : "cmd 90")); };   // every PATCH_RAW message (cmd 84) is right behind its own SLOT_HI (cmd 90)
+  const rec = buildRecord({ engine: 0, name: "HIGH ONE", cat: 3, values: storeDefaults(0) });
+  // PATCH_RAW: a transfer into slot 150 (byte 22): INFO, BEGIN, each DATA, COMMIT and the READ of it carry their own SLOT_HI
+  m.log.length = 0;
+  await LIB.rawWrite(u, 150, rec);
+  const wlog = m.log.slice();
+  ok(wlog.filter((x) => x === "cmd 84").length >= 3 && hiPairs(wlog) && m.patches.has(150) && !m.patches.has(22), "b12: PATCH_RAW BEGIN, every DATA and COMMIT into slot 150 each go with their own SLOT_HI; slot 22 is untouched");
+  m.log.length = 0;
+  const back = await LIB.rawRead(u, 150), rlog = m.log.slice();
+  ok(same(back, rec) && rlog.filter((x) => x === "cmd 84").length >= 2 && hiPairs(rlog) && (await LIB.rawRead(u, 22)) === null, "b12: the record of slot 150 reads back the same bytes (INFO and every READ with SLOT_HI); slot 22 holds its factory sound");
+  ok((await LIB.rawInfo(u, 150)).saved && !(await LIB.rawInfo(u, 22)).saved && (await LIB.rawInfo(u, 174)).saved === false, "b12: PATCH_RAW INFO tells slot 150 saved, 22 and 174 not");
+  await u.listSlots();
+  ok(u.slots[150].saved && u.slots[150].name === "HIGH ONE" && !u.slots[22].saved, "b12: UP_LIST shows slot 150 saved with the record's name");
+  // a rename through the bytes, a failed transfer (the abort goes with SLOT_HI too, slot 150 keeps its record)
+  m.playing = true; m.log.length = 0;
+  ok(await rejects(() => LIB.rawWrite(u, 151, rec), /playing/) && !m.patches.has(151) && !m.patches.has(23) && hiPairs(m.log), "b12: a write refused while playing (rc 3) writes nothing; the messages still carry SLOT_HI");
+  m.playing = false;
+  // UP_PUT / UP_GET: an approximate copy into slot 160, read back through UP_GET
+  const item = itemApprox({ number: 1, name: "COPY HI", engine: 0, cat: 2, values: storeDefaults(0) });
+  m.log.length = 0;
+  await LIB.writeItem(u, 160, item);
+  ok(m.log.slice(0, 2).join() === "cmd 90,cmd 18" && m.patches.get(160)?.name === "COPY HI" && !m.patches.has(32), "b12: UP_PUT into slot 160 goes with SLOT_HI and lands in slot 160 (not 32)");
+  const g = await LIB.upGet(u, 160);
+  ok(g.slot === 160 && g.saved && g.name === "COPY HI" && g.values.every((v, i) => v === item.values[i]) && await LIB.verifyItem(u, 160, item), "b12: UP_GET of slot 160 gives the copy back (slot 160), verify agrees");
+  const gf = await LIB.upGet(u, 174);
+  ok(gf.slot === 174 && !gf.saved && gf.name === factoryBrowse()[174].name, "b12: UP_GET of slot 174 gives its factory sound");
+  // read/export: a saved slot past 127 is its record, number = slot + 1, the file keeps it
+  const items = await LIB.readItems(u, [0, 150, 160, 174]);
+  ok(items.map((x) => x.number).join() === "1,151,161,175" && items[0].kind === "record" && items[1].kind === "record" && items[2].kind === "record" && items[3].kind === "approx", "b12: export reads slots past 127 (a saved slot as its record, a factory slot as a copy); their numbers are 151, 161, 175");
+  const fileTxt = stringifyFile(buildFile(items, { firmware: u.info.version, source: "unit" })), pf = parseFile(fileTxt);
+  ok(pf.ok && pf.items.map((x) => x.number).join() === "1,151,161,175" && same(pf.items[1].record, rec), "b12: the patch file keeps the numbers past 128 and the record");
+  // plans: running past the end is 175 now; the label of a slot in a plan
+  const four = [items[0], items[1], items[2], items[3]];
+  ok(same(LIB.chooseTargets(u, four, { mode: "from", start: 172 }), [172, 173, 174, null]), "b12: targets: running past the last slot (175) leaves the rest without a place");
+  ok(same(LIB.chooseTargets(u, four, { mode: "same" }), [0, 150, 160, 174]), "b12: targets: the same slot numbers as the file reach slots past 127");
+  ok(same(LIB.chooseTargets(o.u, four.slice(0, 3), { mode: "same" }).map((t) => t), [0, 150, 160]) && LIB.makePlan(o.u, four.slice(0, 3), [0, 150, 160]).problems.length === 2, "b12: a unit with 128 slots reports a slot past 127 as not existing");
+  const plan = LIB.makePlan(u, [items[1], items[3]], [170, 128]);
+  ok(plan.problems.length === 0 && plan.writes[0].replaces.label === "#167" && plan.writes[1].replaces.label === "#125", "b12: the plan names slots by their labels (#167, #125)");
+  const res = await LIB.runPlan(u, plan, {});
+  ok(!res.failed && res.mismatched.length === 0 && same(await LIB.rawRead(u, 170), rec) && m.patches.has(128), "b12: a plan writes slots 170 and 128 and verifies them");
+  // copy / move / swap on slots past 127
+  const cp = await LIB.planCopy(u, 150, 5);
+  await LIB.runPlan(u, cp, {});
+  ok(same(await LIB.rawRead(u, 5), rec), "b12: copy from slot 150 to slot 5");
+  await LIB.swapSlots(u, 150, 0);
+  ok(same(await LIB.rawRead(u, 0), rec) && parseRecord(await LIB.rawRead(u, 150)).name === "WARM PAD", "b12: swap slots 150 and 0 (both saved)");
+  await LIB.moveSlot(u, 160, 175 - 1);
+  ok(m.patches.has(174) && !m.patches.has(160) && m.patches.get(174).name === "COPY HI", "b12: move slot 160 to slot 174, 160 shows its factory sound again");
+  const sa = await LIB.saveAs(u, 170, 140, { name: "RENAMED HI", cat: 4 });
+  ok(sa.name === "RENAMED HI" && m.patches.get(140).name === "RENAMED HI" && m.patches.get(140).cat === 4, "b12: save as from slot 170 into slot 140 with a new name and category");
+  await LIB.setCategory(u, 140, 6);
+  ok(parseRecord(await LIB.rawRead(u, 140)).cat === 6 && m.patches.get(140).cat === 6, "b12: a category change on slot 140 (read whole, written whole)");
+  // a unit without PATCH_RAW cannot be asked about slots past 127: it never gets SLOT_HI
+  ok(o.m.log.every((x) => x !== "cmd 90"), "b12: the unit with 128 slots never saw SLOT_HI in all this");
 }
 
 console.log(fails ? `\nLIBRARIAN TESTS FAILED (${fails})` : "\nlibrarian tests passed");

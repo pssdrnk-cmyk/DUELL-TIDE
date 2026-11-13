@@ -2,7 +2,7 @@
 // DUELL editor: the "duell-patches" file and the "item" the librarian works with. No DOM, no I/O (the page reads and saves the text).
 //
 // A file is JSON: { format: "duell-patches", version: 1, firmware, created, source, patches: [ ... ] }. Each patch:
-//   number     the slot it came from, as the unit shows it (#NN, 1..128), or absent
+//   number     the slot it came from, as the unit shows it (slot + 1, 1..175), or absent
 //   name, engine (its name, "FM6"), category (its name)
 //   saved      true: the patch is a saved record of the slot; false: the slot held a factory sound (a copy of its values only: "approximate")
 //   record     base64 of the unit's STORED RECORD, lossless (PATCH_RAW; patchrecord.js), with its CRC-32 in crc32 (8 hex digits)
@@ -24,7 +24,7 @@ export function fromBase64(text) {
 }
 
 // ---- items
-// { number (1..128 | null), name, engine (index), engineName, cat (index), catName, kind: "record" | "approx", record (Uint8Array) | null, crc, values (approx) | null,
+// { number (1..175 | null), name, engine (index), engineName, cat (index), catName, kind: "record" | "approx", record (Uint8Array) | null, crc, values (approx) | null,
 //   source, params, warnings: [], error: null | text }
 export function itemFromRecord(record, { number = null, source = "unit", warnings = [] } = {}) {
   const r = parseRecord(record);
@@ -66,7 +66,7 @@ export function parseFile(text) {
   const items = [], problems = [];
   j.patches.forEach((p, i) => {
     const where = `Patch ${i + 1}${typeof p?.name === "string" ? ` (${p.name})` : ""}`;
-    const number = Number.isInteger(p?.number) && p.number >= 1 && p.number <= 128 ? p.number : null;
+    const number = Number.isInteger(p?.number) && p.number >= 1 && p.number <= 175 ? p.number : null;
     const bad = (why) => { problems.push(`${where}: ${why}`); };
     if (!p || typeof p !== "object") return bad("not a patch.");
     if (typeof p.record === "string") {

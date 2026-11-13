@@ -1094,15 +1094,15 @@ int main(void)
         }
 
         {   /* audit G13: BANK SELECT 2 (CC0 = 0, CC32 = 2) + PC n = the read-only place #129 + n, the sounds past the 128; bank 3 and a program past the last: nothing */
-            uint32_t fe, fk, good = 0, last = UP_VSLOTS - UP_SLOTS - UP_NUSER - 1u;
+            uint32_t fe, fk, good = 0, last = UP_NXTRA - 1u;
             const uint32_t pr[3] = {0u, 17u, last};
             for (i = 0; i < 3u; i++) {
                 midi_in_event(0x0Bu | 0xB1u << 8 | 0u << 16 | 0u << 24);
                 midi_in_event(0x0Bu | 0xB1u << 8 | 32u << 16 | 2u << 24);
                 midi_in_event(0x0Cu | 0xC1u << 8 | pr[i] << 16);
                 events_block(CTL); frame();
-                good += sl_fac(UP_SLOTS + UP_NUSER + pr[i], &fe, &fk) && trk[1].eng_req == fe && trk[1].preset == fk && !trk[1].user &&
-                        slot_place(&trk[1]) == UP_SLOTS + UP_NUSER + pr[i];
+                good += sl_fac(UP_BANK + UP_NUSER + pr[i], &fe, &fk) && trk[1].eng_req == fe && trk[1].preset == fk && !trk[1].user &&
+                        slot_place(&trk[1]) == UP_BANK + UP_NUSER + pr[i];
             }
             midi_in_event(0x0Bu | 0xB1u << 8 | 32u << 16 | 2u << 24);
             midi_in_event(0x0Cu | 0xC1u << 8 | (last + 1u) << 16);   /* past the last place */
@@ -1110,7 +1110,7 @@ int main(void)
             midi_in_event(0x0Cu | 0xC1u << 8 | 0u << 16);
             events_block(CTL); frame();
             ck("BANK SELECT 2 + PC n on ch 2 = the place #129 + n (first, a middle one, the last); past the last, and bank 3: nothing",
-               good == 3u && last >= 31u && slot_place(&trk[1]) == UP_SLOTS + UP_NUSER + last);
+               good == 3u && last >= 31u && slot_place(&trk[1]) == UP_BANK + UP_NUSER + last);
             midi_in_event(0x0Bu | 0xB1u << 8 | 32u << 16 | 0u << 24);   /* back to bank 0 for the rest */
         }
 

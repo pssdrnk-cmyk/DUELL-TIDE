@@ -124,9 +124,9 @@ static void fill(void)                                /* every kind of user data
     project_save(4u);
     project_save(11u);
     for (i = 0; i < 4096u; i++) {                     /* what must stay: the old sample region beyond the wavetables, the FM6 voice bank sector */
-        nor[0xF4000u + i] = (uint8_t)(i ^ 0x5Au);      /* (0xF4000.. and 0xF8000..: the stock firmware's user region above the multi objects (b10 U4: 0xEA000..0xF3FFF are M17..M26), outside every storage.c object AND outside FL_STORE_OK (0x97000..0xDFFFF, 0xE5000..0xE7FFF, 0xEA000..0xF3FFF,
+        nor[0xE8000u + i] = (uint8_t)(i ^ 0x5Au);      /* (b12: 0xF4000..0xFBFFF are the patch chunks 21..24 now; 0xE8000.. and 0xE9000.., the stock VM backup, stay outside every object. Before: the stock firmware's user region above the multi objects (b10 U4: 0xEA000..0xF3FFF are M17..M26), outside every storage.c object AND outside FL_STORE_OK (0x97000..0xDFFFF, 0xE5000..0xE7FFF, 0xEA000..0xF3FFF,
                                                         * 0xFC000..0xFEFFF): the erase cannot reach it even by a wrong address. 0xBA000 and 0xC0000 were the free range until the patch store's chunks 16..21 took 0xBA000..0xC5FFF) */
-        nor[0xF8000u + i] = (uint8_t)(i ^ 0xA5u);
+        nor[0xE9000u + i] = (uint8_t)(i ^ 0xA5u);
         nor[0xE7000u + i] = (uint8_t)(i * 3u);
     }
 }
@@ -143,7 +143,7 @@ static int kept_ok(void)
 {
     uint32_t i;
     for (i = 0; i < 4096u; i++)
-        if (nor[0xF4000u + i] != (uint8_t)(i ^ 0x5Au) || nor[0xF8000u + i] != (uint8_t)(i ^ 0xA5u))
+        if (nor[0xE8000u + i] != (uint8_t)(i ^ 0x5Au) || nor[0xE9000u + i] != (uint8_t)(i ^ 0xA5u))
             return 0;
     return 1;
 }
@@ -308,7 +308,7 @@ int main(void)
     ck("YES: everything stored is gone (settings, autosave, patches, multis, pattern slots), the restart pending", ui.confirm == CF_ERASE_ALL);
     press(B_OCTUP);
     ck("  the dialog closes with ERASED, RESTARTING; every storage object reads empty", !ui.confirm && msg_is("ERASED, RESTARTING") && erase_busy() && all_gone());
-    ck("  the stock firmware's regions (0xF4000, 0xF8000) are untouched; the FM6 voice bank sector is erased, the velocity calibration is KEPT (item 103)", kept_ok() && velo_kept() && vbank_gone());
+    ck("  the stock firmware's VM backup (0xE8000, 0xE9000) is untouched; the FM6 voice bank sector is erased, the velocity calibration is KEPT (item 103)", kept_ok() && velo_kept() && vbank_gone());
     ck("  the restart is not due at once (the message is seen), nothing is written meanwhile", !erase_restart_due());
     {
         uint32_t p0 = n_prog, e1 = n_erase;
@@ -347,7 +347,7 @@ int main(void)
                 for (j = 0; j < 4096u; j++)
                     blank &= nor[b + j] == 0xFFu;
             }
-        ck("  all 22 patch chunks (44 sectors, 0xA6000..0xC5FFF among them) are blank; the velocity store (0xC6000 / 0xC7000) is byte for byte as before (item 103: KEPT)",
+        ck("  all 25 patch chunks (50 sectors, 0xA6000..0xC5FFF and, b12, 0xF4000..0xFBFFF among them) are blank; the velocity store (0xC6000 / 0xC7000) is byte for byte as before (item 103: KEPT)",
            blank && kept_ok() && velo_kept() &&
            !memcmp(nor + st_sector(OBJ_VELO, 0), snap + st_sector(OBJ_VELO, 0), 4096u) && !memcmp(nor + st_sector(OBJ_VELO, 1), snap + st_sector(OBJ_VELO, 1), 4096u));
     }

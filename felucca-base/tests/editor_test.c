@@ -70,7 +70,7 @@ static int st_erase(uint32_t off) { (void)off; return -1; }
 static int card_hidden_vp(const int16_t *vp) { (void)vp; return 0; }
 #include "../firmware/src/editor.c"
 
-#define PCAP ED_PCAP                                     /* the patch records the store takes (INFO 58 01): TIDE 126, else 128 */
+#define PCAP ED_PCAP                                     /* the patch records the store takes (INFO 58 01): b12 150 of the 175 slots */
 static int check(const char *what, int ok)
 {
     printf("editor: %-70s %s\n", what, ok ? "ok" : "FAIL");
@@ -222,8 +222,8 @@ static int preferences(void)
         host_wire[e - 7] == 0x4B && host_wire[e - 6] == 1 && host_wire[e - 5] == 1 &&
         host_wire[e - 10] == 0x5B && host_wire[e - 9] == 1 && host_wire[e - 8] == 1 &&   /* 1.1: BYPASS (cmd 89) */
         host_wire[e - 4] == 0x4F && host_wire[e - 3] == 1 && host_wire[e - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
-    bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 3 (bit 0 TIDE, bit 1 the voice bank object); plain DUELL sends none",
-        host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 3);
+    bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 7 (bit 0 TIDE, bit 1 the voice bank object, b12 bit 2 the 175 slots); plain DUELL sends none",
+        host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 7);
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
         host_wire[5] == 3 && settings.palette == 3 && T_BG == UI_PALETTES[3].bg[ux.part]);
@@ -646,7 +646,7 @@ static int user_preset_roundtrip(void)
         bad += check("UP_PUT with a category (after the kind's 16 bytes; past the last: rc 1), UP_GET and UP_LIST give it", ok);
         k = k0;
     }
-    if (PCAP < UP_SLOTS) {   /* TIDE: 126 records fit; the 127th NEW one is rc 6 (STORE FULL) from UP_PUT and UP_STORE (and tag 58 says 126), never "flash failed" */
+    if (PCAP < UP_SLOTS) {   /* b12: 150 records fit; the 151st NEW one is rc 6 (STORE FULL) from UP_PUT and UP_STORE (and tag 58 says 150), never "flash failed" */
         uint32_t s;
         char nm[8] = "FILL";
         song.playing = 0;
@@ -655,19 +655,39 @@ static int user_preset_roundtrip(void)
                 up_put(s, 0);
         for (s = 0; s < PCAP; s++)
             up_store(s, nm);
-        a[0] = UP_SLOTS - 1u;
+        a[0] = UP_SLOTS - 1u - 128u;                      /* (b12: slot 175 = SLOT_HI + 46) */
         a[k - 1u] = CAT_PAD;
+        { uint8_t hi = 1; request(ED_SLOT_HI, &hi, 1); }
         request(ED_UP_PUT, a, k);
         ok = host_wire[6] == 6u && !up_used(UP_SLOTS - 1u);
         {
-            uint8_t sa[3] = {UP_SLOTS - 1u, 'S', 0};
+            uint8_t sa[3] = {UP_SLOTS - 1u - 128u, 'S', 0}, hi = 1;
+            request(ED_SLOT_HI, &hi, 1);
             request(ED_UP_STORE, sa, 3);
         }
         ok &= host_wire[6] == 6u && !up_used(UP_SLOTS - 1u) && up_count() == PCAP;
         a[0] = 3;
         request(ED_UP_PUT, a, k);
         ok &= host_wire[6] != 6u && host_wire[6] != 1u;    /* (an existing slot is still rewritten: no flash here, so rc 2 as ever, never 6) */
-        bad += check("a full store (TIDE, 126 records): UP_PUT and UP_STORE of a new slot answer rc 6, an existing slot still takes its record", ok);
+        bad += check("a full store (b12, 150 records): UP_PUT and UP_STORE of a new slot answer rc 6, an existing slot still takes its record", ok);
+        for (s = 0; s < UP_SLOTS; s++)
+            if (up_used(s))
+                up_put(s, 0);
+        {   /* b12: SLOT_HI (90) makes the next command's slot byte count from 128, for that one command only; no reply; INFO 44 01 bit 2 */
+            uint8_t hi = 1, g = 22, sa[3] = {22, 'H', 0}, l2[2] = {0, 16};
+            uint32_t n0 = request(ED_SLOT_HI, &hi, 1);
+            request(ED_UP_STORE, sa, 3);
+            ok = n0 == 0u && host_wire[6] != 1u && host_wire[6] != 6u && up_used(150u) && !up_used(22u);   /* (no flash here: rc 2 as ever, kept in RAM) */
+            request(ED_UP_GET, &g, 1);                      /* (no SLOT_HI: slot 22 itself, the factory sound) */
+            ok &= host_wire[5] == 22u && host_wire[host_wire_n - 2u] == 0u;   /* (its SAVED byte, the last: 0) */
+            request(ED_SLOT_HI, &hi, 1);
+            request(ED_UP_LIST, l2, 2);                     /* slots 129..144 */
+            ok &= host_wire[5] == 0u && host_wire[6] == 16u && host_wire[7] == 127u;
+            request(ED_SLOT_HI, &hi, 1);
+            request(ED_UP_ERASE, &g, 1);
+            ok &= host_wire[6] != 1u && !up_used(150u);
+            bad += check("b12: SLOT_HI + UP_STORE writes slot 151 (no reply to SLOT_HI); the next command is back on slots 1..128; UP_LIST from 129 and UP_ERASE of 151 through it", ok);
+        }
         for (s = 0; s < UP_SLOTS; s++)
             if (up_used(s))
                 up_put(s, 0);

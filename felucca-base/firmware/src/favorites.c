@@ -26,14 +26,14 @@ static int favorite_has(uint32_t engine, uint32_t preset)
 {
     const uint8_t *b;
     if (engine == NENGINES)
-        return preset < UP_SLOTS && ((*FAV_USER_WORD(preset) >> (preset % 32u)) & 1u);
+        return preset < UP_BANK && ((*FAV_USER_WORD(preset) >> (preset % 32u)) & 1u);
     b = fav_byte(engine, preset);
     return b && ((*b >> (preset % 8u)) & 1u);
 }
 static int favorite_set(uint32_t engine, uint32_t preset, int on)
 {
     uint8_t *b;
-    if (engine > NENGINES || (engine == NENGINES ? preset >= UP_SLOTS : !fav_byte(engine, preset)))
+    if (engine > NENGINES || (engine == NENGINES ? preset >= UP_BANK : !fav_byte(engine, preset)))
         return 0;
     if (favorite_has(engine, preset) == !!on) return 0;
     if (engine == NENGINES) {

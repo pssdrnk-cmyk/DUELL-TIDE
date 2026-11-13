@@ -209,7 +209,8 @@ static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t
 static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a step note of the part sounds at) */
 #define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); if ((p) == TL_RANDOM || (p) == TL_COOK) return tide_tl_swell((t), (p) == TL_COOK); } while (0)
 #define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* patch chunk 21's object: where earlier TIDE builds kept the settings (read once, never written: tide_store.c) */
-#define TIDE_PT_NCH 21u                                  /* the patch store's chunks with TIDE: 126 saved patches at most (plan §4.5) */
+#define TIDE_PT_NCH 25u                                  /* the patch store's chunks with TIDE: 0..20 and, b12, 21..24 (objects 55..58 at 0xF4000): 150 saved patches at most */
+#define TIDE_PT_NOLD 21u                                 /* the chunks an earlier build reads (0..20): a slot of the bank's 128 is placed there first, a slot past them in 21..24 first */
 #define TIDE_MG_N 5u                                     /* ui.mg's gestures: MORPH's, GLO's and GLIDE's (tide_ui.c TIDE_G_GLIDE) */
 #define TIDE_PAGE(pg) ((pg)->scope == SC_TIDE)
 #define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), FILTER / RESONANCE / ECHO on the slim row (1.0.0-b7) */
@@ -258,13 +259,13 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_FIRST_MULTI 1u
 
 
-/* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots and PS_NUSER pattern slots are USER slots, empty until saved. The factory
- * sounds / patterns they displace stay listed after them as read-only places (voice places UP_SLOTS.., pattern places PS_SLOTS..). No record moves.
- * The factory sounds past the 128 of the bank (sounds.c DS_N, tools/duell_sounds.py N_BASE) follow the displaced ones as read-only voice places too (UP_NXTRA);
- * none has a slot: they are for the PATCHES list, TIDE and the editor's sound lists, and SAVE offers USER 1 for them */
-#define UP_NXTRA (DS_N > UP_SLOTS ? DS_N - UP_SLOTS : 0u)
-#define UP_USER0 (UP_SLOTS - UP_NUSER)
-#define UP_VSLOTS (UP_SLOTS + UP_NUSER + UP_NXTRA)
+/* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots of the bank and PS_NUSER pattern slots are USER slots, empty until saved. The factory
+ * sounds / patterns they displace stay listed after them (voice places UP_BANK.., pattern places PS_SLOTS.., read-only). No record moves.
+ * The factory sounds past the 128 of the bank (sounds.c DS_N, tools/duell_sounds.py N_BASE) follow the displaced ones (UP_NXTRA). b12: every voice place is a
+ * slot (UP_SLOTS = UP_VSLOTS): the displaced #125..#128 and #129..#171 are slots 128..174, saved over and restored as any other */
+#define UP_NXTRA (DS_N > UP_BANK ? DS_N - UP_BANK : 0u)
+#define UP_USER0 (UP_BANK - UP_NUSER)
+#define UP_VSLOTS (UP_BANK + UP_NUSER + UP_NXTRA)
 #define PS_USER0 (PS_SLOTS - PS_NUSER)
 #define PS_VSLOTS (PS_SLOTS + PS_NUSER)
 #endif

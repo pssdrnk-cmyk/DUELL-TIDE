@@ -17,7 +17,7 @@
 #define FELUCCA_FLASH 1
 #include "ui_test.c"
 #include "endb_store.h"
-#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store always takes: 126 with TIDE (chunk 21 holds its settings, plan 4.5), else all 128 */
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store always takes: b12 150 of the 175 slots (25 chunks; object 48 stays the old TIDE settings') */
 
 static uint8_t nor[0x100000];
 static long cut_bytes = -1;
@@ -28,7 +28,7 @@ static void hit(uint32_t off, uint32_t n)
     if (!watch)
         return;
     if ((off >= 0xA6000u && off + n <= 0xC6000u) || (off >= 0xC8000u && off + n <= 0xCE000u) || (off >= 0xDC000u && off + n <= 0xE0000u) ||
-        (off >= 0x9F000u && off + n <= 0xA0000u) || (off >= 0xFE000u && off + n <= 0xFF000u))
+        (off >= 0x9F000u && off + n <= 0xA0000u) || (off >= 0xFE000u && off + n <= 0xFF000u) || (off >= 0xF4000u && off + n <= 0xFC000u))   /* (b12: chunks 21..24) */
         wrote += n;
     else
         stray += n;
@@ -665,11 +665,12 @@ int PATCH_TEST_MAIN(void)
         printf("patch: PT_WORST %u bytes (SEQ-arp FM6 record %u, plain %u), PT_K %u per chunk, %u chunks, PT_MAX %u, chunk payload %u (ends at 0x%X)\n",
                (unsigned)PT_WORST, (unsigned)PT_W_SEQ, (unsigned)PT_W_PLAIN, (unsigned)PT_K, (unsigned)PT_NCH, (unsigned)PT_MAX, (unsigned)PT_CAP,
                (unsigned)(PT_CAP + ST_PAYLOAD_OFF));
-        ck("PT_MAX = chunks x records per chunk (22 x 6 = 132, at least the 128 slots; TIDE 21 x 6 = 126), a chunk of PT_K worst records fits its payload",
-           PT_MAX == PT_NCH * PT_K && PT_MAX + (22u - PT_NCH) * PT_K >= UP_SLOTS && UP_SLOTS == 128u && PT_K * PT_WORST + PT_HDR <= PT_CAP && PT_K == 6u &&
-           PT_NCH == 21u && NSAVE == 126u);
-        ck("  the payload ends at sector offset 0xF00 (the updater's scan), 22 objects = 16 more A/B pairs at 0xA6000..0xC5FFF (TIDE: the last one its settings)",
-           PT_CAP + ST_PAYLOAD_OFF == 0xF00u && PT_NCH + 1u == 22u && st_sector(OBJ_PATCHX0, 0) == 0xA6000u && st_sector(OBJ_PATCHX0 + 9u, 1) + 4096u == 0xBA000u &&
+        ck("PT_MAX = chunks x records per chunk (b12: 25 x 6 = 150 of the 175 slots), a chunk of PT_K worst records fits its payload",
+           PT_MAX == PT_NCH * PT_K && UP_SLOTS == 175u && UP_SLOTS == UP_VSLOTS && PT_K * PT_WORST + PT_HDR <= PT_CAP && PT_K == 6u &&
+           PT_NCH == 25u && NSAVE == 150u);
+        ck("  the payload ends at sector offset 0xF00 (the updater's scan), 16 more A/B pairs at 0xA6000..0xC5FFF (the last one the old TIDE settings'), b12: chunks 21..24 at 0xF4000..0xFBFFF",
+           PT_CAP + ST_PAYLOAD_OFF == 0xF00u && pt_obj(20u) == OBJ_PATCHX0 + 14u && pt_obj(21u) == OBJ_PATCHY0 && st_sector(pt_obj(21u), 0) == 0xF4000u &&
+           st_sector(pt_obj(24u), 1) + 4096u == 0xFC000u && OBJ_PATCHY0 == 55u && OBJ_COUNT == 59u && st_sector(OBJ_PATCHX0, 0) == 0xA6000u && st_sector(OBJ_PATCHX0 + 9u, 1) + 4096u == 0xBA000u &&
            st_sector(OBJ_PATCHX0 + 10u, 0) == 0xBA000u && st_sector(OBJ_PATCHX0 + 15u, 1) + 4096u == 0xC6000u && OBJ_COUNT >= OBJ_PATCHX0 + 16u &&
            OBJ_PATCHX0 == OBJ_FM6VB + 1u);
         {   /* the 22 chunks' 44 sectors: all different, none of another object's, none the voice bank's (id 32 is refused) */
@@ -680,11 +681,11 @@ int PATCH_TEST_MAIN(void)
                     same += st_sector(pt_obj(a2 / 2u), a2 % 2u) == st_sector(pt_obj(b2 / 2u), b2 % 2u);
                 for (o = 0; o < OBJ_COUNT; o++)
                     for (cc = 0; cc < 2u; cc++)
-                        if ((o < OBJ_PATCH0 || o >= OBJ_PATCH0 + 6u) && (o < OBJ_PATCHX0 || o >= OBJ_PATCHX0 + 16u) && !OBJ_RETIRED(o) &&
+                        if ((o < OBJ_PATCH0 || o >= OBJ_PATCH0 + 6u) && (o < OBJ_PATCHX0 || o >= OBJ_PATCHX0 + 15u) && (o < OBJ_PATCHY0 || o >= OBJ_PATCHY0 + 4u) && !OBJ_RETIRED(o) &&
                             st_sector(o, cc) == st_sector(pt_obj(a2 / 2u), a2 % 2u))
                             other++;
             }
-            ck("  the 22 chunks' sectors are all different and no other object's; ids 30..32 (unused, and the FM6 voice bank's) are no store objects",
+            ck("  the 25 chunks' sectors are all different and no other object's (object 48 is none of them); ids 30..32 (unused, and the FM6 voice bank's) are no store objects",
                !same && !other && st_head(OBJ_FM6VB, 0, &h) != 0 && st_save(OBJ_FM6VB, "x", 1) < 0 && st_wipe(OBJ_FM6VB) < 0 && st_head(30, 0, &h) != 0 && st_save(31, "x", 1) < 0);
         }
         /* A: NSAVE small records (every slot; TIDE: 126 of them), the directory is all there is in RAM: no mirror */
@@ -695,12 +696,21 @@ int PATCH_TEST_MAIN(void)
             trk[0].p[P_TRIM] = (int16_t)(40 + k % 50u);
             n += up_store_trk(&trk[0], k, nmx, 0) == 0;
         }
-        ck("NSAVE plain records store, one a slot (128; TIDE 126)", n == NSAVE && up_count() == NSAVE);
+        ck("NSAVE plain records store, one a slot (b12: 150)", n == NSAVE && up_count() == NSAVE);
         if (NSAVE < UP_SLOTS)
             ck("  TIDE: one more NEW record is refused as full (STORE FULL), nothing lost", up_store_trk(&trk[0], NSAVE, "FULL", 0) == PT_FULL && !up_used(NSAVE) && up_count() == NSAVE);
         for (c = 0; c < PT_NCH; c++)
             mx = pt_cnt(c) > mx ? pt_cnt(c) : mx;
-        ck("  no chunk holds more than PT_K records, and every one of the 22 chunks is used", mx <= PT_K && pt_cnt(0) && pt_cnt(PT_NCH - 1u));
+        ck("  no chunk holds more than PT_K records, and every one of the 25 chunks is used", mx <= PT_K && pt_cnt(0) && pt_cnt(PT_NCH - 1u));
+        {   /* b12: a slot of the bank's 128 is in chunks 0..20 while they have room, a slot past it in 21..24 first (an earlier build reads only 0..20 and only slots under 128) */
+            uint32_t lo_new = 0, hi_old = 0;
+            for (k = 0; k < NSAVE; k++)
+                if (k < UP_BANK - 2u)
+                    lo_new += pt_dir[k].ch >= TIDE_PT_NOLD;
+                else if (k >= UP_BANK)
+                    hi_old += pt_dir[k].ch < TIDE_PT_NOLD;
+            ck("  b12: slots 1..126 in the chunks an earlier build reads, slots past the 128 in the new chunks 21..24 (all 24 places of them)", !lo_new && !hi_old);
+        }
         {   /* the sector tails: nothing from sector offset 0xF00 is ever programmed; each chunk's live copy is within PT_CAP */
             uint32_t o, cc, tail = 1, maxlen = 0;
             for (o = 0; o < PT_NCH; o++)
@@ -717,7 +727,7 @@ int PATCH_TEST_MAIN(void)
             uint32_t ram = (uint32_t)(sizeof pt_dir + sizeof pt_work + sizeof pt_rbuf + sizeof pt_len + sizeof pt_n + sizeof pt_cur);
             printf("patch: the store's RAM: directory %u + work chunk %u + read ring %u = %u bytes (was 23,040 + 268 for the mirror)\n",
                    (unsigned)sizeof pt_dir, (unsigned)sizeof pt_work, (unsigned)sizeof pt_rbuf, (unsigned)ram);
-            ck("  the store's RAM is under 9 KB (no whole-chunk mirror)", ram < 9000u);
+            ck("  the store's RAM is under 10 KB (no whole-chunk mirror; b12: 175 directory entries)", ram < 10000u);
         }
         {   /* the directory is rebuilt from the chunks at boot: identical, and the names it serves are the stored ones */
             static pt_ent_t snap[UP_SLOTS];
@@ -914,14 +924,54 @@ int PATCH_TEST_MAIN(void)
         }
     }
 
-    /* 3: the slots: a fresh unit holds the factory sound in all 128 */
+    /* 2b (b12): 0xF4000..0xFBFFF, the new chunks 21..24, full of a stock unit's own data (its USR region): it reads as no chunk, nothing is lost or
+     * invented; the 128 old slots' records are as they were; a save past the 128 lands there, keeps the sector tails erased and survives a power cycle */
+    {
+        uint32_t i, c, tail = 1, inold = 0;
+        memset(nor, 0xFF, sizeof nor);
+        power_cycle();
+        song.playing = 0;
+        set_engine_of(&trk[0], 0u);
+        apply_preset_to(&trk[0], 2u);
+        trk[0].p[P_TRIM] = 51;
+        ok = up_store_trk(&trk[0], 5u, "OLD5", 0) == 0 && up_store_trk(&trk[0], 127u, "OLDU4", 0) == 0;
+        for (i = 0xF4000u; i < 0xFC000u; i++)
+            nor[i] = (uint8_t)(i * 37u ^ i >> 9);
+        for (i = 0xF4000u; i < 0xFC000u; i += 4096u) {   /* (one sector even with a commit record's magic, of another object and a bad CRC) */
+            nor[i] = 0x46; nor[i + 1u] = 0x45; nor[i + 2u] = 0x4C; nor[i + 3u] = 0x55;
+        }
+        power_cycle();
+        song.playing = 0;
+        ok &= up_count() == 2u && up_used(5u) && up_used(127u) && !up_used(128u) && !up_used(UP_SLOTS - 1u);
+        for (c = TIDE_PT_NOLD; c < PT_NCH; c++)
+            ok &= pt_cnt(c) == 0u;
+        ck("b12: a stock unit's data at 0xF4000..0xFBFFF reads as no chunk: the saved slots 6 and 128 (U4) are as they were, nothing past the 128 appears", ok);
+        trk[0].p[P_TRIM] = 47;
+        ok = up_store_trk(&trk[0], 150u, "HI150", 0) == 0 && up_store_trk(&trk[0], UP_SLOTS - 1u, "HI174", 0) == 0;
+        inold = pt_dir[150].ch < TIDE_PT_NOLD || pt_dir[UP_SLOTS - 1u].ch < TIDE_PT_NOLD;
+        for (c = TIDE_PT_NOLD; c < PT_NCH; c++)
+            for (i = 0; i < 2u; i++) {
+                uint32_t b = st_sector(pt_obj(c), i), j;
+                if (pt_cur[c] == (int8_t)i)
+                    for (j = 0xF00u; j < 0x1000u; j++)
+                        tail &= nor[b + j] == 0xFFu;
+            }
+        power_cycle();
+        song.playing = 0;
+        ck("  saves into slots 151 and 175 go to the new chunks, keep each written sector's tail erased, and are there after a power cycle",
+           ok && !inold && tail && up_count() == 4u && up_used(150u) && up_used(UP_SLOTS - 1u) && up_used(5u) && up_used(127u) &&
+           ({ char b6[13]; up_name(150u, b6); str_eq(b6, "HI150"); }));
+        ck("  Restore of slot 151: its record is gone, the others stay", sl_restore(150u) == 0 && !up_used(150u) && up_count() == 3u);
+    }
+
+    /* 3: the slots: a fresh unit holds the factory sound in all 175 (b12) but the USER slots */
     memset(nor, 0xFF, sizeof nor);
     power_cycle();
     song.playing = 0;
     {
         uint32_t fe, fk, same = 0, named = 0;
-        ck("a fresh unit: nothing saved, no chunk written, the factory sounds fill all 128 slots (ds_list_n() = 128 = UP_SLOTS) and the sounds past the bank's 128 (UP_NXTRA) have places after them",
-           up_count() == 0u && pt_bytes() == 0u && ds_list_n() == UP_SLOTS + UP_NXTRA && UP_SLOTS == 128u && UP_VSLOTS == UP_SLOTS + UP_NUSER + UP_NXTRA);
+        ck("a fresh unit: nothing saved, no chunk written, the factory sounds fill the bank's 128 (ds_list_n() = 128 + UP_NXTRA) and the sounds past it (UP_NXTRA) have slots after the USER ones (b12: 175)",
+           up_count() == 0u && pt_bytes() == 0u && ds_list_n() == UP_BANK + UP_NXTRA && UP_BANK == 128u && UP_VSLOTS == UP_BANK + UP_NUSER + UP_NXTRA && UP_SLOTS == UP_VSLOTS);
         for (k = 0; k < UP_USER0; k++) {   /* (U1: the factory sounds of the slots before the USER ones) */
             char nmk[13];
             int16_t v1[P_COUNT];
@@ -1044,7 +1094,7 @@ int PATCH_TEST_MAIN(void)
         up_patch_save_part(1, 9u);                      /* part 2 plays saved slot 10 */
         song.sel = 0;
         sl_load(30u);
-        ck("RESTORE ALL setup: 43 saved slots (every 3rd, plus #10), part 1 on a saved slot, part 2 on slot 10", up_count() == 43u && up_used(30) && trk[1].user == 10u);
+        ck("RESTORE ALL setup: 59 saved slots (every 3rd of the 175, #10 among them), part 1 on a saved slot, part 2 on slot 10", up_count() == (UP_SLOTS + 2u) / 3u && up_used(30) && trk[1].user == 10u);
         watch = 1; wrote = stray = 0;
         k = (uint32_t)sl_restore_all();
         watch = 0;
@@ -1145,14 +1195,21 @@ int PATCH_TEST_MAIN(void)
         ck("  a saved slot loads its record by program change too", trk[0].user == 21u && trk[0].p[P_REL] == 33);
         pc_recall(0u, 128u, 0u);
         pc_recall(0u, 5u, 3u);
-        pc_recall(0u, UP_VSLOTS - UP_SLOTS - UP_NUSER, 2u);
-        ck("  a program past the slots, past the last extra place, or another bank (3): ignored", trk[0].user == 21u);
+        pc_recall(0u, UP_NXTRA, 2u);
+        pc_recall(0u, UP_USER0 - 1u, 2u);
+        ck("  a program past the slots, past the last extra place (bank 2: 43 .. 123), or another bank (3): ignored", trk[0].user == 21u);
+        {   /* b12: bank 2, programs 124..127 = the places the USER slots displaced, #125..#128 (their bank 0 numbers) */
+            uint32_t fe3, fk3;
+            pc_recall(0u, UP_USER0 + 1u, 2u);
+            ck("  b12: bank 2 program 125 = #126, the second displaced place: its factory sound, in its own slot",
+               sl_fac(UP_BANK + 1u, &fe3, &fk3) && trk[0].eng_req == fe3 && trk[0].preset == fk3 && slot_of(&trk[0]) == UP_BANK + 1u);
+        }
         {   /* audit G13: bank 2 = the read-only places past the 128, #129 + n, and FAV works on them through the factory sound's own flag (no slot bit, no new field) */
-            uint32_t fe2, fk2, pl = UP_SLOTS + UP_NUSER + 3u;
+            uint32_t fe2, fk2, pl = UP_BANK + UP_NUSER + 3u;
             uint8_t before[14][32];
             pc_recall(0u, 3u, 2u);
-            ck("bank 2, program 3 = #132: that factory sound, no slot, its place #132",
-               sl_fac(pl, &fe2, &fk2) && trk[0].eng_req == fe2 && trk[0].preset == fk2 && !trk[0].user && slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == pl);
+            ck("bank 2, program 3 = #132: that factory sound, its own slot (b12), its place #132",
+               sl_fac(pl, &fe2, &fk2) && trk[0].eng_req == fe2 && trk[0].preset == fk2 && !trk[0].user && slot_of(&trk[0]) == pl && slot_place(&trk[0]) == pl);
             ck("  and it is not a favourite yet", !preset_favorite() && !list_fav(pl));
             memcpy(before, favorites.factory, sizeof before);   /* (rows 0..13: the factory flags; 14 and 15 are the MIDI map and the settings bytes) */
             preset_mark(1);
@@ -1237,7 +1294,7 @@ int PATCH_TEST_MAIN(void)
     ck("  K1 picks another slot (#13), round the ends, without loading anything", ui.svs == 12u && slot_of(&trk[0]) == 10u && ui.confirm == CF_SAVE_OVER);
     for (i = 0; i < 13u; i++)
         turn(EN_K1, -1);
-    ck("  and back past #1 to #128", ui.svs == 127u);
+    ck("  and back past #1 to the last slot (b12: #171, slot 175)", ui.svs == UP_SLOTS - 1u);
     for (i = 0; i < 13u; i++)
         turn(EN_K1, 1);
     ck("  and on round to #13 again", ui.svs == 12u);
@@ -1465,15 +1522,15 @@ int PATCH_TEST_MAIN(void)
            UP_NUSER == 4u && str_eq(tag, "U1") && str_eq(nmu, "USER EMPTY") && !sl_fac(UP_USER0, &fe2, &fk2) && !up_used(UP_USER0) && sl_empty_user(UP_USER0 + 3u));
         for (k2 = 0; k2 < UP_NUSER; k2++) {   /* the displaced factory sounds: places 129..132, numbered #125..#128, the sounds browse positions 124..127 held */
             e2 = ds_list_at(UP_USER0 + k2, &fk2);
-            up_slot_label(tag, UP_SLOTS + k2);
-            bad |= !(sl_fac(UP_SLOTS + k2, &fe2, &fk2) && fe2 == e2) || sl_engine(UP_SLOTS + k2) != fe2 || tag[0] != '#' || tag[1] != '1' || tag[3] != (char)('5' + k2);
-            sl_name(UP_SLOTS + k2, nmu);
+            up_slot_label(tag, UP_BANK + k2);
+            bad |= !(sl_fac(UP_BANK + k2, &fe2, &fk2) && fe2 == e2) || sl_engine(UP_BANK + k2) != fe2 || tag[0] != '#' || tag[1] != '1' || tag[3] != (char)('5' + k2);
+            sl_name(UP_BANK + k2, nmu);
             bad |= !str_eq(nmu, ds_name(fe2, fk2));
         }
-        ck("  the 4 displaced factory sounds are reachable as read-only places #125..#128 (name, engine, label)", !bad);
-        sl_load(UP_SLOTS + 1u);
-        ck("  loading a displaced place plays that factory sound, in no slot to save over (SAVE offers USER 1)", trk[0].preset == sl_tk[UP_USER0 + 1u] && !trk[0].user &&
-           slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == UP_SLOTS + 1u && slot_home(&trk[0]) == UP_USER0);
+        ck("  the 4 displaced factory sounds are the slots after the USER ones, #125..#128 (name, engine, label)", !bad);
+        sl_load(UP_BANK + 1u);
+        ck("  loading a displaced place plays that factory sound, in its own slot (b12: SAVE offers that slot)", trk[0].preset == sl_tk[UP_USER0 + 1u] && !trk[0].user &&
+           slot_of(&trk[0]) == UP_BANK + 1u && slot_place(&trk[0]) == UP_BANK + 1u && slot_home(&trk[0]) == UP_BANK + 1u);
         snd = trk[0].preset;
         sl_load(UP_USER0 + 2u);
         ck("  loading an empty USER slot changes no sound; the part points at it (SAVE offers it), the footer keeps the sound's own name", trk[0].preset == snd && trk[0].user == UP_PTR_EMPTY(UP_USER0 + 2u) &&
@@ -1487,15 +1544,28 @@ int PATCH_TEST_MAIN(void)
         song.sel = 0;
         ui.svs = (uint8_t)UP_USER0;
         trk[0].user = 0;
-        sl_load(UP_SLOTS + 1u);
+        sl_load(UP_BANK + 1u);
         patch_save_do(0);
         ck("  SAVE over USER 1 (ui.svs): a record with the sound's own name, not USER EMPTY; the displaced #126 is still there",
            up_used(UP_USER0) && up_count() == 1u && !str_eq(({ sl_name(UP_USER0, nmu); nmu; }), "USER EMPTY") && str_eq(nmu, ds_name(trk[0].eng_req, trk[0].preset)) &&
-           sl_fac(UP_SLOTS + 1u, &fe2, &fk2) && fk2 == snd && !sl_empty_user(UP_USER0) && sl_empty_user(UP_USER0 + 1u));
+           sl_fac(UP_BANK + 1u, &fe2, &fk2) && fk2 == snd && !up_used(UP_BANK + 1u) && !sl_empty_user(UP_USER0) && sl_empty_user(UP_USER0 + 1u));
         power_cycle();
         ck("  after a power cycle USER 1 is still there; USER 2..4 still empty", up_used(UP_USER0) && !up_used(UP_USER0 + 1u) && up_count() == 1u);
-        sl_load(UP_SLOTS + 2u);
-        ck("  with USER 1 taken, a displaced place offers the first empty USER slot (USER 2), not USER 1 over the owner's sound", slot_home(&trk[0]) == UP_USER0 + 1u);
+        sl_load(UP_BANK + 2u);
+        ck("  a displaced place offers its own slot (b12), not a USER slot", slot_home(&trk[0]) == UP_BANK + 2u);
+        {   /* b12: save over it, Restore gives the factory sound back; a power cycle keeps the saved one */
+            char nm5[13], want[13];
+            str_cpy(want, ds_name(trk[0].eng_req, trk[0].preset), 13);
+            trk[0].p[P_REL] = 41;
+            ui.svs = (uint8_t)(UP_BANK + 2u);
+            patch_save_do(0);
+            ck("  b12: SAVE over #127 (slot 131): a record with the sound's name", up_used(UP_BANK + 2u) && up_count() == 2u);
+            power_cycle();
+            sl_name(UP_BANK + 2u, nm5);
+            ck("  .. kept through a power cycle, its name the factory sound's; its label stays #127", up_used(UP_BANK + 2u) && str_eq(nm5, want) &&
+               ({ char t5[6]; up_slot_label(t5, UP_BANK + 2u); str_eq(t5, "#127"); }) && up_count() == 2u);
+            ck("  b12: Restore of it: the factory sound is back, USER 1 is untouched", sl_restore(UP_BANK + 2u) == 0 && !up_used(UP_BANK + 2u) && up_used(UP_USER0) && up_count() == 1u);
+        }
         sl_load(UP_USER0);
         (void)pl_cursor(&total);
         ck("  the record is the browse list's place, label U1, in all the places", up_used(UP_USER0) && total == UP_VSLOTS && preset_at(pl_cursor(&total)) == UP_USER0);
@@ -1511,17 +1581,17 @@ int PATCH_TEST_MAIN(void)
         }
         ck("sounds past the bank's 128: the browse positions 0..127 hold exactly the bank's sounds (nothing moved), the later ones follow", !bad3 && ds_list_n() == 128u + UP_NXTRA && UP_NXTRA > 0u);
         for (r = 0; r < UP_NXTRA; r++) {
-            uint32_t pl = UP_SLOTS + UP_NUSER + r;
+            uint32_t pl = UP_BANK + UP_NUSER + r;
             e3 = ds_list_at(128u + r, &k3);
             up_slot_label(tg, pl);
             sl_name(pl, nm4);
             bad4 |= !(sl_fac(pl, &fe3, &fk3) && fe3 == e3 && fk3 == k3) || sl_engine(pl) != e3 || up_used(pl) || tg[0] != '#' || !str_eq(nm4, ds_name(e3, k3));
         }
-        ck("  each is a read-only place #129.. with its name, engine and a label, never a slot", !bad4 && !sl_fac(UP_VSLOTS, &fe3, &fk3));
+        ck("  each is a slot #129.. (b12) with its name, engine and a label, nothing stored", !bad4 && !sl_fac(UP_VSLOTS, &fe3, &fk3));
         sl_load(UP_VSLOTS - 1u);
-        ck("  loading the last plays that sound, in no slot to save over (SAVE offers the first empty USER slot: USER 2, USER 1 holds a record), its place is found again",
-           trk[0].eng_req == ds_list_at(ds_list_n() - 1u, &k3) && trk[0].preset == k3 && !trk[0].user && slot_of(&trk[0]) == UP_SLOTS && slot_place(&trk[0]) == UP_VSLOTS - 1u &&
-           slot_home(&trk[0]) == UP_USER0 + 1u && up_used(UP_USER0));
+        ck("  loading the last plays that sound, in its own slot (b12: SAVE offers it), its place is found again",
+           trk[0].eng_req == ds_list_at(ds_list_n() - 1u, &k3) && trk[0].preset == k3 && !trk[0].user && slot_of(&trk[0]) == UP_VSLOTS - 1u && slot_place(&trk[0]) == UP_VSLOTS - 1u &&
+           slot_home(&trk[0]) == UP_VSLOTS - 1u && up_used(UP_USER0));
     }
 
     {   /* THE ORDER (owner, 2026-11-05: "the user ones aren't the last ones"; 2026-11-08: "empty user ones go to the end of the list"): in every list the factory sounds (the slots, then the read-only
@@ -1539,10 +1609,10 @@ int PATCH_TEST_MAIN(void)
         (void)preset_pos(&tot);
         ok = tot == UP_VSLOTS;
         for (i = 0; i < tot - UP_NUSER; i++)             /* nothing saved: the factory sounds in browse order, then U1..U4 empty */
-            ok &= !sl_empty_user(preset_at(i)) && (i < UP_USER0 ? preset_at(i) == i : preset_at(i) == (i < UP_USER0 + UP_NXTRA + UP_NUSER ? i - UP_USER0 + UP_SLOTS : i));
+            ok &= !sl_empty_user(preset_at(i)) && (i < UP_USER0 ? preset_at(i) == i : preset_at(i) == (i < UP_USER0 + UP_NXTRA + UP_NUSER ? i - UP_USER0 + UP_BANK : i));
         for (i = 0; i < UP_NUSER; i++)
             ok &= preset_at(tot - UP_NUSER + i) == UP_USER0 + i && sl_empty_user(preset_at(tot - UP_NUSER + i));
-        ck("order, nothing saved: ALL is the factory sounds (#1..#124, then #125.. up to the last, the places past the slots), then U1..U4 empty at the end", ok && preset_at(UP_USER0) == UP_SLOTS &&
+        ck("order, nothing saved: ALL is the factory sounds (#1..#124, then #125.. up to the last, the places past the slots), then U1..U4 empty at the end", ok && preset_at(UP_USER0) == UP_BANK &&
            preset_at(tot - UP_NUSER - 1u) == UP_VSLOTS - 1u);
         /* save over USER 1 and over #13 (slot 12), then over USER 3 */
         song.sel = 0;
@@ -1563,7 +1633,7 @@ int PATCH_TEST_MAIN(void)
         nrec = nemp = 0;
         for (i = 0; i < tot; i++) {
             k = preset_at(i);
-            if (k >= UP_SLOTS || (k < UP_USER0 && !up_used(k))) {
+            if ((k >= UP_BANK || k < UP_USER0) && !up_used(k)) {
                 bad |= nrec || nemp;                      /* (a factory sound after a saved sound or an empty USER slot) */
                 fac_seen++;
                 last_fac_pos = i;
@@ -1644,13 +1714,13 @@ int PATCH_TEST_MAIN(void)
         pc_recall(0u, UP_USER0, 1u);
         ok &= trk[0].user == UP_USER0 + 1u;
         pc_recall(0u, 0u, 2u);
-        ok &= !trk[0].user && slot_place(&trk[0]) == UP_SLOTS + UP_NUSER;
+        ok &= !trk[0].user && slot_place(&trk[0]) == UP_BANK + UP_NUSER;
         ck("  MIDI program change keeps its numbers: bank 0 program 12 is #13, bank 1 program 124 is U1, bank 2 program 0 is #129 (the list's order is another matter)", ok);
         {   /* (owner, 2026-11-08: "why are some of the predefined sounds non numbered?") the footer numbers a factory sound past the slots too: #129 here, #125 for the first displaced place */
             char lb[24];
             sound_label(&trk[0], lb);
             ok = !strncmp(lb, "#129 ", 5);
-            sl_load(UP_SLOTS);
+            sl_load(UP_BANK);
             sound_label(&trk[0], lb);
             ok &= !strncmp(lb, "#125 ", 5);
             sl_load(UP_VSLOTS - 1u);
@@ -1670,21 +1740,21 @@ int PATCH_TEST_MAIN(void)
             memset(nor, 0xFF, sizeof nor);
             power_cycle();
             song.playing = 0;
-            sl_load(UP_SLOTS);
+            sl_load(UP_BANK);
             project_load(MIDX(m));
             for (pi = 0; pi < NSHOWN; pi++) {
                 uint32_t r = ds_list_rank(trk[pi].eng_req % NENGINES, trk[pi].preset);
                 char a[16];
                 sound_name(&trk[pi], a);
                 bad2 |= trk[pi].user != 0u || !str_eq(a, ds_name(trk[pi].eng_req % NENGINES, trk[pi].preset));
-                if (r >= UP_USER0 && r < UP_SLOTS) {
+                if (r >= UP_USER0 && r < UP_BANK) {
                     hit++;
-                    bad2 |= slot_of(&trk[pi]) != UP_SLOTS || slot_place(&trk[pi]) != r + UP_NUSER || slot_home(&trk[pi]) != UP_USER0;
+                    bad2 |= slot_of(&trk[pi]) != r + UP_NUSER || slot_place(&trk[pi]) != r + UP_NUSER || slot_home(&trk[pi]) != r + UP_NUSER;
                 }
             }
         }
         printf("patch:   factory multis: %u parts play a sound a USER slot displaced\n", hit);
-        ck("U1: every factory multi loads its factory sounds (user 0, the factory name; a displaced one sits at its read-only place)", !bad2);
+        ck("U1: every factory multi loads its factory sounds (user 0, the factory name; a displaced one sits in its own slot, b12)", !bad2);
         song.sel = 0;
         sl_load(UP_USER0);
         ck("  a part pointed at an empty USER slot is not a stored record (TIDE's JRNY / WNDR and the End B roll treat it as factory); a saved one is",

@@ -355,21 +355,21 @@ static void t_limit(void)
 {
     uint32_t k, ok = 1, n = 0;
     fresh();
-    for (k = 0; k < 126u; k++)
+    for (k = 0; k < PT_MAX; k++)                        /* (b12: 150 of the 175 slots) */
         ok &= up_store(k, 0) == 0;
     for (k = 0; k < UP_SLOTS; k++)
         n += (uint32_t)up_used(k);
-    CHECK("limit: 126 distinct patches saved", ok && n == 126u);
-    CHECK("limit: the 127th refused (PT_FULL)", up_store(126, 0) == PT_FULL && !up_used(126));
+    CHECK("limit: 150 distinct patches saved", ok && n == PT_MAX && PT_MAX == 150u);
+    CHECK("limit: the 151st refused (PT_FULL)", up_store(PT_MAX, 0) == PT_FULL && !up_used(PT_MAX));
     for (k = 0, n = 0; k < UP_SLOTS; k++)
         n += (uint32_t)up_used(k);
-    CHECK("  .. nothing else changed", n == 126u);
-    ui.svs = 126; patch_save_do(0);
-    CHECK("limit: panel save reports STORE FULL", msg_is("STORE FULL") && !up_used(126));
-    up_ui_named(2, 126, "FULL", CAT_PAD);
-    CHECK("limit: named save reports STORE FULL", msg_is("STORE FULL") && !up_used(126));
+    CHECK("  .. nothing else changed", n == PT_MAX);
+    ui.svs = PT_MAX; patch_save_do(0);
+    CHECK("limit: panel save reports STORE FULL", msg_is("STORE FULL") && !up_used(PT_MAX));
+    up_ui_named(2, PT_MAX, "FULL", CAT_PAD);
+    CHECK("limit: named save reports STORE FULL", msg_is("STORE FULL") && !up_used(PT_MAX));
     CHECK("  .. an overwrite still fits", up_store(10, "AGAIN") == 0 && up_used(10));
-    CHECK("limit: 128 slots to browse", UP_SLOTS == 128u);
+    CHECK("limit: 175 slots to browse (b12: every factory sound and the 4 USER slots)", UP_SLOTS == 175u);
 }
 
 static void t_keep_macros(void)

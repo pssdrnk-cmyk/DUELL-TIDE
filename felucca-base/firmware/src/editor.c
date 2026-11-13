@@ -85,7 +85,7 @@ static uint32_t ed_eng(const track_t *t) { return t->eng_req % NENGINES; }
  * compares and pushes CHANGED / STEP_CHANGED, or RELOAD after a load or when another
  * track was selected (v3: RELOAD and STEP_CHANGED carry the selected track). Pushes
  * go out only into a half-empty SysEx ring, so they never wait. */
-#define ED_PCAP (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)    /* INFO 58 01: the patch records the store takes (TIDE: 126; else all 128 slots) */
+#define ED_PCAP (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)    /* INFO 58 01: the patch records the store takes (TIDE b12: 150 of the 175 slots) */
 #define ED_PUSH_MAX 4u                                   /* frames per pass */
 #define ED_NV (P_COUNT + G_COUNT + NX)                   /* the track's parameters, the globals, then (scope 2) the track's extension slots */
 /* v4: the parameters of the tracks that are not selected which TRACK_CHANGED follows (the mixer) */
@@ -512,6 +512,12 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     uint32_t na = n - 4u;
     int16_t *vp;
     const param_desc_t *d;
+    ed_shi = ed_shi_next;                               /* b12: SLOT_HI applies to the one command after it */
+    ed_shi_next = 0;
+    if (cmd == ED_SLOT_HI) {                            /* (no reply) */
+        ed_shi_next = (uint8_t)(na == 1u && a[0] == 1u);
+        return;
+    }
     if (!ed_args_ok(cmd, a, na))
         return;
     if ((cmd >= ED_SMP_BEGIN && cmd <= ED_SMP_INFO) || (cmd >= ED_BACKUP_LIST && cmd <= ED_BACKUP_PUT) ||
@@ -589,7 +595,8 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x4B); ed_b(1); ed_b(1);   /* DUELL: bit 0 = the MIDI MAP, MAP_GET .. MAP_RESET (cmds 85..88, editor_map.c) */
         ed_b(0x4F); ed_b(1); ed_b(1);   /* item 159: bit 0 = a part's values are read AS SHOWN at the MORPH fader (morph_view) and written as the knob writes (ed_put);
                                          * TRACK_DUMP's byte 1 and TRACK_PARAM's scope + 4 = the stored Original; WATCH bit 2 = TRACK_CHANGED for the other shown part */
-        ed_b(0x44); ed_b(1); ed_b(3);   /* DUELL with TIDE: bit 0 = this firmware is the TIDE fork (the version string stays "DUELL 1.1"; plain DUELL sends no 44 tag); bit 1 = the backup can GET object 41, FM6's voice bank (editor_backup.c) */
+        ed_b(0x44); ed_b(1); ed_b(7);   /* DUELL with TIDE: bit 0 = this firmware is the TIDE fork (the version string stays "DUELL 1.1"; plain DUELL sends no 44 tag); bit 1 = the backup can GET object 41, FM6's voice bank (editor_backup.c);
+                                         * b12: bit 2 = 175 patch slots, one per factory sound and USER slot: SLOT_HI (cmd 90) and the backup's id 47 (slots 129..175), LIST pages 5 and 6 */
         break;
     case ED_GET:
     case ED_SET:
@@ -737,15 +744,15 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         uint32_t s0, cnt;
         if (na < 2u)
             return;
-        s0 = a[0];
+        s0 = ed_slot(a[0]);
         cnt = a[1] > 16u ? 16u : a[1];
         if (s0 >= UP_SLOTS)
             cnt = 0;
         else if (s0 + cnt > UP_SLOTS)
             cnt = UP_SLOTS - s0;
-        ed_b(s0);
+        ed_b(s0 & 127u);
         ed_b(cnt);
-        ed_b(UP_SLOTS > 127u ? 127u : UP_SLOTS);            /* (DUELL: 128 slots; a data byte holds 127 at most: slots 0..127 are all there) */
+        ed_b(UP_SLOTS > 127u ? 127u : UP_SLOTS);            /* (a data byte holds 127 at most: 128 and more slots say 127; b12: INFO 44 01 bit 2 says 175) */
         for (i = s0; i < s0 + cnt; i++) {                  /* every slot holds a sound: its saved record, else its factory sound */
             char nm[13] = {0};
             sl_name(i, nm);
@@ -766,15 +773,16 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         char nm[13] = {0};
         const up_rec_t *r;
         uint32_t u;
-        if (na < 1u || a[0] >= UP_SLOTS)
+        uint32_t k = ed_slot(na ? a[0] : 0u);
+        if (na < 1u || k >= UP_SLOTS)
             return;
-        u = (uint32_t)up_used(a[0]);
-        r = up_rec(a[0]);
-        sl_values(a[0], v);                                /* today's P_* order, clamped */
-        sl_name(a[0], nm);
+        u = (uint32_t)up_used(k);
+        r = up_rec(k);
+        sl_values(k, v);                                   /* today's P_* order, clamped */
+        sl_name(k, nm);
         ed_b(a[0]);
         ed_b(1);
-        ed_b(sl_engine(a[0]));
+        ed_b(sl_engine(k));
         ed_str(nm, 12);
         for (i = 0; i < P_COUNT; i++)
             ed_v(v[i]);
@@ -783,7 +791,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             ed_b(u ? r->flags[i] & 0x7Fu : 0u);
         }
         ed_b(0);                                /* kind: 1 was a drum grid (gone in 0.2.14) */
-        ed_b(sl_cat(a[0]));                     /* 1.2: the category (an older editor stops before it) */
+        ed_b(sl_cat(k));                        /* 1.2: the category (an older editor stops before it) */
         ed_b(u);                                /* 0.2.17: SAVED (1) or the factory sound (0) */
         break;
     }
@@ -793,6 +801,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         if (na < 1u)
             return;
         rc = (uint32_t)up_parse(a, na, &r, &slot);
+        slot = ed_slot(slot);
+        if (!rc && slot >= UP_SLOTS)
+            rc = 1;
         if (!rc && ed_flash_stop())
             rc = 2;
         if (!rc) {
@@ -801,7 +812,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             for (i = 0; i < P_COUNT; i++)
                 up_set_value(&r, i, v[i]);                 /* the record's own form (v4: a byte each) */
             rc = up_put(slot, &r);
-            rc = rc == PT_FULL ? 6u : rc ? 2u : 0u;        /* 6: STORE FULL (TIDE's 126 records; the 127th new one) */
+            rc = rc == PT_FULL ? 6u : rc ? 2u : 0u;        /* 6: STORE FULL (TIDE's 150 records; the 151st new one) */
         }
         ed_b(a[0]);
         ed_b(rc);
@@ -809,12 +820,12 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     }
     case ED_UP_STORE: {                                    /* slot, name -> slot, rc */
         char nm[13] = {0};
-        uint32_t n0, rc = 1;
+        uint32_t n0, rc = 1, k = ed_slot(na ? a[0] : 0u);
         if (na < 1u)
             return;
         for (n0 = 0; 1u + n0 < na && a[1 + n0] && n0 < 13u; n0++)
             ;
-        if (a[0] < UP_SLOTS && (!n0 || up_name_ok(a + 1, n0)) &&
+        if (k < UP_SLOTS && (!n0 || up_name_ok(a + 1, n0)) &&
             (1u + n0 == na || (2u + n0 == na && !a[1u + n0]))) {   /* "" = automatic name */
             for (i = 0; i < n0; i++)
                 nm[i] = (char)a[1 + i];
@@ -822,13 +833,13 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             {
                 uint8_t bv[MBV_MAX];
                 up_bv_take(song.sel % NSHOWN, bv);          /* (b7, review E1: End B as the device's SAVE keeps it) */
-                r = ed_flash_stop() ? 2 : up_store(a[0], nm);
+                r = ed_flash_stop() ? 2 : up_store(k, nm);
                 up_bv_in = 0;
                 up_bv_n = 0;
             }
             rc = r == PT_FULL ? 6u : r ? 2u : 0u;
             if (!r)
-                up_adopt(song.sel % NTRK, a[0]);           /* the selected part plays that slot now (as the device's SAVE) */
+                up_adopt(song.sel % NTRK, k);           /* the selected part plays that slot now (as the device's SAVE) */
         }
         ed_b(a[0]);
         ed_b(rc);
@@ -838,16 +849,16 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         if (na < 1u)
             return;
         ed_b(a[0]);
-        if (a[0] < UP_SLOTS)                               /* the slot's record, else its factory sound */
-            sl_load(a[0]);
-        ed_b(a[0] < UP_SLOTS ? 0u : 1u);
+        if (ed_slot(a[0]) < UP_SLOTS)                      /* the slot's record, else its factory sound */
+            sl_load(ed_slot(a[0]));
+        ed_b(ed_slot(a[0]) < UP_SLOTS ? 0u : 1u);
         break;
     case ED_UP_ERASE:                                      /* 0.2.17: RESTORE: the slot's saved record is removed, its factory sound is back
                                                             * (a slot that holds the factory sound already: rc 0, nothing written) */
         if (na < 1u)
             return;
         ed_b(a[0]);
-        ed_b(a[0] >= UP_SLOTS ? 1u : !up_used(a[0]) ? 0u : ed_flash_stop() || sl_restore(a[0]) ? 2u : 0u);
+        ed_b(ed_slot(a[0]) >= UP_SLOTS ? 1u : !up_used(ed_slot(a[0])) ? 0u : ed_flash_stop() || sl_restore(ed_slot(a[0])) ? 2u : 0u);
         break;
     case ED_WATCH: {                                       /* on -> on */
         uint32_t keep, v4was = ed_w.v4, v5was = ed_w.v5;

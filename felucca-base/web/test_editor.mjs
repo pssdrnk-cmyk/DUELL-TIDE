@@ -4,12 +4,16 @@
 //   node web/test_editor.mjs      (use the emsdk node: the Homebrew one is broken here)
 import { L, ID, P_E0, descOf, valueText, inertReason, voiceWhy, isEnum, gdescOf, ginert, shimShown, dmdAfterMode, dstWhy, dstName, uncoveredPages, PART_TABS, GLOBAL_TABS, pageByTitle, matrixSlots, pageControls, enumOrder, matrixSecondShown, isBipolar, bipolarZero } from "./editor/layout.js";
 import { readFile } from "node:fs/promises";
-import { MockUnit, MockLink, defaultPart, factoryBrowse } from "./editor/mockunit.js";
+import { MockUnit as MockB12, MockLink, defaultPart, factoryBrowse } from "./editor/mockunit.js";
 import { Unit, UnitError } from "./editor/unit.js";
-import { parseInfo } from "./editor/proto.js";
+import { buildPatchRecord } from "./editor/mockunit.js";
+import { parseInfo, parseUpList, CMD } from "./editor/proto.js";
 import { loadItemIntoPart as loadItemIntoPartT } from "./editor/librarian.js";
 import { themeVars, palette, isDark, lum, mix } from "./editor/theme.js";
 import { sysexGranted, watchUnit, HINT } from "./editor/autoconnect.js";
+
+// The default mock is the b12 unit (175 slots, SLOT_HI, a store of 150, backup id 47). The tests of the unit of before run on the 128 slot one; the b12 tests (end of file) use MockB12.
+const MockUnit = class extends MockB12 { constructor(o = {}) { super({ slots175: false, ...o }); } };
 
 let fails = 0;
 const ok = (c, what) => { console.log(`${what.padEnd(104)} ${c ? "ok" : "FAIL"}`); if (!c) fails++; };
@@ -507,5 +511,49 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   const o = await connect();
   ok(!o.u.info.morphView && o.m.watchBits === 3, "item 159: a unit without the tag: WATCH answers 3, the editor reads as before");
 }
+// ---- b12: 175 slots (INFO 44 01 bit 2, SLOT_HI 90)
+{
+  const cB = async (opt = {}) => { const m = new MockB12(opt), u = new Unit(new MockLink(m)); await u.connect(); return { m, u }; };
+  const b = await cB(), o = await connect();                       // b: the b12 mock (the default); o: the unit of before
+  const slots = await b.u.listSlots(), old = await o.u.listSlots();
+  ok(b.u.info.slots175 && b.u.nslots === 175 && slots.length === 175 && slots.every((s, i) => s.slot === i) && parseInfo(await b.m.request([1, []])).tags[0x44][0] === 5 && (await cB({ fvBank: true })).u.info.tags[0x44][0] === 7,
+     "b12: INFO 44 01 bit 2 (flags 5, 7 with the voice bank): the unit has 175 slots, the list holds 175 with their ids");
+  ok(!o.u.info.slots175 && o.u.nslots === 128 && old.length === 128 && !o.m.log.includes("cmd 90"), "b12: a unit without the bit lists 128 slots exactly as before and never sends SLOT_HI");
+  const br = factoryBrowse();
+  ok(slots.slice(124, 128).every((s) => !s.saved && s.name === "USER EMPTY") && [128, 150, 174].every((k) => !slots[k].saved && slots[k].name === br[k].name && slots[k].eng === br[k].eng) && slots[128].name !== slots[0].name,
+     "b12: slots 128..174 hold their factory sounds (name and engine of the browse place), nothing is saved");
+  ok([0, 123, 124, 127, 128, 150, 174].map((k) => b.u.label(k)).join() === "#1,#124,U1,U4,#125,#147,#171" && [0, 127].map((k) => o.u.label(k)).join() === "#1,#128", "b12: labels #1..#124, U1..U4, #125..#171 (a 128 slot unit shows #1..#128 as before)");
+  b.m.log.length = 0; await b.u.sreq(CMD.UP_LIST, [160, 16]);
+  ok(b.m.log.join() === "cmd 90,cmd 16", "b12: a slot command for a slot past 127 is sent with SLOT_HI right before it");
+  const r128 = parseUpList(await b.u.sreq(CMD.UP_LIST, [128, 16]), 128), r170 = parseUpList(await b.u.sreq(CMD.UP_LIST, [170, 16]), 170);
+  ok(r128.count === 16 && r128.slots[0].name === br[128].name && r170.count === 5 && r170.slots.at(-1).name === br[174].name, "b12: UP_LIST from 128 gives 16 slots, from 170 it is clipped at 174 (5 slots)");
+  b.m.log.length = 0; await b.u.sreq(CMD.UP_LIST, [32, 16]);
+  ok(b.m.log.join() === "cmd 16", "b12: a slot under 128 goes without SLOT_HI");
+  ok(await rejects(() => o.u.sreq(CMD.UP_GET, [140]), /no slot 141/), "b12: a unit without the bit refuses a slot past 127 in the editor (nothing is sent)");
+  await b.u.loadSlot(0, 140);
+  ok(b.u.parts[0].slot === 140 && b.m.parts[0].eng === br[140].eng && b.m.parts[0].preset === br[140].idx, "b12: loading slot 140 (a factory slot) loads its factory sound into the part");
+  await b.u.saveSlot(1, 150, "HI SLOT");
+  ok(b.u.slots[150].saved && b.u.slots[150].name === "HI SLOT" && b.m.patches.has(150) && !b.m.patches.has(22) && b.u.slots.filter((s) => s.saved).length === 5, "b12: UP_STORE over slot 150 (SLOT_HI + byte 22) saves it there, slot 22 is untouched");
+  await b.u.loadSlot(0, 150);
+  ok(b.u.parts[0].slot === 150 && b.m.parts[0].eng === b.m.parts[1].eng, "b12: UP_LOAD of slot 150 loads the saved sound");
+  await b.u.saveSlot(0, 140, "MINE 140");
+  ok(b.u.slots[140].saved && b.u.slots[140].name === "MINE 140", "b12: slot 140 saved");
+  await b.u.restoreSlot(140);
+  ok(!b.u.slots[140].saved && b.u.slots[140].name === br[140].name && b.u.slots[150].saved && !b.m.patches.has(140), "b12: Restore of slot 140 (UP_ERASE with SLOT_HI) gives its factory sound back, slot 150 stays saved");
+  const nSaved = b.u.slots.filter((s) => s.saved).length;
+  ok(await b.u.restoreAll() === nSaved && b.u.slots.every((s) => !s.saved) && b.m.patches.size === 0, "b12: Restore all goes over the slots past 127 too");
+  const F = await cB();
+  for (let k = 0; k < 150; k++) F.m.setRecord(k, buildPatchRecord({ name: `P${k}` }));
+  F.m.rebuild();
+  await F.u.listSlots();
+  ok(F.u.info.patchCap === 150 && F.u.slots.filter((s) => s.saved).length === 150 && F.u.slots[149].saved && !F.u.slots[150].saved, "b12: the store holds 150 saved records (INFO 58 01 says 150)");
+  ok(await rejects(() => F.u.saveSlot(0, 170, "ONE TOO MANY"), /STORE FULL.*150/) && !F.m.patches.has(170), "b12: the 151st new record (slot 170) is refused rc 6, STORE FULL");
+  await F.u.saveSlot(0, 149, "REWRITE");
+  ok(F.u.slots[149].name === "REWRITE", "b12: a saved slot can still be rewritten when the store is full");
+  await F.u.restoreSlot(3);
+  await F.u.saveSlot(0, 170, "ROOM NOW");
+  ok(F.u.slots[170].saved && F.u.slots[170].name === "ROOM NOW", "b12: after a Restore frees a place the slot past 127 is written");
+}
+
 console.log(fails ? `\nEDITOR WEB TESTS FAILED (${fails})` : "\neditor web tests passed");
 process.exit(fails ? 1 : 0);

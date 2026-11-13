@@ -73,7 +73,7 @@
 #define MU_PART_FIX (4u + 1u + P_COUNT + NX + 8u) /* a part without its End B block, steps and patch: engine, preset, AMOUNT, flags, End B's length, the values, the slots, the step map */
 _Static_assert(sizeof proj_wire_u.raw >= MU_OBJ_MAX && PROJ_NAME_LEN == 12u && NSHOWN == 2u, "multi object staging");
 #if FELUCCA_FLASH
-_Static_assert(MU_OBJ_MAX <= ST_PAYLOAD_MAX && OBJ_PATCH0 == OBJ_MULTI0 + MU_NOBJ0 && MU_NOBJ <= MU_OBJ_ALL && OBJ_COUNT == OBJ_MULTIX0 + (MU_OBJ_ALL - MU_NOBJ0), "a multi object is one storage object");
+_Static_assert(MU_OBJ_MAX <= ST_PAYLOAD_MAX && OBJ_PATCH0 == OBJ_MULTI0 + MU_NOBJ0 && MU_NOBJ <= MU_OBJ_ALL && OBJ_PATCHY0 == OBJ_MULTIX0 + (MU_OBJ_ALL - MU_NOBJ0), "a multi object is one storage object (b12: the patch chunks 21..24 right after them)");
 #endif
 /* the globals a multi loads (the music's; not the device's: clock source, TUNE, MIDI, the SAVE pages' own) */
 #define MU_GLOBAL(i) ((i) == G_BPM || (i) == G_SWING || ((i) >= G_DTIME && (i) <= G_CDEPTH) || (i) == G_RTYPE || \

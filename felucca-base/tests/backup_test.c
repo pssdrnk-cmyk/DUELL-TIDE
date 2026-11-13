@@ -40,7 +40,9 @@ static void fl_plain_window_init(void) {}
 #include "../firmware/src/project.c"
 #include "old_pack.h"
 #include "endb_store.h"
-#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store takes: 126 with TIDE (its settings use chunk 21, plan 4.5), else 128 */
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store takes: b12 150 of the 175 slots */
+#define BK_PID(slot) ((slot) >= 128u ? ED_BK_PATCH2 : ED_BK_PATCH)   /* b12: slots 128.. travel as id 47 + (slot - 128) */
+#define BK_PSB(slot) ((uint8_t)((slot) >= 128u ? (slot) - 128u : (slot)))
 
 enum { ED_BACKUP_LIST = 65, ED_BACKUP_GET, ED_BACKUP_PUT };
 static uint8_t rep[4096];
@@ -176,20 +178,20 @@ static uint32_t list_page(uint32_t pg)               /* rc; the count and the en
 }
 static uint32_t get_patch(uint32_t slot, uint32_t off, uint32_t count)
 {
-    uint8_t a[9] = {ED_BK_PATCH};
+    uint8_t a[9] = {BK_PID(slot)};
     put32(a + 1, off);
     a[6] = (uint8_t)(count & 127u);
     a[7] = (uint8_t)(count >> 7);
-    a[8] = (uint8_t)slot;
+    a[8] = BK_PSB(slot);
     call(ED_BACKUP_GET, a, sizeof a);
     return rep[1];
 }
 static uint32_t put_begin_patch(uint32_t slot, uint32_t len, uint32_t crc)
 {
-    uint8_t a[13] = {0, ED_BK_PATCH};
+    uint8_t a[13] = {0, BK_PID(slot)};
     put32(a + 2, len);
     put32(a + 7, crc);
-    a[12] = (uint8_t)slot;
+    a[12] = BK_PSB(slot);
     call(ED_BACKUP_PUT, a, sizeof a);
     return rep[2];
 }
@@ -197,8 +199,8 @@ static uint32_t put_patch(uint32_t slot, const uint8_t *r, uint32_t len, uint32_
 {
     uint32_t off, rc = put_begin_patch(slot, len, crc);
     for (off = 0; !rc && off < len; off += 256u)
-        rc = put_chunk(ED_BK_PATCH, off, r + off, len - off > 256u ? 256u : len - off);
-    return rc ? rc : put_end(ED_BK_PATCH, 2);
+        rc = put_chunk(BK_PID(slot), off, r + off, len - off > 256u ? 256u : len - off);
+    return rc ? rc : put_end(BK_PID(slot), 2);
 }
 static uint32_t pt_bytes_total(void)
 {
@@ -524,20 +526,20 @@ int BACKUP_TEST_MAIN(void)
             rcrc[k] = st_crc32(rec[k], rlen[k]);
             bytes += rlen[k];
         }
-        bad += check("126 (TIDE) or 128 patches saved (one per slot, every 5th with the 16 slots off default, every 7th with End B values set by hand, every 14th with 32 of them)", ok && up_count() == NSAVE);
-        bad += check("LIST pages: before the capture LIST a page is stale (5); page 0 and 5 are invalid (1)",
-                     (ed_bk_valid = 0, list_page(1) == 5u) && (call(ED_BACKUP_LIST, 0, 0), list_page(0) == 1u && list_page(5) == 1u));
-        for (pg = 1; pg <= 4u; pg++) {
+        bad += check("150 patches saved (b12: slots 1..150, one per slot, every 5th with the 16 slots off default, every 7th with End B values set by hand, every 14th with 32 of them)", ok && up_count() == NSAVE);
+        bad += check("LIST pages: before the capture LIST a page is stale (5); page 0 and 7 are invalid (1), page 6 (slots 161..175, none saved) is empty",
+                     (ed_bk_valid = 0, list_page(1) == 5u) && (call(ED_BACKUP_LIST, 0, 0), list_page(0) == 1u && list_page(7) == 1u && list_page(6) == 0u && rep[2] == 0u));
+        for (pg = 1; pg <= 5u; pg++) {
             ok = list_page(pg) == 0 && rep[2] == (pg * ED_BK_PPAGE <= NSAVE ? ED_BK_PPAGE : NSAVE - (pg - 1u) * ED_BK_PPAGE);   /* (TIDE: the last page 30) */
             for (i = 0; ok && i < rep[2]; i++) {
                 const uint8_t *o = rep + 3 + i * 11u;
-                k = o[0];
+                k = o[0] + (pg >= 5u ? 128u : 0u);                    /* (b12: pages 5, 6 give the slot less 128, id 47's byte) */
                 ok &= k >= (pg - 1u) * ED_BK_PPAGE && k < pg * ED_BK_PPAGE && ed_bk_r32(o + 1) == rlen[k] && ed_bk_r32(o + 6) == rcrc[k];
                 listed++;
             }
-            bad += check("  a LIST page: its saved slots (32, the last with TIDE 30) with the length and CRC of each record", ok);
+            bad += check("  a LIST page: its saved slots (32, page 5 the 22 of slots 129..150) with the length and CRC of each record", ok);
         }
-        bad += check("  4 pages = every saved record listed (126 with TIDE, else 128)", listed == NSAVE);
+        bad += check("  5 pages = every saved record listed (150)", listed == NSAVE);
         for (k = 0, ok = 1; k < NSAVE; k++) {
             uint32_t off;
             for (off = 0; ok && off < rlen[k]; off += 256u) {
@@ -548,8 +550,8 @@ int BACKUP_TEST_MAIN(void)
         }
         bad += check("GET: every record read in pieces equals the stored record (slot and revision bytes zero), CRC as listed", ok);
         printf("backup: %u patches: %u bytes of logical records (the physical chunks held %u)\n", bytes, pt_bytes_total());
-        bad += check("GET of a slot with no record, a slot past 127, a bad count, a missing slot byte: refused (1)",
-                     (up_put(9, 0), get_patch(9, 0, 16)) == 1u && get_patch(128, 0, 16) == 1u && get_patch(3, 0, 0) == 1u && get_patch(3, rlen[3] - 1u, 2) == 1u && get_patch(3, 0, 16) == 0u);
+        bad += check("GET of a slot with no record, a slot past the last (175), a bad count, a missing slot byte: refused (1)",
+                     (up_put(9, 0), get_patch(9, 0, 16)) == 1u && get_patch(UP_SLOTS, 0, 16) == 1u && get_patch(UP_SLOTS - 1u, 0, 16) == 1u && get_patch(140u, 0, 16) == 0u && get_patch(3, 0, 0) == 1u && get_patch(3, rlen[3] - 1u, 2) == 1u && get_patch(3, 0, 16) == 0u);
         up_store_trk(&trk[0], 9, "B09", 0);
         {   /* the patches not in a page: a slot that holds its factory sound is not listed */
             up_put(9, 0);
@@ -583,7 +585,7 @@ int BACKUP_TEST_MAIN(void)
         bad += check("  and a second restore over the first (a newer revision each) leaves the same bytes", ok && up_count() == NSAVE - 1u);
         /* the records go where the store puts them: into slots other than their own too (the bytes carry no slot) */
         bad += check("  a record into another slot than it came from: the same bytes there", put_patch(9, rec[40], rlen[40], rcrc[40]) == 0 && up_raw_get(9, got) == rlen[40] && !memcmp(got, rec[40], rlen[40]));
-        if (NSAVE < UP_SLOTS)                                         /* TIDE: the store holds 126; the 127th NEW record is STORE FULL (rc 6, not "flash write failed"), nothing written */
+        if (NSAVE < UP_SLOTS)                                         /* b12: the store holds 150; the 151st NEW record is STORE FULL (rc 6, not "flash write failed"), nothing written */
             bad += check("  one more NEW record: rc 6 (STORE FULL), nothing written, the others untouched", put_patch(UP_SLOTS - 1u, rec[1], rlen[1], rcrc[1]) == 6u &&
                          !up_used(UP_SLOTS - 1u) && up_count() == NSAVE && up_raw_get(1, got) == rlen[1] && !memcmp(got, rec[1], rlen[1]));
         up_put(9, 0);
@@ -605,10 +607,10 @@ int BACKUP_TEST_MAIN(void)
             ok &= put_patch(kx, bad_rec, rlen[kx], st_crc32(bad_rec, rlen[kx])) == 2u;
             ok &= put_patch(kx, rec[kx], rlen[kx], rcrc[kx] ^ 1u) == 2u;                    /* a wrong CRC */
             ok &= put_patch(kx, rec[kx], rlen[kx] - 1u, st_crc32(rec[kx], rlen[kx] - 1u)) == 2u;   /* a record cut short */
-            ok &= put_begin_patch(kx, PT_WORST + 1u, 0) == 1u && put_begin_patch(kx, PT_FIX - 1u, 0) == 1u && put_begin_patch(128, 100u, 0) == 1u;
+            ok &= put_begin_patch(kx, PT_WORST + 1u, 0) == 1u && put_begin_patch(kx, PT_FIX - 1u, 0) == 1u && put_begin_patch(UP_SLOTS, 100u, 0) == 1u;
             ok &= (transport_req = 1, put_begin_patch(kx, rlen[kx], rcrc[kx]) == 3u);
             transport_req = 0;
-            bad += check("bad patch records (End B AMOUNT, an unknown End B flag, a record of before 0.2.14, CRC, cut short, too long or short, a slot past 127, PLAY starting) are refused; the store is as it was",
+            bad += check("bad patch records (End B AMOUNT, an unknown End B flag, a record of before 0.2.14, CRC, cut short, too long or short, a slot past the last, PLAY starting) are refused; the store is as it was",
                          ok && up_count() == NSAVE - 1u && erases == e0 && up_raw_get(kx, got) == rlen[kx] && !memcmp(got, rec[kx], rlen[kx]));
         }
         /* length 0: the slot's record removed, its factory sound is back */

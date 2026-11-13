@@ -14,6 +14,14 @@
  * (BEGIN, DATA and COMMIT stop the sequencer themselves, as the backup's writes do, and answer 3 if it does not stop in 100 ms: nothing is written while it plays),
  * 4 flash write failed (the slot is as it was), 5 stale (no begin, the USB bus was reset, 15 s with no request, or a backup / wavetable transfer used the staging).
  * The record is staged in the backup's staging RAM (ED_BK_RAW), like a wavetable. */
+/* b12 (every factory sound editable; INFO 44 01 bit 2): the patch slots are 175, a data byte holds 127. SLOT_HI (90, one byte, 0 or 1, no reply) says that the
+ * NEXT command's slot byte counts from 128: UP_LIST's start, UP_GET, UP_PUT, UP_STORE, UP_LOAD, UP_ERASE, PATCH_RAW and FM6_GET / FM6_PUT's USER index. It
+ * applies to that one command only (any command clears it), so an editor that never sends it (absent = 0) works on slots 1..128 exactly as before. The replies
+ * echo the slot byte as sent (its low 7 bits). The backup has its own id for these slots (47, editor_backup.c) */
+enum { ED_SLOT_HI = 90 };
+static uint8_t ed_shi, ed_shi_next;                   /* this command's high slot bit; the one SLOT_HI set for the next */
+static uint32_t ed_slot(uint32_t b) { return b > 127u ? UP_SLOTS : b | (uint32_t)ed_shi << 7; }   /* (a byte past 127 is no data byte: no slot) */
+/* (here, not in editor.c: the tests that build this file alone have it too; editor.c's UP_* and editor_fm6.c come after it) */
 enum { ED_PATCH_RAW = 84 };
 static uint8_t ed_pr_put, ed_pr_slot, ed_pr_gen;
 static uint32_t ed_pr_len, ed_pr_crc, ed_pr_pos, ed_pr_ms, ed_pr_usb;
@@ -22,7 +30,7 @@ static uint32_t ed_pr_len, ed_pr_crc, ed_pr_pos, ed_pr_ms, ed_pr_usb;
 static uint32_t ed_pr_write(const uint8_t *a, uint32_t n)
 {
     uint32_t off, count, rc;
-    if (n < 2u || a[0] < 2u || a[0] > 5u || a[1] >= UP_SLOTS)
+    if (n < 2u || a[0] < 2u || a[0] > 5u || ed_slot(a[1]) >= UP_SLOTS)
         return 1;
     if (a[0] == 2u) {                                  /* begin: the arguments first, a malformed request never stops the transport */
         uint32_t len = (uint32_t)a[2] | (uint32_t)a[3] << 7;
@@ -34,12 +42,12 @@ static uint32_t ed_pr_write(const uint8_t *a, uint32_t n)
         ed_bk_valid = 0;
         ed_wt_put = 0;
         ed_pr_gen = ++proj_wire_gen;
-        ed_pr_put = 1; ed_pr_slot = a[1]; ed_pr_pos = 0; ed_pr_len = len;
+        ed_pr_put = 1; ed_pr_slot = (uint8_t)ed_slot(a[1]); ed_pr_pos = 0; ed_pr_len = len;
         ed_pr_crc = ed_bk_r32(a + 4);
         ed_pr_usb = usb.resets; ed_pr_ms = fm1_ms;
         return 0;
     }
-    if (!ed_pr_put || ed_pr_slot != a[1] || ed_pr_usb != usb.resets || fm1_ms - ed_pr_ms > 15000u || ed_pr_gen != proj_wire_gen) {
+    if (!ed_pr_put || ed_pr_slot != ed_slot(a[1]) || ed_pr_usb != usb.resets || fm1_ms - ed_pr_ms > 15000u || ed_pr_gen != proj_wire_gen) {
         ed_pr_put = 0;
         return 5;
     }
@@ -56,7 +64,7 @@ static uint32_t ed_pr_write(const uint8_t *a, uint32_t n)
         if (ed_pr_pos != ed_pr_len || st_crc32(ed_pr_rec, ed_pr_len) != ed_pr_crc)
             rc = 2;
         else {
-            int r = up_put_raw(a[1], ed_pr_rec, ed_pr_len);
+            int r = up_put_raw(ed_slot(a[1]), ed_pr_rec, ed_pr_len);
             rc = r == 0 ? 0u : r == 1 ? 1u : r == PT_FULL ? 6u : r == 2 && song.playing ? 3u : 4u;
         }
         ed_pr_put = 0;
@@ -85,7 +93,7 @@ static int ed_patchraw_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         return 1;
     }
     if (a[0] == 0u || a[0] == 1u) {
-        uint32_t len = a[1] < UP_SLOTS ? up_raw_get(a[1], rec) : 0u, rc = a[1] >= UP_SLOTS ? 1u : 0u;
+        uint32_t k = ed_slot(a[1]), len = k < UP_SLOTS ? up_raw_get(k, rec) : 0u, rc = k >= UP_SLOTS ? 1u : 0u;
         if (a[0] == 0u) {
             ed_b(0); ed_b(a[1]); ed_b(n != 2u ? 1u : rc);
             ed_b(len ? 1u : 0u); ed_b(len); ed_b(len >> 7);

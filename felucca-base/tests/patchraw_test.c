@@ -8,13 +8,15 @@
  *   4. refusal while the sequencer plays (rc 3, nothing written; READ still works), malformed and stale transfers (arguments, order, CRC, a missing part, no begin,
  *      a USB reset, 15 s, a backup transfer that took the staging RAM), records the store would not read (rc 1 at commit, nothing written);
  *   5. a flash failure (rc 4, the slot as it was) and a power cut at every step of a write: the old record or the new one whole, the other records untouched;
- *   6. a bank: the worst record written to every slot the store takes (128; TIDE 126) through PATCH_RAW, each read back identical, and a rewrite of all of them.
+ *   6. a bank: the worst record written to every slot the store takes (b12: 150, slots 129.. with SLOT_HI) through PATCH_RAW, each read back identical, and a rewrite of all of them.
  *   build/host/patchraw_test            (DUELL/host_tests.sh "patchraw") */
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
 #include "ui_test.c"
 #include "endb_store.h"
-#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store always takes: 126 with TIDE (chunk 21 holds its settings, plan 4.5), else all 128 */
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store always takes: b12 150 of the 175 slots */
+static uint8_t pr_hi;                                  /* b12: the next request's SLOT_HI (editor.c ed_shi): the helpers set it from the slot */
+#define PSB(slot) ((uint8_t)(pr_hi = (uint8_t)((slot) >= 128u && (slot) < 256u), (slot) >= 128u && (slot) < 256u ? (slot) - 128u : (slot)))
 
 static uint8_t nor[0x100000];
 static long cut_bytes = -1;
@@ -25,7 +27,7 @@ static void hit(uint32_t off, uint32_t n)
     if (!watch)
         return;
     if ((off >= 0xA6000u && off + n <= 0xBA000u) || (off >= 0xC8000u && off + n <= 0xCE000u) || (off >= 0xDC000u && off + n <= 0xE0000u) ||
-        (off >= 0x9F000u && off + n <= 0xA0000u) || (off >= 0xFE000u && off + n <= 0xFF000u))
+        (off >= 0x9F000u && off + n <= 0xA0000u) || (off >= 0xFE000u && off + n <= 0xFF000u) || (off >= 0xF4000u && off + n <= 0xFC000u))   /* (b12: chunks 21..24) */
         wrote += n;
     else
         stray += n;
@@ -119,24 +121,26 @@ static void pack7(uint8_t *a, uint32_t *k, const uint8_t *p, uint32_t n)
 static uint32_t call(const uint8_t *a, uint32_t n)
 {
     rep_n = 0;
+    ed_shi = pr_hi;                                      /* (as SLOT_HI before it would: editor.c ed_handle) */
     ed_patchraw_handle(ED_PATCH_RAW, a, n);
+    ed_shi = pr_hi = 0;
     return rep_n;
 }
 static uint32_t wr(const uint8_t *a, uint32_t n) { call(a, n); return rep[2]; }
 static uint32_t pr_begin(uint32_t slot, uint32_t len, uint32_t crc)
 {
-    uint8_t a[9] = {2, (uint8_t)slot, (uint8_t)(len & 127u), (uint8_t)(len >> 7)};
+    uint8_t a[9] = {2, PSB(slot), (uint8_t)(len & 127u), (uint8_t)(len >> 7)};
     put32(a + 4, crc);
     return wr(a, sizeof a);
 }
 static uint32_t pr_data(uint32_t slot, uint32_t off, const uint8_t *p, uint32_t n)
 {
-    uint8_t a[4 + 160] = {3, (uint8_t)slot, (uint8_t)(off & 127u), (uint8_t)(off >> 7)};
+    uint8_t a[4 + 160] = {3, PSB(slot), (uint8_t)(off & 127u), (uint8_t)(off >> 7)};
     uint32_t k = 4;
     pack7(a, &k, p, n);
     return wr(a, k);
 }
-static uint32_t pr_end(uint32_t slot, uint32_t op) { uint8_t a[2] = {(uint8_t)op, (uint8_t)slot}; return wr(a, 2); }
+static uint32_t pr_end(uint32_t slot, uint32_t op) { uint8_t a[2] = {(uint8_t)op, PSB(slot)}; return wr(a, 2); }
 static uint32_t pr_all(uint32_t slot, const uint8_t *rec, uint32_t len)   /* begin, 112 byte pieces, commit: the first failing rc */
 {
     uint32_t off, rc = pr_begin(slot, len, st_crc32(rec, len));
@@ -147,7 +151,7 @@ static uint32_t pr_all(uint32_t slot, const uint8_t *rec, uint32_t len)   /* beg
 /* INFO + READ of a slot: 1 saved (rec/len filled, the CRC checked), 0 factory, -1 an error */
 static int pr_read(uint32_t slot, uint8_t *rec, uint32_t *len)
 {
-    uint8_t i0[2] = {0, (uint8_t)slot};
+    uint8_t i0[2] = {0, PSB(slot)};
     uint32_t n, crc, off;
     call(i0, 2);
     if (rep[2])
@@ -158,7 +162,7 @@ static int pr_read(uint32_t slot, uint8_t *rec, uint32_t *len)
         return n || crc ? -1 : 0;
     for (off = 0; off < n; off += 112u) {
         uint32_t c = n - off > 112u ? 112u : n - off;
-        uint8_t r[5] = {1, (uint8_t)slot, (uint8_t)(off & 127u), (uint8_t)(off >> 7), (uint8_t)c};
+        uint8_t r[5] = {1, PSB(slot), (uint8_t)(off & 127u), (uint8_t)(off >> 7), (uint8_t)c};
         call(r, 5);
         if (rep[2] || rep[5] != c || ed_unpack7(rep + 6, rep_n - 6u, rec + off, c) != c)
             return -1;
@@ -326,7 +330,7 @@ int main(void)
     e0 = erases;
     {
         uint8_t b1[9] = {2, 0, 0, 3}, b2[8] = {2, 0, 0, 3}, g1[5] = {1, 200, 0, 0, 8}, g2[5] = {0, 128};
-        ok = pr_begin(128, la, 0) == 1u && pr_begin(0, 19, 0) == 1u && pr_begin(0, PT_WORST + 1u, 0) == 1u && pr_begin(0, 0, 0) == 1u;
+        ok = pr_begin(UP_SLOTS, la, 0) == 1u && pr_begin(0, 19, 0) == 1u && pr_begin(0, PT_WORST + 1u, 0) == 1u && pr_begin(0, 0, 0) == 1u;
         put32(b1 + 4, 0); b1[8] = 16;
         ok &= wr(b1, 9) == 1u;                                      /* a CRC byte past 15 */
         ok &= wr(b2, 8) == 1u;                                      /* a short begin */
@@ -462,7 +466,7 @@ int main(void)
         cut_bytes = -1;
     }
 
-    /* 6: a bank: the worst record into every slot the store takes (128; TIDE 126), read back, rewritten */
+    /* 6: a bank: the worst record into every slot the store takes (b12: 150; slots 129.. through SLOT_HI), read back, rewritten */
     {
         static uint8_t W[UP_SLOTS][PT_WORST + 8], G[PT_WORST + 8];
         uint32_t lw[UP_SLOTS], rc = 0, good = 0, gl, xb0, mb0, pr0, pat0, fm0;
