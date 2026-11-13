@@ -31,9 +31,8 @@ enc SELECT 5
 shot colr_lfo
 enc K1 -5
 shot colr_lfo_off
-# the built-in multis M19 .. M24 on the MULTIS page (K1 walks the slots; the list ends at M24)
+# the built-in multis M19 .. M24 on the MULTIS page (K1 walks the slots from M01, where the page opens; since b12 K1 wraps one step at a time, so no walk to the left to find the start)
 button SAVE
-enc K1 -30
 enc K1 18
 shot multis_m19
 enc K1 1
