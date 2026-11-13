@@ -1004,7 +1004,7 @@ static void t_ui(void)
     press(B_HOME);                                      /* (the harness starts on MORPH: MORPH SET -> MODE) */
     frames(64);
     page_title(ti);
-    expect("TIDE: HOME tapped once from MORPH: TIDE SETTINGS (HOME's round is MORPH, TIDE SETTINGS, AUTO TIDE: no MODE page)", ui.page == page_of("TIDE SETTINGS") && str_eq(ti, "TIDE SETTINGS 2/3"));
+    expect("TIDE: HOME tapped once from MORPH: AUTO TIDE (HOME's round is MORPH, AUTO TIDE, TIDE SETTINGS: no MODE page; b12, owner)", ui.page == page_of("AUTO TIDE") && str_eq(ti, "AUTO TIDE 2/3"));
     press(B_HOME);
     frames(64);
     press(B_HOME);
