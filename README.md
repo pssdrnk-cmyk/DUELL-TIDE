@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/tide-banner.png" alt="TIDE for FM-1: the TIDE wordmark on a night sea, next to the AUTO TIDE page of the unit with both parts gliding" width="960"></p>
+<p align="center"><img src="docs/tide-banner.png" alt="TIDE for FM-1: the TIDE wordmark on a night sea, with the line A morph that plays and evolves by itself. Firmware for the M-VAVE FM-1." width="960"></p>
 
 # TIDE for FM-1
 
