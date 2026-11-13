@@ -14,30 +14,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Install TIDE</title>
 <meta name="description" content="Install TIDE on an M-VAVE FM-1 from your browser: Stable or Beta, with a backup first and a way back to the official firmware.">
-<meta name="theme-color" content="#170f38">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%237c4dff'/%3E%3Cstop offset='1' stop-color='%23d6247f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%23170f38'/%3E%3Cpath d='M6 38 C16 20 26 52 36 36 S52 22 58 34' fill='none' stroke='url(%23g)' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#040B13">
+<link rel="icon" type="image/svg+xml" href="../assets/tide-favicon.svg">
 <link rel="stylesheet" href="../assets/site.css">
-<script src="../assets/theme.js"></script>
 </head>
 <body>
 <div id="banner" role="alert" hidden></div>
 <a class="skip" href="#main">Skip to the content</a>
 <header class="site">
   <div class="wrap">
-    <a class="brand" href="../"><span class="t">TIDE</span></a>
+    <a class="brand" href="../" aria-label="TIDE, home"><img src="../assets/tide-wordmark.svg" alt="" width="87" height="26"></a>
     <nav aria-label="Main">
       <a href="../">Home</a>
       <a href="../emu/">Emulator</a>
       <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable#readme">Guide</a>
       <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Issues</a>
     </nav>
-    <button class="theme" id="theme" type="button">Theme: system</button>
   </div>
 </header>
 <main id="main" class="wrap" style="padding-top:32px;padding-bottom:24px">
   <h1 style="font-size:clamp(34px,9vw,46px)">Install TIDE</h1>
   <p class="lead" style="font-size:21px;font-weight:500;margin:10px 0 6px">Firmware for the M-VAVE FM-1, written from this page over USB.</p>
-  <p class="small"><b>TIDE by pssdrnk.</b> Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments), GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.</p>
+  <p class="small">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.<br>Not made or endorsed by OSCILL/R or M-VAVE.</p>
 
   <div class="notice" id="notreleased" hidden>
     <p><b class="t" id="notreleased-title">TIDE is not released yet.</b></p>
@@ -159,6 +157,7 @@
 </main>
 <footer class="site">
   <div class="wrap">
+    <p class="credit"><b>TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</b></p>
     <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please send TIDE problems to this fork's <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">issues</a>, not to the DUELL author.</p>
     <p><span class="ver">TIDE</span> installer. TIDE is free software under the GPL-3.0, with <b>no warranty</b>. DUELL is a fork of Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
     The package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).

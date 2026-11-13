@@ -2,40 +2,40 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only
      TIDE: landing page (GitHub Pages). Copyright (C) 2026 OSCILL/R (DUELL). Part of TIDE, built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.
      TIDE (pssdrnk's fork) replaces the page's text with its own, 2026-11-01; the design was renewed 2026-11-04.
-     Styles and the theme toggle: assets/site.css, assets/theme.js (self-hosted, no external requests). The builds shown come from install/channels.json. -->
+     Styles: assets/site.css (b11: TIDE's night sea, dark only; self-hosted, no external requests). The builds shown come from install/channels.json. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TIDE - a morph that plays and evolves by itself</title>
 <meta name="description" content="TIDE is a morph that plays and evolves by itself, for the M-VAVE FM-1. TIDE by pssdrnk. Install it from this page, or try it in the browser.">
-<meta name="theme-color" content="#170f38">
+<meta name="theme-color" content="#040B13">
 <meta property="og:title" content="TIDE">
 <meta property="og:description" content="A morph that plays and evolves by itself, for the M-VAVE FM-1. TIDE by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.">
-<meta property="og:image" content="https://pssdrnk-cmyk.github.io/DUELL-TIDE/img/duell-tide-cover.jpg">
+<meta property="og:image" content="https://pssdrnk-cmyk.github.io/DUELL-TIDE/img/tide-social.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%237c4dff'/%3E%3Cstop offset='1' stop-color='%23d6247f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%23170f38'/%3E%3Cpath d='M6 38 C16 20 26 52 36 36 S52 22 58 34' fill='none' stroke='url(%23g)' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="assets/tide-favicon.svg">
 <link rel="stylesheet" href="assets/site.css">
-<script src="assets/theme.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
 <header class="site">
   <div class="wrap">
-    <a class="brand" href="./"><span class="t">TIDE</span></a>
+    <a class="brand" href="./" aria-label="TIDE, home"><img src="assets/tide-wordmark.svg" alt="" width="87" height="26"></a>
     <nav aria-label="Main">
       <a href="install/">Install</a>
       <a href="emu/">Emulator</a>
       <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable#readme">Guide</a>
       <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source</a>
     </nav>
-    <button class="theme" id="theme" type="button">Theme: system</button>
   </div>
 </header>
 
 <section class="hero">
   <svg class="waves" viewBox="0 0 1200 420" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-    <defs><linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs>
+    <defs><linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="#3BE8D6"/><stop offset="1" stop-color="#FF8A5E"/></linearGradient></defs>
     <g fill="none" stroke="url(#wg)" stroke-width="1.5">
       <path d="M0 250 C150 130 300 370 450 250 S750 130 900 250 S1100 330 1200 220"/>
       <path d="M0 280 C170 170 320 380 480 275 S780 170 930 280 S1120 350 1200 260" opacity=".8"/>
@@ -46,7 +46,7 @@
   </svg>
   <div class="wrap">
     <p class="eyebrow">Firmware for the M-VAVE FM-1</p>
-    <h1><span class="tide">TIDE</span></h1>
+    <h1><img src="assets/tide-wordmark.svg" alt="TIDE" width="330" height="102"></h1>
     <p class="lead">TIDE is a morph that plays and evolves by itself.</p>
     <p>The MORPH glides a sound between two versions of itself, End A and End B. TIDE moves that fader for you, in time with the music, and each trip comes out a little different. Set a tide going, then play your drum machine, bass or sampler over it.</p>
     <div class="actions">
@@ -55,7 +55,7 @@
       <a class="btn second" href="emu/">Try the emulator<small>in your browser, no FM-1 needed</small></a>
     </div>
     <p class="builds-line" id="builds-line" aria-live="polite">The builds are listed on the installer page.</p>
-    <p class="credit"><b>TIDE by pssdrnk.</b> Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments), GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.</p>
+    <p class="credit">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.<br>Not made or endorsed by OSCILL/R or M-VAVE.</p>
   </div>
 </section>
 
@@ -153,12 +153,13 @@
 
 <footer class="site">
   <div class="wrap">
+    <p class="credit"><b>TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</b></p>
     <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. M-VAVE and FM-1 are trademarks of their respective owners. DUELL and its credit belong to OSCILL/R.</p>
     <p>TIDE is free software under the GPL-3.0, with <b>no warranty</b>. It is a modified version of DUELL by OSCILL/R, itself a modified version of
       <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
       The firmware package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
       See <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/NOTICE.md">NOTICE</a>, <a href="install/LICENSES/">the licence texts</a> and <a href="install/LICENSE">the GPL-3.0</a>.</p>
-    <p>This site sets no cookies and loads nothing from other servers. The font is Barlow Semi Condensed (SIL Open Font License 1.1). The theme choice stays in your browser.</p>
+    <p>This site sets no cookies and loads nothing from other servers. The font is Barlow Semi Condensed (SIL Open Font License 1.1).</p>
   </div>
 </footer>
 

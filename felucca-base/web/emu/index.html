@@ -7,7 +7,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TIDE web emulator@PREVIEW@</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22/%3E%3Crect x=%224%22 y=%224%22 width=%228%22 height=%228%22 fill=%22%23fff%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2032%2032%22%3E%3Crect%20width=%2232%22%20height=%2232%22%20rx=%227%22%20fill=%22%2302070D%22/%3E%3CclipPath%20id=%22a%22%3E%3Crect%20width=%2232%22%20height=%2219%22/%3E%3C/clipPath%3E%3CclipPath%20id=%22b%22%3E%3Crect%20y=%2219%22%20width=%2232%22%20height=%2213%22/%3E%3C/clipPath%3E%3Cpath%20d=%22M6,6%20H26%20V11%20H18.5%20V27%20H13.5%20V11%20H6%20Z%22%20fill=%22%23F2FBFF%22%20clip-path=%22url(%23a)%22/%3E%3Cpath%20d=%22M6,6%20H26%20V11%20H18.5%20V27%20H13.5%20V11%20H6%20Z%22%20fill=%22%233BE8D6%22%20fill-opacity=%22.75%22%20clip-path=%22url(%23b)%22/%3E%3Cpath%20d=%22M3.0,19.79%20L5.0,20.24%20L7.0,20.40%20L9.0,20.24%20L11.0,19.80%20L13.0,19.17%20L15.0,18.51%20L17.0,17.96%20L19.0,17.64%20L21.0,17.64%20L23.0,17.95%20L25.0,18.50%20L27.0,19.16%20L29.0,19.79%22%20stroke=%22%233BE8D6%22%20stroke-width=%222%22%20fill=%22none%22%20stroke-linecap=%22round%22/%3E%3C/svg%3E">
 <meta name="description" content="TIDE, a morph that lets the FM-1 play itself, running in your browser: the firmware's own code compiled to WebAssembly.">
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt), cut to printable ASCII, for the knob labels */
@@ -15,10 +15,10 @@
 /* Barlow Semi Condensed (SIL OFL 1.1, fonts/OFL-Barlow.txt), the unit's screen font (assets/fonts), cut to Latin-1 */
 @font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; src: url("fonts/BarlowSemiCondensed-Medium-subset.woff") format("woff"); font-display: swap; }
 @font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; src: url("fonts/BarlowSemiCondensed-Bold-subset.woff") format("woff"); font-display: swap; }
-/* the page wears the unit's default screen theme, VIOLET (tools/gen_ui_palettes.py): ground, text, secondary, borders,
-   part 1 (A) and part 2 (A); --dim is the firmware's DIM (BG -> TEXT 42 %) brightened a step for small text */
-:root { --bg: #080108; --fg: #ffffff; --dim: #b5a8bd; --rule: #9a3fe0; --card: #0a0414;
-        --p1: #dc38ff; --p2: #ff1f8e;
+/* b11: the page wears TIDE's night sea, the unit's own palette (work/b11/design/tokens): ground, foam text, moonlight, lines,
+   part 1 sea glass, part 2 coral. --dim is moonlight; the buttons are sea glass with the ground colour as ink */
+:root { --bg: #040B13; --fg: #F2FBFF; --dim: #9CC2D3; --rule: #1D5E77; --card: #0A1824;
+        --p1: #3BE8D6; --p2: #FF8A5E; --ink: #02070D;
         --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
         --lit: #fff4d6; --green: #5fe08a; color-scheme: dark; }
 html, body { background: var(--bg); }
@@ -26,15 +26,14 @@ body { margin: 0; color: var(--fg); font: 500 15px/1.5 "Barlow Semi Condensed", 
 main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
 @media (orientation: portrait) and (max-width: 700px) { main { padding: 8px 8px 24px; } }
 a { color: var(--p1); }
-a:hover { color: var(--p2); }
+a:hover { color: var(--fg); }
 header.title { text-align: center; margin: 0 0 16px; }
-header.title h1 { font-size: 48px; font-weight: 700; margin: 0; letter-spacing: .02em; line-height: 1.1; }
-header.title h1 span { color: var(--p1); }
-header.title h1 .with { color: var(--dim); font-size: .5em; font-weight: 400; }
+header.title h1 { margin: 0; line-height: 0; }
+header.title h1 img { height: 64px; width: auto; }
 header.title p { margin: 0; }
 header.title .tag { font-weight: 700; font-size: 17px; }
 header.title .note { color: var(--dim); }
-header.title .version { margin-top: 6px; font-size: 14px; color: var(--p2); font-weight: 700; letter-spacing: .04em; }
+header.title .version { margin-top: 8px; font: 500 13px ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace; color: var(--dim); letter-spacing: .04em; }
 .device { position: relative; width: 100%; aspect-ratio: 1000 / 624; user-select: none; -webkit-user-select: none;
           -webkit-touch-callout: none; touch-action: manipulation; }
 .device svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -89,8 +88,8 @@ header.title .version { margin-top: 6px; font-size: 14px; color: var(--p2); font
 .start { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
          background: rgba(0, 0, 0, .5); border-radius: 4% / 6%; }
 .start[hidden] { display: none; }
-.start button { font: inherit; font-weight: 700; font-size: 20px; letter-spacing: .04em; padding: 10px 28px; background: var(--p1); color: var(--bg); border: 0; border-radius: 8px; cursor: pointer; }
-.start button:hover { background: var(--p2); }
+.start button { font: inherit; font-weight: 700; font-size: 20px; letter-spacing: .04em; padding: 10px 28px; background: var(--p1); color: var(--ink); border: 0; border-radius: 10px; cursor: pointer; }
+.start button:hover { filter: brightness(1.1); }
 .start button:disabled { opacity: .4; cursor: progress; }
 .start p { margin: 0; max-width: 32em; text-align: center; color: #fff; }
 .keys, footer { margin: 16px 0 0; color: var(--dim); text-align: center; }
@@ -103,17 +102,17 @@ footer { margin-top: 12px; font-size: 14px; }
 footer nav a { margin: 0 6px; }
 footer nav button { font: inherit; color: var(--p1); background: none; border: 0; padding: 0; margin: 0 6px; cursor: pointer; text-decoration: underline; }
 footer small { font-size: 12px; opacity: .8; }
-footer small.version { color: var(--p2); font-weight: 700; opacity: 1; }
-.install { display: inline-block; margin-top: 12px; padding: 12px 30px; background: var(--p1); color: var(--bg); font-weight: 700; font-size: 20px; line-height: 1; letter-spacing: .04em; border-radius: 8px; text-decoration: none; }
-.install:hover { background: var(--p2); color: var(--bg); }
+footer small.version { color: var(--dim); font: 500 12px ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace; opacity: 1; }
+.install { display: inline-block; margin-top: 12px; padding: 12px 30px; background: var(--p1); color: var(--ink); font-weight: 700; font-size: 20px; line-height: 1; letter-spacing: .04em; border-radius: 10px; text-decoration: none; }
+.install:hover { filter: brightness(1.1); color: var(--ink); }
 </style>
 </head>
 <body>
 <main>
 <header class="title">
-  <h1><span>TIDE</span></h1>
-  <p class="tag">TIDE by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.</p>
-  <p class="version">@VERSION@@PREVIEW@ web emulator</p>
+  <h1><img src="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%22-40%20-10%20396%20120%22%20role=%22img%22%20aria-label=%22TIDE%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22f%22%20x1=%220%22%20x2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%233BE8D6%22%20stop-opacity=%220%22/%3E%3Cstop%20offset=%22.1%22%20stop-color=%22%233BE8D6%22/%3E%3Cstop%20offset=%22.9%22%20stop-color=%22%233BE8D6%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%233BE8D6%22%20stop-opacity=%220%22/%3E%3C/linearGradient%3E%3CclipPath%20id=%22a%22%3E%3Cpath%20d=%22M-40,-10%20H356%20V62.26%20L356,62.26%20L352,61.82%20L344,60.87%20L336,59.86%20L328,58.86%20L320,57.94%20L312,57.14%20L304,56.53%20L296,56.14%20L288,56.00%20L280,56.12%20L272,56.48%20L264,57.07%20L256,57.85%20L248,58.76%20L240,59.76%20L232,60.77%20L224,61.73%20L216,62.58%20L208,63.27%20L200,63.74%20L192,63.98%20L184,63.96%20L176,63.68%20L168,63.18%20L160,62.46%20L152,61.59%20L144,60.62%20L136,59.61%20L128,58.62%20L120,57.72%20L112,56.97%20L104,56.41%20L96,56.08%20L88,56.01%20L80,56.18%20L72,56.61%20L64,57.25%20L56,58.07%20L48,59.01%20L40,60.01%20L32,61.02%20L24,61.96%20L16,62.77%20L8,63.41%20L0,63.82%20L-8,64.00%20L-16,63.91%20L-24,63.58%20L-32,63.02%20L-40,62.26%20Z%22/%3E%3C/clipPath%3E%3CclipPath%20id=%22b%22%3E%3Cpath%20d=%22M-40,130%20H356%20V62.26%20L356,62.26%20L352,61.82%20L344,60.87%20L336,59.86%20L328,58.86%20L320,57.94%20L312,57.14%20L304,56.53%20L296,56.14%20L288,56.00%20L280,56.12%20L272,56.48%20L264,57.07%20L256,57.85%20L248,58.76%20L240,59.76%20L232,60.77%20L224,61.73%20L216,62.58%20L208,63.27%20L200,63.74%20L192,63.98%20L184,63.96%20L176,63.68%20L168,63.18%20L160,62.46%20L152,61.59%20L144,60.62%20L136,59.61%20L128,58.62%20L120,57.72%20L112,56.97%20L104,56.41%20L96,56.08%20L88,56.01%20L80,56.18%20L72,56.61%20L64,57.25%20L56,58.07%20L48,59.01%20L40,60.01%20L32,61.02%20L24,61.96%20L16,62.77%20L8,63.41%20L0,63.82%20L-8,64.00%20L-16,63.91%20L-24,63.58%20L-32,63.02%20L-40,62.26%20Z%22/%3E%3C/clipPath%3E%3C/defs%3E%3Cpath%20d=%22M0,0%20H84%20V20%20H52%20V100%20H32%20V20%20H0%20Z%20M102,0%20H122%20V100%20H102%20Z%20M140,0%20H180%20A50,50%200%200%201%20180,100%20H140%20Z%20M160,20%20V80%20H180%20A30,30%200%200%200%20180,20%20Z%20M248,0%20H316%20V20%20H268%20V40%20H306%20V60%20H268%20V80%20H316%20V100%20H248%20Z%22%20fill=%22%23F2FBFF%22%20fill-rule=%22evenodd%22%20clip-path=%22url(%23a)%22/%3E%3Cpath%20d=%22M0,0%20H84%20V20%20H52%20V100%20H32%20V20%20H0%20Z%20M102,0%20H122%20V100%20H102%20Z%20M140,0%20H180%20A50,50%200%200%201%20180,100%20H140%20Z%20M160,20%20V80%20H180%20A30,30%200%200%200%20180,20%20Z%20M248,0%20H316%20V20%20H268%20V40%20H306%20V60%20H268%20V80%20H316%20V100%20H248%20Z%22%20fill=%22%233BE8D6%22%20fill-opacity=%22.72%22%20fill-rule=%22evenodd%22%20clip-path=%22url(%23b)%22/%3E%3Cpath%20d=%22M-40,62.26%20L-32,63.02%20L-24,63.58%20L-16,63.91%20L-8,64.00%20L0,63.82%20L8,63.41%20L16,62.77%20L24,61.96%20L32,61.02%20L40,60.01%20L48,59.01%20L56,58.07%20L64,57.25%20L72,56.61%20L80,56.18%20L88,56.01%20L96,56.08%20L104,56.41%20L112,56.97%20L120,57.72%20L128,58.62%20L136,59.61%20L144,60.62%20L152,61.59%20L160,62.46%20L168,63.18%20L176,63.68%20L184,63.96%20L192,63.98%20L200,63.74%20L208,63.27%20L216,62.58%20L224,61.73%20L232,60.77%20L240,59.76%20L248,58.76%20L256,57.85%20L264,57.07%20L272,56.48%20L280,56.12%20L288,56.00%20L296,56.14%20L304,56.53%20L312,57.14%20L320,57.94%20L328,58.86%20L336,59.86%20L344,60.87%20L352,61.82%20L356,62.26%22%20fill=%22none%22%20stroke=%22url(%23f)%22%20stroke-width=%223.2%22%20stroke-linecap=%22round%22/%3E%3C/svg%3E" alt="TIDE" width="208" height="64"></h1>
+  <p class="tag">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0.</p>
+  <p class="version">web emulator · @VERSION@@PREVIEW@</p>
   <p class="tag note">Not made or endorsed by OSCILL/R or M-VAVE. The original DUELL is at <a href="https://oscillr.github.io/DUELL/">oscillr.github.io/DUELL</a>.</p>
   <a class="install" href="../install/">Install TIDE on your FM-1</a>
 </header>

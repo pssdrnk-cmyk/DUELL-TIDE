@@ -1,10 +1,10 @@
-<p align="center"><img src="docs/duell-tide-cover.jpg" alt="TIDE by pssdrnk, built on DUELL 1.1 by OSCILL/R" width="960"></p>
+<p align="center"><img src="docs/tide-banner.png" alt="TIDE for FM-1: the TIDE wordmark on a night sea, next to the AUTO TIDE page of the unit with both parts gliding" width="960"></p>
 
 # TIDE for FM-1
 
-**TIDE for FM-1: a morph that plays and evolves by itself.** Firmware for the M-VAVE FM-1.
+A morph that plays and evolves by itself. Firmware for the M-VAVE FM-1.
 
-Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.
+TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.
 
 **Stable: [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable) · Beta: [`1.0.0-b6`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/tide-1.0.0-b6)** ([what that means](#builds-stable-and-beta))
 
