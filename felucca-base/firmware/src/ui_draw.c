@@ -3036,10 +3036,8 @@ static void draw_columns(void)
  * centred, no panel or frame, in ONE colour (T_TEXT, the theme's text colour; POLICE its own). It is a graphic, the art
  * director's lockup (assets/splash_logo.svg, rasterised at build time to a coverage mask, splash_logo.h), not drawn from a font:
  *     DUELL / MultiMorphing / Bitimbral Synthesizer / by OSCILL/R
- * over the thin morphing wave lines of the MORPH page (ui_graph.c mv_*: thin lines, no centre line, calm): SPL_N lines in a
- * slow ribbon (its middle drifting, its width breathing), smooth on the left, with overtones and ripples further right as the
- * morph sweeps across, coloured from the SELECTED THEME's part 1 colour (the top line) to its part 2 colour (the bottom one):
- * violet to pink in VIOLET. POLICE: flat red lines above, flat blue below, no blend (the palette's c[0], c[2]). The lines run on unbroken behind the text, which is drawn on top: no box, no gap, no halo. Drawn while the
+ * (b10 TIDE: the wordmark TIDE; b11: over the sea of sines toward the horizon, spl_sea, and one dim credit line). The text is drawn on top:
+ * no box, no gap, no halo. Drawn while the
  * synth already runs (audio_init is before it; notes play through it), not by a delay: the first frame at lcd_init, then
  * splash_begin (main.c) and the main loop's ui_draw draw a step every SPL_STEP_MS until SPLASH_MS are over (then the normal
  * screen at once) or any button, key or knob (splash_input, ui_input.c) ends it; MIDI notes never do. MENU > ANIM OFF: the
@@ -3049,7 +3047,6 @@ static void draw_columns(void)
 #define SPLASH_MS 1200u                             /* how long (any key ends it) */
 #define GUIDE_SPLASH_MS 500u                        /* .. longer before the first-start GUIDE */
 #define SPL_STEP_MS 66u                             /* one animation step (~15 /s, as the MORPH page's) */
-#define SPL_N 15                                    /* the lines */
 static uint8_t splash_on;
 static uint8_t splash_guide;                        /* the GUIDE follows this splash (its bit was clear at splash_begin) */
 static uint32_t splash_t0, splash_fr;
@@ -3137,11 +3134,8 @@ static void splash_logo_draw(int32_t y0, int32_t h)
                 tide_put(x, y, ln, (uint32_t)cov * fade / 16u);
         }
     }
-    cv_text_in(0, 108, 240, &AF_M, "generative bitimbral synth", T_TEXT, T_BG);
-    if (tide_spl_credits) {                              /* the GPL credits: the base it is built on, its licence */
-        cv_text_in(0, 202, 240, &AF_S, "built on DUELL (OSCILL/R) and Felucca", T_MID, T_BG);
-        cv_text_in(0, 218, 240, &AF_S, "(H\xFCgelton Instruments), GPL-3.0", T_MID, T_BG);
-    }
+    if (tide_spl_credits)                                /* b11 splash "sea": one dim credit line (the full credits stay in ABOUT); the subtitle is gone */
+        cv_text_in(0, 220, 240, &AF_S, "built on DUELL and Felucca  GPL-3.0", T_MID, T_BG);
 }
 /* MENU > ABOUT's key hints (0.2.9, the owner: KNOB 1 scrolls, SELECT goes left and right between its sections; OCT- back, lit) */
 static const khint_t ABOUT_KEYS[2] = {{KC_K1, "SCROLL"}, {KC_SELECT, "HEADINGS"}};   /* (DUELL 1.1: SELECT jumps to the next heading: the logo, ABOUT, CREDITS, LICENSES) */
@@ -3152,18 +3146,51 @@ static void about_keys(int32_t y)                      /* SCROLL and HEADINGS on
     cv_key_row(8, 232, y, ABOUT_KEYS, 2u, 3u, T_BG);
     cv_key_hint(8, y + ABOUT_KDY, KC_OCTDN, "BACK", 1, T_BG);
 }
+/* b11 splash "SEA" (owner 13 November: "just like this"; work/b11/design-review/REVIEW.md 3, tools/splash6.py): under the wordmark a sea of pure sines seen
+ * toward the horizon, 13 lines, no fills. Far lines small, close together and dim; near lines long, tall, thicker and bright, crossing each other. Line k of 13
+ * (u = k / 12): centre row 122 + 86 u^1.55, amplitude 1.2 + 9.5 u^1.3 px, wavelength 46 + 120 u px, width 1 + 1.5 u px, phase 1.9 k rad; the part 1 colour
+ * (sea glass) at the horizon to the part 2 colour (coral) at the front by u^1.2, at strength 0.30 + 0.70 u^0.8; each swell hides what is behind it (drawn
+ * front to back: a line only shows above the nearer ones). Both sides fade out over 24 px; rows up to 217. In the loop the near lines roll up to three
+ * times faster than the far ones (sp). The constants are the recipe's, computed once: 1/16 px, 2^32 a turn (sine_i). */
+static const struct { uint16_t y16, a16; uint32_t dx, ph; uint8_t w16, sp, mix, al; } SPL_SEA[13] = {
+    {1952, 19, 93368854u, 0u, 16, 1, 0, 30},           {1981, 25, 76695845u, 1298774024u, 18, 1, 5, 40},  {2038, 34, 65075262u, 2597548047u, 20, 1, 12, 47},
+    {2112, 44, 56512728u, 3896322071u, 22, 1, 19, 53}, {2203, 56, 49941480u, 900128798u, 24, 2, 27, 59},  {2306, 68, 44739243u, 2198902822u, 26, 2, 35, 65},
+    {2422, 81, 40518559u, 3497676846u, 28, 2, 44, 70}, {2549, 95, 37025580u, 501483573u, 30, 2, 52, 75},  {2686, 109, 34087042u, 1800257597u, 32, 2, 61, 81},
+    {2833, 124, 31580642u, 3099031620u, 34, 3, 71, 86}, {2989, 139, 29417584u, 102838348u, 36, 3, 80, 90}, {3154, 155, 27531842u, 1401612372u, 38, 3, 90, 95},
+    {3328, 171, 25873297u, 2700386395u, 40, 3, 100, 100}};
+#define SPL_SEA_Y1 218                                   /* the sea's last row + 1 (the credit line below it) */
+static void spl_sea(uint32_t st, uint16_t c1, uint16_t c2)
+{
+    const uint32_t t = 478495693u + st * 24606583u;      /* (0.7 rad, then 2 pi in 144 steps of 66 ms: a slow swell, a third of the drawing's speed; owner: "too fast") */
+    const int hc = UI_PALETTES[ux.pal % NPALETTES].hc;   /* (POLICE: two flat colours, no blend: the far half part 1's, the near half part 2's, a pixel drawn whole or not) */
+    uint16_t col[13];
+    int32_t x, k;
+    for (k = 0; k < 13; k++)
+        col[k] = hc ? (k < 7 ? c1 : c2) : ux_mix(c1, c2, SPL_SEA[k].mix);
+    for (x = 0; x < 240; x++) {
+        const int32_t e = x < 239 - x ? x : 239 - x, f = e < 24 ? e : 24;   /* the sides fade over 24 px */
+        int32_t cov = SPL_SEA_Y1 * 16;                    /* rows from here down are hidden by a nearer swell */
+        if (!f)
+            continue;
+        for (k = 12; k >= 0; k--) {                      /* front to back */
+            const int32_t yc = SPL_SEA[k].y16 + (sine_i((uint32_t)x * SPL_SEA[k].dx + SPL_SEA[k].ph - SPL_SEA[k].sp * t) * SPL_SEA[k].a16 >> 15);
+            const int32_t lo = yc - SPL_SEA[k].w16 / 2, hi0 = lo + SPL_SEA[k].w16, hi = hi0 < cov ? hi0 : cov;
+            int32_t y;
+            for (y = lo >> 4; lo < hi && y <= (hi - 1) >> 4; y++) {
+                const int32_t a0 = y * 16, a1 = a0 + 16, c = (a1 < hi ? a1 : hi) - (a0 > lo ? a0 : lo);
+                if (hc ? c >= 8 && f >= 12 : c > 0)
+                    tide_put(x, y, col[k], hc ? 16u : (uint32_t)(c * SPL_SEA[k].al * f) / 2400u);
+            }
+            cov = lo < cov ? lo : cov;
+        }
+    }
+}
 /* hint_y: 0 the splash; else the screen row of MENU > ABOUT's key hints (about_keys), drawn on top of the last strip */
 static void splash_frame(uint32_t st, int32_t hint_y)
 {
     static const int32_t EDGE[4] = {0, 106, 196, 240};   /* the strips: no text row lies across an edge (b10 TIDE: the wordmark, the sea, the credits) */
-#define SPL_LINE_DIM 45                                  /* the lines toward the background, %: TIDE's lockup is the fonts' thinner glyphs, which lines at 18 % crossed almost at the text's own strength (GREY) */
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
-    uint16_t col[SPL_N];
-    uint32_t band, x, j, m = st * 0x00800000u;          /* the motion: 2^32 a turn */
-    int32_t j2;
-    for (j = 0; j < (uint32_t)SPL_N; j++)               /* the part 1 colour to the part 2 colour; HC: two flat halves */
-        col[j] = pl->hc ? pl->c[j >= (uint32_t)SPL_N / 2u ? 2 : 0]
-                        : ux_mix(ux_mix(pl->c[0], pl->c[2], (int32_t)j * 100 / (SPL_N - 1)), T_BG, SPL_LINE_DIM);
+    uint32_t band;
     tide_spl_st = st;
     tide_spl_credits = (uint8_t)(!hint_y && !splash_guide);   /* (ABOUT's key hints and the first start's GUIDE hint have those rows) */
     for (band = 0; band < 3u; band++) {
@@ -3171,24 +3198,8 @@ static void splash_frame(uint32_t st, int32_t hint_y)
         CV_BANDS(h) { /* (the strip may be taller than a canvas band: drawn once for each) */
             cv_begin(240, (uint32_t)h, T_BG);
             cv_oy = -y0;
-            for (j = 0; j < (uint32_t)SPL_N; j++) {
-                int32_t px = 0, py = 0, pen = 0;
-                j2 = (int32_t)j * 2 - (SPL_N - 1);          /* -14 .. +14: the line's place across the ribbon */
-                for (x = 0; x < 240u; x += 2u) {
-                    uint32_t xt = x * 17895697u / 100u;     /* x in hundredths of a turn per 1.00 cycle across the width */
-                    int32_t mc = 160 + (sine_i(xt * 90u + m) * 5 >> 15);                       /* (b10 TIDE: the sea, under the name) */
-                    int32_t w = 48 + (sine_i(xt * 130u + m * 2u + 0x40000000u) * 10 >> 15);
-                    int32_t mo = clamp(((int32_t)x - 120) * 256 / 240 + 128 + (sine_i(m) >> 8), 0, 256);   /* the morph: 0 left .. 256 right */
-                    int32_t calm = sine_i(xt * 100u + j * 0x05000000u + m);                    /* the smooth wave every line has */
-                    int32_t rip = (sine_i(xt * 370u + j * 0x0C000000u + m * 3u) * 3 + sine_i(xt * 710u - j * 0x1B000000u + m * 5u) * 2) / 5;   /* overtones and ripples */
-                    int32_t y = mc + j2 * w / (2 * (SPL_N - 1)) + (int32_t)(((int64_t)calm * 5 + (int64_t)rip * mo / 256 * 4) >> 15);
-                    if (pen)
-                        cv_line(px, py, (int32_t)x, y, col[j]);
-                    px = (int32_t)x;
-                    py = y;
-                    pen = 1;
-                }
-            }
+            if (y0 + cv_by + (int32_t)cv_h > 108 && y0 + cv_by < SPL_SEA_Y1)   /* (the bands that hold the sea) */
+                spl_sea(st, pl->c[0], pl->c[2]);
             cv_oy = -y0;
             splash_logo_draw(y0, h);                        /* (the lockup, on top of the unbroken lines) */
             if (hint_y && hint_y >= y0 && hint_y < y0 + h)
