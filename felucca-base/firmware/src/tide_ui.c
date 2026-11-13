@@ -699,10 +699,10 @@ static void tide_columns(void)
         return;                                          /* (no cards: the list and its hint own the card row; hiding them cleared it under the list on every redraw, a flicker while the colour follows a glide) */
     }
     g = morph_pending(TIDE_G_GLIDE);
-    if (glide_running()) {                               /* (I5: running, knob 1's line is the gesture as at rest and the ARC's words at its right; the trip is the line under the faders, graph_tide) */
+    if (glide_running()) {                               /* (I5: running, knob 1's line is the gesture as at rest and the ARC's words and the trip at its right; the water shows how far, graph_tide) */
         char dn[16];
         str_cpy(val, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", sizeof val);
-        st[0] = 0;                                       /* b11 (design review 2.2): the status on knob 1's line, as MORPH's: the ARC's phase (the graph names none now), then the trip */
+        st[0] = 0;                                       /* b11 (design review 2.2): the status on knob 1's line, as MORPH's: the ARC's phase (b12: the page draws no ARC), then the trip */
         if (!gl.armed && song.playing && sqm_arc && sqm_auto && tarc.run) {
             str_cpy(st, tarc_name(), sizeof st);
             str_cpy(st + str_len(st), "  ", 4);
@@ -789,7 +789,7 @@ static __attribute__((unused)) int tide_arc_text(char *l)
 {
     if (!(glide_running() && !gl.armed && song.playing && sqm_arc && sqm_auto && tarc.run))
         return 0;
-    if (cur_page()->graph == GR_TIDE) {                  /* (b10: AUTO TIDE draws the ARC: its words would say the phase again; only the hand's DROP NEXT, which the graph does not show) */
+    if (cur_page()->graph == GR_TIDE) {                  /* (on AUTO TIDE knob 1's line names the phase already, tide_columns: only the hand's DROP NEXT here) */
         if (!(tarc.hand && tarc.phase != AP_DROP))
             return 0;
         str_cpy(l, "DROP NEXT", 40);
@@ -862,49 +862,12 @@ static __attribute__((noinline)) void tide_status_arc(char *l, int arc)
 /* the body, screen rows TB_Y0 .. TB_Y1 - 1 between the knob-1 line and the card row (lifted TIDE_LIFT), one canvas */
 #define TB_Y0 UT_A_GR_Y
 #define TB_Y1 (UT_A_CARD_Y - TIDE_LIFT)
-#define JB_X0 24                                         /* the SOUND column's tracks x JB_X0 .. + JB_W, the SEQ column's JB_DX further */
-#define JB_W 88
-#define JB_DX 116
-static int32_t tide_x(int32_t x0, int32_t x1, uint32_t f) { return x0 + (int32_t)f * (x1 - x0) / 127; }
 
-/* The selected part (song.sel; with BOTH both parts: ui_part_hot) is shown in full, the other dimmed (the colour mixed 60 % into the background; MONO: its grey), and the selected part's number sits
- * in a filled pill (the cue that works on MONO and GREY too) and a 2 px bar stands beside its steps row */
+/* The selected part (song.sel; with BOTH both parts: ui_part_hot) is shown in full, the other dimmed (the colour mixed 60 % into the background; MONO: its grey): its steps and its water */
 static uint16_t tide_pc(uint32_t k)
 {
     return ui_part_col(k, ui_part_hot(k));             /* (ui_scope.c: the MORPH page's and this page's one tag; BOTH: both in full) */
 }
-/* fader c (0 SOUND, 1 SEQ) of part `part` on screen row y (its track's middle), x x0 .. x1: the track (a 3 px rounded bar, as the cards' bars), the glide's way on it (from where it
- * started to the end it goes to, the tint; MONO's white), the knob (5 x 9, the part's colour) and its labels: part 1's draws the column's head 10 rows up (A, the name centred, B);
- * SOUND's the part's number */
-static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t part)
-{
-    static const char *const LN[2] = {"SOUND", "SEQ"};
-    uint32_t f = c ? seqm_fader_of(part) : morph_fader_of(part);
-    uint16_t kc = tide_pc(part);
-    int32_t x = tide_x(x0, x1, f);
-    if (!part) {
-        int32_t hy = UT_TY(S, y - 10);
-        cv_text_on(x0, hy, &AF_S, "A", T_DIM, T_BG);
-        cv_text_in(x0, hy, x1 - x0, &AF_S, LN[c], T_MID, T_BG);
-        cv_text_r(x1 + 1, hy, &AF_S, "B", T_DIM, T_BG);
-    }
-    if (!c)
-        ui_part_tag(part, y, ui_part_hot(part));
-    if (ux.bw || ux.mono)
-        cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
-    else {                                               /* b11 (design review 2.2): the track carries the part's A colour (left half) and B colour (right half), dimmed */
-        const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
-        const int32_t xm = (x0 + x1) / 2;
-        cv_rrect(x0, y - 1, xm - x0 + 1, 3, 1, ux_mix(T_BG, pl->c[2u * (part & 1u)], 38), T_BG);
-        cv_rrect(xm + 1, y - 1, x1 - xm, 3, 1, ux_mix(T_BG, pl->c[2u * (part & 1u) + 1u], 38), T_BG);
-    }
-    if (glide_running() && ((gl.on >> c) & 1u) && ((gl.mask >> part) & 1u)) {
-        int32_t a = tide_x(x0, x1, (uint32_t)(gl.from[c][part] < 0 ? 0 : gl.from[c][part] > 127 ? 127 : gl.from[c][part])), b = gl.to ? x1 : x0;
-        cv_rrect(a < b ? a : b, y - 1, (a < b ? b - a : a - b) + 1, 3, 1, ux.bw ? T_MID : T_TINT, T_RAISE);   /* (MONO has no tint: its black erased the track) */
-    }
-    cv_rrect(x - 2, y - 4, 5, 9, 2, kc, T_BG);
-}
-
 /* The steps as the sequencer plays them: ONE model for the page (tide_steps, tide_sig) and its test (tests/tide_steps_test.c). A page of
  * 16 steps of part t, each as it sounds (seq_play_step_at, the very function the audio interrupt calls) in the bar it plays in: the
  * bar now for the step playing, the next ones for the steps ahead (their time from the playhead's position in the step, each step's
@@ -1034,9 +997,10 @@ static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
         if (e->k == TV_END)
             ns_step(x, y, hmax, NS_END, c);
         else if (e->k == TV_ADD)
-            cv_frame(x, y - h, 9, h, T_ACCENT);           /* (AUTO TIDE's own states over the standard: added outlined, moved in the accent, dropped dim) */
+            cv_frame(x, y - h, 9, h, ux_mix(c, T_TEXT, 45));   /* (AUTO TIDE's own states over the standard: added outlined, moved filled, both in the lane's colour lightened
+                                                              * (b12: not the accent: it is part 1's sea glass, so a moved step in part 2's lane read as part 1's); dropped dim) */
         else if (e->k >= TV_HIT)
-            ns_step(x, y, hmax, st[i], e->k == TV_MOVE ? T_ACCENT : c);
+            ns_step(x, y, hmax, st[i], e->k == TV_MOVE ? ux_mix(c, T_TEXT, 45) : c);
         else if (e->k == TV_TIE)
             ns_step(x, y, hmax, NS_TIE, c);
         else if (e->k == TV_DROP)
@@ -1045,7 +1009,7 @@ static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
             ns_step(x, y, hmax, NS_REST, c);
         if (e->maybe && e->k != TV_ADD && e->k != TV_END)
             for (r = 1; r < h; r += 2)
-                cv_rect(x, y - h + r, 9, 1, T_BG);
+                cv_rect(x, y - h + r, 9, 1, aw_wet ? aw_under(y - h + r) : T_BG);   /* (the gaps show the water where the step stands in it) */
         if (ph == page * 16u + i)
             cv_rect(x, y + 2, 9, 2, T_TEXT);
     }
@@ -1060,40 +1024,68 @@ static uint32_t tide_steps_sig(const track_t *t)
     return h;
 }
 
-/* TIDE's body: the SOUND and SEQ faders in two columns (their names between A and B over them), a row per part (its number and colour), the steps in two rows, part 1 above;
- * always both parts, the selected one in full and marked (tide_pc, tide_track). The glide's status is knob 1's line (tide_columns). Rows (capitals, knobs, bars, playhead marks):
- * the column heads 50 .. 60, faders 65 .. 75 and 79 .. 89; then the MODE line 94 .. 104, the steps 110 .. 122 and 124 .. 136, the glide's bar 139 .. 141: 4 px or more between them.
- * The steps and the part numbers take the part's own colour (T_PTHEME), not vt's text fallback, which turned one part black in the light palettes */
-/* b10 TIDE identity (item 4): ARC on screen. b11 (owner, 2026-11-13: the parts' live lines under their lanes take the arc chart's rows): with ARC on (and the tide evolving
- * the pattern) one 2 px line at the foot of the picture, the arc's progress: its four phases' places (RISE, PEAK, DROP or BREAK, RECOVER; each 8 bars a unit, their lengths
- * rolled as it goes) split by a 1 px gap, dim, and the arc so far in the theme's colour. The phase now is named in words on knob 1's line (tide_columns) */
-#define AC_X0 9
-#define AC_W 222
-#define AC_Y (TB_Y1 - 2)
-static void tide_arc_line(void)
+/* TIDE's body (b12, owner 2026-11-13: "the button to trigger the glide, mode, time and wait are fine, then the sequence; the others are clutter"; he picked RISING WATER,
+ * "it's like a tide", then "make it more water like"): each part's steps, and behind them the sea standing as high as that part's tide: low water (the lane's foot) at A,
+ * high water (near its top) at B. Part 1's lane above, part 2's below; the selected part in full, the other dimmed (tide_pc). LANGUAGE.md 5, the water line:
+ *  - the surface: a swell of two sines (the splash sea's way, sine_i: 96 px and a 41 px ripple), 1.25 px anti-aliased, the crests catching the light (toward white).
+ *    It always has its shape: rolling at the splash sea's far-line pace while the tide moves (2^32 a turn in 11.5 s), at half that in slack water (WAIT, in moonlight),
+ *    held still (and dashed) while armed or in a take's count-in, held still and dim while stopped or paused; a take records in red;
+ *  - the body: three flat tones of the part's colour, darker lower down (no gradient: owner, B11 review);
+ *  - the steps stand in it, 6 .. 32 px by pitch, their corners and gaps blending with the water's tone (ui_graph.c ns_rr, aw_under).
+ * Rolling, the main loop draws each lane again with the page's picture step (mv_tick, ~16 a second) and sends only the rows that changed (tide_water); nothing in the
+ * audio interrupt. The page's own redraw draws the same lanes from the same phase */
+#define AW_Y0(k) (TB_Y0 + 47 * (int32_t)(k))            /* part k's lane: rows AW_Y0 .. + 46 (the body is rows 48 .. 141) */
+#define AW_ROWS 47
+#define AW_TOP 5                                         /* high water: the surface's row in the lane (the crests 1 1/2 px above it, never at the lane's top) */
+#define AW_BOT 45                                        /* low water: the surface on the lane's last row but one (the swell clear of the playhead marks) */
+#define AW_RATE 372827u                                  /* the splash sea's far lines: 2^32 a turn in 11.5 s (ms) */
+#define AW_A1 16                                         /* the swell, 1/16 px each way: 1 px, and a ripple of 0.4 px */
+#define AW_A2 6
+static uint32_t aw_t, aw_t2, aw_ms, aw_tk;               /* the swell's phase and the ripple's (2^32 a turn); fm1_ms and the picture they were moved at */
+static int32_t aw_sy[NSHOWN];                            /* each lane's surface row (its mean) at the last draw */
+static uint16_t aw_tone[NSHOWN][3];                      /* .. its three tones, top to deep */
+static uint8_t aw_k;                                     /* the lane being drawn (aw_under) */
+static int aw_rolls(int st) { return st == 2 || st == 3 || st == 6; }   /* (moving, slack water, a take recording) */
+static uint16_t aw_under(int32_t y)
 {
-    static const int16_t S0[5] = {0, 80, 120, 120, 164}, SW[5] = {80, 40, 44, 44, 58};   /* each phase's start and width (RISE PEAK DROP BREAK RECOVER) */
-    const uint32_t ph = tarc.phase % 5u;
-    int32_t now = 0;
-    if (tarc.run && tarc.len)                            /* the phase's start + the units and the bar gone of its units */
-        now = S0[ph] + (int32_t)((((uint32_t)tarc.len - tarc.left) * 8u + (sqm_bar & 7u)) * (uint32_t)SW[ph] / (tarc.len * 8u));
-    cv_rect(AC_X0, AC_Y, AC_W, 2, ux_mix(T_BG, T_THEME, 35));
-    cv_rect(AC_X0, AC_Y, now, 2, T_THEME);
-    cv_rect(AC_X0 + 80, AC_Y, 1, 2, T_BG);
-    cv_rect(AC_X0 + 120, AC_Y, 1, 2, T_BG);
-    cv_rect(AC_X0 + 164, AC_Y, 1, 2, T_BG);
+    const int32_t d = y - aw_sy[aw_k];
+    return d <= 0 ? T_BG : aw_tone[aw_k][d <= 5 ? 0 : d <= 13 ? 1 : 2];
 }
-/* b12 (AUTO TIDE as TIDE's home): which bar of the loop plays, beside the lane's steps (they show one bank of 16): a cell a bank (2 .. 4), bottom up on the steps'
- * baseline, filled in the part's colour up to the bank playing and `line` ahead, the water-line fill's "how far along"; nothing on a loop of one bank */
-static __attribute__((unused)) void tide_loop_bar(const track_t *t, int32_t y, uint16_t c)
+static int32_t aw_cov(int32_t y, int32_t lo, int32_t hi)  /* coverage (0 .. 16) of the 1/16 px span lo .. hi over pixel row y */
 {
-    uint32_t len = song.playing ? tide_play_len(t) : sqm_len(t), n = (len + 15u) / 16u, at = song.playing ? tide_play_idx(t) / 16u : 0xFFu, i;
-    for (i = 0; n >= 2u && i < n && i < 4u; i++)
-        cv_rect(231, y - 3 - 4 * (int32_t)i, 8, 3, i <= at ? c : T_LINE);
+    const int32_t a0 = y * 16, a1 = a0 + 16, c = (a1 < hi ? a1 : hi) - (a0 > lo ? a0 : lo);
+    return c < 0 ? 0 : c > 16 ? 16 : c;
 }
-#define TL_TY(k) (69 + 38 * (int32_t)(k))                 /* b11: part k's lane: its tracks' row */
-#define TL_SY(k) (TL_TY(k) + 18)                         /* .. its steps' baseline (their playhead mark 2 .. 3 rows under it) */
-#define TL_LY(k) (TL_TY(k) + 22)                         /* .. its live line's rows TL_LY .. + 8 (tide_dance) */
+static uint32_t aw_fader(uint32_t k) { return gl.target == GT_SEQ ? seqm_fader_of(k) : morph_fader_of(k); }   /* (the fader the glide moves: SOUND, SEQ with TARGET SEQ) */
+static void aw_lane(uint32_t k, int32_t y0)
+{
+    uint32_t prog = 0, beat = 0, mask = 3u;
+    const int st = tide_line_state(&prog, &beat, &mask);
+    const uint16_t pc = tide_pc(k), sc = st >= 5 ? T_REC : st == 3 ? T_MID : st == 2 ? pc : ux_mix(T_BG, pc, 45);
+    const int32_t sy = y0 + AW_BOT - (int32_t)aw_fader(k) * (AW_BOT - AW_TOP) / 127, ybot = y0 + AW_BOT + 1;
+    int32_t x, y;
+    aw_k = (uint8_t)k;
+    aw_sy[k] = sy;
+    aw_tone[k][0] = ux_mix(T_BG, pc, 20);
+    aw_tone[k][1] = ux_mix(T_BG, pc, 13);
+    aw_tone[k][2] = ux_mix(T_BG, pc, 8);
+    for (x = 4; x < 236; x++) {
+        const int32_t w = (sine_i((uint32_t)x * 44739243u - aw_t) * AW_A1 >> 15) + (sine_i((uint32_t)x * 104755300u - aw_t2 + 0x5A000000u) * AW_A2 >> 15), yc = sy * 16 + 8 + w;
+        const int on = !((st == 1 || st == 5) && (x & 7) > 3);   /* (armed, a take's count-in: dashed) */
+        const uint16_t lc = w < -(AW_A1 + AW_A2) * 11 / 20 ? ux_mix(sc, T_TEXT, (-w - (AW_A1 + AW_A2) * 11 / 20) * 120 / (AW_A1 + AW_A2) + 30) : sc;   /* (a crest catches the light) */
+        for (y = (yc - 12) >> 4; y < ybot; y++) {
+            const int32_t d = y - sy, cw = aw_cov(y, yc, ybot * 16), cl = on ? aw_cov(y, yc - 10, yc + 10) : 0;
+            uint16_t px = cw ? ux_mix(T_BG, aw_tone[k][d <= 5 ? 0 : d <= 13 ? 1 : 2], cw * 100 / 16) : T_BG;
+            if (cl)
+                px = ux_mix(px, lc, cl * 100 / 16);
+            if (px != T_BG)
+                cv_pset(x, y, px);
+        }
+    }
+    aw_wet = 1;
+    tide_steps(&trk[k], y0 + 38, 32, pc);
+    aw_wet = 0;
+}
 static void graph_tide(void)
 {
     uint32_t k;
@@ -1101,59 +1093,46 @@ static void graph_tide(void)
         cv_begin(240, TB_Y1 - TB_Y0, T_BG);
         cv_bg = T_BG;
         cv_oy = -TB_Y0;
-        for (k = 0; k < NSHOWN; k++) {                   /* b11 (design review 2.2): one lane a part, its A-B tracks, its steps and its live line tied by the part bar */
-            if (ui_part_hot(k))
-                cv_rect(1, TL_TY(k) - 6, 3, TL_LY(k) + 9 - (TL_TY(k) - 6), T_PFILL(k));
-            tide_track(TL_TY(k), JB_X0, JB_X0 + JB_W, GT_SOUND, k);
-            tide_track(TL_TY(k), JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
-            tide_steps(&trk[k], TL_SY(k), 9, tide_pc(k));
-#if TIDE_HOME_BARS
-            tide_loop_bar(&trk[k], TL_SY(k), tide_pc(k));
-#endif
-            wl_front = 1;                                /* (the live line in the band too, as tide_dance draws it: the page's redraw never sends its rows empty first, uigaps) */
-            wl_stack(k, TL_LY(k) - 1, TL_LY(k) + 9);
-            wl_front = 0;
-        }
-        if (sqm_arc && sqm_auto)                         /* (the status is on knob 1's line, tide_columns) */
-            tide_arc_line();
+        for (k = 0; k < NSHOWN; k++)
+            aw_lane(k, AW_Y0(k));
         cv_oy = 0;
         cv_blit(0, TB_Y0);
     }
-    tide_dance(1);
+    tide_water(1);
 }
-/* b11 AUTO TIDE's live line (owner): each part's sound now, the MORPH page's front line alone (ui_scope.c: the same tap, reader and painter, wl_front), under its lane's steps,
- * the part's colour, the selected part's full and the other's dimmed as their lanes, the waves' soft ends. A new picture with the page's step (mv_tick, ~16 a second), in the
- * main loop while the page shows (the gate as the MORPH page opens it); only the rows that changed are sent */
-static uint32_t td_rh[NSHOWN][9] __attribute__((section(".pool")));   /* (each line row's hash as the panel holds it) */
-static void tide_dance(int whole)
+/* the water rolling: each lane drawn again a picture (the main loop, TIDE_LIVE_STRIP) and only its changed rows sent; whole (the page's redraw): the rows' hashes taken, nothing sent */
+static uint32_t aw_rh[NSHOWN][AW_ROWS] __attribute__((section(".pool")));
+static void tide_water(int whole)
 {
-    uint32_t k, r, s, h, i;
-    if (!whole) {                                        /* (each frame: a new picture with the page's step; the page's redraw (whole) draws the lines as the band has them) */
-        if (!wl_tick())
+    uint32_t k, r, s, h, i, prog = 0, beat = 0, mask = 3u;
+    if (!whole) {
+        const uint32_t tk = mv_tick(), dt = fm1_ms - aw_ms;
+        const int st = tide_line_state(&prog, &beat, &mask);
+        if (!tk || tk == aw_tk)
             return;
-        wl_step(0, WL_FRONT_A);
-        wl_step(1, WL_FRONT_A);
+        aw_tk = tk;
+        aw_ms = fm1_ms;
+        if (!aw_rolls(st))
+            return;
+        aw_t += dt * (st == 3 ? AW_RATE / 2u : AW_RATE);   /* (slack water at half the pace; the phase carries on where it was, the swell never jumps) */
+        aw_t2 += dt * (st == 3 ? AW_RATE * 3u / 4u : AW_RATE * 3u / 2u);
     }
     for (k = 0; k < NSHOWN; k++) {
-        const int32_t y0 = TL_LY(k);
-        cv_begin(240, 9, T_BG);
+        const int32_t y0 = AW_Y0(k);
+        cv_begin(240, AW_ROWS, T_BG);
         cv_bg = T_BG;
         cv_oy = -y0;
-        if (ui_part_hot(k))
-            cv_rect(1, y0, 3, 9, T_PFILL(k));            /* (the part bar runs through these rows: graph_tide) */
-        wl_front = 1;
-        wl_stack(k, y0 - 1, y0 + 9);                     /* (the front's middle 5 1/2 rows down) */
-        wl_front = 0;
+        aw_lane(k, y0);
         cv_oy = 0;
         GFX_HOOK_BLIT(0, (uint32_t)y0, 0u);
-        for (s = r = 0; r <= 9u; r++) {                  /* (the runs of changed rows; all of them after the page was drawn) */
+        for (s = r = 0; r <= AW_ROWS; r++) {
             uint32_t ch = 0;
-            if (r < 9u) {
+            if (r < AW_ROWS) {
                 const uint16_t *q = cv_px + r * 240u;
                 for (h = 2166136261u, i = 0; i < 240u; i++)
                     h = (h ^ q[i]) * 16777619u;
-                ch = (td_rh[k][r] ^ h) | (uint32_t)whole;
-                td_rh[k][r] = h;
+                ch = (aw_rh[k][r] ^ h) && !whole;
+                aw_rh[k][r] = h;
             }
             if (!ch) {
                 if (s < r)
@@ -1254,7 +1233,7 @@ static uint32_t tide_sig(void)
            ((morph_fader_of(1u - pi) | seqm_fader_of(1u - pi) << 7 | (song.playing ? trk[1u - pi].seq_idx : 0xFFu) << 14) * 0x85EBCA77u ^
             sqm_key(&sqm[(1u - pi) % NSHOWN]) * 0xC2B2AE3Du ^ tide_steps_sig(&trk[1u - pi]) * 0x165667B1u ^ 0x27D4EB2Fu) ^
            tide_steps_sig(t) * 0xD3A2646Cu ^ (uint32_t)morph.seed * 0x1B873593u ^   /* (the seed: a ROLL sets it at once and CALL AND ANSWER's listening bars follow; the ends' key comes later) */
-           ((uint32_t)(sqm_bar & 7u) | (uint32_t)tarc.next << 3 | (uint32_t)tarc.run << 6 | (uint32_t)sqm_auto << 7 | (uint32_t)tarc.cnt << 9) * 0x61C88647u ^   /* (b10 item 4: the ARC chart's mark and its fall) */
+           ((uint32_t)(sqm_bar & 7u) | (uint32_t)tarc.next << 3 | (uint32_t)tarc.run << 6 | (uint32_t)sqm_auto << 7 | (uint32_t)tarc.cnt << 9) * 0x61C88647u ^   /* (b10 item 4: the ARC's phase and bar on knob 1's line, and its fall) */
            ((uint32_t)tk_m.ans | (uint32_t)tk_pend << 2 | (uint32_t)tk_m.mode << 4 | (uint32_t)tk_m.key << 8 | (uint32_t)tk_m.flags << 12) * 0x7FEB352Du;   /* (b12: the answer on knob 1's line) */
 }
 

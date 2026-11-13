@@ -3641,6 +3641,8 @@ static void tide_line_draw(void)
     int32_t x, r;
     const int grey = ux.mono || ux.bw;
     uint32_t sig;
+    if (!ui.layer && cur_page()->graph == GR_TIDE)
+        st = 0;                                          /* (b12: AUTO TIDE's water is the tide there: no line under its header; a quick layer over it keeps the line) */
     tl_st = (uint8_t)st;
     if (st == 2u) {                                      /* (a step a picture, at most the page's picture rate (~11 a second on the unit), taken one pass after the picture's own
                                                           * pass, so the wave page's busiest pass never sends the strip too: the belt's place, a wavelength every 16 lines) */
