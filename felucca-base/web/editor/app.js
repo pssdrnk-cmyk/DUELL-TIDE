@@ -903,7 +903,7 @@ function applyTheme(i) {
   const root = document.documentElement.style;
   const known = ["--bg", "--fg", "--dim", "--line", "--panel", "--acc", "--accfg", "--page", "--warn", "--ok"];
   const set = (el, vars) => { for (const k of known) el.setProperty(k, vars[k]); };
-  const act = activePart(), cols = DEMO ? ["#de38ff", "#ff1c8b"] : null, tv = (part) => look11Vars(i, part, act, cols);
+  const act = activePart(), cols = null   /* b11-design MOCK: the demo shows the default palette (TIDE) too */, tv = (part) => look11Vars(i, part, act, cols);
   const unset = (el) => { for (const k of known) el.removeProperty(k); };
   if (i == null) { unset(root); root.removeProperty("color-scheme"); document.documentElement.dataset.scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; $("unit").title = ""; return; }
   set(root, tv(2)); root.setProperty("color-scheme", isDark(i) ? "dark" : "light"); document.documentElement.dataset.scheme = isDark(i) ? "dark" : "light";
