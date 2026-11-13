@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b10
+- **Changed (flash room, b11):** the 26 factory multis are stored smaller: every record is now LZSS-coded against a shared dictionary of two of them (`tools/gen_duell_multis.py`, `dm_rec` in the generated `duell_multis.h`), instead of the template-and-bitmap packing. 4,416 B of flash back on the device build (free 1,528 B -> 5,944 B), no RAM added, nothing in the audio interrupt. Every record rebuilds byte for byte as before (the generator checks it with the decoder's own algorithm; `multi`, `sounds`, `level`, `erase_reset`, `insert`, `bassmono`, `editordump` pass); a multi loads in under a microsecond longer on the host.
