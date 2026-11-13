@@ -97,7 +97,7 @@ static uint16_t cv_bg;           /* what cv_begin cleared the canvas to */
 /* b11 (owner on rc8: "when a screen is redrawn there are still 3 vertical lines for a couple of milliseconds"): a page change within one grid layout filled the
  * gutters (GUT: x 0..3, 79..81, 119..120, 158..160, 236..239 over rows 27..216, the gaps beside every column set a grid uses) BEFORE the strips, and where the old page had a
  * strip over a gutter (the area page's picture, a 2 x 2 page's cards) a thin BG stripe cut through it until the new strip landed (~5 transfers). The gutters' fill now waits for
- * the end of the pass (ui_draw.c grid_fill arms it, ui_draw gut_flush sends it): every transfer of the pass marks the gutter pixels it covers, and only the ones nothing covered
+ * the end of the pass (ui_draw.c: grid_fill arms it, gut_flush sends it): every transfer of the pass marks the gutter pixels it covers, and only the ones nothing covered
  * get the BG. The same picture at the end (a fill under a strip was only drawn over); in between, every pixel is the old page's or the new one's. */
 static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}};   /* x, width: 16 columns, bit b of a row the b-th column */
 #define GUT_Y0 27u
@@ -121,7 +121,7 @@ static void gut_mark(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
     for (; m && y < y1; y++)
         gut_cov[y - GUT_Y0] |= (uint16_t)m;
 }
-/* every transfer from here on marks the gutters (lcd.c / the emulator's / the host tests' lcd_fill and lcd_blit are defined above; (name) calls the function) */
+/* every transfer from here on marks the gutters (the macros expand where lcd_fill / lcd_blit are called; lcd.c, the emulator and the host tests define them; (name) calls the function) */
 #define lcd_fill(x, y, w, h, c) (gut_mark((x), (y), (w), (h)), (lcd_fill)((x), (y), (w), (h), (c)))
 #define lcd_blit(x, y, w, h, p) (gut_mark((x), (y), (w), (h)), (lcd_blit)((x), (y), (w), (h), (p)))
 static void gut_arm(uint16_t bg)
@@ -131,30 +131,6 @@ static void gut_arm(uint16_t bg)
         gut_cov[r] = 0;
     gut_bg = bg;
     gut_on = 1;
-}
-/* the gutter pixels nothing drew since gut_arm: BG, one fill a run of rows with the same uncovered columns (most passes: none or a few) */
-static void gut_flush(void)
-{
-    uint32_t i, b0 = 0, r, r1, m, lo, hi;
-    if (!gut_on)
-        return;
-    gut_on = 0;
-    for (i = 0; i < 5u; b0 += GUT[i][1], i++) {
-        const uint32_t all = (1u << GUT[i][1]) - 1u;
-        for (r = 0; r < GUT_H; r = r1) {
-            m = ~((uint32_t)gut_cov[r] >> b0) & all;
-            for (r1 = r + 1u; r1 < GUT_H && (~((uint32_t)gut_cov[r1] >> b0) & all) == m; r1++)
-                ;
-            for (lo = 0; lo < GUT[i][1]; lo = hi) {         /* each run of uncovered columns */
-                for (; lo < GUT[i][1] && !((m >> lo) & 1u); lo++)
-                    ;
-                for (hi = lo; hi < GUT[i][1] && ((m >> hi) & 1u); hi++)
-                    ;
-                if (hi > lo)
-                    (lcd_fill)(GUT[i][0] + lo, GUT_Y0 + r, hi - lo, r1 - r, gut_bg);
-            }
-        }
-    }
 }
 static uint8_t cv_scroll;        /* 1: drawing a scrolled view (its text may run past the canvas) */
 static int32_t cv_oy;            /* y offset for graph drawing */

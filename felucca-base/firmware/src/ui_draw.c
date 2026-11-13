@@ -687,6 +687,30 @@ static void grid_fill(void)
         if (GAPB[i][0] == grid_on)
             lcd_fill(0, GAPB[i][1], 240, GAPB[i][2], T_BG);
 }
+/* b11: the gutter pixels nothing drew since gut_arm (gfx.c): BG, one fill a run of rows with the same uncovered columns (most passes: none or a few). Here, not in gfx.c: some host tests take gfx.c without an lcd_fill */
+static void gut_flush(void)
+{
+    uint32_t i, b0 = 0, r, r1, m, lo, hi;
+    if (!gut_on)
+        return;
+    gut_on = 0;
+    for (i = 0; i < 5u; b0 += GUT[i][1], i++) {
+        const uint32_t all = (1u << GUT[i][1]) - 1u;
+        for (r = 0; r < GUT_H; r = r1) {
+            m = ~((uint32_t)gut_cov[r] >> b0) & all;
+            for (r1 = r + 1u; r1 < GUT_H && (~((uint32_t)gut_cov[r1] >> b0) & all) == m; r1++)
+                ;
+            for (lo = 0; lo < GUT[i][1]; lo = hi) {         /* each run of uncovered columns */
+                for (; lo < GUT[i][1] && !((m >> lo) & 1u); lo++)
+                    ;
+                for (hi = lo; hi < GUT[i][1] && ((m >> hi) & 1u); hi++)
+                    ;
+                if (hi > lo)
+                    (lcd_fill)(GUT[i][0] + lo, GUT_Y0 + r, hi - lo, r1 - r, gut_bg);
+            }
+        }
+    }
+}
 #ifndef GRID_PREFILL
 #define GRID_PREFILL() grid_fill()
 #endif
