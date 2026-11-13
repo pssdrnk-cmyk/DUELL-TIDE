@@ -76,8 +76,8 @@ The page has no SOUND / SEQ rails, part numbers, live lines, ARC line or loop ba
 
 In the steps:
 
-- a hit is a bar (a chord taller)
-- a varied hit is in the accent colour
+- a hit is a bar standing in the water, taller the higher its pitch (a chord: its top note)
+- a step the variation moved or added is drawn in its own part's colour, lighter
 - a hit the variation drops is a dim outline
 - a tie is a short bar
 - a chance step is striped until it has rolled, then solid if it sounded or an outline if it did not
