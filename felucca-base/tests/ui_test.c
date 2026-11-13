@@ -8936,7 +8936,7 @@ static int test_item158_cells(void)
         printf(" '%s'", c158_tl[k]);
     printf("\n");
     bad += check("item 158 S2: CELL pages, every value of every card in every option of the page's lists (both parts' modes, every engine): every text inside its cell with 1 px to spare, no ink on a cell's edge (FORMANT SHIFT too: its letter spacing tightened, item 158)", !c158_bad_in && c158_n > 1000u);
-    bad += check("item 158 S2:   .. every value in a Bold face (N, L, else T: the large face's weight, smaller), never M or S", !c158_bad_face && c158_t > 0u);
+    bad += check("item 158 S2:   .. every value in a Bold face (L, tightened up to 2 px a letter, else T: the large face's weight, smaller), never M or S (b11 text sizes: none needs T now)", !c158_bad_face && c158_n > 0u);
     ui_mode_set = DM_SPLIT; duell_mode_req = DM_SPLIT;
     return bad;
 }
@@ -8990,25 +8990,24 @@ static int test_item164(void)
                         ok_all = 0;
                         if (!first_bad[0]) snprintf(first_bad, sizeof first_bad, "%s / %s = '%s'", st.title, d->label ? d->label : "?", vb);
                     }
-                    if (f == (const void *)&AF_T) {
-                        n_t++;
+                    n_t += f == (const void *)&AF_T;
+                    if (f == (const void *)&AF_T || f == (const void *)&AF_L)   /* (b11 text sizes: a long value tightens its letters in L before it would take T) */
                         for (i = 0; i < sizeof WANT / sizeof WANT[0]; i++)
                             if (!strcmp(vb, WANT[i])) seen[i]++;
-                    }
                 }
                 *vp = was;
             }
         }
     }
-    printf("    item 164 (info): %u values in Medium 15 (must be 0; first: %s), %u in Bold 15; named values seen in Bold 15:", n_m, first_bad[0] ? first_bad : "-", n_t);
+    printf("    item 164 (info): %u values in Medium 15 (must be 0; first: %s), %u in Bold 15; named values seen in Bold (23 tightened, or 15):", n_m, first_bad[0] ? first_bad : "-", n_t);
     for (i = 0; i < sizeof WANT / sizeof WANT[0]; i++)
         printf(" %s%s", WANT[i], seen[i] ? "" : "(NOT SEEN)");
     printf("\n");
-    bad += check("item 164: no value on any card page (every ENGINE page of every engine, every other card page; every option of every list) is drawn in Medium 15: too wide for Bold 23 it takes Bold 15 (T), same weight (rule C2)", ok_all && n_t > 0u);
+    bad += check("item 164: no value on any card page (every ENGINE page of every engine, every other card page; every option of every list) is drawn in Medium 15: too wide for Bold 23 it tightens its letters (b11), else takes Bold 15 (T), same weight (rule C2)", ok_all);
     {
         int all = 1;
         for (i = 0; i < sizeof WANT / sizeof WANT[0]; i++) all &= seen[i] != 0u;
-        bad += check("item 164:   .. and the named values (TRIANGLE, 3 BARS, MELLOW, STRING, SQUARE, 3xSAW) (item 165: LOFI's and NOISE's are cells now) are seen in Bold 15", all);
+        bad += check("item 164:   .. and the named values (TRIANGLE, 3 BARS, MELLOW, STRING, SQUARE, 3xSAW) (item 165: LOFI's and NOISE's are cells now) are seen in Bold (b11: 23 tightened)", all);
     }
     {   /* two pages that show only in a state (ui_render's scenes 'chord' and 'lfo2'): the same rule */
         const void *f1 = 0, *f2 = 0;
@@ -10056,12 +10055,14 @@ static int test_item165(void)
         for (k = 0; k < 5u; k++) { param_format(&TP[P_LWAVE], (int16_t)k, vb, &u); ok &= !strcmp(vb, LF[k]); }
         param_format(&XTP[X_SUBWAVE], 1, vb, &u);
         ok &= !strcmp(vb, "TRI");
-        {   /* on the pages: ANALOG's WAVE card (76 px) SQUARE and TRIANGLE in Bold 15 (too wide for Bold 23), LOFI's WAVE cell TRIANGLE / BASS 1 in Bold 23 */
+        {   /* on the pages: ANALOG's WAVE card (76 px) SQUARE in Bold 23 with its letters tightened (b11 text sizes; Bold 15 before), TRIANGLE in Bold 15 (too wide even 2 px a letter tighter), LOFI's WAVE cell TRIANGLE / BASS 1 in Bold 23 */
             c156_case_t st = {"ENGINE", (int8_t)eA, -1, -1, -1, -1, 0, 0};
             const void *f;
             c156_state(&st);
-            TSEL->p[P_E0] = 1; screen_read(); ok_face &= c164_find("SQUARE", &f) && f == (const void *)&AF_T;
-            TSEL->p[P_E0] = 2; screen_read(); ok_face &= c164_find("TRIANGLE", &f) && f == (const void *)&AF_T;
+            TSEL->p[P_E0] = 1; screen_read(); ok_face &= c164_find("SQUARE", &f) && f == (const void *)&AF_L;
+            printf("    item 165 F (info): ANALOG SQUARE in %s", f == (const void *)&AF_L ? "L" : f == (const void *)&AF_T ? "T" : "other");
+            TSEL->p[P_E0] = 2; screen_read(); ok_face &= c164_find("TRIANGLE", &f) && f == (const void *)&AF_T;   /* (over 2 px a letter tighter: Bold 15) */
+            printf(", TRIANGLE in %s\n", f ==(const void *)&AF_L ? "L" : f == (const void *)&AF_T ? "T" : "other");
             st.eng = (int8_t)eL;
             c156_state(&st);
             TSEL->p[P_E1] = 1; screen_read(); ok_face &= c164_find("TRIANGLE", &f) && f == (const void *)&AF_L;
@@ -10069,7 +10070,7 @@ static int test_item165(void)
             TSEL->p[P_E1] = 0; screen_read(); ok_face &= c164_find("PULSE", &f) && f == (const void *)&AF_L;
         }
         bad += check("item 165 F: LOFI's WAVE list PULSE TRIANGLE .. SINE and ANALOG's SAW SQUARE TRIANGLE SINE PWM SYNC SUB in full words; the LFO's in full words too (SINE TRIANGLE SAW SQUARE S&H, b4); SUB OSC's TRI not touched", ok);
-        bad += check("item 165 F:   .. on the pages: ANALOG's SQUARE / TRIANGLE in Bold 15 (too wide for Bold 23), LOFI's cells TRIANGLE, BASS 1, PULSE in Bold 23", ok_face);
+        bad += check("item 165 F:   .. on the pages: ANALOG's SQUARE in Bold 23 tightened (b11 text sizes) and TRIANGLE in Bold 15, LOFI's cells TRIANGLE, BASS 1, PULSE in Bold 23", ok_face);
     }
     (void)eT; (void)eV;
     ui_power_on();
