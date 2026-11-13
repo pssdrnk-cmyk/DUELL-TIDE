@@ -23,7 +23,7 @@ export function themeVars(i, part) {
   return {
     "--bg": base, "--fg": text, "--dim": mix(base, text, L.PALETTES.DIM_PCT), "--line": mix(base, line, 55), "--panel": part === 2 ? mix(page, panel, 100) : panel,
     "--acc": acc, "--accfg": inkOn(acc), "--page": page,
-    "--warn": dark ? "#ff6b81" : "#b00020", "--ok": dark ? "#62d98a" : "#0a6b2d",
+    "--warn": dark ? "#FF5A5A" : "#b00020", "--ok": dark ? "#62d98a" : "#0a6b2d",
   };
 }
 export const isDark = (i) => lum(palette(i).bgl) < 0.4;
@@ -36,7 +36,7 @@ export function look11Vars(i, part, active, partColours = null) {
   const sea = p.name === "TIDE";   // b11-design MOCK (local branch only): TIDE's editor sits on the unit's night sea, the global column in sand
   if (lum(p.bgl) >= 0.4) return themeVars(i, part);
   if (part === 2) {   // DUELL 1.1 (owner, round 2): the global column and the global pages (GLOBAL, PATCHES, MULTIS, PATTERNS, MIDI, MIDI MAP, WAVETABLES, SETTINGS, the OCTAVE view) take NO part colour: white and greys on black, as the unit's global pages (PAGES_V2_glo-a.png)
-    if (sea) return { "--bg": p.surf[0], "--fg": p.text, "--dim": p.mid, "--line": p.line[0], "--panel": p.bg[0], "--acc": p.g, "--accfg": p.bg[0], "--page": p.bg[0], "--warn": "#ff6b81", "--ok": "#62d98a", "--base": p.bg[1] };
+    if (sea) return { "--bg": p.surf[0], "--fg": p.text, "--dim": p.mid, "--line": p.line[0], "--panel": p.bg[0], "--acc": p.g, "--accfg": p.bg[0], "--page": p.bg[0], "--warn": "#FF5A5A", "--ok": "#3BE8D6", "--base": p.bg[1] };
     const acc = "#cfcccf", card = "#171719";
     return { "--bg": card, "--fg": p.text, "--dim": "#a09da0", "--line": "#35343a", "--panel": "#0b0b0d", "--acc": acc, "--accfg": "#000000", "--page": "#08080a", "--warn": "#ff6b81", "--ok": "#62d98a", "--base": "#101012" };
   }
@@ -44,6 +44,6 @@ export function look11Vars(i, part, active, partColours = null) {
   const base = sea ? p.bg[0] : "#101012", card = mix(sea ? p.surf[part] : "#18181b", acc, on ? 9 : 6), panel = mix(sea ? p.bg[part] : "#0d0d0f", acc, on ? 5 : 3);
   return {
     "--bg": card, "--fg": p.text, "--dim": sea ? p.mid : "#a09da0", "--line": mix(card, acc, on ? 34 : 24), "--panel": part === 2 ? "#0b0b0d" : panel,
-    "--acc": acc, "--accfg": sea ? p.bg[0] : inkOn(acc), "--page": sea ? p.bg[0] : "#08080a", "--warn": "#ff6b81", "--ok": "#62d98a", "--base": base,
+    "--acc": acc, "--accfg": sea ? p.bg[0] : inkOn(acc), "--page": sea ? p.bg[0] : "#08080a", "--warn": sea ? "#FF5A5A" : "#ff6b81", "--ok": sea ? "#3BE8D6" : "#62d98a", "--base": base,
   };
 }
