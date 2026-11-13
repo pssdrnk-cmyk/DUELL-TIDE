@@ -810,22 +810,28 @@ static void glo_mute_cards(void)
         char lb[8] = "MUTE 1";
         lb[5] = (char)('1' + e);
         { CV_HL(x, y, UT_T4_W, UT_T4_MUTE_H); cv_rrect(x, y, UT_T4_W, UT_T4_MUTE_H, UT_T4_R, fill, T_BG); }
-        cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill);
-        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(M, UT_T4_HOLD_BASE), &AF_M, "Hold", ink, fill) + UT_T4_KEY_GAP;
-        cv_keycap(kx, y + UT_T4_HOLD_BASE - KC_H + 2, KC_GLO, T_KEY, T_KINK, fill);
-        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(M, UT_T4_PRESS_BASE), &AF_M, "and press", ink, fill) + UT_T4_KEY_GAP;
-        cv_keycap(kx, y + UT_T4_PRESS_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
+        (void)ink;
+        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill) + 6;   /* b11 (design review 2.3): MUTE n and the keys that flip it, chips on one row */
+        kx = cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, KC_GLO, T_KEY, T_KINK, fill) + UT_T4_KEY_GAP;
+        cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
     }
 }
-/* the two level meters (own strips, each frame when a level moved): a 6 x 44 bar at the MUTE card's right, the 48 dB range over its height, the level in the part's colour from the bottom, the peak hold a 2 px tick */
+/* the two level meters (own strips, each frame when a level moved). b11 (design review 2.3): a small wave belt under the MUTE card's row, as the wave page's: a 2 px front line
+ * from the left to the level (the part's colour while it sounds, else DIM), four 1 px hairlines above it every 2 px, each shorter and fainter (68 .. 15 %), a 1 px track to the end, the
+ * peak hold a 2 px tick across the belt. On a muted card (filled in the part's colour) it is drawn in ink */
+#define GB_W 108                                         /* the belt: its width, height, and place in the MUTE card */
+#define GB_H 14
+#define GB_X 4
+#define GB_Y 30
 static void glo_meters7(void)
 {
-    uint32_t k;
+    static const uint8_t HL[4] = {68, 46, 30, 15};
+    uint32_t k, i;
     uint32_t sig = 0x7D5u;
     int32_t px[NSHOWN], hp[NSHOWN];
     for (k = 0; k < NSHOWN; k++) {
-        px[k] = gm_px(gm.lvl[k]) * UT_T4_METER_H / GM_BH;
-        hp[k] = gm_px(gm.hold[k]) * UT_T4_METER_H / GM_BH;
+        px[k] = gm_px(gm.lvl[k]) * (GB_W - 2) / GM_BH;
+        hp[k] = gm_px(gm.hold[k]) * (GB_W - 2) / GM_BH;
         sig = (sig * 33u + (uint32_t)px[k]) * 33u + (uint32_t)hp[k] + glo_sounding(k) * 3u + (uint32_t)trk[k].p[P_MUTE] * 5u;
     }
     sig += ux.gen * 4099u;
@@ -833,14 +839,21 @@ static void glo_meters7(void)
         return;
     gm.sig = sig;
     for (k = 0; k < NSHOWN; k++) {
-        uint16_t under = trk[k].p[P_MUTE] ? T_PTHEME(k) : T_BG, track = trk[k].p[P_MUTE] ? T_RAISE : ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT);
-        cv_begin(UT_T4_METER_W, UT_T4_METER_H, under);
-        cv_rrect(0, 0, UT_T4_METER_W, UT_T4_METER_H, UT_T4_METER_R, track, under);
-        if (px[k] > 0)
-            cv_rrect(0, UT_T4_METER_H - px[k], UT_T4_METER_W, px[k], px[k] < 2 * UT_T4_METER_R ? px[k] / 2 : UT_T4_METER_R, glo_sounding(k) ? T_PTHEME(k) : T_DIM, track);
+        const int mu = trk[k].p[P_MUTE] != 0;
+        const uint16_t under = mu ? T_PTHEME(k) : T_BG, col = mu ? T_INK : glo_sounding(k) ? T_PTHEME(k) : T_DIM;
+        cv_begin(GB_W, GB_H, under);
+        cv_rect(0, GB_H - 1, GB_W, 1, mu ? ux_mix(under, T_INK, 30) : ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT));
+        if (px[k] > 0) {
+            cv_rect(0, GB_H - 2, px[k], 2, col);
+            for (i = 0; i < 4u; i++) {
+                const int32_t w = px[k] * (int32_t)(8u - i) / 10;
+                if (w > 0)
+                    cv_rect(0, GB_H - 4 - 2 * (int32_t)i, w, 1, ux_mix(under, col, HL[i]));
+            }
+        }
         if (hp[k] > 0)
-            cv_rect(0, UT_T4_METER_H - 1 - hp[k], UT_T4_METER_W, 2, T_TEXT);
-        cv_blit((uint32_t)(UT_T4_X0 + UT_T4_DX * (int32_t)k + UT_T4_METER_X), (uint32_t)(UT_T4_MUTE_Y + UT_T4_METER_Y));
+            cv_rect(hp[k], GB_H - 11, 2, 11, mu ? T_INK : T_TEXT);
+        cv_blit((uint32_t)(UT_T4_X0 + UT_T4_DX * (int32_t)k + GB_X), (uint32_t)(UT_T4_MUTE_Y + GB_Y));
     }
 }
 static void layer_glo(void)
