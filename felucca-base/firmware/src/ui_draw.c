@@ -2461,7 +2461,7 @@ static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 static void morph_row(void)
 {
     static char last[24];
-    char key[24], v[PV_LEN + 4];
+    char key[24];
     const int hint = ui.save_t0 != 0u, dim = h1_echo_why() != 0;
     const int32_t ty = UT_TY(S, MROW_BASE);             /* (the row's label baseline: the face's box, descenders included, ends on the canvas's last row) */
     const uint32_t set = kn_cur();
@@ -2489,15 +2489,27 @@ static void morph_row(void)
     cv_oy = 0;
     if (hint)
         cv_text_in(0, ty, 240, &AF_S, "HOLD SAVE = SAVE PATCH", T_DIM, T_BG);
-    else
+    else {   /* b11 MORPH polish (design review 2.1): each knob's number before its name, as on every other page; the three spread evenly over the row */
+        char vs[3][PV_LEN + 4];
+        int32_t w[3], tot = 0, gap, x = 3;
+        const int32_t dw = AF_S_CAP_H + 3;              /* (the dot and its gap) */
+        for (i = 0; i < 3u; i++) {
+            h1_val(KN_E[set][i][0].ix, TSEL, nv[i], vs[i]);
+            w[i] = dw + text_w(&AF_S, KN_L[set][i]) + 5 + text_w(&AF_S, vs[i]);
+            tot += w[i];
+        }
+        gap = (234 - tot) / 2;
+        gap = gap > 4 ? gap : 4;
         for (i = 0; i < 3u; i++) {
             const char *nm = KN_L[set][i];
             ix = KN_E[set][i][0].ix;
             const int hot = ui.hot_t && ui.hot_col == i + 1u, d = dim && (ix == K_DLY || ix == K_FDB || ix == K_TIM);   /* (a macro led by the echo does nothing while the delay does nothing) */
-            h1_val(ix, TSEL, nv[i], v);
-            cv_text_on(KN_X[set][i], ty, &AF_S, nm, d ? T_DIM : hot ? T_ACCENT : T_TEXT, T_BG);
-            cv_text_on(KN_X[set][i] + text_w(&AF_S, nm) + 5, ty, &AF_S, v, d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour, beside its name) */
+            const uint16_t lc = d ? T_DIM : hot ? T_ACCENT : T_TEXT;
+            dot_label(i + 1u, x, x + dw, MROW_BASE, nm, lc, lc, 240, T_BG);
+            cv_text_on(x + dw + text_w(&AF_S, nm) + 5, ty, &AF_S, vs[i], d ? T_DIM : VAL(i + 1u), T_BG);   /* (the value in the knob-1 line's colour, beside its name) */
+            x += w[i] + gap;
         }
+    }
     cv_blit(0, MROW_Y);
 }
 static void draw_columns(void)

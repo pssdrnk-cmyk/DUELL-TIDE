@@ -27,6 +27,7 @@
 #define WL_NP 56                                     /* points of a ridge (b6: 56, one every 3.9 px, so 13 ridges fit the RAM rule), spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
 #define WL_X0 22
 #define WL_X1 239                                     /* (b6: to the screen's last column, owner 2026-11-09) */
+#define WL_SOFT 24                                    /* b11: the waves' soft ends, px (the tide line's and the splash's fade) */
 #define WL_HN 13                                     /* ridges kept: as many as fit 2 rows apart over the 68-row lanes (2 parts x 13 x 56 B; the build keeps 4 KB of RAM headroom) */
 #define WL_AMAX 31                                   /* the largest half height of a ridge, px (31 x 4 quarters fit a byte) */
 #define WL_STEP 2                                    /* the fewest rows between two ridges (WAVE LAB's) */
@@ -592,7 +593,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         xr[r] = cx16 + w;
         mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
         shp |= (uint32_t)(r < nr && !((s->flat >> r) & 1u)) << r;
-        col[r] = mv_col(k, pct, r * 90 / nf);        /* (WAVE LAB's fade toward the back) */
+        col[r] = mv_col(k, mv_lean(k, pct, nf > 1 ? r * 256 / (nf - 1) : 0), r * 90 / nf);   /* (WAVE LAB's fade toward the back; b11: leaning to the morph's target) */
         wl_tab(ft[r], col[r], r ? str : fstr);
 #if WL_FLOW
         rp[r] = (wl_pn[k] - (uint32_t)r) * 256u;      /* (1/64 of a round from one ridge to the next) */
@@ -612,7 +613,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                 xl[r] = cx16 - w;
                 xr[r] = cx16 + w;
                 mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
-                col[r] = mv_col(k, pct, pz * 90 / (nf * 256));
+                col[r] = mv_col(k, mv_lean(k, pct, nf > 1 ? pz / (nf - 1) : 0), pz * 90 / (nf * 256));
                 wl_tab(ft[r], col[r], r == nf - 1 ? str * (256 - ph) / 256 : str);
             }
         }
@@ -673,6 +674,25 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                 }
             }
             y0f = yn;
+        }
+    }
+    {   /* b11 MORPH polish (design review 2.1): soft ends, as the tide line's: the columns within WL_SOFT px of each end fade into the background */
+        int32_t row;
+        for (c = WL_X0; c <= WL_X1; c++) {
+            const int32_t e = c - WL_X0 < WL_X1 - c ? c - WL_X0 : WL_X1 - c;
+            if (e >= WL_SOFT) {
+                c = WL_X1 - WL_SOFT;                     /* (the middle is untouched: on to the right end) */
+                continue;
+            }
+            for (row = y0 + 1; row < y1 - 1; row++) {
+                const int32_t yy = row + CV_Y;
+                uint16_t *q;
+                if ((uint32_t)yy >= cv_h || (uint32_t)c >= cv_w)
+                    continue;
+                q = &cv_px[(uint32_t)yy * cv_w + (uint32_t)c];
+                if (*q != bg)
+                    *q = swap16(ux_mix(T_BG, swap16(*q), e * 100 / WL_SOFT));
+            }
         }
     }
     ui_part_tag(k, (y0 + y1) / 2, hot);              /* (over the lines' left edge) */
