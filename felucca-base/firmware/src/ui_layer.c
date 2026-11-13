@@ -883,6 +883,16 @@ static void layer_quick(uint32_t q, int32_t y, int32_t h)
         nm = TWO;
         split = 2;
     }
+    if (grid_on == 1 && q == 3u) {                      /* b11 (design review 2.5): QUICK ARP's card shows the part's steps, the standard note strip (its playhead's bank), the part bar beside them */
+        uint8_t st[16];
+        const uint32_t ph = song.playing ? TIDE_PLAY_IDX(TSEL) : 0xFFu;
+        ns_states(st, TSEL, ph < NSTEP ? ph / 16u * 16u : 0u);
+        cv_rect(1, 36, 3, 20, T_PFILL(song.sel & 1u));
+        note_strip(50, st, T_THEME, ph < NSTEP ? ph % 16u : 0xFFu, 0xFFu);
+        (void)y;
+        (void)h;
+        return;
+    }
     if (grid_on == 1) {                                 /* item 120, template 1 (PAGES_V2_perform-quick.png, the 76 px card of the part pages): a line a group, the numbers of its knobs in dots, then its name (L, M where L is too wide) */
         uint32_t ng = nm[1] ? 2u : 1u;
         for (g = 0; g < ng; g++) {
@@ -998,6 +1008,8 @@ static void draw_layer(void)
         sig += (uint32_t)ui_rec_prefs * 31u + (uint32_t)rec_clearable() * 5u + song.sel * 977u;
     else if (l == LAYER_SEQ)
         sig += song.sel * 977u + steps_sig(TSEL) * 31u + tide_sw_pending() * 4099u;   /* (b11: the steps and a waiting SWELL / RIPPLE are in the picture) */
+    else if (ly_q(l) == 3u && grid_on == 1)             /* b11: QUICK ARP's steps and their playhead */
+        sig += song.sel * 977u + steps_sig(TSEL) * 31u + (song.playing ? TIDE_PLAY_IDX(TSEL) : 0xFFu) * 4099u;
     else if (l == LAYER_EDIT)
         sig += (TSEL->eng_req % NENGINES) * 31u + song.sel * 977u + (uint32_t)ly_page(l)->id[2] * 4099u + (uint32_t)ly_page(l)->id[3] * 65537u;   /* (cloud job H: its cards follow filter 2) */
     if (l == LAYER_REC && grid_on == 14)                /* QUICK REC (template 8): the cells are the whole body, no panel of its own */

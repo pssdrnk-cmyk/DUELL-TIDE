@@ -3743,7 +3743,10 @@ static void ui_draw_page(uint32_t counting)
     if (ui.layer || glo_pg()) {                         /* a layer's map over the page (ui_layer.c); GLO's page is one all the time */
         if (ui.force)
             draw_frame();
+        tl_page = 1;
         draw_head();
+        tide_line_draw();                               /* (b11, design review 2.5: the tide line stays on under a quick layer's header) */
+        tl_page = 0;
         draw_layer();
         draw_foot();                                    /* (the page's footer, its button and kind in the page's place) */
         if (ui.msg_t && !--ui.msg_t && ui.msg2[0]) {
