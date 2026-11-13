@@ -588,7 +588,7 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
 
 /* The multis SHOWN (lists, labels, pickers, previews, MIDI program change) are the stored ones: since b10 U4 every position has a flash slot (storage.c), the factory multi shows
  * while it holds nothing (multi.c mu_fact), and SAVE writes over it */
-#define MU_SHOWN MU_SLOTS
+#define MU_SHOWN (MU_SLOTS + 1u)                 /* b12: one more than the stored ones: M27 EMPTY (multi.c: ROM only, no flash object; SAVE on it picks another slot) */
 #define MU_DRONE(k) ((uint32_t)(k) - 24u < 2u)   /* M25, M26: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M24 are ROM-only multis of other genres */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */

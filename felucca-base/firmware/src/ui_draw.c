@@ -2004,7 +2004,7 @@ static void tide_beat_dot(void)                         /* between footer redraw
     cv_rrect(0, 0, 5, 5, 2, c, T_BG);
     cv_blit((uint32_t)tide_dot_x, (uint32_t)TB_DOT_Y);
 }
-/* b10 TIDE identity (item 7): GENRE on SAVE > MULTIS. The list runs genre by genre (tools/factory_multis.py DISPLAY_ORDER); a multi's genre is the first word
+/* b10 TIDE identity (item 7): GENRE on SAVE > MULTIS (b12: knobs 1 and 4 wrap, M27 EMPTY next to M01). The list runs genre by genre (tools/factory_multis.py DISPLAY_ORDER); a multi's genre is the first word
  * of its name (knob_sets.h KN_TAG: DUB HSE TECH ACID ELEC AMB; another word, or an empty slot: a group of its own). Knob 4's card says the genre of the
  * multi picked and its place in it ("DUB 2/3"); a turn of knob 4 jumps to the first multi of the next or previous genre (ui_input.c). (The design's
  * "SELECT held + K1": SELECT has no push, so knob 4, free on this page, does it) */
@@ -2012,7 +2012,7 @@ static uint32_t mu_genre(uint32_t slot)                 /* 0 .. 5: KN_TAG; 6 any
 {
     const char *b = graph_project_name(slot);
     uint32_t k, i;
-    if (!graph_project_used(slot))
+    if (!graph_project_used(slot) || slot >= MU_SLOTS)   /* (b12: M27 EMPTY is a group of its own) */
         return 7u;
     for (k = 0; k < KS_N - 1u; k++) {
         for (i = 0; KN_TAG[k][i] && b[i] == KN_TAG[k][i]; i++)
@@ -2037,11 +2037,20 @@ static void mu_genre_jump(int32_t s)                    /* knob 4: the first mul
 {
     uint32_t cur = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN, f, n, to = cur;
     mu_group(cur, &f, &n);
-    if (s > 0 && f + n < MU_SHOWN)
-        to = f + n;
-    else if (s < 0 && f)
-        mu_group(f - 1u, &to, &n);
+    if (s > 0)                                          /* (b12: wraps: the last group's next is the first, the first's previous the last: M27 EMPTY is one step from M01) */
+        to = f + n < MU_SHOWN ? f + n : 0u;
+    else if (s < 0)
+        mu_group(f ? f - 1u : MU_SHOWN - 1u, &to, &n);
     song.g[G_SLOT] = (int16_t)(to + 1u);
+}
+static void mu_slot_turn(int32_t s)                     /* b12 knob 1: one step wraps round the list (M26 > M27 EMPTY > M01); a fast turn stops at the ends as before */
+{
+    int32_t v = song.g[G_SLOT] - 1 + s;
+    if (s == 1 && v >= (int32_t)MU_SHOWN)
+        v = 0;
+    else if (s == -1 && v < 0)
+        v = (int32_t)MU_SHOWN - 1;
+    song.g[G_SLOT] = (int16_t)(clamp(v, 0, (int32_t)MU_SHOWN - 1) + 1);
 }
 static void draw_foot(void)
 {
