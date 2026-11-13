@@ -361,8 +361,8 @@ int main(void)
     {   /* b11 (QC PR 81): the soft ends: the waves' outermost columns (WL_X0, WL_X1) fade fully into the ground in every row of the picture, the middle has ink */
         uint32_t y, outer = 0, mid = 0;
         for (y = (uint32_t)pic_y0; y < (uint32_t)pic_y1; y++) {
-            outer += (swap16(host_screen[y * 240u + WL_X0]) != T_BG) + (swap16(host_screen[y * 240u + WL_X1]) != T_BG);
-            mid += swap16(host_screen[y * 240u + 130u]) != T_BG;
+            outer += (swap16(web_fb[y * 240u + WL_X0]) != T_BG) + (swap16(web_fb[y * 240u + WL_X1]) != T_BG);
+            mid += swap16(web_fb[y * 240u + 130u]) != T_BG;
         }
         snprintf(w, sizeof w, "soft ends: the outer columns x %d and %d are the ground (%u pixels not), the middle column has ink in %u rows", WL_X0, WL_X1, outer, mid);
         ok(w, outer == 0u && mid > 0u);
