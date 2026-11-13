@@ -512,7 +512,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     uint32_t na = n - 4u;
     int16_t *vp;
     const param_desc_t *d;
-    ed_shi = (uint8_t)(ed_shi_next && fm1_ms - ed_shi_ms < 50u);   /* b12: SLOT_HI applies to the one command right after it */
+    ed_shi = (uint8_t)(!ed_shi_next ? 0u : fm1_ms - ed_shi_ms < ED_SHI_MS ? 1u : 2u);   /* b12: SLOT_HI applies to the one command right after it (2: too late, refused) */
     ed_shi_next = 0;
     if (cmd == ED_SLOT_HI) {                            /* (no reply) */
         ed_shi_next = (uint8_t)(na == 1u && a[0] == 1u);

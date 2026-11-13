@@ -687,6 +687,21 @@ static int user_preset_roundtrip(void)
             request(ED_UP_ERASE, &g, 1);
             ok &= host_wire[6] != 1u && !up_used(150u);
             bad += check("b12: SLOT_HI + UP_STORE writes slot 151 (no reply to SLOT_HI); the next command is back on slots 1..128; UP_LIST from 129 and UP_ERASE of 151 through it", ok);
+            {   /* review PR 99, 5: a SLOT_HI whose command comes late (more than ED_SHI_MS) refuses that command (rc 1): it never lands on slot - 128 */
+                uint8_t sb[3] = {22, 'L', 0}, e2 = 22;
+                request(ED_SLOT_HI, &hi, 1);
+                fm1_ms += ED_SHI_MS + 5u;
+                request(ED_UP_STORE, sb, 3);
+                ok = host_wire[6] == 1u && !up_used(22u) && !up_used(150u);
+                request(ED_SLOT_HI, &hi, 1);
+                fm1_ms += ED_SHI_MS + 5u;
+                request(ED_UP_ERASE, &e2, 1);
+                ok &= host_wire[6] == 1u;
+                request(ED_UP_STORE, sb, 3);                 /* (the next one, with no SLOT_HI: slot 22 as ever) */
+                ok &= host_wire[6] != 1u && up_used(22u) && !up_used(150u);
+                up_put(22u, 0);
+                bad += check("b12: a SLOT_HI whose command comes after 1 s refuses that command (UP_STORE, UP_ERASE: rc 1), it never lands on slot - 128; the next command is normal", ok);
+            }
         }
         for (s = 0; s < UP_SLOTS; s++)
             if (up_used(s))

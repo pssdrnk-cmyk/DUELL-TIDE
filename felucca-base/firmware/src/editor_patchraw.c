@@ -19,9 +19,12 @@
  * applies to that one command only (any command clears it), so an editor that never sends it (absent = 0) works on slots 1..128 exactly as before. The replies
  * echo the slot byte as sent (its low 7 bits). The backup has its own id for these slots (47, editor_backup.c) */
 enum { ED_SLOT_HI = 90 };
-static uint8_t ed_shi, ed_shi_next;                   /* this command's high slot bit; the one SLOT_HI set for the next */
-static uint32_t ed_shi_ms;                            /* when SLOT_HI came: it holds 50 ms (a lost command frame does not hand it to a later command: review PR 99, 5) */
-static uint32_t ed_slot(uint32_t b) { return b > 127u ? UP_SLOTS : b | (uint32_t)ed_shi << 7; }   /* (a byte past 127 is no data byte: no slot) */
+static uint8_t ed_shi, ed_shi_next;                   /* this command's high slot bit (2: LATE, below); the one SLOT_HI set for the next */
+static uint32_t ed_shi_ms;                            /* when SLOT_HI came. The command right after it within ED_SHI_MS takes it; one later than that is REFUSED
+                                                       * (ed_slot: no slot, rc 1), never moved to slot - 128: a lost command frame cannot hand SLOT_HI to a later
+                                                       * command, and a slow main-loop pass cannot drop it (review PR 99, 5) */
+#define ED_SHI_MS 1000u                               /* (the editor sends both back to back; it waits 2 s and more for a reply before its next request) */
+static uint32_t ed_slot(uint32_t b) { return b > 127u || ed_shi == 2u ? UP_SLOTS : b | (uint32_t)ed_shi << 7; }   /* (a byte past 127 is no data byte: no slot) */
 /* (here, not in editor.c: the tests that build this file alone have it too; editor.c's UP_* and editor_fm6.c come after it) */
 enum { ED_PATCH_RAW = 84 };
 static uint8_t ed_pr_put, ed_pr_slot, ed_pr_gen;
