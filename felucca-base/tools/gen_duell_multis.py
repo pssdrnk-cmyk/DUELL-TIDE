@@ -62,10 +62,83 @@ def write_names(folder, multis):
                                           "static const char *const MULTI_NAME[MN_N] = {%s};\n" % (n, ", ".join('"%s"' % x for x in names)) + tail)
     (folder / "multi_names.txt").write_text("".join("%d %s\n" % (k, x) for k, x in enumerate(names, 1) if x))
 
+# b11: the records are stored LZSS-coded against a shared dictionary (see main). DICT_RECS: indices (in record order: M01.., the drones, the ROM-only multis) of the
+# records whose raw bytes form DM_DICT; found by `gen_duell_multis.py --best-dict`, a choice that suits the set of the day (a stale choice still decodes)
+DICT_RECS = (18, 8)
+LZ_MINL, LZ_MAXL, LZ_MAXD = 3, 273, 4095
+
+
+def lz_encode(rec, dic):
+    """rec as tokens: an optimal parse (bits: a literal 8 + 1 flag bit, a match of 3..17 bytes 16 + 1, of 18..273 bytes 24 + 1) against dic + the bytes before"""
+    n = len(rec)
+    assert len(dic) + n <= LZ_MAXD, "dictionary and record exceed the 12-bit offset"
+    INF = 1 << 60
+    best, how = [INF] * (n + 1), [None] * (n + 1)
+    best[0] = 0
+    for p in range(n):
+        c = best[p] + 9
+        if c < best[p + 1]:
+            best[p + 1], how[p + 1] = c, (p, 0, 0)
+        w = dic + rec[:p]
+        ln, off = 0, 0
+        for l in range(LZ_MINL, min(LZ_MAXL, n - p) + 1):
+            i = w.rfind(rec[p:p + l])
+            if i < 0:
+                break
+            ln, off = l, len(w) - i
+        for l in range(LZ_MINL, ln + 1):
+            c = best[p] + (17 if l < 18 else 25)
+            if c < best[p + l]:
+                best[p + l], how[p + l] = c, (p, l, off)
+    toks, q = [], n
+    while q:
+        p, l, off = how[q]
+        toks.append((l, off, rec[p:q]) if l else (0, 0, rec[p:q]))
+        q = p
+    toks.reverse()
+    out = bytearray()
+    for k in range(0, len(toks), 8):
+        grp = toks[k:k + 8]
+        out.append(sum(1 << j for j, t in enumerate(grp) if t[0]))
+        for l, off, lit in grp:
+            if not l:
+                out += lit
+            elif l < 18:
+                out += bytes([off & 255, ((off >> 8) << 4) | (l - 3)])
+            else:
+                out += bytes([off & 255, ((off >> 8) << 4) | 15, l - 18])
+    return bytes(out)
+
+
+def lz_decode(flat, s, dic, n):
+    """the decoder of dm_rec, in python (the generator rebuilds every record with it before it writes the header)"""
+    out, f, m = bytearray(), 0, 0
+    while len(out) < n:
+        if not m:
+            f, m, s = flat[s], 8, s + 1
+        m -= 1
+        if f & 1:
+            d = flat[s] | ((flat[s + 1] >> 4) << 8)
+            l = (flat[s + 1] & 15) + 3
+            s += 2
+            if l == 18:
+                l += flat[s]
+                s += 1
+            while l and len(out) < n:
+                o = len(out)
+                out.append(out[o - d] if d <= o else dic[len(dic) - (d - o)])
+                l -= 1
+        else:
+            out.append(flat[s])
+            s += 1
+        f >>= 1
+    return bytes(out)
+
 
 def main(argv):
-    args = [a for a in argv[1:] if a != "--test-mode"]
-    test_mode = len(args) != len(argv) - 1 or os.environ.get("DUELL_TEST_MODE") == "1"
+    args = [a for a in argv[1:] if a not in ("--test-mode", "--best-dict")]
+    best_dict = "--best-dict" in argv
+    test_mode = "--test-mode" in argv or os.environ.get("DUELL_TEST_MODE") == "1"
     if len(args) != 1:
         die("usage: gen_duell_multis.py [--test-mode] OUT.h")
     out = Path(args[0])
@@ -121,80 +194,71 @@ def main(argv):
         for i in range(0, len(data), 24):
             lines.append("    " + ", ".join("%d" % c for c in data[i:i + 24]) + ",")
         lines.append("};")
-    # TIDE 1.0.0-b6 (SP1, flash space): each part's value block (np values + the NX slots, at the same place in every part) is stored as a bitmap of the bytes
-    # that differ from one shared template (the most common byte at each index over all parts) and those bytes; the rest of a record as it is. dm_rec rebuilds
-    # a record byte for byte (tests/multi_test.c checks every one against its .bin)
-    vn = recs[0][1] + fm.NX
-    vo, parts = [], []
-    for m, b in zip(multis, recs):
-        if b[1] + fm.NX != vn or len(b) > fm.REC_MAX:
-            die("M%02d: np %d or length %d unlike the others" % (m["slot"], b[1], len(b)))
-        ps, _ = fm.parts_of(b)
-        at = [st + 5 + b[st + 4] for _, _, st in ps]
-        vo.append(at)
-        parts += [b[a:a + vn] for a in at]
-    tpl = bytes(max(set(p[j] for p in parts), key=lambda v: (sum(1 for p in parts if p[j] == v), -v)) for j in range(vn))
-    nbm = (vn + 7) // 8
-    pk, ats = [], []
-    for b, at in zip(recs, vo):
-        e, o = bytearray(), 0
-        for a in at:
-            e += b[o:a]
-            blk = b[a:a + vn]
-            bm = bytearray(nbm)
-            for j in range(vn):
-                if blk[j] != tpl[j]:
-                    bm[j >> 3] |= 1 << (j & 7)
-            e += bm + bytes(blk[j] for j in range(vn) if blk[j] != tpl[j])
-            o = a + vn
-        e += b[o:]
-        ats.append(sum(len(x) for x in pk))
-        pk.append(bytes(e))
-    flat = b"".join(pk)
+    # b11 (flash room, ROOM report item 2): every record is stored LZSS-coded against a shared dictionary (DM_DICT: the raw bytes of DICT_RECS, records chosen by
+    # `gen_duell_multis.py --best-dict`; any choice decodes, a worse one only packs less). Tokens in groups of 8 behind a flag byte (bit 0 first, 1 = a match):
+    # a literal is one byte; a match is two bytes, the offset (1 .. 4095, back from the output position; past the start of the record it runs into the end of
+    # DM_DICT) in the low 12 bits and the length - 3 in the high 4 bits, 15 meaning "18 + the next byte". dm_rec rebuilds a record byte for byte into its caller's
+    # buffer and writes exactly DM_LEN[i] bytes there (no scratch RAM). The earlier template-and-bitmap packing (SP1) is replaced by it: tests/multi_test.c checks
+    # every record against its .bin, and this generator rebuilds each one with the decoder's own algorithm below before it writes the header
+    if best_dict:                                # greedy: add the record that shrinks dictionary + all records most, until it gains under 20 bytes
+        chosen, cur = [], sum(len(lz_encode(b, b"")) for b in recs)
+        while True:
+            top = None
+            for c in range(len(recs)):
+                d = b"".join(recs[k] for k in chosen + [c])
+                if c in chosen or len(d) > 2800:
+                    continue
+                t = len(d) + sum(len(lz_encode(b, d)) for b in recs)
+                if top is None or t < top[0]:
+                    top = (t, c)
+            if top is None or top[0] >= cur - 20:
+                break
+            cur = top[0]
+            chosen.append(top[1])
+        print("best dictionary: DICT_RECS = %s (%d bytes of dictionary + records = %d)" % (tuple(chosen), sum(len(recs[k]) for k in chosen), cur))
+    dict_idx = [k for k in DICT_RECS if k < len(recs)]
+    dic = b"".join(recs[k] for k in dict_idx) or bytes(1)
+    flat, ats = bytearray(), []
+    for b in recs:
+        ats.append(len(flat))
+        flat += lz_encode(b, dic)
+    for k, b in enumerate(recs):                # (the generator's own check: the decoder, as C writes it, rebuilds every record)
+        s = ats[k]
+        if lz_decode(flat, s, dic, len(b)) != b:
+            die("M%02d: the packed record does not rebuild" % multis[k]["slot"])
     lines[-1] = "static const uint16_t DM_AT[DF_N] = {%s};   /* (into DM_PK)" % ", ".join(str(a) for a in ats) + " */"
-    lines.append("#define DM_VN %du                   /* a part's value block: np values + the NX slots */" % vn)
-    lines.append("static const uint16_t DM_VO[DF_N][2] = {%s};   /* where each part's value block starts in the record */" %
-                 ", ".join("{%d, %d}" % tuple(a) for a in vo))
-    emit("DM_TPL", tpl)
-    emit("DM_PK", flat)
-    lines += ["/* factory multi i rebuilt into out (DM_LEN[i] bytes, at most MU_REC_MAX); returns out */",
+    emit("DM_DICT", dic)
+    emit("DM_PK", bytes(flat))
+    lines += ["/* the shared dictionary DM_DICT sits in front of the output: an offset past the record's start reads its end */",
+              "/* factory multi i rebuilt into out (DM_LEN[i] bytes, at most MU_REC_MAX); returns out */",
               "static const uint8_t *dm_rec(uint32_t i, uint8_t *out)",
               "{",
-              "    const uint8_t *s = DM_PK + DM_AT[i], *bm;",
-              "    uint32_t o = 0, p, j;",
-              "    for (p = 0; p < 2u; p++) {",
-              "        while (o < DM_VO[i][p])",
+              "    const uint8_t *s = DM_PK + DM_AT[i];",
+              "    uint32_t o = 0, n = DM_LEN[i], f = 0, m = 0, d, l;",
+              "    while (o < n) {",
+              "        if (!m) {",
+              "            f = *s++;",
+              "            m = 8;",
+              "        }",
+              "        m--;",
+              "        if (f & 1u) {",
+              "            d = s[0] | ((uint32_t)(s[1] >> 4) << 8);",
+              "            l = (uint32_t)(s[1] & 15u) + 3u;",
+              "            s += 2;",
+              "            if (l == 18u)",
+              "                l += *s++;",
+              "            while (l-- && o < n) {",
+              "                out[o] = d <= o ? out[o - d] : DM_DICT[sizeof DM_DICT - (d - o)];",
+              "                o++;",
+              "            }",
+              "        } else",
               "            out[o++] = *s++;",
-              "        bm = s;",
-              "        s += (DM_VN + 7u) / 8u;",
-              "        for (j = 0; j < DM_VN; j++)",
-              "            out[o++] = (bm[j >> 3] >> (j & 7u)) & 1u ? *s++ : DM_TPL[j];",
+              "        f >>= 1;",
               "    }",
-              "    while (o < DM_LEN[i])",
-              "        out[o++] = *s++;",
               "    return out;",
               "}"]
-    # (the generator's own check: every record rebuilds from what is written above)
-    for k, b in enumerate(recs):
-        s, o, d = ats[k], 0, bytearray()
-        for a in vo[k]:
-            n = a - o
-            d += flat[s:s + n]
-            s += n
-            bm = flat[s:s + nbm]
-            s += nbm
-            for j in range(vn):
-                if (bm[j >> 3] >> (j & 7)) & 1:
-                    d.append(flat[s])
-                    s += 1
-                else:
-                    d.append(tpl[j])
-            o = a + vn
-        d += flat[s:s + len(b) - len(d)]
-        if bytes(d) != b:
-            die("M%02d: the packed record does not rebuild" % multis[k]["slot"])
     out.write_text("\n".join(lines) + "\n")
-    print("duell_multis.h: %d factory multis, %d bytes packed (%d raw)%s" % (len(recs), len(flat) + len(tpl) + 4 * len(recs), sum(len(b) for b in recs),
+    print("duell_multis.h: %d factory multis, %d bytes packed (%d raw)%s" % (len(recs), len(flat) + len(dic) + 4 * len(recs), sum(len(b) for b in recs),
                                                                        " (test mode)" if test_mode else ""))
 
 
