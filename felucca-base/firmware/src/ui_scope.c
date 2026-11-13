@@ -67,8 +67,6 @@ typedef struct {
 static wl_t wl[2] __attribute__((section(".pool")));   /* (b10 ui-c: the pool, not .bss; zeroed by wl_tick the first time) */
 static uint8_t wl_zeroed;
 static uint32_t wl_tk = 0xFFFFFFFFu;
-static uint8_t wl_front;                             /* b11 AUTO TIDE's dancing line (tide_ui.c tide_dance): wl_stack draws the front alone, WL_FRONT_A px each way, no bar, no tag */
-#define WL_FRONT_A 2                                 /* (2 px each way: the steps' playhead mark stays 2 rows clear of the crests, design review) */
 #if WL_FLOW
 static uint32_t wl_pn[2];                            /* each part's pushes so far: a ridge's ripple rides back with it */
 static uint32_t wl_bpos, wl_brem, wl_bms, wl_bpn[2]; /* the belt's place (1/256 of a ridge) and the remainder of its last step, fm1_ms when it was last moved, the belt step at each part's last push */
@@ -564,7 +562,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
     const int32_t fstr = ux.mono || ux.bw ? 100 : str;   /* I12: GREY / MONO: the other part's front line at full strength, so it does not read as switched off */
     const uint16_t bg = swap16(T_BG);
     const int32_t cx16 = (WL_X0 + WL_X1) * 8, hw16 = (WL_X1 - WL_X0) * 8;   /* (the front's middle and half width, 1/16 px) */
-    int32_t a, st, nf = wl_front ? (a = WL_FRONT_A, st = 0, 1) : wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, c, gs = 0, left, m0, sp, mid = (y1 - 2 - a) * 16 + 8;
+    int32_t a, st, nf = wl_fit(y1 - y0, &a, &st), nr = s->hn < (uint32_t)nf ? (int32_t)s->hn : nf, r, c, gs = 0, left, m0, sp, mid = (y1 - 2 - a) * 16 + 8;
     int32_t yb[WL_HN], xl[WL_HN], xr[WL_HN], mul[WL_HN], py[WL_HN];
     uint16_t col[WL_HN], ft[WL_HN][17];              /* (each ridge's colours by the share of a pixel its stroke covers, 0 .. 16 sixteenths: on the background) */
     uint32_t shp = 0, seen = 0;                      /* (bit r: ridge r drawn with its shape; ridge r has had a column) */
@@ -574,7 +572,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 #endif
     if (y1 - y0 < 8)
         return;
-    if (hot && !wl_front)                            /* the selected part (both with BOTH): a bar at the half's edge (the tag goes over the lines, last) */
+    if (hot)                                         /* the selected part (both with BOTH): a bar at the half's edge (the tag goes over the lines, last) */
         cv_rect(1, y0 + 1, 3, y1 - y0 - 2, T_PFILL(k));
     if (nr < 1 || s->a != (uint8_t)a || (s->flat & ((1u << nr) - 1u)) == (1u << nr) - 1u)
         nr = 0;                                      /* nothing yet, made for another box, or silence: every lane at rest, flat */
@@ -697,8 +695,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
             }
         }
     }
-    if (!wl_front)
-        ui_part_tag(k, (y0 + y1) / 2, hot);          /* (over the lines' left edge) */
+    ui_part_tag(k, (y0 + y1) / 2, hot);          /* (over the lines' left edge) */
 }
 /* the page's clock: arms the gate and says whether this draw makes a new picture (never with ANIM OFF: the tap stays shut) */
 static int wl_tick(void)

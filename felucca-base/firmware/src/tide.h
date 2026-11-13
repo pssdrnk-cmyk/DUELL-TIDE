@@ -168,7 +168,9 @@ static void tide_ghost_real(track_t *t);   /* (seq.c input_on: a real note start
  * upreset.c and project.c). Prototypes for the DUELL files that call them before they are compiled */
 static void graph_tide(void);
 static void graph_tidelist(void);
-static void tide_dance(int whole);                       /* (tide_ui.c: AUTO TIDE's dancing line, each frame) */
+static void tide_water(int whole);                       /* (tide_ui.c: AUTO TIDE's water rolling, each frame) */
+static uint16_t aw_under(int32_t y);                     /* (tide_ui.c: the water's tone at row y of the lane being drawn, or the ground: under a step's corners, ui_graph.c ns_rr) */
+static uint8_t aw_wet;                                   /* (the steps being drawn stand in AUTO TIDE's water) */
 static void tide_columns(void);
 static uint32_t tide_sig(void);
 static uint32_t tide_list_sig(void);
@@ -235,9 +237,6 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u ^ (uint32_t)duell_mode_req * 0x9E3779B1u) * 16777619u; } while (0)   /* (1.0.0-b7: the MODE, AUTO TIDE names the play mode) */
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
-#ifndef TIDE_HOME_BARS
-#define TIDE_HOME_BARS 1                                 /* b12, TIDE's home (AUTO TIDE): the loop's bar cells beside each lane's steps (tide_ui.c tide_loop_bar); 0 drops them */
-#endif
 #ifndef TIDE_HOME_ANSWER
 #define TIDE_HOME_ANSWER 1                               /* .. the answer on knob 1's line (tide_ui.c tide_answer_line; the take's header message is not repeated there, tide_take.c); 0 drops it */
 #endif
@@ -253,7 +252,7 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_LIVE_SIG(pg, t, h) ((h) = ((h) ^ live_sig((pg), (t))) * 16777619u)
 #define TIDE_LIVE_DRAW(pg, t) live_draw((pg), (t))
 #define TIDE_LIVE_MOD(t, y0) live_mod((t), (y0))
-#define TIDE_LIVE_STRIP(pg, t) do { live_strip((pg), (t)); if ((pg)->graph == GR_TIDE) tide_dance(0); } while (0)   /* (b11: AUTO TIDE's dancing line) */
+#define TIDE_LIVE_STRIP(pg, t) do { live_strip((pg), (t)); if ((pg)->graph == GR_TIDE) tide_water(0); } while (0)   /* (b12: AUTO TIDE's water) */
 #define TIDE_LIVE_CHORD(t) live_chord(t)
 #define TIDE_AMPDEST_FM6(pg, t) ((pg)->graph == GR_ADSR && (pg)->id[0] == P_ED_PIT && (t)->eng_req % NENGINES == ENGI_FM6 && fop_ok())
 /* H18 (ui_input.c first_boot_poll): the factory multi a new unit (or one after ERASE DATA, and the emulator) starts with: M02 DUB CHORD (M04 until D31, 2026-11-05: BASIC CHORD took M01 and the curated order moved it),

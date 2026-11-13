@@ -138,6 +138,21 @@ static int32_t ns_h(uint32_t s, int32_t hmax)
 {
     return NS_HMIN + (int32_t)(s >> 4) * (hmax - NS_HMIN) / 15;
 }
+/* a step's rounded bar; on AUTO TIDE (aw_wet) its corners blend with the water's tone at their rows (aw_under), not with the ground */
+static void ns_rr(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint16_t c)
+{
+    const uint16_t ut = aw_wet ? aw_under(y) : T_BG, ub = aw_wet ? aw_under(y + h - 1) : T_BG;
+    int32_t i, j;
+    cv_rrect(x, y, w, h, r, c, ut);
+    if (ub != ut)                                        /* (the foot in the water, the head above it: the foot's corners again) */
+        for (j = 0; j < r; j++)
+            for (i = 0; i < r; i++) {
+                const uint32_t a = rr_cov(r, i, j);
+                const uint16_t px = a >= 16u ? c : a == 0u ? ub : ux_mix(ub, c, (int32_t)(a * 100u / 16u));
+                cv_pset(x + i, y + h - 1 - j, px);
+                cv_pset(x + w - 1 - i, y + h - 1 - j, px);
+            }
+}
 static void ns_step(int32_t x, int32_t yb, int32_t hmax, uint32_t s, uint16_t c)
 {
     uint32_t k = s & 7u;
@@ -147,11 +162,11 @@ static void ns_step(int32_t x, int32_t yb, int32_t hmax, uint32_t s, uint16_t c)
         return;
     }
     if (k < NS_NOTE) {
-        cv_rrect(x, yb - 3, 9, 3, 1, k == NS_TIE ? T_MID : T_DIM, T_BG);
+        ns_rr(x, yb - 3, 9, 3, 1, k == NS_TIE ? T_MID : T_DIM);
         return;
     }
     h = ns_h(s, hmax);
-    cv_rrect(x, yb - h, 9, h, 2, c, T_BG);
+    ns_rr(x, yb - h, 9, h, 2, c);
     if (s & 8u)
         cv_rect(x + 1, yb - h, 7, 1, T_TEXT);           /* the accent: the front edge brightest (inside the rounded corners) */
 }
