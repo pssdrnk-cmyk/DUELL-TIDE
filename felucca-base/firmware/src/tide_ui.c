@@ -680,12 +680,21 @@ static void tide_columns(void)
     }
     g = morph_pending(TIDE_G_GLIDE);
     if (glide_running()) {                               /* (I5: running, knob 1's line is the gesture as at rest and the ARC's words at its right; the trip is the line under the faders, graph_tide) */
+        char dn[16];
         str_cpy(val, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", sizeof val);
-        if (tide_arc_text(st)) {
-            k1_after_next = st;
-            k1_after_col = T_ACCENT;
-            k1_after_r = 1;
+        st[0] = 0;                                       /* b11 (design review 2.2): the status on knob 1's line, as MORPH's: the ARC's phase (the graph names none now), then the trip */
+        if (!gl.armed && song.playing && sqm_arc && sqm_auto && tarc.run) {
+            str_cpy(st, tarc_name(), sizeof st);
+            str_cpy(st + str_len(st), "  ", 4);
         }
+        tide_trip_short(st + str_len(st));
+        if (tide_arc_text(dn) && str_len(st) + str_len(dn) + 2u < sizeof st) {   /* (the hand's DROP NEXT) */
+            str_cpy(st + str_len(st), "  ", 4);
+            str_cpy(st + str_len(st), dn, 16);
+        }
+        k1_after_next = st;
+        k1_after_col = T_ACCENT;
+        k1_after_r = 1;
         draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
         goto cards;
     }
@@ -859,7 +868,14 @@ static void tide_track(int32_t y, int32_t x0, int32_t x1, uint32_t c, uint32_t p
     }
     if (!c)
         ui_part_tag(part, y, ui_part_hot(part));
-    cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
+    if (ux.bw || ux.mono)
+        cv_rrect(x0, y - 1, x1 - x0 + 1, 3, 1, T_RAISE, T_BG);
+    else {                                               /* b11 (design review 2.2): the track carries the part's A colour (left half) and B colour (right half), dimmed */
+        const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];
+        const int32_t xm = (x0 + x1) / 2;
+        cv_rrect(x0, y - 1, xm - x0 + 1, 3, 1, ux_mix(T_BG, pl->c[2u * (part & 1u)], 38), T_BG);
+        cv_rrect(xm + 1, y - 1, x1 - xm, 3, 1, ux_mix(T_BG, pl->c[2u * (part & 1u) + 1u], 38), T_BG);
+    }
     if (glide_running() && ((gl.on >> c) & 1u) && ((gl.mask >> part) & 1u)) {
         int32_t a = tide_x(x0, x1, (uint32_t)(gl.from[c][part] < 0 ? 0 : gl.from[c][part] > 127 ? 127 : gl.from[c][part])), b = gl.to ? x1 : x0;
         cv_rrect(a < b ? a : b, y - 1, (a < b ? b - a : a - b) + 1, 3, 1, ux.bw ? T_MID : T_TINT, T_RAISE);   /* (MONO has no tint: its black erased the track) */
@@ -1026,9 +1042,6 @@ static uint32_t tide_steps_sig(const track_t *t)
  * always both parts, the selected one in full and marked (tide_pc, tide_track). The glide's status is knob 1's line (tide_columns). Rows (capitals, knobs, bars, playhead marks):
  * the column heads 50 .. 60, faders 65 .. 75 and 79 .. 89; then the MODE line 94 .. 104, the steps 110 .. 122 and 124 .. 136, the glide's bar 139 .. 141: 4 px or more between them.
  * The steps and the part numbers take the part's own colour (T_PTHEME), not vt's text fallback, which turned one part black in the light palettes */
-/* what each MODE does, one short line under the faders (owner, 2026-11-01) */
-static const char *const GL_MODE_WHAT[5] = {"SLOWLY EVOLVES YOUR SOUND", "SLOWLY EVOLVES YOUR SOUND", "SLOWLY EVOLVES YOUR SOUND",
-                                            "SLOWLY EVOLVES YOUR SOUND", "TRAVELS THROUGH OTHER SOUNDS"};
 /* b10 TIDE identity (item 4): ARC on screen. With ARC on (and the tide evolving the pattern), AUTO TIDE shows the arc's shape in place of the two step-mark
  * rows, its heights the phases' real intensity (seq_arc.c: RISE builds, tarc.t to full; PEAK the whole of it; DROP the drop's silence, the floor; BREAK the parts
  * thinned to their anchors, low; RECOVER part way back, tarc.t to 100 of 255): RISE a slope up to 60 %, PEAK a raised cap at the top, then DROP straight to the
@@ -1039,9 +1052,8 @@ static const char *const GL_MODE_WHAT[5] = {"SLOWLY EVOLVES YOUR SOUND", "SLOWLY
  * or BREAK as the arc will take it (under ARC RISE always BREAK) */
 #define AC_X0 9
 #define AC_W 222
-#define AC_YT 109                                        /* the curve's top (the peak) and its floor */
-#define AC_YB 128
-#define AC_LB 141                                        /* the phase names' capitals' last row */
+#define AC_YT 128                                        /* the curve's top (the peak) and its floor (b11: under both lanes) */
+#define AC_YB 140
 static const int16_t AC_E[4] = {80, 120, 164, AC_W};     /* the phases' ends: RISE, PEAK, DROP / BREAK, RECOVER (each wide enough for its name: RECOVER ~55 px) */
 static int32_t tide_arc_y(int32_t x, int drop)            /* the curve's row at x (0 .. AC_W) */
 {
@@ -1076,16 +1088,15 @@ static void tide_arc_chart(void)
             cv_line_t(AC_X0 + x - 1, py, AC_X0 + x, y, x <= now ? c : cd, 2);
         py = y;
     }
-    cv_text_in(AC_X0, UT_TY(S, AC_LB), AC_E[0], &AF_S, "RISE", ph == AP_RISE ? T_TEXT : T_DIM, T_BG);   /* (the names: one row, under their phases) */
-    cv_text_in(AC_X0 + AC_E[0], UT_TY(S, AC_LB), AC_E[1] - AC_E[0], &AF_S, "PEAK", ph == AP_PEAK ? T_TEXT : T_DIM, T_BG);
-    cv_text_in(AC_X0 + AC_E[1], UT_TY(S, AC_LB), AC_E[2] - AC_E[1], &AF_S, drop ? "DROP" : "BREAK", ph == AP_DROP || ph == AP_BREAK ? T_TEXT : T_DIM, T_BG);
-    cv_text_r(AC_X0 + AC_W, UT_TY(S, AC_LB), &AF_S, "RECOVER", ph == AP_RECOVER ? T_TEXT : T_DIM, T_BG);
+    /* (b11, design review 2.2: no phase words; the shape shows them, knob 1's line names the phase) */
     if (now >= 0) {                                      /* now: a hairline and a dot on the curve */
         int32_t y = tide_arc_y(now, drop);
         cv_rect(AC_X0 + now, AC_YT - 2, 1, AC_YB - AC_YT + 3, T_TEXT);
         cv_rrect(AC_X0 + now - 2, y - 2, 5, 5, 2, T_TEXT, T_BG);
     }
 }
+#define TL_TY(k) (70 + 30 * (int32_t)(k))                 /* b11: part k's lane: its tracks' row */
+#define TL_SY(k) (TL_TY(k) + 20)                         /* .. its steps' baseline */
 static void graph_tide(void)
 {
     uint32_t k;
@@ -1093,26 +1104,15 @@ static void graph_tide(void)
         cv_begin(240, TB_Y1 - TB_Y0, T_BG);
         cv_bg = T_BG;
         cv_oy = -TB_Y0;
-        const int arcv = sqm_arc && sqm_auto;             /* (b10 item 4: ARC on: its shape in the step rows' place) */
-        for (k = 0; k < NSHOWN; k++) {
-            int32_t sy = 119 + 14 * (int32_t)k;
-            tide_track(70 + 14 * (int32_t)k, JB_X0, JB_X0 + JB_W, GT_SOUND, k);
-            tide_track(70 + 14 * (int32_t)k, JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
-            if (arcv)
-                continue;
-            tide_steps(&trk[k], sy, 9, tide_pc(k));
+        for (k = 0; k < NSHOWN; k++) {                   /* b11 (design review 2.2): one lane a part, its A-B tracks and its steps tied by the part bar */
             if (ui_part_hot(k))
-                cv_rect(5, sy - 9, 2, 10, T_PTHEME(k));      /* (the steps row's mark of the selected part) */
+                cv_rect(1, TL_TY(k) - 6, 3, TL_SY(k) + 4 - (TL_TY(k) - 6), T_PFILL(k));
+            tide_track(TL_TY(k), JB_X0, JB_X0 + JB_W, GT_SOUND, k);
+            tide_track(TL_TY(k), JB_X0 + JB_DX, JB_X0 + JB_DX + JB_W, GT_SEQ, k);
+            tide_steps(&trk[k], TL_SY(k), 9, tide_pc(k));
         }
-        if (arcv)
+        if (sqm_arc && sqm_auto)                         /* (b11: the arc and the steps together; the status is on knob 1's line, tide_columns) */
             tide_arc_chart();
-        if (glide_running()) {                           /* (I5: running, the line says where the trip is: "EVOLVING TO B   BAR 3/16"; stopped, what the MODE does) */
-            char l[40];
-            tide_trip(l);
-            cv_text_in(0, UT_TY(S, 104), 240, &AF_S, l, T_ACCENT, T_BG);
-        } else
-            cv_text_in(0, UT_TY(S, 104), 240, &AF_S, GL_MODE_WHAT[gl.mode % 5u], T_MID, T_BG);   /* (between the faders and the steps' tallest bars) */
-        /* (b10, owner: "not redundant with other similar lines": the trip's progress is the status line's n/m above; the bar under the steps that said it again is gone) */
         cv_oy = 0;
         cv_blit(0, TB_Y0);
     }
