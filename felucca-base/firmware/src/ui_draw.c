@@ -819,6 +819,7 @@ static const char *label_split(const char *label, char *l1)
 /* item 158 (owner: no label is cut by even 1 px; fit by tightening the letter spacing, the minimum needed, same face, weight and size): the tracking (1/16 px a glyph, 0 or
  * negative) that ends the label's ink at least 1 px inside the canvas (the card) it is drawn on, starting at x lx; at most 1 px a letter, else 0 (the label as before, cut) */
 #define LBL_TRK_MAX 16                                 /* item 158 (coordinator): the tightening is capped at 1.0 px a letter (16/16) */
+#define VAL_TRK_MAX 32                                 /* b11 text sizes: a card value (L, Bold 23) may tighten up to 2 px a letter before a smaller face (EVOLVE in a third of the row) */
 static int32_t lbl_trk(int32_t lx, const aafont_t *f, const char *s)
 {
     int32_t b[4], t = 0;
@@ -1010,30 +1011,22 @@ static void card_label(uint32_t c, int32_t dx, int32_t lx, int32_t base, const c
 /* the rows of a face's line box for a text whose capitals' last row is `base` (the faces a card value may use) */
 static int32_t card_ty(const aafont_t *f, int32_t base)
 {
-    return f == &AF_N ? UT_TY(N, base) : f == &AF_L ? UT_TY(L, base) : f == &AF_M ? UT_TY(M, base) : f == &AF_T ? UT_TY(T, base) : UT_TY(S, base);   /* (T: item 158, a CELL's Bold fallback) */
-}
-static int card_figure(const char *s)                  /* only the figures the N face has: 0 .. 9 . - + % */
-{
-    int32_t i;
-    for (i = 0; s[i]; i++)
-        if (!((s[i] >= '0' && s[i] <= '9') || s[i] == '.' || s[i] == '-' || s[i] == '+' || s[i] == '%'))
-            return 0;
-    return i > 0;
+    return f == &AF_L ? UT_TY(L, base) : f == &AF_M ? UT_TY(M, base) : f == &AF_T ? UT_TY(T, base) : UT_TY(S, base);   /* (T: item 158, a CELL's Bold fallback) */
 }
 /* the numbers of a card template that differ between templates 1 (part pages), 2 (ENGINE cells), 8 (cells) and 9 (the area card row): rows rel to the card.
- * Flags: num (figures in N), cut (a value is cut by the card's edge, never fitted), seg (a CHOICE shows the segment line: cell_seg_n / cell_seg_i, the ONE place that decides it),
+ * Flags: cut (a value is cut by the card's edge, never fitted), seg (a CHOICE shows the segment line: cell_seg_n / cell_seg_i, the ONE place that decides it),
  * bold (a value too wide for L falls to the Bold T only, never to M / S: item 158), area (the area card row's rules: a label may take two lines, % and "/16" with no space and white, "/16" in the value's face,
  * an action's key pill on the row pill_base) */
-typedef struct { int16_t pad, lbl_base, lbl_dx, lbl_pad_r, val_base, val2_b1, val2_b2, unit_gap, bar_y, pill_base; uint8_t num, cut, seg, bold, area; } card_geo_t;
-static const card_geo_t CG1 = {UT_CARD_PAD, UT_CARD_LBL_BASE, UT_CARD_LBL_DX, UT_CARD_LBL_PAD_R, UT_CARD_VAL_BASE, UT_CARD_VAL2_BASE1, UT_CARD_VAL2_BASE2, UT_CARD_UNIT_GAP, UT_CARD_BAR_Y, 0, 0, 0, 0, 0, 0};
+typedef struct { int16_t pad, lbl_base, lbl_dx, lbl_pad_r, val_base, val2_b1, val2_b2, unit_gap, bar_y, pill_base; uint8_t cut, seg, bold, area; } card_geo_t;
+static const card_geo_t CG1 = {UT_CARD_PAD, UT_CARD_LBL_BASE, UT_CARD_LBL_DX, UT_CARD_LBL_PAD_R, UT_CARD_VAL_BASE, UT_CARD_VAL2_BASE1, UT_CARD_VAL2_BASE2, UT_CARD_UNIT_GAP, UT_CARD_BAR_Y, 0, 0, 0, 0, 0};
 /* item 120: the MODE page's (plain DUELL; TIDE has no such page) K2..K4 (76 x 54): template 1's rows and sizes, a value cut by the card's edge like template 2's, never ellipsised */
-static const card_geo_t CG3 = {UT_CARD_PAD, UT_CARD_LBL_BASE, UT_CARD_LBL_DX, UT_CARD_LBL_PAD_R, UT_CARD_VAL_BASE, UT_CARD_VAL2_BASE1, UT_CARD_VAL2_BASE2, UT_CARD_UNIT_GAP, UT_CARD_BAR_Y, 0, 0, 1, 0, 0, 0};
+static const card_geo_t CG3 = {UT_CARD_PAD, UT_CARD_LBL_BASE, UT_CARD_LBL_DX, UT_CARD_LBL_PAD_R, UT_CARD_VAL_BASE, UT_CARD_VAL2_BASE1, UT_CARD_VAL2_BASE2, UT_CARD_UNIT_GAP, UT_CARD_BAR_Y, 0, 1, 0, 0, 0};
 /* item 156: TEMPLATE 8's cells (the CELL pages): template 2's rows in 116 / 234 x 92 cells */
-static const card_geo_t CG8 = {UT_T8_PAD, UT_T8_LBL_BASE, UT_T8_LBL_DX, UT_T8_LBL_PAD_R, UT_T8_VAL_BASE, UT_T8_VAL2_BASE1, UT_T8_VAL2_BASE2, UT_T8_UNIT_GAP, UT_T8_BAR_Y, 0, 1, 1, 1, 1, 0};
-/* TEMPLATE 9 (grid_on 16): the area page's card row, the faces of the cells (figures N, else L, else the Bold T) */
-static const card_geo_t CGA = {UT_A_PAD, UT_A_LBL_BASE, UT_A_LBL_DX, UT_A_LBL_PAD_R, UT_A_VAL_BASE, UT_A_VAL2_BASE1, UT_A_VAL2_BASE2, UT_A_UNIT_GAP_W, UT_A_BAR_Y, UT_A_PILL_BASE, 1, 1, 1, 1, 1};
-/* the ENGINE page (grid_on 5): the same card row; the value's faces as the ENGINE cells had them (figures N, else L, T, S: template 2) */
-static const card_geo_t CGE = {UT_A_PAD, UT_A_LBL_BASE, UT_A_LBL_DX, UT_A_LBL_PAD_R, UT_A_VAL_BASE, UT_A_VAL2_BASE1, UT_A_VAL2_BASE2, UT_A_UNIT_GAP_W, UT_A_BAR_Y, UT_A_PILL_BASE, 1, 1, 1, 0, 1};
+static const card_geo_t CG8 = {UT_T8_PAD, UT_T8_LBL_BASE, UT_T8_LBL_DX, UT_T8_LBL_PAD_R, UT_T8_VAL_BASE, UT_T8_VAL2_BASE1, UT_T8_VAL2_BASE2, UT_T8_UNIT_GAP, UT_T8_BAR_Y, 0, 1, 1, 1, 0};
+/* TEMPLATE 9 (grid_on 16): the area page's card row, the faces of the cells (L, tightened, else the Bold T) */
+static const card_geo_t CGA = {UT_A_PAD, UT_A_LBL_BASE, UT_A_LBL_DX, UT_A_LBL_PAD_R, UT_A_VAL_BASE, UT_A_VAL2_BASE1, UT_A_VAL2_BASE2, UT_A_UNIT_GAP_W, UT_A_BAR_Y, UT_A_PILL_BASE, 1, 1, 1, 1};
+/* the ENGINE page (grid_on 5): the same card row; the value's faces as the ENGINE cells have them (L, tightened, else T, S: template 2) */
+static const card_geo_t CGE = {UT_A_PAD, UT_A_LBL_BASE, UT_A_LBL_DX, UT_A_LBL_PAD_R, UT_A_VAL_BASE, UT_A_VAL2_BASE1, UT_A_VAL2_BASE2, UT_A_UNIT_GAP_W, UT_A_BAR_Y, UT_A_PILL_BASE, 1, 1, 0, 1};
 /* the grid card template of the page now (0: the page's cards are drawn by another painter) */
 static const card_geo_t *grid_cg(void)
 {
@@ -1100,8 +1093,8 @@ static int32_t card_uw(const card_geo_t *g, const aafont_t *vf, const char *unit
 static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, int32_t gh, const char *label, const char *vb, const char *val, const char *unit,
                        uint16_t vc, int32_t ratio, int hot, int ctr, int big)
 {
-    const aafont_t *vf = g->num && card_figure(vb) ? &AF_N : &AF_L;
-    int32_t pad = g->pad, room = gw - 2 * pad, uw, x, i, two = 0, kn = -1;
+    const aafont_t *vf = &AF_L;                         /* b11 text sizes (design review 3a): every card value one size, L (23 px); N (31) only for a page's one hero figure: none now */
+    int32_t pad = g->pad, room = gw - 2 * pad, uw, x, i, two = 0, kn = -1, vtrk = 0;
     uint32_t kl;
     uint16_t col;
     if (ux.glob && !ux.bw && vc == T_THEME)           /* a GLOBAL page: the value in the gradient's colour at this card */
@@ -1136,13 +1129,15 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
             card_label(c, pad, pad + g->lbl_dx, g->lbl_base, label, lc, lroom);
         if (g->pill_base)
             kn = kc_tag(vb, &kl);
-        if (unit[0] == '/' && vf == &AF_N)              /* (the N face has no slash: "+3/16" in L) */
-            vf = &AF_L;
         uw = card_uw(g, vf, unit);
-        if (vf == &AF_N && text_w(vf, vb) + uw > room)
-            vf = &AF_L;
-        uw = card_uw(g, vf, unit);
-        if (g->bold) {                                  /* item 158 (owner): a CELL keeps the large face's weight, Bold: L, else the next smaller Bold of the tables, T (15 px); never M / S */
+        if (vf == &AF_L && text_w(vf, vb) + uw > room) {   /* b11 text sizes: a long value is fitted by tightening its letters (up to 2 px a letter, VAL_TRK_MAX), never by a smaller face than its neighbours */
+            const int32_t n = (int32_t)str_len(vb), over = text_w(vf, vb) + uw - room;
+            if (n > 1 && (over * 16 + n - 1) / n <= VAL_TRK_MAX)   /* (every glyph's advance takes the tracking, gfx.c: n of them; QC PR 87) */
+                vtrk = -((over * 16 + n - 1) / n);
+        }
+        if (vtrk)
+            ;                                           /* (tightened: it stays L) */
+        else if (g->bold) {                             /* item 158 (owner): a CELL keeps the large face's weight, Bold: L, else the next smaller Bold of the tables, T (15 px); never M / S */
             if (vf == &AF_L && text_w(vf, vb) + uw > room)
                 vf = &AF_T;
         } else {
@@ -1176,10 +1171,14 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
             two = 1;
         } else if (vb[0]) {
             int32_t ty = card_ty(vf, g->val_base), ug;
-            int32_t dx = g->cut && vf == &AF_N ? UT_T2_NUM_DX : 0;
             uint16_t ucol;
             const aafont_t *uf = card_unit(g, vf, unit, &ug, &ucol);
-            x = (g->cut ? cv_text_on(pad + dx, ty, vf, vb, col, T_BG) : cv_text_fit(pad, ty, vf, vb, col, T_BG, room - uw)) - dx;
+            if (vtrk) {                                  /* (b11: the tightened value) */
+                text_trk = vtrk;
+                x = cv_text_on(pad, ty, vf, vb, col, T_BG);
+                text_trk = 0;
+            } else
+                x = g->cut ? cv_text_on(pad, ty, vf, vb, col, T_BG) : cv_text_fit(pad, ty, vf, vb, col, T_BG, room - uw);
             if (unit[0])
                 cv_text_on(x + ug, card_ty(uf, g->val_base), uf, unit, ucol, T_BG);
         }

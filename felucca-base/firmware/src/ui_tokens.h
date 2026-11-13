@@ -145,7 +145,6 @@
 #define UT_T2_VAL2_BASE1 43     /* rel: a two-line value, no bar */
 #define UT_T2_VAL2_BASE2 58
 #define UT_T2_UNIT_GAP 0
-#define UT_T2_NUM_DX -1         /* the N face's first ink sits 1 px right of the picture's: its figures are drawn this much left (the unit keeps its place) */
 #define UT_T2_BAR_Y 75          /* rel; height, radius, track and minimum as template 1 */
 #define UT_T2_ENUM_BAR 0        /* 0: a NAME (WAVE SAW) has no bar, as the picture; 1: it gets one */
 #define UT_T2_LIST_Y 7          /* the engine list's first row, from the picture card's top (3 rows of UT_T3_ROW_H + 2 gaps = 61 px in 76) */
