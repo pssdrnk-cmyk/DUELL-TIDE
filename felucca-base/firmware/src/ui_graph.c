@@ -2606,6 +2606,13 @@ static void mv_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c) 
     }
 }
 /* part k's colour at pct (0 A .. 100 B), faded into the panel by fade %; POLICE: solid A or B */
+static int32_t mv_lean_to(uint32_t k);                   /* (tide_ui.c: the end part k's morph heads for, 0 A .. 100 B; -1 not gliding) */
+/* b11 MORPH polish (design review 2.1): a ridge further back leans toward the colour the morph is heading for; back 0 (the front) .. 256 (the back): up to 60 % of the way */
+static int32_t mv_lean(uint32_t k, int32_t pct, int32_t back)
+{
+    const int32_t to = mv_lean_to(k);
+    return to < 0 ? pct : pct + (to - pct) * back * 60 / (256 * 100);
+}
 static uint16_t mv_col(uint32_t k, int32_t pct, int32_t fade)
 {
     const ui_pal_t *pl = &UI_PALETTES[ux.pal % NPALETTES];

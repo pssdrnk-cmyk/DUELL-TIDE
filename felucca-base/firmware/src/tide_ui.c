@@ -14,6 +14,8 @@
  * Context: main loop. Included at the end of ui_input.c (tide.h H13; every UI source it uses is defined above it), with the
  * main-loop poll (tide_poll) at its end. The settings live in TIDE's own storage object (tide_store.c). */
 #include "morph_glide.c"
+/* b11 MORPH polish: the end part k's morph is heading for, 0 (A) .. 100 (B); -1 while it is not gliding there (ui_graph.c mv_lean) */
+static int32_t mv_lean_to(uint32_t k) { return gl.on && !gl.hold && ((gl.mask >> k) & 1u) ? (gl.to ? 100 : 0) : -1; }
 
 #define TIDE_G_GLIDE 4u                                  /* ui.mg gestures: 0..3 are MORPH's and GLO's (ui.c: TIDE_MG_N of them) */
 
