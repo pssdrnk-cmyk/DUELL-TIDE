@@ -1,20 +1,30 @@
-# Runs every host test group on Linux. On the owner's Windows machine 3 groups SKIP (dx7compat: no .syx banks; benchrun: termios and select() on pipes;
-# benchaudio: no numpy; the fork() groups run through jam/wincompat, and in a snapshot without history otareuse SKIPs too); here they run. Nothing is built for the device and nothing is published.
+# Host tests, as the owner's rule has it (2026-11-13, work/b10/specs/PIPELINE_RULES.md K-M): the full suite runs ONCE per build, on the package about to be flashed, never per change.
+#   pull request / push to jam11:  scope, jam-tools (seconds: the flash tool, the document checks) and device-build (the real device build and its size checks). The 8 test shards and the
+#                                  emulator job are skipped (shown as "skipped").
+#   manual run (workflow_dispatch): everything, 8 shards + emu, on the commit named in the `ref` input (default: the commit the run starts from). The build lane starts one per package:
+#       curl -X POST -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+#         https://api.github.com/repos/pssdrnk-cmyk/DUELL-TIDE/actions/workflows/host-tests.yml/dispatches -d '{"ref":"jam11","inputs":{"ref":"<branch, tag or sha to test>"}}'
+# On the owner's Windows machine 3 groups SKIP (dx7compat: no .syx banks; benchrun: termios and select() on pipes;
+# benchaudio: no numpy; the fork() groups run through jam/wincompat, and in a snapshot without history otareuse SKIPs too); here they run. Nothing is published by this workflow.
 # The groups are dealt to 8 machines that run at once by their measured time (the "Deal" step: tcmeas, which times two cores, has a machine to itself, the rest is balanced; one machine took over 30 minutes
 # when it was round-robin); each runs its groups cores - 1 at a time (jam/fastcheck.py), never stops at a failure,
 # keeps its log as an artifact (host-tests-log-<shard>), and writes a PASS / FAIL table per group plus every failed group's first failing line to its job summary.
 # The runner uses a named Ubuntu release to avoid ubuntu-latest transitions; hosted image updates still apply.
-# Every action is pinned to a full commit, with its version in the comment (Node 24 majors; the Node 20 ones are deprecated). The Pages workflow publishes only after
-# this one has passed (it runs on this workflow's completion).
+# Every action is pinned to a full commit, with its version in the comment (Node 24 majors; the Node 20 ones are deprecated). The Pages workflow publishes after
+# this one has passed on a push to jam11 (it runs on this workflow's completion): with the shards gone from pushes that means build and tools passed, not the suite.
 name: Host tests
 
 on:
   push:
     branches: [jam11]
-  pull_request:           # (a pull request against jam11 gets the same run; Pages starts only from a push to jam11, see pages.yml)
+  pull_request:           # (a pull request against jam11 gets the build-and-tools run; Pages starts only from a push to jam11, see pages.yml)
     branches: [jam11]
   workflow_dispatch:
     inputs:
+      ref:
+        description: "the full run (8 shards + emu) tests this branch, tag or commit (empty: the commit this run starts from)"
+        required: false
+        default: ""
       changed:
         description: "proof / dry run: act as if exactly these files (space-separated) were the pull request's changes (empty: run everything)"
         required: false
@@ -24,12 +34,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: host-tests-${{ github.ref }}
+  group: host-tests-${{ github.ref }}-${{ github.event_name }}-${{ github.event.inputs.ref }}
   cancel-in-progress: true
 
 jobs:
-  # A change that only touches documents cannot break a host test, so a pull request of documents alone skips the 8 shards and the emulator job (they show as "skipped", which tools/gh_ops.py merge counts as
-  # passed; jam-tools always runs: it checks the documents). Documents: any .md outside felucca-base/ and the pictures under docs/. Not skipped: a document a test or tool reads (named by path in host_tests.sh or a file under
+  # A change that only touches documents cannot break the device build, so a pull request of documents alone also skips device-build (it shows as "skipped", which tools/gh_ops.py merge counts as
+  # passed; jam-tools always runs: it checks the documents). The 8 shards and the emulator job run on a manual run only (see the top). Documents: any .md outside felucca-base/ and the pictures under docs/. Not skipped: a document a test or tool reads (named by path in host_tests.sh or a file under
   # felucca-base, or docs/tide/, which web/make_site.py globs, PATCH_NUMBERS.md and TWIN_FILTER_DESIGN_2.md, which tests join by parts), anything else in the change, and every push to jam11 / manual run.
   # (The whole pull request is judged, not its last commit: the shards that tested an earlier commit of code must still run for the head.) Any doubt (no file list, an API error) runs everything.
   scope:
@@ -42,6 +52,8 @@ jobs:
       code: ${{ steps.scope.outputs.code }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.ref }}      # (a manual run's `ref`; empty on every other event: the default checkout)
 
       - name: Documents only?
         id: scope
@@ -106,6 +118,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.ref }}      # (a manual run's `ref`; empty on every other event: the default checkout)
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
         with:
@@ -127,15 +141,73 @@ jobs:
           python3 jam/test_check_groups.py
           python3 jam/check_docs.py
 
+  # "It builds and fits": the real device build (tools/build.py, JieLi's clang for pi32v2), whose own checks fail the job when the image does not fit the app slot, the loader or the RAM rules. The toolchain (26 MB) and the three SDK
+  # files the package uses are cached; build.py checks the SDK files' SHA-256.
+  device-build:
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.ref }}      # (a manual run's `ref`; empty on every other event: the default checkout)
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Python packages (the generators)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libfribidi0 libraqm0
+          python3 -m pip install --quiet -r requirements-dev.txt
+
+      - name: JieLi toolchain and SDK files (cached)
+        id: tc
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9   # v6.1.0
+        with:
+          path: |
+            ~/.jieli
+            ~/fw-AC79_AIoT_SDK
+          key: jieli-toolchain-sdk-v1
+
+      - name: Fetch the toolchain and the SDK files
+        if: steps.tc.outputs.cache-hit != 'true'
+        run: |
+          sh felucca-base/tools/get_toolchain.sh
+          git clone --depth 1 --filter=blob:none --sparse --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK" \
+            || { rm -rf "$HOME/fw-AC79_AIoT_SDK"; git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"; }
+          git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set --no-cone /cpu/wl82/tools/uboot.boot /cpu/wl82/tools/cfg_tool.bin /cfg/eq_cfg_hw.bin || true
+          ls -l "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
+
+      - name: Device build (and its size checks)
+        run: |
+          cd felucca-base
+          JIELI_TOOLCHAIN="$HOME/.jieli/toolchain" AC79_SDK="$HOME/fw-AC79_AIoT_SDK" python3 tools/build.py 2>&1 | tee build.out
+          ls -l build/*.fwsc
+
+      - name: Keep the build log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9   # v7.0.2
+        with:
+          name: device-build-log
+          path: felucca-base/build.out
+          if-no-files-found: ignore
+
   # The emulator (WebAssembly) against the native build: the same samples (web/emu/native_check.c, emu_test.mjs). The emsdk setup is pages.yml's (same version, same cache key).
   emu:
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: github.event_name == 'workflow_dispatch' && needs.scope.outputs.code == 'true'      # (a manual run only: the full suite once per package)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # (gating since 2026-11-08: green on GitHub once emsdk was sourced under bash, PR #4; a red emu run stops the Pages deploy)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.ref }}      # (a manual run's `ref`; empty on every other event: the default checkout)
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
         with:
@@ -184,7 +256,7 @@ jobs:
 
   host-tests:
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: github.event_name == 'workflow_dispatch' && needs.scope.outputs.code == 'true'      # (a manual run only: the full suite once per package)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -193,6 +265,8 @@ jobs:
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.ref }}      # (a manual run's `ref`; empty on every other event: the default checkout)
         # (a shallow checkout: otareuse, which reads history, SKIPs here)
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
