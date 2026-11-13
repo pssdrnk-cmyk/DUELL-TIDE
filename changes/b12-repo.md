@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b10
+- **GitHub (docs and pictures only; nothing on the unit changes):** the README is short again (hero banner, what TIDE is in three lines, a 30-second start, install, credits); the builds table, the branches, build-it-yourself and "what changed from DUELL 1.1" moved to `docs/BUILDS.md` and `docs/WHAT_CHANGED.md` (the builds table now lists 1.0.0-b9). `docs/duell-tide-cover.jpg`, the editor's DUELL header picture and the unused DUELL logo files are gone; `felucca-base/web/editor/img/editor-header.png` is redrawn in TIDE's look and the standalone demo build uses it. The pull request template follows the B12 rules (builds and fits), and `.github/RELEASE_TEMPLATE.md` is the release-notes template.

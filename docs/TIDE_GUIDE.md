@@ -2,7 +2,7 @@
 
 Five minutes. This guide describes the development line, `jam11`, as the source has it. It describes `1.0.0-b10` (release candidate `rc5`) and the betas before it; the shorter TIDE SETTINGS page is from `1.0.0-b7`. The older beta `beta-2026-11-04` is a little different; the list at the end says what came after it. The version of your unit is in MENU > SYSTEM > ABOUT, beside the date.
 
-The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks STYLE and ARC, and it has no TRAVEL role families or memory. The [README](../README.md#builds-stable-and-beta) lists the builds.
+The stable build `stable-2026-11-03` has an earlier TIDE. Its TIDE SETTINGS page is still called MORPH SETTINGS. It lacks STYLE and ARC, and it has no TRAVEL role families or memory. The [builds page](BUILDS.md) lists the builds.
 
 Values marked *start* are suggestions for dub and house techno backgrounds, not defaults. Defaults are named as such.
 
