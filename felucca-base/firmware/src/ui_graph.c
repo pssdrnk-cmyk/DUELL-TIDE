@@ -172,7 +172,7 @@ static void ns_states(uint8_t *st, const track_t *t, uint32_t base)
     for (i = 0; i < 16u; i++) {
         const step_t *s = &seq_steps(t)[base + i];
         st[i] = base + i < len ? pv_bar_of(s) : 0u;
-        top[i] = base + i < len ? pv_top(s) : 0u;
+        top[i] = base + i < len ? pv_top(s, arp_mode(t) == AM_SEQ_ID) : 0u;
     }
     pv_rank(st, top, 16u);
 }
@@ -2439,8 +2439,8 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
     cv_oy = -LP_Y;
     if (pats) {
         uint32_t cur = pat_pick();
-        if (gpp_key != (cur | ps_gen() << 8)) {
-            gpp_key = cur | ps_gen() << 8;
+        if (gpp_key != (cur | ps_gen() << 8 | (uint32_t)(arp_mode(TSEL) == AM_SEQ_ID) << 31)) {   /* (b11: the ranks follow the part's ARP SEQ: pv_top) */
+            gpp_key = cur | ps_gen() << 8 | (uint32_t)(arp_mode(TSEL) == AM_SEQ_ID) << 31;
             ps_preview(cur, &gpp_pv);
         }
         if (gpp_pv.state != 1u)
@@ -2470,7 +2470,7 @@ static __attribute__((noinline)) void list_panel(int pats)   /* (out of line: in
                 cv_free_text(UT_L5_NAME_X, UT_TY(M, y + 11), &AF_M, pnm, c, T_BG, LR_R - 30 - UT_L5_NAME_X);   /* (in the list's name column) */
                 lr_chip(LR_R, y, md, t, T_BG);
                 if (gsl_pv.p[t].has)
-                    note_strip(y + 15 + 12, gsl_pv.p[t].bar, md == 2u ? c : T_MID, ns_live(gsl_pv.p[t].bar, &trk[t]), 0xFFu);   /* (b11: the standard note strip; only a SEQ part plays them: under an arp dimmed) */
+                    note_strip(y + 26, gsl_pv.p[t].bar, md == 2u ? c : T_MID, ns_live(gsl_pv.p[t].bar, &trk[t]), 0xFFu);   /* (b11: the standard note strip, its marks inside the panel: part 2's end on row 216; only a SEQ part plays them: under an arp dimmed) */
                 else
                     cv_text_on(UT_L5_NAME_X, UT_TY(S, y + 26), &AF_S, "NO SEQUENCE", T_MID, T_BG);
             }

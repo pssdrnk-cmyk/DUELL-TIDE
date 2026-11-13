@@ -507,7 +507,7 @@ static void multi_preview(uint32_t slot, mu_pv_t *o)
             uint8_t top[16] = {0};
             for (i = 0; i < 16u && i < slen; i++) {
                 o->p[t].bar[i] = pv_bar_of(&d->step[i]);
-                top[i] = pv_top(&d->step[i]);
+                top[i] = pv_top(&d->step[i], v[2] == 1u);   /* (an ARP part: its SEQ steps sound note[0]) */
             }
             pv_rank(o->p[t].bar, top, 16u);             /* (b11 note strip B: the pitch) */
         }

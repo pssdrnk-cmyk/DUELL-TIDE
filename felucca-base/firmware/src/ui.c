@@ -58,14 +58,16 @@ static uint8_t pv_bar_of(const step_t *s)
 }
 /* b11 the standard note strip (LANGUAGE.md 5a; ui_graph.c note_strip): a note's height is its pitch, the step's top note ranked 0..15 between
  * the lowest and the highest of the 16 shown, in the state's high nibble */
-static uint8_t pv_top(const step_t *s)                 /* a step's top note (0: no note) */
+static uint8_t pv_top(const step_t *s, uint32_t first)   /* the pitch a step sounds, + 1 (0: none): its top note; an ARP SEQ part's (first) only note[0], the one it plays (seq.c arp_seq_notes) */
 {
     uint32_t j, m = 0;
-    if (s->time != ST_NOTE)
+    if (s->time != ST_NOTE || !s->n)
         return 0;
+    if (first)
+        return (uint8_t)(s->note[0] + 1u);
     for (j = 0; j < s->n && j < 4u; j++)
-        if (s->note[j] > m)
-            m = s->note[j];
+        if (s->note[j] + 1u > m)
+            m = s->note[j] + 1u;
     return (uint8_t)m;
 }
 static void pv_rank(uint8_t *bar, const uint8_t *top, uint32_t n)   /* the ranks into bar's high nibble (one pitch only: the middle) */

@@ -593,7 +593,7 @@ static void ps_preview(uint32_t k, pat_pv_t *o)
             o->has = 1;
         if (i < 16u) {
             o->bar[i] = pv_bar_of(&s);
-            ps_top[i] = pv_top(&s);
+            ps_top[i] = pv_top(&s, arp_mode(TSEL) == AM_SEQ_ID);   /* (the part it would play on: ARP SEQ sounds note[0]) */
         }
     }
     pv_rank(o->bar, ps_top, 16u);
