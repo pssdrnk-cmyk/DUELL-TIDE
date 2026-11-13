@@ -31,7 +31,7 @@ Each block says what a function does for you and which control to use. The pictu
 
 ### AUTO TIDE: the glide
 
-<img align="right" src="docs/tide/auto-tide.png" width="240" alt="AUTO TIDE, the water page: each part's steps stand in water, part 1 in sea glass above and part 2 in coral below; the water stands high when the part is near B. Knob 1's line reads RISE TO B, and MODE, TIME and WAIT are under the water">
+<img align="right" src="docs/tide/auto-tide.png" width="240" alt="AUTO TIDE, the water page, mid-glide: part 1's steps in sea glass above and part 2's in coral below, each standing in water that is rising toward B; knob 1's line reads RISE TO B 10/16, and MODE EVOLVE, TIME 16 BARS and WAIT 2 BARS are under the water">
 
 AUTO TIDE moves the sound and the pattern from A to B and back, bar by bar, while the music plays. It is the page you live on, and it looks like a tide.
 - **What you see:** each part's steps stand in water, part 1 in sea glass above and part 2 in coral below. The water is **low at A and high at B** and rises and falls as the glide goes. While the tide waits at an end (WAIT) the water rolls slowly in moonlight; armed (waiting for PLAY) it holds still, dashed; stopped it holds still and dim. A take that is recording turns it red.
@@ -44,7 +44,7 @@ More: [AUTO TIDE in the guide](docs/TIDE_GUIDE.md#2-auto-tide-the-page-you-live-
 
 ### TIDE SETTINGS: set and forget
 
-<img align="right" src="docs/tide/tide-settings.png" width="240" alt="TIDE SETTINGS: the list of rows with STYLE picked, and OCT- OCT+ CHANGE THE VALUE under it">
+<img align="right" src="docs/tide/tide-settings.png" width="240" alt="TIDE SETTINGS: STYLE DUB, MODE EVOLVE, TARGET BOTH, ARC RISE, KNOBS AUTO, AMOUNT 15 %, with OCT- OCT+ CHANGE THE VALUE under the list">
 
 How the tide behaves. **Knob 1** picks a row, **OCT+** and **OCT-** change its value (knobs 2 to 4 turn it too). A value that does nothing in the present setup is dim. The rows:
 - **STYLE:** one pick for the whole feel: DUB, DEEP, MINIMAL, AMBIENT, PEAK or DRONE. It sets MODE, TIME, WAIT and ARC and how the pattern varies. Changing any of those by hand makes it CUSTOM.
@@ -59,7 +59,7 @@ More: [TIDE SETTINGS in the guide](docs/TIDE_GUIDE.md#3-tide-settings-set-and-fo
 
 ### MORPH: the hand page
 
-<img align="right" src="docs/tide/morph.png" width="240" alt="The MORPH page with both parts selected: each part's live wave, part 1 above part 2, and the fader's position beside knob 1's label">
+<img align="right" src="docs/tide/morph.png" width="240" alt="The MORPH page while music plays: each part's live sound as waves, part 1 in sea glass above and part 2 in coral below; knob 1's line reads MORPH 95 TO A 6/16 and the footer shows SND, FDBK and TIME">
 
 HOME's first page, for your hands. **Knob 1** is the MORPH fader from A to B; knobs 2 to 4 are the macros of the loaded multi's genre (a single sound: FILTER, RESONANCE, ECHO). Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats.
 - **Hold OCT+ and click knob 1:** End B becomes a new random roll.
@@ -70,7 +70,7 @@ More: [MORPH in the guide](docs/TIDE_GUIDE.md#1-morph-the-hand-page).<br clear="
 
 ### Multis and parts
 
-<img align="right" src="docs/tide/multis.png" width="240" alt="The MULTIS page: three list rows with the picked multi opened below, showing both parts' sound names, ARP or SEQ and their first 16 steps">
+<img align="right" src="docs/tide/multis.png" width="240" alt="The MULTIS page with M03 DUB MINIMAL picked: the list, and below it both parts' sounds with their first 16 steps">
 
 The FM-1 has two **parts**, each a sound with its own pattern. A **multi** holds both parts, their effects, arps, patterns, mode and morph settings. There are 26 factory multis, in genre order (dub, house, techno, acid, electro, ambient, and two drones), and a blank one after them, **M27 EMPTY**, for playing live. You can save over the factory multis.
 - **Load one:** short-press **SAVE** (it opens MULTIS in LAYER), turn **knob 1** to the multi, press **OCT+**. The preview shows both parts' sounds and their first 16 steps before you load.
@@ -80,7 +80,7 @@ More: [the idea](docs/TIDE_GUIDE.md#the-idea) and [QUICKSTART](docs/QUICKSTART.m
 
 ### QUICK layers
 
-<img align="right" src="docs/tide/quick-arp.png" width="240" alt="The QUICK ARP layer: MODE UP, RATE 1/16, GATE 50 %, OCT 1">
+<img align="right" src="docs/tide/quick-arp.png" width="240" alt="The QUICK ARP layer while music plays: the arp's step line, then MODE SEQUENCE, RATE 1/16, GATE 76 %, OCT 1">
 
 Hold **EDIT**, **LFO**, **ENV**, **ARP** or **GLO** for a moment and the four knobs become performance controls for the selected part; the header says which layer (QUICK ARP, ...). The keys still play; let go and you are back on your page.
 - **EDIT:** cutoff, resonance, filter mode, release. **LFO:** each LFO's rate and cutoff amount. **ENV:** attack, release, the filter envelope's amount and decay.
@@ -92,9 +92,9 @@ More: [QUICKSTART](docs/QUICKSTART.md).<br clear="right">
 
 ### Live assist: record a take, get an answer
 
-<img align="right" src="docs/tide/live-rec.png" width="240" alt="The MORPH page with a red REC mark at the foot while a take is recorded">
+<img align="right" src="docs/tide/live-rec.png" width="240" alt="The MORPH page while a take records: the header says BASS LINE C MINOR (the answer), knob 1's line reads TAKE BAR 1/1, both parts' waves move and a red REC sits in the footer">
 
-Play a line, and TIDE gives the other part something that fits. Hold **SEQ** and tap **REC** to arm recording (a tap of REC disarms), press PLAY, and play: your notes go into the pattern, and the tide line under the header fills red with the loop. When the take closes, the other part gets an **ANSWER** that fits inside the loop and does not rub against your notes:
+Play a line, and TIDE gives the other part something that fits. Hold **SEQ** and tap **REC** to arm recording (a tap of REC disarms), press PLAY, and play: your notes go into the pattern, a red REC shows in the footer and knob 1's line counts the take (`TAKE  BAR 1/1`). When the take closes, the header names the answer (`BASS LINE  C MINOR`), the other part gets an **ANSWER** that fits inside the loop and does not rub against your notes:
 - **BASS LINE:** a bass line in the key, one chord a bar, an octave under you, in the rhythm of the multi's genre. **DOUBLE:** your notes a scale third above. **REPLY:** your first half is the call, the second half the answer. **ECHO:** your last note thrown four times, fading.
 - **ANSWER ON** OTHER writes it to the other part; OFF keeps the take only. **REC** ADD adds notes to a step that already has some; REPLACE takes their place. Both are rows of TIDE SETTINGS.
 - **Undo:** hold **OCT-** and turn **PRESETS**: back along the last two takes (left) or forward again (right).
@@ -103,19 +103,19 @@ More: [ANSWER and REC in the guide](docs/TIDE_GUIDE.md#3-tide-settings-set-and-f
 
 ### SWELL and RIPPLE: make the answer again
 
-<img align="right" src="docs/tide/swell-next.png" width="240" alt="The MORPH page with the header SWELL NEXT LOOP: a SWELL is waiting for the start of the next loop">
+<img align="right" src="docs/tide/swell-next.png" width="240" alt="The sequence tools (SEQ held): CLEAR, REVERSE, SHIFT, SWELL picked, RIPPLE, TRANS, and G4 KEEP; the header says SWELL NEXT LOOP">
 
-Not happy with the answer? Hold **SEQ** and press **C4: SWELL** for a whole new answer, or **D4: RIPPLE** to move a few of its notes and keep its rhythm. It lands at the start of the next loop; the header says `SWELL  NEXT LOOP` until then, and a second press replaces the waiting one. Every press is one undo step: **OCT-** and a turn of **PRESETS**. **G4: KEEP** (also with SEQ held) makes what you hear the part's own, sound and pattern.<br clear="right">
+Not happy with the answer? Hold **SEQ** and press **C4: SWELL** for a whole new answer, or **D4: RIPPLE** to move a few of its notes and keep its rhythm. It lands at the start of the next loop; the header says `SWELL  NEXT LOOP` until then (`NEXT PASS` while REC is armed), and a second press replaces the waiting one. Every press is one undo step: **OCT-** and a turn of **PRESETS**. **G4: KEEP** (also with SEQ held) makes what you hear the part's own, sound and pattern.<br clear="right">
 
 ### The mixer
 
-<img align="right" src="docs/tide/mixer.png" width="240" alt="The MIXER: part 1 and part 2 side by side, each with a MUTE card holding three H, M, L bars, and LEVEL and PAN below">
+<img align="right" src="docs/tide/mixer.png" width="240" alt="The MIXER while music plays: part 1 and part 2 side by side, each with live H, M and L bars, LEVEL 1 0.0 dB, LEVEL 2 -15.0 dB, PAN 1 and PAN 2">
 
 **GLO** opens the mixer (hold GLO and a knob sets levels and pans from any page). **Knob 1** is LEVEL 1, **knob 2** LEVEL 2, **knob 3** PAN 1, **knob 4** PAN 2. Hold GLO and press **OCT-** / **OCT+** to mute part 1 / part 2. Each part's card carries a three-bar meter: **L**ow (under about 250 Hz), **M**id and **H**igh (over about 2.5 kHz), each with a short peak mark, so you can see where a sound sits. Loading a sound never changes your levels; a multi remembers them.<br clear="right">
 
 ### Saving
 
-<img align="right" src="docs/tide/save.png" width="240" alt="The SAVE confirm dialog: OVERWRITE a patch slot, with OCT- NO and OCT+ YES">
+<img align="right" src="docs/tide/save.png" width="240" alt="The SAVE confirm dialog: OVERWRITE BOTH PATCHES? #80 + #131, with OCT- NO and OCT+ YES">
 
 **Hold SAVE** on a page to save what it edits: a patch, a pattern or a multi; the dialog offers the picked slot over itself, **OCT+** says yes, **OCT-** no. A short press opens the SAVE page that fits where you are (PATTERNS from a sequencer page, otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO); SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Saving needs the transport stopped. SAVE keeps the sound as you loaded it, not the one TRAVEL moved it to: to keep what you hear, use KEEP first. Every factory sound has its own slot and can be saved over (RESTORE brings the factory sound back); USER 1 to 4 start empty. [Back up](docs/RECOVERY.md) before you update.<br clear="right">
 
