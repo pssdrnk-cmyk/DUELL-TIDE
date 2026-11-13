@@ -6,7 +6,7 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 ## Now: 1.0.0-b10 (jam11)
 
-jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads 1.0.0-b9. The unit runs rc7-test, flashed 13 November at 06:51 (after the sweep builds): jam11 `00ca7f6`, which has live assist v2 (PR 55; the owner's feedback on it is still open). Flash free on the unit: 7,968 B (it was 1,528 B on rc6.8-test; the multi packing of PR 67 gave the room). The version string still reads 1.0.0-b9.
+jam11 is the 1.0.0-b10 work; it is not tagged yet, so `TIDE_VERSION` still reads 1.0.0-b9. The unit runs rc7-test, flashed 13 November at 06:51 (after the sweep builds): jam11 `00ca7f6`, which has live assist v2 (PR 55; the owner's feedback on it is still open). Flash free on the unit: 7,968 B (1,528 B on rc6.8-test). The version string still reads 1.0.0-b9.
 
 | What | State |
 |---|---|
@@ -22,7 +22,7 @@ The owner's two tracks from the roadmap review of 12 November, plus quality chec
 
 ## On the unit
 
-The unit runs b10-rc6.8-test. Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
+The unit runs rc7-test. Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
 
 | What | State |
 |---|---|
