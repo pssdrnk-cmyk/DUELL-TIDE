@@ -206,17 +206,35 @@ static void ppm(const char *name)
     }
     fclose(f);
 }
-static int bar_ok(uint32_t pct)                    /* the TIDE capsule bar: the fill (the gradient) up to ls_bar_end, the T_RAISE track after it, nothing above and below */
+#define LS_PLAIN_MAX 14000u                         /* (the wordmark, the texts, the line and the pill: measured 0 at the first version, see the printf) */
+static int line_ok(uint32_t pct)                   /* the water line: sea glass up to ls_bar_end, the line colour after it (each column has a fully covered row), the ground above and below */
 {
-    uint32_t x, bad = 0, ym = LS_BAR_Y + LS_BAR_H / 2u, xe = pct ? LS_BAR_X0 + (LS_BAR_X1 - LS_BAR_X0) * pct / 100u : 0u;
-    if (pct && xe < LS_BAR_X0 + LS_BAR_H - 1u) xe = LS_BAR_X0 + LS_BAR_H - 1u;
-    for (x = LS_BAR_X0 + 3u; x + 3u <= LS_BAR_X1; x++) {
-        uint16_t grad = ls_mix(LS_C0, LS_C2, (int32_t)((x - LS_BAR_X0) * 100u / (LS_BAR_X1 - LS_BAR_X0)));
-        if (pct && x + 3u <= xe) bad += panel[ym * 240 + x] != grad || panel[LS_BAR_Y * 240 + x] != grad || panel[(LS_BAR_Y + LS_BAR_H - 1u) * 240 + x] != grad;
-        else if (!pct || x >= xe + 3u) bad += panel[ym * 240 + x] != LS_RAISE_;
-        bad += panel[(LS_BAR_Y - 1u) * 240 + x] != LS_BG || panel[(LS_BAR_Y + LS_BAR_H) * 240 + x] != LS_BG;
+    uint32_t x, y, bad = 0, xe = pct ? ls_bar_end(pct) : 0u;
+    for (x = LS_BAR_X0 + LS_SOFT; x + LS_SOFT <= LS_BAR_X1; x++) {
+        uint32_t want = pct && x + 2u <= xe ? LS_C0 : !pct || x >= xe + 2u ? LS_LINE : 0u, hit = 0;
+        for (y = LS_LINE_Y - 3u; y <= LS_LINE_Y + 3u; y++)
+            hit |= want && panel[y * 240 + x] == want;
+        bad += want && !hit;
+        bad += panel[(LS_LINE_Y - 5u) * 240 + x] != LS_BG || panel[(LS_LINE_Y + 5u) * 240 + x] != LS_BG;
     }
     return bad == 0;
+}
+static uint32_t pinkish(void)                      /* b11 (owner: "it's pink"): pixels whose red and blue both stand well above their green (pink, violet, magenta; never a grey) */
+{
+    uint32_t i, n = 0;
+    for (i = 0; i < 240u * 240u; i++) {
+        const int32_t c = panel[i], r = (c >> 11) & 31, g = ((c >> 5) & 63) / 2, b = c & 31;
+        n += r - g > 4 && b - g > 4;
+    }
+    return n;
+}
+static uint32_t lit(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)     /* pixels in the box that are not the ground */
+{
+    uint32_t x, y, n = 0;
+    for (y = y0; y < y1; y++)
+        for (x = x0; x < x1; x++)
+            n += panel[y * 240 + x] != LS_BG;
+    return n;
 }
 static uint32_t count_col(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint16_t c)
 {
@@ -254,22 +272,24 @@ static int screen_checks(const uint8_t *newapp, const uint8_t *oldapp, uint8_t *
     bad += check("screen: the strip was drawn without leaving the panel (nothing outside 240 x 240)", 1);
     new_screen_at(0);
     ppm("0");
-    bad += check("screen 0%: bar empty (the track only)", bar_ok(0));
-    bad += check("screen 0%: UPDATE, WRITING, 0 %, TIDE are drawn (bright pixels in their boxes)",
-                 ink(90, 5, 150, 18) > 60 && ink(90, 63, 150, 76) > 60 && ink(100, 84, 140, 110) > 40 && ink(4, 220, 40, 233) > 40);
-    bad += check("screen 0%: DO NOT SWITCH OFF in its pill (the pill's colour, the text in the background colour)",
-                 count_col(52, 156, 188, 175, LS_C0) > 1000 && count_col(62, 160, 178, 171, LS_BG) > 150);
-    new_screen_at(45);
-    ppm("45");
-    bad += check("screen 45%: the bar filled to 45 %", bar_ok(45) && ink(90, 84, 150, 110) > 150);
+    bad += check("screen 0%: the water line empty (the line colour only)", line_ok(0));
+    bad += check("screen 0%: the wordmark, WRITING, 0 % are drawn (bright pixels in their boxes)",
+                 ink(40, 40, 200, 72) > 800 && lit(90, 104, 150, 118) > 60 && ink(100, 126, 140, 152) > 40);
+    bad += check("screen 0%: DO NOT SWITCH OFF in its pill (amber, the text in the ground colour)",
+                 count_col(52, 186, 188, 205, LS_WARN) > 1000 && count_col(62, 190, 178, 201, LS_BG) > 150);
+    bad += check("screen 0%: no pink or violet (the night sea)", pinkish() == 0);
+    new_screen_at(50);
+    ppm("50");
+    bad += check("screen 50%: the water line sea glass to 50 %", line_ok(50) && ink(90, 126, 150, 152) > 150);
     new_screen_at(100);
     ppm("100");
-    bad += check("screen 100%: the bar filled to the end", bar_ok(100) && ink(80, 84, 160, 110) > 200);
+    bad += check("screen 100%: the water line sea glass to the end", line_ok(100) && ink(80, 126, 160, 152) > 200);
     {
         uint32_t n = 0, i;
         for (i = 0; i < 240u * 240u; i++)
             n += panel[i] != LS_BG;
-        bad += check("screen 100%: the rest is the plain background (no boxes)", n < 9000);
+        printf("screen 100%%: %u pixels off the ground\n", n);
+        bad += check("screen 100%: the rest is the plain ground (no boxes)", n < LS_PLAIN_MAX);
     }
     /* a panel that times out: the screen gives up for good, the write is the same */
     memcpy(nor, old_full, 0x93000);
