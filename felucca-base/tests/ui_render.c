@@ -1418,7 +1418,7 @@ static void setup(int s)
     /* DUELL 4b: HOME's MORPH (HOME tapped twice: nothing rolled, fader A, AMOUNT's default); both ends rolled (seeds,
      * UNDO counts), the fader between them, KNOB 1 hot; TARGET BOTH on part 2, the fader at B (far end A); the twists of
      * KNOB 3 / 4 building up; MORPH SET (SELECTED, BOTH) */
-    case S_MORPH: go_home(); home_tap(); break;   /* (DUELL 3.5: HOME tapped from OVERVIEW: the main page) */
+    case S_MORPH: go_title("AMP ENV"); home_tap(); break;   /* (HOME from another page: the main page, MORPH (ui.c go_main); b12: no count of HOME taps on HOME's round, which is MORPH, AUTO TIDE, TIDE SETTINGS) */
     /* DUELL 0.2.5 PERFORM (FX held): the map at rest over AMP ENV; REPEAT 1/16, FLANGER and MUTE 2 held, the knobs turned (SPACE -40,
      * FILTER 60 HP, DEPTH 75), BOTH parts; at 40 BPM (REPEAT 1/8, 1/16 and REVERSE greyed: TEMPO); CLK USB with no clock
      * (PUMP greyed), FILTER all the way left; in LAYER with part 2, the fader at B */
