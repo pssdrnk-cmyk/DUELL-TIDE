@@ -247,6 +247,29 @@ static uint32_t shed_released(uint32_t n)             /* the n oldest released v
     return k;
 }
 
+/* THE IN-BUFFER GUARD (b11, ported from DUELL 1.2 by OSCILL/R, GPL-3.0: audio.c guard_block). 1.2's bench: the missed halves at a chord's start ran only 10 to 30 us over (the half's
+ * first block runs slow: its code reloads after the main loop), and the ladder above acts only after two halves over 85 % or after a miss: the first half over is already lost (TIDE's
+ * 13 Nov sweep: 9 of the 14 seconds over 100 % were the first second after a load, PLAY or a glide's start). Here, after every block but the last: the time used so far (TIMER5's nested
+ * work included, as the DMA deadline sees it) plus the blocks still to come at the running mean of a later block; when that would end past GUARD_TICKS, the GUARD_N oldest released
+ * voices (keys let go: their tails; shed_released) fade now (voice_kill: over the next block), so the half's later blocks have them no more. A held note is never touched. Nothing
+ * happens below the limit, so the sound changes only where a half would have been missed. A guard fade is not an ease-ladder step: the ladder (ease_step) reads only the halves'
+ * elapsed times, as before; the fades count in shed_count (the console's) and guard_count */
+#define GUARD_TICKS (SHED_FULL_TICKS * 96u / 100u)       /* 96 %: room for the interrupt's own late start */
+#define GUARD_N 2u                                      /* tails faded at one check */
+#ifndef AUDIO_BLK_TICKS
+#define AUDIO_BLK_TICKS() fm1_ticks()                   /* (the block clock; host tests that model a half's time as one step at its end read it without a step: tests/audio_test.c) */
+#endif
+static uint32_t guard_q;                                /* the running mean of a later block (blocks 1 .. 3 of a half), ticks x 8 */
+static uint32_t guard_count;                            /* checks that faded tails */
+static inline void guard_block(uint32_t t0, uint32_t tb, uint32_t k)
+{
+    const uint32_t te = AUDIO_BLK_TICKS(), left = HALF_FRAMES / CTL - 1u - k;
+    if (k)
+        guard_q += (te - tb) - (guard_q >> 3);
+    if (left && (te - t0) + left * (guard_q >> 3) > GUARD_TICKS && shed_released(GUARD_N))
+        guard_count++;
+}
+
 /* the level a released voice is ranked by: its envelope, or on an engine with its own envelopes (FM6: v->env is forced to full) the loudest carrier as the block left it */
 static int32_t shed_level(track_t *t, voice_t *v)
 {
@@ -319,10 +342,12 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         tc_half_begin(t0);                              /* (the half's clock for core 0's deadlines: twocore_run.c) */
 #endif
         for (b = 0; b < HALF_FRAMES; b += CTL) {
+            const uint32_t tb = AUDIO_BLK_TICKS();
 #ifdef FM1_INPUT_LAT
             kb_out_tick = t0 + (HALF_FRAMES + b) * DAC_TICKS;   /* when this block plays (seq.c kb_lat) */
 #endif
             audio_block(o + 2u * b, CTL);
+            guard_block(t0, tb, b / CTL);               /* b11: the in-buffer guard (above) */
         }
         if (duck_on || duck_g < 32768u)                 /* (the flash duck: only around a flash write) */
             duck_half(o);

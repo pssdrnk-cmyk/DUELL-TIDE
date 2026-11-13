@@ -12,6 +12,7 @@ static uint32_t host_clock, host_us, host_half_reads, host_dma_advanced, host_ac
 static uint8_t host_pending;
 static volatile uint32_t t5_nested_ticks;              /* audio.c's: TIMER5 nested in the render (main.c) */
 static uint32_t fm1_ticks(void) { t5_nested_ticks = host_nest; host_clock += host_us; return host_clock; }
+#define AUDIO_BLK_TICKS() (host_clock)                 /* (b11: the guard's block clock reads without a step: this test's half is one step at its end) */
 static uint8_t fm1_audio_pending(void) { return host_pending; }
 static void fm1_audio_ack_aux(uint8_t p) { (void)p; }
 static uint32_t host_alt, host_alt_half;               /* (the flash duck test: the DMA alternates the halves) */
