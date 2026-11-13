@@ -30,7 +30,7 @@
 # LOFI NOISE TRIO WAVE WHEEL, the sends and the 4-track mix fall to -40 .. -52 dB residual, which is (2) BIT DEPTH (the level stages keep the two low bits), REVERB_FIX (comb damping and
 # delay feedback rounded, tails end in exact silence), the SHIM rework. (3) The rest: the velocity accent and PHYS exciter brightness from the key (not the velocity), the string loop's
 # tuning (phys_dsp.c), PHASE's bend, and the factory sounds' new recipes, TRANS and End B as values (tools/duell_sounds.py): the sound/ renders and the PHYS / PHASE / VOICE presets.
-# b11 (FM6 exp2 table 1025 -> 257 entries, 97316e7), on purpose, 27 of the lines: FM6 renders move by a few LSB (REGRESS_DUMP / MULTI_DUMP proofs in the PR); re-made through jam/repin.sh, proven by revert.
+# b11 (FM6 exp2 table 1025 -> 513 entries, 679ff39), on purpose, 27 of the lines: FM6 renders drift apart in phase (waveforms differ, spectra and levels do not: third-octave bands within 0.5 dB, level within 0.01 dB); re-made through jam/repin.sh, proven by revert.
 preset/ANALOG/00_SAW_LEAD 6fd0837e47965e57
 preset/ANALOG/01_SOFT_PAD 12b1733ff8fba2fc
 preset/ANALOG/02_SQR_BASS 5c5ef9fbef9a9061
@@ -81,14 +81,14 @@ preset/NOISE/00_WIND d46adc85d54c0a89
 preset/NOISE/01_RAIN 5283492bd576fc5c
 preset/NOISE/02_ARCADE 3b57fac451699d2e
 preset/NOISE/03_METAL 6e139d5e6f39d890
-preset/FM6/00_TINE_EP 38a309696b49d3ec
-preset/FM6/01_BELL 41a85efd451a5054
-preset/FM6/02_FM_BASS c57eb62682d18795
-preset/FM6/03_BRASS 4ea68fdc6d263252
-preset/FM6/04_PAD af13c9009fb07789
-preset/FM6/05_MARIMBA 142cf17d55a81d44
-preset/FM6/06_ORGAN fc135a082808c3b5
-preset/FM6/07_PLUCK 3acadc31e42e5141
+preset/FM6/00_TINE_EP 5022d66c641510c9
+preset/FM6/01_BELL cfe7add1c0899242
+preset/FM6/02_FM_BASS 190b7cdbd45bc317
+preset/FM6/03_BRASS e3a861f11ccc9ef0
+preset/FM6/04_PAD f98caced0797d8da
+preset/FM6/05_MARIMBA f89d9392ea8f89f9
+preset/FM6/06_ORGAN bce06faea40fb8c5
+preset/FM6/07_PLUCK d401c9df957717f1
 preset/WAVE/00_SAW_PAD f2863daad424a4ee
 preset/WAVE/01_PWM_STRING ac438f64d991f75e
 preset/WAVE/02_HARM_KEYS 6418369ad53eddbc
@@ -223,24 +223,24 @@ sound/NOISE/09_MODEM 816a4eaa44de6ffa
 sound/NOISE/10_REV_CYMBAL 23a35f51fdb372a4
 sound/NOISE/11_DUST_BED e984a0e162bf67cc
 sound/NOISE/12_TAPE_HISS aa617458c9724b0b
-sound/FM6/00_SLAP_DOCTOR e73aef098a747df0
-sound/FM6/01_HAN_SOLO f48eeb028c71b44c
-sound/FM6/02_GLASS_HALL 709aedfafac98aec
-sound/FM6/03_MALLET_WOOD 1209db401c549a41
-sound/FM6/04_TINE_ROOM 40fdd35137e91350
-sound/FM6/05_BIG_STAB 4d178ad9a4c0c7a4
-sound/FM6/06_FROST_BELLS 947a01767665ca3d
-sound/FM6/07_ALIEN_CHIMES ca1eac073a0d1236
-sound/FM6/08_TEMPLE_BLOCK cd36d0ca61d6e919
-sound/FM6/09_ISLAND_STEEL dd1ac45e1a5d2559
-sound/FM6/10_SALOON_KEYS c0328000f6658dfb
-sound/FM6/11_FRETLESS cb985338493f7e90
-sound/FM6/12_FM_BASS_2 a1adf832e021eb4b
-sound/FM6/13_TUBE_BELLS e74aa76b189a3443
-sound/FM6/14_FM_HAZE abc9b723302bfddb
-sound/FM6/15_DUB_DRAWBAR f18773c28a438563
-sound/FM6/16_BELL_STAB 457b1c37c5fb915d
-sound/FM6/17_HORN_SWELL 7a9272b5c809bcb1
+sound/FM6/00_SLAP_DOCTOR 418afe42a8f72078
+sound/FM6/01_HAN_SOLO 3cd62ed0fba39197
+sound/FM6/02_GLASS_HALL 7d53cd2e752e0a50
+sound/FM6/03_MALLET_WOOD 66903e996514516e
+sound/FM6/04_TINE_ROOM bc5cfc97eceab0b6
+sound/FM6/05_BIG_STAB 277e09ad78defa41
+sound/FM6/06_FROST_BELLS 4c758854dc737db8
+sound/FM6/07_ALIEN_CHIMES 3a43bf2943ecda75
+sound/FM6/08_TEMPLE_BLOCK d81546f1b2038459
+sound/FM6/09_ISLAND_STEEL ed5c1fc577876cf8
+sound/FM6/10_SALOON_KEYS d4011adbe9448314
+sound/FM6/11_FRETLESS 90ad4319d8756643
+sound/FM6/12_FM_BASS_2 64b9a1ae6e07fce9
+sound/FM6/13_TUBE_BELLS 127266128af51ea9
+sound/FM6/14_FM_HAZE 6074dc68ef45ec57
+sound/FM6/15_DUB_DRAWBAR cbc3c71655fd9bf4
+sound/FM6/16_BELL_STAB 5d33cd031c36dbdd
+sound/FM6/17_HORN_SWELL 909df634fb284f41
 sound/WAVE/00_PWM_PAD db987798846cb79a
 sound/WAVE/01_VOWEL_PAD 6ec5b11142be6979
 sound/WAVE/02_GLASS_PAD 325f3726eadaac1c
@@ -283,4 +283,4 @@ sends/ANALOG/delay a1932fa371cb1438
 sends/ANALOG/reverb 446ae3d9a270e8a4
 sends/ANALOG/all 281ae00cb105760b
 sends/ANALOG/dist 7073cc27fa7ab80e
-song/4track_mix 03a06a9a51e33ad1
+song/4track_mix 2f6e9e6b1e719ff7
