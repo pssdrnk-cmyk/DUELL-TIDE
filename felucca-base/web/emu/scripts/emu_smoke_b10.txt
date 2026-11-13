@@ -3,26 +3,27 @@
 boot
 button HOME
 button HOME
+button HOME
 enc K1 4
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
 shot knobs_ELEC_row
-enc SELECT 2
 enc SELECT 1
+enc SELECT -1
 button OCTUP
 shot knobs_AMB_row
 # the COLR LFO page (GLO page 6: CLFO 0..15, the default multi M02 holds 5) and the same page with the knob turned down to 0

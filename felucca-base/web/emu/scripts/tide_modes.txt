@@ -2,6 +2,7 @@
 boot
 button HOME
 button HOME
+button HOME
 enc K1 1
 shot mode_row_a
 button OCTUP

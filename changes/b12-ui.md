@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b12
+- **TIDE home (design overhaul part 5):** HOME's round is MORPH, AUTO TIDE, TIDE SETTINGS (AUTO TIDE moved up to the 2nd page; HOME still opens MORPH). On AUTO TIDE, beside each part's steps, a cell for each bar of a loop longer than one bar (2 to 4), filling up in the part's colour as the loop plays. After a take, knob 1's line names the answer in the answering part's colour ("BASS LINE  C MINOR"; "ANSWER NEXT BAR" in sand while it waits for the bar line) until a load or ANSWER OFF; a running glide keeps the line for its trip, and the title stays AUTO TIDE (other pages still show the answer as a message). Each readout has its own build switch (`TIDE_HOME_BARS`, `TIDE_HOME_ANSWER` in `tide.h`). Flash +0.6 KB.

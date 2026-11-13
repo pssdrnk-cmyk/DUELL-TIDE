@@ -2,6 +2,7 @@
 boot
 button HOME
 button HOME
+button HOME
 shot tide_settings
 enc K1 4
 button OCTUP

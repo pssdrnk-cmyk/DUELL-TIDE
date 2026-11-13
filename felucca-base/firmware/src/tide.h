@@ -231,7 +231,13 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
                                    if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u ^ (uint32_t)duell_mode_req * 0x9E3779B1u) * 16777619u; } while (0)   /* (1.0.0-b7: the MODE, AUTO TIDE names the play mode) */
 #define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
-#define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; AUTO TIDE is the round's 3rd) */
+#ifndef TIDE_HOME_BARS
+#define TIDE_HOME_BARS 1                                 /* b12, TIDE's home (AUTO TIDE): the loop's bar cells beside each lane's steps (tide_ui.c tide_loop_bar); 0 drops them */
+#endif
+#ifndef TIDE_HOME_ANSWER
+#define TIDE_HOME_ANSWER 1                               /* .. the answer on knob 1's line (tide_ui.c tide_answer_line; the take's header message is not repeated there, tide_take.c); 0 drops it */
+#endif
+#define TIDE_HOME_NAME "MORPH"                           /* MENU > CONTROL > HOME OPENS: the first page of the round (MORPH, as stock; b12, owner: AUTO TIDE is the round's 2nd, TIDE SETTINGS the 3rd) */
 #define TIDE_HOME_MODE_NAME "SETTINGS"                  /* (b4, UI audit 9: HOME OPENS' second value names the page it opens, TIDE SETTINGS; MULTI LOAD keeps or sets the PLAY MODE row) */
 #define TIDE_MLOAD_NAMES {"KEEPS PLAY MODE", "SETS PLAY MODE"}
 #define TIDE_HOME_MODE(pg) ((pg)->graph == GR_TIDELIST)   /* HOME OPENS = MODE: TIDE has no MODE page (no PAGES row); its MODE is a row of TIDE SETTINGS, which opens with that row picked */
