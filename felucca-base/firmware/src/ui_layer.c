@@ -874,6 +874,13 @@ static void layer_glo(void)
  * ENV 2; QUICK ARP: ARP. The cells line up with the cards (CARD_X), 3 px in */
 static const char *const LQ_NAME[4][2] = {{"MULTI FILTER", "AMP"}, {"LFO 1", "LFO 2"}, {"AMP ENV", "FILTER ENV"}, {"ARP", 0}};
 static const uint8_t LQ_SPLIT[4] = {3, 2, 2, 4};       /* the first card of the second group */
+/* b11: the step QUICK ARP's strip marks (0xFF: none): the arp's own step while keys are held or latched, as the footer's on the ARP pages (ui_draw.c foot_playhead: the arp runs
+ * without PLAY) */
+static uint32_t qa_step(const track_t *t)
+{
+    const uint32_t len = t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u;
+    return !t->nheld || t->arp_idx == 0xFFFFFFFFu ? 0xFFu : TIDE_ARP_IDX(t, t->arp_idx, len);
+}
 static void layer_quick(uint32_t q, int32_t y, int32_t h)
 {
     uint32_t g, split = LQ_SPLIT[q];
@@ -883,9 +890,10 @@ static void layer_quick(uint32_t q, int32_t y, int32_t h)
         nm = TWO;
         split = 2;
     }
-    if (grid_on == 1 && q == 3u) {                      /* b11 (design review 2.5): QUICK ARP's card shows the part's steps, the standard note strip (its playhead's bank), the part bar beside them */
+    if (grid_on == 1 && q == 3u && arp_mode(TSEL) == AM_SEQ) {   /* b11 (design review 2.5): QUICK ARP in SEQ mode shows the steps the arp plays, the standard note strip (its playhead's
+                                                         * bank), the part bar beside them; the footer's rule (ui_draw.c foot_steps); other modes keep the group's line */
         uint8_t st[16];
-        const uint32_t ph = song.playing ? TIDE_PLAY_IDX(TSEL) : 0xFFu;
+        const uint32_t ph = qa_step(TSEL);
         ns_states(st, TSEL, ph < NSTEP ? ph / 16u * 16u : 0u);
         cv_rect(1, 36, 3, 20, T_PFILL(song.sel & 1u));
         note_strip(50, st, T_THEME, ph < NSTEP ? ph % 16u : 0xFFu, 0xFFu);
@@ -1008,8 +1016,8 @@ static void draw_layer(void)
         sig += (uint32_t)ui_rec_prefs * 31u + (uint32_t)rec_clearable() * 5u + song.sel * 977u;
     else if (l == LAYER_SEQ)
         sig += song.sel * 977u + steps_sig(TSEL) * 31u + tide_sw_pending() * 4099u;   /* (b11: the steps and a waiting SWELL / RIPPLE are in the picture) */
-    else if (ly_q(l) == 3u && grid_on == 1)             /* b11: QUICK ARP's steps and their playhead */
-        sig += song.sel * 977u + steps_sig(TSEL) * 31u + (song.playing ? TIDE_PLAY_IDX(TSEL) : 0xFFu) * 4099u;
+    else if (ly_q(l) == 3u && grid_on == 1)             /* b11: QUICK ARP's steps (SEQ mode) and their playhead */
+        sig += song.sel * 977u + steps_sig(TSEL) * 31u + qa_step(TSEL) * 4099u + (uint32_t)arp_mode(TSEL) * 65537u;
     else if (l == LAYER_EDIT)
         sig += (TSEL->eng_req % NENGINES) * 31u + song.sel * 977u + (uint32_t)ly_page(l)->id[2] * 4099u + (uint32_t)ly_page(l)->id[3] * 65537u;   /* (cloud job H: its cards follow filter 2) */
     if (l == LAYER_REC && grid_on == 14)                /* QUICK REC (template 8): the cells are the whole body, no panel of its own */
