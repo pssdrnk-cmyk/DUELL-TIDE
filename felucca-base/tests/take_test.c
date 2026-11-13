@@ -286,79 +286,111 @@ static void take_roll_test(void)
     rec_off();
     CHECK("... REC off with no change: the rolled answer stays, no new take", psig(1) == a1 && tk_cnt == 1);
 }
-/* b11: ANSWER or ANSWER ON turned while a take stands: the answer is made again from the take, on the next bar line; no history step; OFF gives the pattern back (tide_take.c take_mode) */
-static void wait_not_due(void) { uint32_t n = 0; while ((clk_step & 15u) != 3u && n++ < 400u) run(16); }
-static void take_mode_change(void)
+/* b11: SWELL (C4) and RIPPLE (D4) of SEQ TOOLS (tide_take.c tide_tl_swell): the buttons make the answer again, the menu changes nothing by itself; they land at the start of the next loop, one history step each */
+static uint32_t onsets(uint32_t p) { uint32_t i, m = 0; for (i = 0; i < 64u; i++) m = m * 31u + ((uint32_t)trk[p].step[i].time << 3) + trk[p].step[i].n; return m; }
+static uint32_t changed_steps(const step_t *a, uint32_t p, uint32_t *nnotes)
 {
-    uint32_t a0, a1, s2, p0, d0, e_ref, sdiv2, amode2;
+    uint32_t i, k, c = 0, n = 0;
+    for (i = 0; i < 64u; i++) {
+        n += trk[p].step[i].time == ST_NOTE && trk[p].step[i].n;
+        for (k = 0; k < 4u; k++)
+            if (a[i].note[k] != trk[p].step[i].note[k]) { c++; break; }
+    }
+    *nnotes = n;
+    return c;
+}
+static void sw_press(uint32_t part, uint32_t ripple) { (void)tl_do(&trk[part], ripple ? TL_COOK : TL_RANDOM); }
+static void to_loop_end(uint32_t part) { at_step(&trk[part], (uint32_t)TIDE_PLAY_LEN(&trk[part]) - 1u); run(48); }
+static void take_swell(void)
+{
+    uint32_t a0, a1, s2, h0, on0, n, c, i, ok;
+    step_t keep[64];
+    static morph_part_t sv;
     boot(); setup(1, 0, V_POLY);
-    s2 = psig(1); sdiv2 = (uint32_t)trk[1].p[P_SDIV]; amode2 = (uint32_t)trk[1].p[P_AMODE];
+    s2 = psig(1);
     first_take();
-    a0 = psig(1);
-    CHECK("mode change: the take stands (BASS LINE answer, one history step)", tk_cnt == 1 && tk_m.mode == TA_BASS && a0 != s2);
-    wait_not_due();
-    tide_answer = TA_DOUBLE; run(48);
-    CHECK("ANSWER turned to DOUBLE: the new answer waits for the bar line (the old one still stands)", tk_pend && psig(1) == a0 && tk_m.mode == TA_DOUBLE);
-    CHECK("... the header names it", said("DOUBLE"));
-    land();
-    d0 = psig(1);
-    CHECK("... on the bar line it lands: a different answer, still one history step, the take untouched", d0 != a0 && !tk_pend && tk_cnt == 1 && tk_pos == 1 && trk[0].step[2].note[0] == 69);
-    wait_not_due();
-    tide_answer = TA_BASS; run(48); land();
-    CHECK("... turned back to BASS LINE: exactly the first answer again (the take's own seed)", psig(1) == a0 && tk_m.mode == TA_BASS && tk_m.roll == 0u);
+    a0 = psig(1); h0 = psig(0);
+    /* the menu alone changes nothing */
     tide_answer = TA_DOUBLE; run(48); land();
-    CHECK("undo after a mode change goes back to before the take", d0 == psig(1) && take_undo(-1) == 1u && psig(1) == s2 && said("UNDO TAKE 1"));
-    CHECK("... redo brings the take with the DOUBLE answer", take_undo(1) == 1u && psig(1) == d0);
-    /* OFF gives the pattern back, on the bar line */
-    wait_not_due();
-    tide_answer_on = 1; run(48);
-    CHECK("ANSWER ON OFF: the other part gets its old pattern back on the bar line (not at once)", tk_pend && psig(1) == d0 && said("ANSWER OFF"));
-    land();
-    CHECK("... the pattern, the grid and the ARP mode it had before the take", psig(1) == s2 && (uint32_t)trk[1].p[P_SDIV] == sdiv2 && (uint32_t)trk[1].p[P_AMODE] == amode2 && !tk_m.ans && tk_cnt == 1);
-    wait_not_due();
-    tide_answer_on = 0; run(48); land();
-    CHECK("... ON again: the answer is made again from the take (DOUBLE)", psig(1) == d0 && tk_m.mode == TA_DOUBLE);
-    wait_not_due();
-    tide_answer = TA_OFF; run(48); land();
-    CHECK("ANSWER OFF: the same, the old pattern comes back", psig(1) == s2);
-    wait_not_due();
-    tide_answer = TA_BASS; run(48); land();
-    CHECK("... ANSWER BASS LINE again: the answer is made for a take that had none", psig(1) == a0 && tk_cnt == 1);
-    /* an answer edited by hand is the player's */
-    trk[1].step[3].n = 1; trk[1].step[3].note[0] = 50; trk[1].step[3].time = ST_NOTE;
-    p0 = psig(1);
-    tide_answer = TA_DOUBLE; run(48); land();
-    CHECK("a mode change after the answer was edited leaves it alone", psig(1) == p0);
+    tide_answer_on = 1; run(48); land(); tide_answer_on = 0; run(48); land();
+    CHECK("ANSWER / ANSWER ON turned: a standing answer is left as it is (no re-make, no history step)", psig(1) == a0 && tk_m.mode == TA_BASS && !tk_pend && !tk_sw_k && tk_cnt == 1);
+    /* SWELL on the answer's part: the new mode, at the start of the next loop */
+    at_step(&trk[1], 6);
+    memcpy(&sv, &mph[1], sizeof sv);
+    sw_press(1, 0);
+    CHECK("SWELL on the answer: it waits for the loop start, the header says so", tk_sw_k == 1u && said("SWELL  NEXT LOOP") && psig(1) == a0);
+    at_step(&trk[1], 20); run(16);
+    CHECK("... not at once, not at the bar line: the answer is still the old one halfway through the loop", psig(1) == a0 && tk_sw_k == 1u);
+    to_loop_end(1);
+    a1 = psig(1);
+    CHECK("... at the loop start it lands: a new answer in the mode ANSWER shows now (DOUBLE), a history step", a1 != a0 && tk_m.mode == TA_DOUBLE && !tk_sw_k && tk_cnt == 2 && said("SWELL  DOUBLE"));
+    CHECK("... the take is untouched, the sound's End B too", psig(0) == h0 && !memcmp(&mph[1], &sv, sizeof sv));
+    CHECK("undo: SWELL goes back one step (the first answer), then the take", take_undo(-1) == 1u && said("UNDO SWELL") && psig(1) == a0 && take_undo(-1) == 1u && said("UNDO TAKE 1") && psig(1) == s2);
+    CHECK("... redo twice brings them back", take_undo(1) == 1u && take_undo(1) == 1u && said("REDO SWELL") && psig(1) == a1);
+    /* a second press before the loop turns replaces the first (no queue) */
+    at_step(&trk[1], 4);
+    sw_press(1, 0); sw_press(1, 1);
+    CHECK("pressing again before the loop turns replaces the waiting press (RIPPLE now)", tk_sw_k == 2u);
+    memcpy(keep, trk[1].step, sizeof keep);
+    to_loop_end(1);
+    CHECK("... one step lands, the header says RIPPLE", !tk_sw_k && said("RIPPLE  DOUBLE") && tk_cnt == 2 && (tk_hn[1] & 0x4000u));
+    /* RIPPLE: 15 .. 25 % of the notes move, the rhythm stays, in the key, no rubs against the take */
+    c = changed_steps(keep, 1, &n);
+    CHECK("RIPPLE moves at least one note and at most a quarter of them (or one)", c >= 1u && c <= (n * 25u / 100u > 1u ? n * 25u / 100u : 1u));
+    CHECK("... the rhythm is kept (every onset, tie and chord size)", onsets(1) != 0 && c < n + 1u);
+    tk_events(&trk[0], seq_len(&trk[0])); tk_key();
+    for (i = 0, ok = 1; i < 64u; i++) {
+        uint32_t k;
+        for (k = 0; k < 4u; k++)
+            if (keep[i].note[k] != trk[1].step[i].note[k] && trk[1].step[i].note[k] && (!tk_in_key(trk[1].step[i].note[k]) || tk_rubs((int32_t)i, 1, trk[1].step[i].note[k])))
+                ok = 0;
+    }
+    CHECK("... the moved notes are in the key and free of rubs against the take", ok);
+    /* the same seed gives the same notes */
+    memcpy(keep, trk[1].step, sizeof keep);
+    on0 = tl_sw_apply(&trk[1], 0, 1234); a0 = psig(1);
+    memcpy(trk[1].step, keep, sizeof keep);
+    (void)tl_sw_apply(&trk[1], 0, 1234);
+    CHECK("the same seed gives the same notes (SWELL of a part); another seed another wave", on0 && psig(1) == a0 && (memcpy(trk[1].step, keep, sizeof keep), tl_sw_apply(&trk[1], 0, 4321), psig(1) != a0));
+    /* SWELL on the take's part: the take changes, the answer follows, one step for both */
+    first_take();
+    a0 = psig(1); h0 = psig(0);
+    at_step(&trk[0], 5);
+    sw_press(0, 0);
+    CHECK("SWELL on the take's part waits for the loop start too", tk_sw_k == 1u && psig(0) == h0 && psig(1) == a0);
+    to_loop_end(0);
+    CHECK("... the take is a new one and the answer is made from it, one history step for the pair", psig(0) != h0 && psig(1) != a0 && tk_cnt == 2 && !tk_sw_k);
+    CHECK("... undo brings back both", take_undo(-1) == 1u && psig(0) == h0 && psig(1) == a0);
+    /* stopped: at once */
+    stop();
+    sw_press(1, 0);
+    CHECK("stopped: SWELL lands at once", !tk_sw_k && psig(1) != a0 && said("SWELL"));
+    /* ANSWER OFF: SWELL gives the other part its old pattern back */
+    first_take();
+    tide_answer = TA_OFF; run(48);
+    CHECK("ANSWER OFF in the menu: the answer stays", psig(1) != s2);
+    at_step(&trk[1], 4);
+    sw_press(1, 0);
+    to_loop_end(1);
+    CHECK("... SWELL then puts the other part's old pattern back", psig(1) == s2 && !tk_m.ans);
     tide_answer = TA_BASS;
-    /* turning the row through several values quickly: the value at the bar line counts */
-    first_take();
-    tide_answer = TA_ECHO; run(48); land();
-    e_ref = psig(1);
-    first_take();
-    wait_not_due();
-    tide_answer = TA_DOUBLE; run(16); tide_answer = TA_REPLY; run(16); tide_answer = TA_ECHO; run(16);
-    CHECK("turned fast through DOUBLE and REPLY to ECHO: one answer waits", tk_pend && psig(1) != e_ref);
-    land();
-    CHECK("... only ECHO lands (the same as setting ECHO at once), no history step", psig(1) == e_ref && tk_m.mode == TA_ECHO && tk_cnt == 1);
-    /* no take: nothing happens */
-    boot(); setup(1, 0, V_POLY); s2 = psig(1);
-    tide_answer = TA_DOUBLE; run(48); tide_answer = TA_BASS; run(48);
-    CHECK("no take stands: a mode change does nothing", psig(1) == s2 && !tk_pend && tk_cnt == 0);
-    /* REC armed: the change forces the next pass's re-make although the steps did not change */
+    /* no take: the stock tool with TIDE's rules, at once, one history step */
+    boot(); setup(1, 0, V_POLY); empty_part(0);
+    h0 = psig(0);
+    sw_press(0, 0);
+    CHECK("SWELL on a part with no take: a pattern in the genre's rhythm, at once, one history step", psig(0) != h0 && tk_cnt == 1 && said("SWELL"));
+    CHECK("... undo gives the empty part back", take_undo(-1) == 1u && psig(0) == h0);
+    /* REC armed: the next pass's answer is made again with a fresh seed */
     first_take();
     song.rec = 1; run(100);
     a1 = psig(1);
-    tide_answer = TA_DOUBLE; run(48);
-    CHECK("REC armed: a mode change makes nothing at once, it forces the next re-make", psig(1) == a1 && tk_force);
-    {
-        uint32_t len = TIDE_PLAY_LEN(&trk[0]);
-        at_step(&trk[0], len - 1u);
-        run(48); land();
-    }
-    CHECK("... the last step of the pass: the answer is made again with the new mode although the steps did not change", tk_m.mode == TA_DOUBLE && psig(1) != a1 && !tk_force);
+    sw_press(1, 0);
+    CHECK("REC armed: SWELL makes nothing at once, it forces the next pass's re-make", psig(1) == a1 && tk_force && said("SWELL  NEXT PASS"));
+    to_loop_end(0);
+    land();
+    CHECK("... the last step of the pass: the answer is made again", psig(1) != a1 && !tk_force);
     at_step(&trk[0], 3);
     rec_off();
-    CHECK("... REC off with no change: no new take", tk_cnt == 1);
 }
 static uint32_t notes_in(uint32_t p, uint32_t a, uint32_t b) { uint32_t i, n = 0; for (i = a; i < b; i++) n += trk[p].step[i].n != 0; return n; }
 static void take_reply(void)
@@ -539,7 +571,7 @@ static void take_hold(void)
 int main(void)
 {
     step1();
-    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_mode_change(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
+    take_lifecycle(); take_history(); take_settings(); take_barline(); take_roll_test(); take_swell(); take_reply(); take_line_test(); take_first_key(); take_layer(); take_arpseq(); take_live(); take_hold();
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }

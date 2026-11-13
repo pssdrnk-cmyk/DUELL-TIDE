@@ -37,7 +37,10 @@ static uint8_t tk_cnt __attribute__((section(".pool"))), tk_pos __attribute__((s
 static uint8_t tk_pend __attribute__((section(".pool"))), tk_pg __attribute__((section(".pool"))), tk_pplain __attribute__((section(".pool")));   /* the answer waits for the bar line: its part + 1 (0 none), the grid it sets (255 none), the part leaves ARP SEQ */
 static uint16_t tk_total __attribute__((section(".pool")));
 static uint32_t tk_mh __attribute__((section(".pool"))), tk_mu __attribute__((section(".pool"))), tk_lsig __attribute__((section(".pool")));   /* the header message held (its hash, until when: fm1_ms); the part's steps at the last live answer */
-static uint8_t tk_who __attribute__((section(".pool"))), tk_lm __attribute__((section(".pool"))), tk_force __attribute__((section(".pool"))), tk_prest __attribute__((section(".pool")));   /* the newest take's part + 1 (0 none or both); the ANSWER / ANSWER ON values last seen; a mode change while REC is armed forces the next re-make; the pending "answer" is the part's old pattern coming back */
+static uint8_t tk_who __attribute__((section(".pool"))), tk_force __attribute__((section(".pool"))), tk_prest __attribute__((section(".pool")));   /* the newest take's part + 1 (0 none or both); a SWELL while REC is armed forces the next re-make; the pending "answer" is the part's old pattern coming back */
+static uint8_t tk_sw_k __attribute__((section(".pool"))), tk_sw_p __attribute__((section(".pool")));   /* b11 SWELL / RIPPLE waiting for the loop start: 1 SWELL, 2 RIPPLE (0 none); the part it was pressed on + 1 */
+static uint16_t tk_sw_seed __attribute__((section(".pool")));                            /* its seed (never 0) */
+static struct { step_t s[NSTEP]; uint8_t len, gr[3]; } tk_orig __attribute__((section(".pool")));   /* the answering part as it was before the newest take answered it (ANSWER OFF puts it back) */
 static uint8_t tk_prg[3] __attribute__((section(".pool")));                                /* that old pattern's SDIV, ARATE, AMODE */
 static uint8_t tk_wd __attribute__((section(".pool"))), tk_live __attribute__((section(".pool")));            /* this pass's answer is made; an answer was made while the pass was open */
 #define tk_fresh tk_fresh_v
@@ -525,8 +528,10 @@ static void tk_say(const char *pre, uint32_t no)
     b[0] = 0;
     if (pre) {
         tk_cat(b, pre);
-        fmt_int(n, (int32_t)no);
-        tk_cat(b, n);
+        if (no) {
+            fmt_int(n, (int32_t)no);
+            tk_cat(b, n);
+        }
         tk_cat(b, "  ");
     }
     tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : "BASS LINE  ");
@@ -567,6 +572,7 @@ static void tk_load(const tk_snap_t *d)
     fm1_irq_on();
     tk_m = d->m;
     tk_pend = 0;
+    tk_sw_k = 0;
     tk_prest = 0;                                        /* (an answer that waited for its bar line is gone with the state it was made for) */
 }
 static void tk_push(uint32_t no)                         /* tk_pre is the state before this step; the tracks hold the state after it */
@@ -590,6 +596,7 @@ static __attribute__((noinline)) uint32_t take_undo(int32_t dir)
     char b[48];
     if (!tk_fresh || (dir < 0 ? tk_pos == 0u : tk_pos >= tk_cnt))
         return 0;
+    tk_sw_k = 0;                                         /* (a SWELL waiting for the loop start is dropped: the player went back) */
     if (tk_pend)
         tk_land();                                       /* (the state saved for a redo has the answer in it) */
     j = dir < 0 ? tk_pos - 1u : tk_pos;
@@ -599,8 +606,12 @@ static __attribute__((noinline)) uint32_t take_undo(int32_t dir)
     tk_pos = (uint8_t)(dir < 0 ? tk_pos - 1u : tk_pos + 1u);
     b[0] = 0;
     tk_cat(b, dir < 0 ? "UNDO " : "REDO ");
-    tk_cat(b, "TAKE ");
-    fmt_int(b + str_len(b), (int32_t)(hn & 0x7FFFu));
+    if (hn & 0xC000u)
+        tk_cat(b, hn & 0x8000u ? "SWELL" : "RIPPLE");
+    else {
+        tk_cat(b, "TAKE ");
+        fmt_int(b + str_len(b), (int32_t)(hn & 0x3FFFu));
+    }
     ui_say(b, "");
     tk_hold();
     return 1;
@@ -630,59 +641,175 @@ static __attribute__((noinline)) void take_roll(uint32_t mask, uint32_t seed)
     tk_say("ROLL ", tk_m.roll);
 }
 
-/* ---- ANSWER or ANSWER ON turned while a take stands: the answer is made again from the take with the new mode (seed 0, the take's own: the same mode again gives the same answer), on the next bar line; no history step, so undo
- * still goes to before the take. OFF gives the other part its old pattern back (the history step holds it), also on the bar line. Turned several times before the bar line, the last value counts (tk_gen / this replace the waiting
- * answer). An answer the player edited since (and a pattern edited since the take, when there was no answer) is the player's: left alone. While REC is armed the change only forces the next pass's re-make (take_poll). ---- */
-static __attribute__((noinline)) void take_mode(void)
+/* ---- SWELL and RIPPLE (b11; SEQ held + C4 / D4, ui_tools.c; were RANDOM and COOK): the player's buttons to make the answer again, never the menu. On the part that holds the answer: SWELL makes it again with a fresh seed in the mode ANSWER
+ * shows now (OFF: the other part gets its old pattern back), RIPPLE moves 15..25 % of its notes inside the key and the rules, its rhythm kept. On the part that holds the take: the take changes (tl_sw_apply) and the answer is made again
+ * from it. Both wait for the start of the next loop (the last step of the part's LEN pass; stopped: at once), a second press replaces the waiting one, and they are one history step like a take (OCT- + PRESETS: SWELL / RIPPLE).
+ * Any other part: the stock tool with TIDE's rules, at once, also one history step. While REC is armed a SWELL forces the next pass's re-make with a fresh seed. ---- */
+static int tk_stands(void) { return tk_fresh && tk_cnt && tk_pos == tk_cnt && tk_who; }
+static uint32_t tk_fresh_seed(void) { return (tk_hs(tk_total + 1u + (uint32_t)tk_m.roll, fm1_ms) & 0x7FFFu) | 1u; }
+/* RIPPLE of the answer: 15..25 % of the NOTE steps (at least one) move to a neighbouring degree of the take's key, free of rubs against the take; the rhythm stays. 1 when a note moved (waiting in tk_out for tk_land) */
+static __attribute__((noinline)) uint32_t tk_ripple(uint32_t src, uint32_t dst, uint32_t seed)
 {
-    uint32_t who, dst;
-    const tk_snap_t *pre;
-    tk_meta_t keep;
-    if (tk_open) {
-        tk_force = 1;
-        return;
-    }
-    if (!tk_fresh || !tk_cnt || tk_pos != tk_cnt || !tk_who)
-        return;
-    who = (uint32_t)tk_who - 1u;
-    dst = 1u - who;
-    pre = &tk_h[tk_cnt - 1u];                            /* (the state before the newest take) */
-    if ((song.rec >> dst) & 1u)
-        return;
-    if (tide_answer && !tide_answer_on) {
-        if (tk_m.ans) {
-            if (tk_m.ans != dst + 1u || (!tk_pend && steps_sig(&trk[dst]) != tk_m.sig))
-                return;
-        } else if (memcmp(trk[dst].step, pre->s[dst], sizeof trk[dst].step)) {
-            return;
+    track_t *ts = &trk[src], *td = &trk[dst];
+    uint32_t len = seq_len(td), n = 0, m, i, j, k, moved = 0, tries, same = tk_gp(ts) == tk_gp(td);
+    static const int8_t DD[4] = {1, -1, 2, -2};
+    tk_events(ts, seq_len(ts));
+    tk_key();
+    memcpy(tk_out, td->step, sizeof tk_out);
+    for (i = 0; i < len && i < NSTEP; i++)
+        n += tk_out[i].time == ST_NOTE && tk_out[i].n;
+    if (!n)
+        return 0;
+    m = n * (15u + tk_hs(seed, 99u) % 11u) / 100u;
+    m = m ? m : 1u;
+    for (j = 0, tries = 0; j < m && tries < 4u * m + 8u; tries++) {
+        uint32_t h = tk_hs(seed, 100u + tries), pick = h % n, st = 0, ok = 0, dsel = (h >> 8) & 3u;
+        step_t *sp;
+        for (i = 0; i < len && i < NSTEP; i++)
+            if (tk_out[i].time == ST_NOTE && tk_out[i].n && pick-- == 0u) {
+                st = i;
+                break;
+            }
+        sp = &tk_out[st];
+        for (k = 0; k < 4u && !ok; k++) {
+            int32_t d = DD[(dsel + k) & 3u], oc, dg, cand[4], x;
+            uint32_t q, good = 1;
+            for (q = 0; q < sp->n && q < 4u; q++) {
+                dg = tk_deg_of(sp->note[q], &oc);
+                x = tk_in_key(sp->note[q]) ? tk_note_of(dg + d, oc) : tk_note_of(dg, oc);
+                cand[q] = x;
+                if (x < 12 || x > 108 || (same && tk_rubs((int32_t)st, 1, x)))
+                    good = 0;
+            }
+            if (good && sp->n) {
+                for (q = 0; q < sp->n && q < 4u; q++)
+                    sp->note[q] = (uint8_t)cand[q];
+                ok = 1;
+            }
         }
-        keep = tk_m;
-        tk_m.roll = 0;
-        if (!tk_gen(who, dst, 0u, tide_answer)) {
-            tk_m = keep;
-            return;
+        if (ok) {
+            moved++;
+            j++;
         }
-        tk_say(0, 0);
-        return;
     }
-    if (!tk_m.ans || tk_m.ans != dst + 1u)
-        return;
-    if (!tk_pend && steps_sig(&trk[dst]) != tk_m.sig) {  /* (the player's now) */
-        tk_m.ans = 0;
-        return;
-    }
-    memcpy(tk_out, pre->s[dst], sizeof tk_out);
-    tk_olen = pre->len[dst];
+    if (!moved)
+        return 0;
+    tk_olen = len;
+    tk_pend = (uint8_t)(dst + 1u);
     tk_pg = 255u;
     tk_pplain = 0;
-    tk_prg[0] = pre->gr[dst][0], tk_prg[1] = pre->gr[dst][1], tk_prg[2] = pre->gr[dst][2];
+    tk_prest = 0;
+    return 1;
+}
+/* the other part gets what it had before the newest take (ANSWER OFF): waiting in tk_out for tk_land */
+static void tk_restore(uint32_t dst)
+{
+    memcpy(tk_out, tk_orig.s, sizeof tk_out);
+    tk_olen = tk_orig.len;
+    tk_pg = 255u;
+    tk_pplain = 0;
+    tk_prg[0] = tk_orig.gr[0], tk_prg[1] = tk_orig.gr[1], tk_prg[2] = tk_orig.gr[2];
     tk_prest = 1;
     tk_pend = (uint8_t)(dst + 1u);
     tk_m.ans = 0;
-    if (tk_due())
+}
+static int tk_sw_due(void)
+{
+    track_t *t = &trk[tk_sw_p - 1u];
+    uint32_t len = TIDE_PLAY_LEN(t);
+    return !song.playing || len < 2u || TIDE_PLAY_IDX(t) + 1u >= len;
+}
+/* the waiting SWELL / RIPPLE lands: one history step; the header says what was made */
+static __attribute__((noinline)) void tk_sw_run(void)
+{
+    uint32_t ripple = tk_sw_k == 2u, pi = (uint32_t)tk_sw_p - 1u, seed = tk_sw_seed, src, dst, made = 0, on;
+    tk_sw_k = 0;
+    if (!tk_stands() || tk_open)
+        return;
+    src = (uint32_t)tk_who - 1u;
+    dst = 1u - src;
+    if ((song.rec >> dst) & 1u)
+        return;
+    on = tide_answer && !tide_answer_on;
+    tk_save(&tk_pre);                                    /* (the state before this step) */
+    if (pi == src) {                                     /* the take changes; the answer follows */
+        if (!tl_sw_apply(&trk[src], ripple, seed))
+            return;
+        if (on)
+            made = tk_gen(src, dst, seed, tide_answer);
+        else if (tk_m.ans)
+            tk_restore(dst);
+    } else if (on) {
+        if (ripple) {
+            made = tk_ripple(src, dst, seed);
+            if (!made) {
+                ui_message("NO NOTE TO MOVE");
+                return;
+            }
+            tk_m.seed = (uint16_t)seed;
+        } else {
+            made = tk_gen(src, dst, seed, tide_answer);
+            if (!made)
+                return;
+            tk_m.roll = 0;
+        }
+    } else if (!ripple && tk_m.ans) {
+        tk_restore(dst);
+    } else {
+        return;
+    }
+    if (tk_pend)
         tk_land();
-    ui_say("ANSWER OFF", "");
+    tk_push(ripple ? 0x4000u : 0x8000u);
+    if (made)
+        tk_say(ripple ? "RIPPLE" : "SWELL", 0);
+    else {
+        ui_say(ripple ? "RIPPLE" : "SWELL", on ? "" : "  ANSWER OFF");
+        tk_hold();
+    }
+}
+/* SEQ held + C4 / D4 on part t (the TIDE hook of ui_tools.c tl_do): the message to show, "" when this said it itself, 0 nothing happened */
+static const char *tide_tl_swell(track_t *t, uint32_t ripple)
+{
+    uint32_t pi = trk_index(t), seed = tk_fresh_seed(), role = 0;
+    if (pi > 1u)
+        return "";
+    if (tk_stands() && !((song.rec >> (1u - (tk_who - 1u))) & 1u)) {
+        uint32_t src = (uint32_t)tk_who - 1u, dst = 1u - src;
+        if (pi == src)
+            role = 1;                                    /* the take's part */
+        else if (pi == dst && tk_m.ans == dst + 1u && (tk_pend || steps_sig(t) == tk_m.sig))
+            role = 2;                                    /* the answer's part, as the take made it */
+    }
+    if (tk_open) {                                       /* REC armed: the next pass's answer is made again with a fresh seed */
+        tk_force = 1;
+        tk_live = 1;
+        tk_m.seed = (uint16_t)seed;
+        ui_say("SWELL  NEXT PASS", "");
+        tk_hold();
+        return "";
+    }
+    if (role) {
+        tk_sw_k = (uint8_t)(1u + ripple);
+        tk_sw_p = (uint8_t)(pi + 1u);
+        tk_sw_seed = (uint16_t)seed;
+        if (tk_sw_due()) {                               /* stopped (or the last step now): at once */
+            tk_sw_run();
+        } else {
+            ui_say(ripple ? "RIPPLE  NEXT LOOP" : "SWELL  NEXT LOOP", "");
+            tk_hold();
+        }
+        return "";
+    }
+    /* any other part: the stock tool with TIDE's rules, at once, one history step */
+    tk_save(&tk_pre);
+    if (!tl_sw_apply(t, ripple, seed))
+        return 0;
+    tk_total++;
+    tk_push(ripple ? 0x4000u : 0x8000u);
+    ui_say(ripple ? "RIPPLE" : "SWELL", "");
     tk_hold();
+    return "";
 }
 
 /* ---- the tide line and knob 1's line while a take records (b10 round 9, on the identity's tide line) ---- */
@@ -739,6 +866,12 @@ static __attribute__((noinline)) void tk_close(uint32_t mask)                   
         return;
     tk_total++;
     tk_who = nch == 1u ? (uint8_t)(who + 1u) : 0u;
+    tk_sw_k = 0;
+    if (nch == 1u) {                                     /* (the other part as it was before this take: ANSWER OFF puts it back) */
+        memcpy(tk_orig.s, tk_pre.s[1u - who], sizeof tk_orig.s);
+        tk_orig.len = tk_pre.len[1u - who];
+        memcpy(tk_orig.gr, tk_pre.gr[1u - who], sizeof tk_orig.gr);
+    }
     {
         uint32_t sd = tk_live ? tk_m.seed : 0u;          /* (the answer made while the pass was open keeps its seed: it changes only where the take did) */
         tk_live = 0;
@@ -771,17 +904,12 @@ static __attribute__((noinline)) void take_poll(void)                           
         tk_prest = 0;
         tk_who = 0;
         tk_force = 0;
-        tk_lm = (uint8_t)(tide_answer | (tide_answer_on << 4));
+        tk_sw_k = 0;
         tk_open = (uint8_t)now;
         return;
     }
-    {
-        uint8_t cur = (uint8_t)(tide_answer | (tide_answer_on << 4));
-        if (cur != tk_lm) {                              /* ANSWER or ANSWER ON turned (take_mode: nothing happens without a standing take) */
-            tk_lm = cur;
-            take_mode();
-        }
-    }
+    if (tk_sw_k && tk_sw_due())
+        tk_sw_run();
     if (tk_pend && tk_due())
         tk_land();
     if (tk_mu) {                                         /* a take / answer message is held: its frames are kept up while it is still the one shown */

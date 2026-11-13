@@ -400,13 +400,9 @@ static void tools_key(uint32_t p)
         return;
     if (!(m = tl_do(TSEL, p)))
         return;
-    if (p == TL_COOK && lys.cook < 99u) {               /* "COOKED 3": the third since the layer opened */
-        lys.cook++;
-        fmt_int(n, lys.cook);
-        ui_say("COOKED ", n);
-    } else {
+    (void)n;
+    if (*m)                                              /* ("": SWELL / RIPPLE said it themselves, tide_take.c) */
         ui_message(m);
-    }
     lys.loaded = 1;
     ui.force = 1;
 }
@@ -918,11 +914,11 @@ static void layer_quick(uint32_t q, int32_t y, int32_t h)
         cv_text_in(x0, y + CAP_IN(M, h), x1 - x0, &AF_M, nm[g], ink, fill);
     }
 }
-/* SEQ TOOLS: the white keys' tools, 4 a row from F3 (the sequence's: CLEAR REVERSE SHIFT < SHIFT >, RANDOM COOK TRANS + TRANS -) */
-static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT >", "RANDOM", "COOK", "TRANS +", "TRANS -",
+/* SEQ TOOLS: the white keys' tools, 4 a row from F3 (the sequence's: CLEAR REVERSE SHIFT < SHIFT >, SWELL RIPPLE TRANS + TRANS -) */
+static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT >", "SWELL", "RIPPLE", "TRANS +", "TRANS -",
     "KEEP",
 };
-#define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and COOK in the larger size, the rest in the smaller */
+#define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and RIPPLE in the larger size, the rest in the smaller */
 /* DUELL 1.0 layout (QUICK_SEQ_NEW_LAYOUT.png): the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
  * keys F G A B over C D E F, the key letter in the corner, the names centred */
 static void layer_seq(void)
