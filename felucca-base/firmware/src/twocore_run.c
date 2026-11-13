@@ -324,10 +324,10 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
 #if DUELL_PROBE_STAGES
         uint32_t pb0 = fm1_ticks();                     /* (probe, test-mode builds: st_budget_us of the console `cpu`; ROADMAP Later 22, finding 6) */
 #endif
-        if (bd_dl_ok) {                                 /* b11 (from DUELL 1.2 by OSCILL/R, GPL-3.0: tcr_costs): the copy the main loop handed over (budget.h bd_dl_publish): five words */
-            const bd_dl_t *d = &bd_dl_buf[bd_dl_i];
+        const bd_dl_t *d = &bd_dl_buf[bd_dl_i];
+        if (bd_dl_ok && (uint32_t)(fm1_ms - d->ms) < BD_DL_AGE_MS) {   /* b11 (from DUELL 1.2 by OSCILL/R, GPL-3.0: tcr_costs): the copy the main loop handed over (budget.h bd_dl_publish): five words */
             tcr.c1f = d->c1f, tcr.c1v = d->c1v, tcr.c2f = d->c2f, tcr.c2v = d->c2v, tcr.g = d->g;
-        } else {                                        /* (before the first publish, and after a load until the next one: worked out here, as before) */
+        } else {                                        /* (before the first publish, after a load until the next one, a copy BD_DL_AGE_MS old: worked out here, as before) */
             part_dl(&trk[0], &tcr.c1f, &tcr.c1v);       /* (item 142: one bd_part a part, was two) */
             part_dl(&trk[1], &tcr.c2f, &tcr.c2v);
             tcr.g = global_cost_dl();

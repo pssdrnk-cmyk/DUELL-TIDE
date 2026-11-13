@@ -438,6 +438,7 @@ static void bd_dl_publish(void)
     part_dl(&trk[0], &d->c1f, &d->c1v);
     part_dl(&trk[1], &d->c2f, &d->c2v);
     d->g = global_cost_dl();
+    d->ms = fm1_ms;
     RING_PUBLISH();                                     /* (the copy's stores before the byte: core.h's compiler barrier) */
     bd_dl_i = (uint8_t)(bd_dl_i ^ 1u);                  /* (one byte, written last: the audio interrupt reads either the old whole copy or the new one) */
     bd_dl_ok = 1;

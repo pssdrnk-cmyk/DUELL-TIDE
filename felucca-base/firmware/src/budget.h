@@ -74,8 +74,12 @@ static uint32_t bd_two_now(void);               /* DUELL 1.1 item 90: 1 = the tw
  * reads a whole copy. The items are an estimate for the deadline (a 15 % margin in them); after a knob or a fader moves they are at most one main-loop pass old (the old way: one half).
  * A LOAD (a sound, an engine, a multi, a project: ui.c load_begin, project.c project_restore_runtime) clears bd_dl_ok, so the runner works the items out itself, as before, until the next
  * publish: a load can change them by more than the margin, and the main loop's next pass may be up to a frame and a redraw away (ui_input and the editor also run in the frame's wait).
- * Before the first publish (and in host tests that never run the main loop's pass) the runner works them out itself too */
-typedef struct { uint32_t c1f, c1v, c2f, c2v, g; } bd_dl_t;
+ * Before the first publish (and in host tests that never run the main loop's pass) the runner works them out itself too. And when the copy is BD_DL_AGE_MS old or more (ms: fm1_ms at
+ * the publish): the main loop stalled (a flash write, a long redraw) while the audio side may still change what costs (the sequencer's locks, the motion), so the runner works them out
+ * itself until the main loop runs again. Only core 0 reads the copy (twocore_run.c tcr_deadline, from tcr_begin in the audio interrupt); core 1 never does, so a compiler barrier is
+ * enough between the copy's stores and the byte */
+typedef struct { uint32_t c1f, c1v, c2f, c2v, g, ms; } bd_dl_t;
+#define BD_DL_AGE_MS 100u                       /* a copy this old is not used (about 6 frames: a normal pass is one frame and its redraw) */
 static bd_dl_t bd_dl_buf[2];
 static volatile uint8_t bd_dl_i, bd_dl_ok;
 static void bd_dl_publish(void);

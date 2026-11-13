@@ -48,7 +48,7 @@
 static uint64_t h3 = 1469598103934665603ull;
 static uint64_t n_lim_chg[4], bad_wltrue, bad_wllater, bad_wlsafe, n_lim;
 static uint64_t n_hand, bad_hand;                       /* b11 HANDOVER (from DUELL 1.2's deadline_test, OSCILL/R, GPL-3.0): the main loop's items (budget.c bd_dl_publish) = the runner's own */
-static uint32_t n_lclear;                               /* b11 LOAD: the clears and publishes seen (4 of 4) */
+static uint32_t n_lclear;                               /* b11 LOAD / AGE: the clears, publishes and the age limit seen (6 of 6) */
 static int32_t lim_chg_max;
 static void put3(uint32_t v)
 {
@@ -420,6 +420,23 @@ int main(void)
         n_lclear += !bd_dl_ok;
         budget_poll();
         n_lclear += bd_dl_ok;
+        {   /* AGE: a copy BD_DL_AGE_MS old is not used (the main loop stalled): the copy's items spoiled, the runner reads them 1 ms before the limit and works its own at the limit */
+            uint32_t w1f, w1v, w2f, w2v, wg, ms0 = fm1_ms;
+            int nf;
+            bd_dl_t *d = &bd_dl_buf[bd_dl_i];
+            part_dl(&trk[0], &w1f, &w1v), part_dl(&trk[1], &w2f, &w2v), wg = global_cost_dl();
+            d->c1f = d->c1v = d->c2f = d->c2v = d->g = 0x7777u;
+            fm1_ms = ms0 + BD_DL_AGE_MS - 1u;
+            tcr.blk = 0, tcr.cost_ok = 0, tcr.t0 = 1000000u;
+            (void)tcr_deadline(tcr.t0, &nf);
+            n_lclear += tcr.c1f == 0x7777u && tcr.g == 0x7777u;
+            fm1_ms = ms0 + BD_DL_AGE_MS;
+            tcr.blk = 0, tcr.cost_ok = 0;
+            (void)tcr_deadline(tcr.t0, &nf);
+            n_lclear += tcr.c1f == w1f && tcr.c1v == w1v && tcr.c2f == w2f && tcr.c2v == w2v && tcr.g == wg;
+            fm1_ms = ms0;
+            bd_dl_publish();
+        }
         clock_gettime(CLOCK_MONOTONIC, &t0);
         for (r = 0; r < 20000u; r++) {
             part_dl(&trk[0], &c1f, &c1v), part_dl(&trk[1], &c2f, &c2v), g = global_cost_dl();
@@ -440,7 +457,7 @@ int main(void)
     }
     printf("deadline: %s HANDOVER: the main loop's items (budget.c bd_dl_publish) are the runner's own, and the runner reads them (%llu setups, %llu wrong)\n", bad_hand || !n_hand ? "FAIL" : "ok  ",
            (unsigned long long)n_hand, (unsigned long long)bad_hand);
-    printf("deadline: %s LOAD: budget_poll publishes, a sound load and a multi load clear it, the next budget_poll publishes again (%u of 4)\n", n_lclear == 4u ? "ok  " : "FAIL", n_lclear);
+    printf("deadline: %s LOAD: budget_poll publishes, a sound load and a multi load clear it, the next budget_poll publishes again; a copy BD_DL_AGE_MS old is not used (%u of 6)\n", n_lclear == 6u ? "ok  " : "FAIL", n_lclear);
     printf("deadline: %u setups, %llu values, hash 0x%016llx (reference 0x%016llx)\n", setups, (unsigned long long)n_val, (unsigned long long)h, (unsigned long long)DL_REF);
     printf("deadline: %s the runner's deadline, wait limit and cost items are the same as before item 132 for every setup\n", h == DL_REF ? "ok  " : "FAIL");
     printf("deadline: item 137, posted deadlines: %llu (setup x rule x block x voices x 16 post moments); 1.15 deadline past under the two-core rule: %llu, of them given a take-over deadline: %llu\n",
@@ -477,6 +494,6 @@ int main(void)
     printf("deadline: %s TIDE (A01, an estimate until the unit measures it): %u scenes (an FM6 factory sound on part 1, BEHIVE with a band-pass filter MODE on part 2, LAYER and DUEL) with FM6 (bridge), a live MORPH on both parts (valley, dip) and WASH MID: the TIDE items are in the figures, the dearer scene never gets a later deadline, and core 1's job at the two-core caps ends before the wait limit (least slack after 6 points %.1f)\n",
            tide_bad ? "FAIL" : "ok  ", tide_scenes, tide_slack);
     printf("deadline: %s CORE 0: BUDGET_LIMIT %u + BUDGET_PEAK %u points of peak = 90 %%\n", BUDGET_LIMIT + BUDGET_PEAK == 90u ? "ok  " : "FAIL", BUDGET_LIMIT, BUDGET_PEAK);
-    return tide_bad || bad_hand || !n_hand || n_lclear != 4u || h != DL_REF || bad_same || bad_later || bad_inside || bad_true || bad_kept || h2 != DL_REF2 || c1_bad || bad_wltrue || bad_wllater || bad_wlsafe || h3 != DL_REF3 ||
+    return tide_bad || bad_hand || !n_hand || n_lclear != 6u || h != DL_REF || bad_same || bad_later || bad_inside || bad_true || bad_kept || h2 != DL_REF2 || c1_bad || bad_wltrue || bad_wllater || bad_wlsafe || h3 != DL_REF3 ||
            BUDGET_LIMIT + BUDGET_PEAK != 90u || BUDGET_LIMIT < LMIN || BUDGET_LIMIT >= LMIN + NL;
 }
