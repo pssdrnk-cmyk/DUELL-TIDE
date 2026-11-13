@@ -17,10 +17,10 @@ import os
 ENGINES = {
     "PHYS": ["phys_render", "px_string_block", "px_string_run", "px_memb_block", "px_modal_block", "px_modal_run",
              "px_string_excite", "px_symp_run", "px_symp_block", "px_modal_exciter", "px_exp2", "px_svf_coef",
-             "phys_symp_pitches", "px_sin", "px_modal_q", "px_isqrt64"],
-    "ANALOG": ["analog_render", "analog_render_m", "analog_render_x", "atg_analog", "atg_osc_b"],
+             "phys_symp_pitches", "px_sin", "px_modal_q", "px_atan2t", "px_atan"],
+    "ANALOG": ["analog_render", "an_drive", "analog_render_m", "analog_render_x", "atg_analog", "atg_osc_b"],
     "TRIO": ["trio_render", "trio_pass", "trio_naive"],
-    "PHASE": ["phase_render", "phase_render_m", "pd_line", "pd_setup", "pd_wave", "pd_sl", "pd_pair", "pd_gap"],
+    "PHASE": ["phase_render", "phase_render_m", "pd_line", "pd_edge", "pd_setup", "pd_wave", "pd_sl", "pd_pair", "pd_gap"],
     "LOFI": ["lofi_render", "lofi_render_m", "lofi_amp"],
     "VOICE": ["formant_render", "fres_coef", "vowel_at", "fmt_ratio"],
     "NOISE": ["noise_render", "noise_inc"],
@@ -38,6 +38,8 @@ C1_NAMES = ["fm1_c1_main"]
 # to X in TWOCORE builds: the click fixes (INSERT ramp, FM6 start ramp) grew range Z, and the pool tail (4,096 B rule) has only 8 B to spare. X has the room (316 B).
 X_FROM_Z = ["mod_tsrc", "mod_part_put"]
 if os.environ.get("DUELL_TWOCORE") == "1":
+    # Former top-hot loops; no algorithm/compiler change, RAM placement only.
+    NAMES += ["eq_run", "ins_swept"]
     NAMES = NAMES + ["mix_ramp", "spread_run", "f2_go", "f2_svf", "f2_comb", "f2_comp", "f2_drv", "sub_pass"] + X_FROM_Z   # (final line: hunt1's spread_run, hunt3's two moves from Z, cloud jobs E and F's functions)
 ELF_NAMES = NAMES + (C1_NAMES if os.environ.get("DUELL_TWOCORE") == "1" else [])
 LO, HI = 0x01C00000, 0x01C07F00                 # the range (app_ram.ld RAMX)

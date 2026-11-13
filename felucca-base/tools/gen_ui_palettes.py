@@ -24,8 +24,10 @@ with fixed blends (the same integer maths as mix() here), from the background in
   TINT = mix(BG, THEME, 12 %)   a faint area
   KEY  = mix(BG, TEXT, 78 %)    a keycap's fill (its label INK)
   INK  = BG: text on a selection or THEME fill
-The brief's colours are used exactly (THEME = the blend of A, B); the contrast checks of the themes are informational
-(--report prints the misses, nothing is altered or failed). ACCENT is the other end's colour (the pair swapped).
+The brief's colours are used exactly (THEME = the blend of A, B), except that a curve, gauge or bar is moved toward the text
+colour until it reaches 3:1 on the background and the panel (gfx.c ux_stroke, mirrored here by stroke()); the other contrast
+checks are informational (--report prints the misses). The stroke check (theme/bg, theme/surf) fails below 2.5 on any theme.
+ACCENT is the other end's colour (the pair swapped).
 Where a part colour is hard to read as text the firmware draws that text in the primary text colour (gfx.c vt()).
 GREY is pure grayscale; MONO is black and white (set, not blended: src/gfx.c palette_set). Neither morphs.
 Saved settings name palettes by a tagged id (PAL_TAG + index); an untagged one (older firmware saved an index into its 20
@@ -40,30 +42,20 @@ from pathlib import Path
 # elevated, text, secondary, borders, (part1 A, part1 B, part2 A, part2 B), hc (no gradients: the morph colour jumps)
 def H(s): return tuple(int(s[i:i + 2], 16) for i in (1, 3, 5))
 # Contrast pass: dark themes have a deep ground, near-white text, panels a visible step lighter, strong borders; light themes have strong text and borders
-THEMES = [
-    ("VIOLET", "#080108", "#0C020E", None, "#0A0414", "#201040", "#FFFFFF", "#F0E0FF", "#9A3FE0",
-     ("#DC38FF", "#BC30F0", "#FF1F8E", "#E00B78"), 0, ("#12051A", "#300E3E", "#CC3490")),
-    ("ORANGE", "#090401", "#0D0502", None, "#150B06", "#2A1A10", "#FFF8F0", "#CDBBA9", "#7A5640",
-     ("#FF6A1A", "#E04A12", "#FF9A1F", "#D9690C"), 0),
-    ("MINT", "#BDF2D8", "#C2F1EA", None, "#F3FAF6", "#E2F6EC", "#0E2A24", "#3F5F57", "#8FCDB6",
-     ("#0DA874", "#0A8F5E", "#2B7BC9", "#1A4A79"), 0),   # (owner 2026-10-25, MINT option 1: part 1 #0DA874, part 2 #2B7BC9, the card off-white #F3FAF6; part 2 end B: end A at 60 %)
-    ("COBALT", "#06080F", "#080B14", None, "#141B2C", "#1F2A42", "#F2F7FF", "#A9BAD3", "#34445F",
-     ("#2F7BFF", "#1647B8", "#4CC3FF", "#1B78B8"), 0),
-    ("PALE", "#F7F4EE", "#F4F6F2", None, "#FFFFFF", "#FBF9F5", "#17171B", "#55515A", "#DDD6CA",
-     ("#5F7AAD", "#5E6BD8", "#CC7BA0", "#E0705C"), 0),   # (owner 2026-10-25: text #17171B, secondary #55515A, part 1 #5F7AAD, part 2 #CC7BA0, the background unchanged)
-    ("OCEAN", "#101B3A", "#0B2935", None, "#17263D", "#20344E", "#F0F7FF", "#A4BAD0", "#304762",
-     ("#4263EB", "#252F91", "#36D9E8", "#087E9B"), 0),
-    ("POLICE", "#141619", "#151923", "#171A21", "#1D2026", "#272B33", "#F5F7FA", "#A7AFBC", "#3B414D",
-     ("#FF2638", "#B80024", "#176BFF", "#1238B8"), 0),   # POLICE (was HI-CON; owner 2026-10-25): red to blue as a smooth gradient, no hard split (hc 0)
-]
+THEMES = []   # b10 palettes (owner 2026-11-12): MENU > COLOR has four themes, TIDE PAPER GREY MONO; the seven morph themes VIOLET ORANGE MINT COBALT PALE OCEAN POLICE are gone (git history has them)
 # 0.2.24: the GLOBAL colour of each theme (g; its accent ga is g moved toward the text colour, dark themes, or toward black, light ones): apart from both parts' hues
-GLOBAL = {"VIOLET": "#FFB84D", "ORANGE": "#3DD6C6", "MINT": "#5B2FB8", "COBALT": "#FFB84D", "PALE": "#0F7A66", "OCEAN": "#FFA040", "POLICE": "#FFD600",
-          "GREY": (200, 200, 200), "MONO": (255, 255, 255)}
-# Appended AFTER the legacy rows (GREY, MONO): saved theme ids are indices, so existing ids keep their theme. (None now.)
-THEMES_EXTRA = []
+GLOBAL = {"GREY": (200, 200, 200), "MONO": (255, 255, 255), "TIDE": "#F6E7A6", "PAPER": (40, 72, 150)}   # (PAPER: a deep blue, apart from its teal and brown part colours)
+# Appended AFTER the legacy rows (GREY, MONO): saved theme ids are indices, so existing ids keep their theme.
+# b10 TIDE identity (design consult direction A, owner 2026-11-12): TIDE, the night sea: part 1 sea glass, part 2 coral. A new unit starts in it
+# (DEFAULT_THEME); a unit with a saved colour keeps that one
+THEMES_EXTRA = [
+    ("TIDE", "#02070D", "#030A11", None, "#071420", "#0D2434", "#F2FBFF", "#9CC2D3", "#1D5E77",
+     ("#3BE8D6", "#1AA8CC", "#FF8A5E", "#F25A6B"), 0),
+]
+DEFAULT_THEME = "TIDE"   # the palette a new unit (or an unreadable stored id) starts in
 # name, bg, surf, text, theme, accent, theme2 (8-bit RGB; stored as RGB565). theme2: DUELL's part 2 colour (SPEC 5a)
 LEGACY = [
-    ("GREY",   (14, 14, 14),    (36, 36, 36),    (204, 204, 204), (232, 232, 232), (255, 255, 255), (150, 150, 150)),
+    ("GREY",   (14, 14, 14),    (36, 36, 36),    (204, 204, 204), (232, 232, 232), (255, 255, 255), (190, 190, 190)),   # (b4, UI audit 2: part 2 was 150 = the label grey MID, its values looked disabled)
     ("GREEN",  (6, 18, 10),     (16, 40, 26),    (226, 244, 230), (84, 214, 120),  (255, 214, 92), (190, 236, 64)),
     ("AMBER",  (18, 14, 8),     (42, 32, 18),    (246, 236, 216), (255, 168, 40),  (96, 214, 230), (255, 104, 64)),
     ("ICE",    (8, 16, 24),     (20, 36, 52),    (228, 240, 248), (80, 184, 236),  (255, 140, 100), (64, 224, 200)),
@@ -83,7 +75,9 @@ BW_GREY = (82, 82, 82)             # MONO's one mid grey (RGB565 10/20/10): DIM 
 OLD = ["GREEN", "AMBER", "CYAN", "RED", "MONO", "VIOLET", "PINK", "ICE", "WARM", "OCEAN", "DUSK", "POLICE",
        "LIGHT", "PAPER", "SKY", "MINT", "LILAC", "ROSE", "SAND", "L-HICON"]
 OLD_TO_NEW = {}
-PAL_TAG = 64                       # stored id = PAL_TAG + index; below 20: an old id
+PAL_TAG = 80                       # stored id = PAL_TAG + index (b10: four themes; before, the tag was 64 with ten themes: PAL_TAG_OLD)
+PAL_TAG_OLD = 64
+OLD_ORDER = ["VIOLET", "ORANGE", "MINT", "COBALT", "PALE", "OCEAN", "POLICE", "GREY", "MONO", "TIDE"]   # the stored palettes of rc6 and before, in index order
 REC_DARK, REC_LIGHT = (255, 72, 72), (190, 24, 40)
 QR_LIGHT, QR_DARK, CRASH_BG, CRASH_INK = (255, 255, 255), (0, 0, 0), (160, 0, 0), (255, 255, 255)
 PCT = {"MID": 70, "DIM": 42, "LINE": 18, "SEL": 80, "TINT": 12, "KEY": 78}
@@ -141,6 +135,7 @@ def contrast(a, b):
 
 ACC_PCT = 30
 VAL_MIN = 3.0
+STROKE_MIN = 2.5     # the hard floor for a curve, gauge or bar on the background and the panel (the firmware aims for 3 in its own metric)
 
 
 def fit(col, toward, against, lim):
@@ -210,10 +205,33 @@ def build_legacy(p):
     return d
 
 
+def fw_cr(a, b):
+    """src/gfx.c ux_cr: the firmware's integer contrast x100 (gamma-2 luminance)"""
+    def y(c):
+        r, g, b_ = (c >> 11) * 255 // 31, ((c >> 5) & 63) * 255 // 63, (c & 31) * 255 // 31
+        return (54 * r * r + 183 * g * g + 19 * b_ * b_) >> 8
+    x, z = y(a), y(b)
+    if x < z:
+        x, z = z, x
+    return (x + 3251) * 100 // (z + 3251)
+
+
+def stroke(c, bg, sf, tx, mono=False):
+    """src/gfx.c ux_stroke (T10): a part colour drawn as a curve or gauge is moved toward the text colour in 10 % steps
+    until it reaches 3:1 on the background and the panel"""
+    o = c
+    for p in range(0, 110, 10):
+        if fw_cr(o, bg) >= 300 and fw_cr(o, sf) >= 300:
+            break
+        o = mix(c, tx, p + 10, mono)
+    return o
+
+
 def tokens(d, bg, k, e):
     """the tokens for part k at its end e (0 A, 1 B) on background bg (what src/gfx.c part_theme derives)"""
     mono = d.get("mono", False)
     th, ac = d["r"][2 * k + e], d["a"][2 * k + e]
+    th = stroke(th, bg, d["surf"][k], d["text"], d.get("mono", False))   # (the firmware floors the blended colour; the ends are the worst case)
     t = dict(bg=bg, surf=d["surf"][k], text=d["text"], mid=d["mid"], line=d["line"][k], raise_=d["raise_"][k], theme=th, accent=ac,
              dim=mix(bg, d["text"], PCT["DIM"], mono), sel=mix(bg, th, PCT["SEL"], mono), key=mix(bg, d["text"], PCT["KEY"], mono),
              ink=bg)
@@ -244,7 +262,8 @@ def main():
     ap.add_argument("--report", action="store_true")
     a = ap.parse_args()
     fails = []
-    rows = [build_theme(t) for t in THEMES] + [build_legacy(p) for p in LEGACY if p[0] in ("GREY", BW)] + [build_theme(t) for t in THEMES_EXTRA]
+    by_name = {p[0]: p for p in LEGACY}
+    rows = [build_theme(t) for t in THEMES_EXTRA] + [build_legacy(by_name[n]) for n in ("PAPER", "GREY", BW)]   # TIDE (the default, first), PAPER, GREY, MONO
     assert len(rows) <= 63
     for d in rows:
         name = d["name"]
@@ -275,6 +294,8 @@ def main():
                         c = contrast(t[f], t[b])
                         key = (f, b)
                         worst[key] = min(worst.get(key, 99), c)
+                        if f == "theme" and b in ("bg", "surf") and c < STROKE_MIN:
+                            fails.append(f"{name} {bgn} part{k + 1}{'AB'[e]}: {f}/{b} {c:.2f} < {STROKE_MIN} (curves, gauges, bars)")
                         if c < lim and not d["fixed"]:
                             d["dep"].append(f"info {bgn} part{k + 1}{'AB'[e]}: {f}/{b} {c:.2f} < {lim} ({why})") if (f, b, bgn, k, e) not in seen else None
                             seen.add((f, b, bgn, k, e))
@@ -309,11 +330,14 @@ def main():
         for d in rows:
             out.append(f'    {{"{d["name"]}", {f4(d["bg"])}, 0x{d["bgl"]:04x}, {f4(d["surf"])}, 0x{d["text"]:04x}, 0x{d["mid"]:04x}, '
                        f'{f4(d["line"])}, {f4(d["raise_"])}, 0x{d["rec"]:04x}, {f4(d["c"])}, {f4(d["r"])}, {f4(d["a"])}, 0x{d["g"]:04x}, 0x{d["ga"]:04x}, {d["hc"]}}},')
-        out += ["};", f"#define UI_NPALETTES {len(rows)}u", f"#define UI_DEFAULT_INDEX 0u          /* the first theme */",
+        out += ["};", f"#define UI_NPALETTES {len(rows)}u", f"#define UI_DEFAULT_INDEX {names.index(DEFAULT_THEME)}u          /* a new unit's theme: {DEFAULT_THEME} (b10 TIDE identity) */",
                 f"#define UI_GREY_INDEX {names.index('GREY')}u          /* GREY (hidden-test palette, last but one) */",
                 f"#define UI_BW_INDEX {names.index(BW)}u          /* MONO: black and white (src/gfx.c palette_set) */",
                 f"#define UI_BW_GREY 0x{to565(BW_GREY):04x}u          /* MONO's one grey: DIM LINE RAISE LANE */",
-                f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index; an untagged id is the first theme */",
+                f"#define UI_PAL_TAG {PAL_TAG}u          /* stored id = UI_PAL_TAG + index; an untagged id is the default theme */",
+                f"#define UI_PAL_TAG_OLD {PAL_TAG_OLD}u          /* the tag of the ten themes before b10: UI_PAL_TAG_OLD + the old index, read through UI_PAL_OLD */",
+                f"#define UI_PAL_OLD_N {len(OLD_ORDER)}u",
+                "#define UI_PAL_OLD_LIST " + ", ".join(str(names.index(n) if n in names else names.index(DEFAULT_THEME)) for n in OLD_ORDER) + "   /* the new index of each old one: GREY MONO TIDE stay, a removed theme is TIDE */",
                 f"#define UI_ACC_PCT {ACC_PCT}"]
         out += [f"#define UI_{k}_PCT {v}" for k, v in PCT.items()] + [f"#define UI_RAISE_PCT {RAISE_PCT}   /* SURF -> TEXT */"]
         out += [f"#define UI_REC_DARK 0x{to565(REC_DARK):04x}u", f"#define UI_REC_LIGHT 0x{to565(REC_LIGHT):04x}u",

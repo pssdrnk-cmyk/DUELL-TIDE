@@ -45,11 +45,11 @@ enum {
 };
 
 /* ---------------------------------------------------------------- math --- */
-/* 2^(x / 2^24), Q24 (msfa Exp2::lookup): the Q30 mantissa from FM6_EXP2, shifted by the integer part */
+/* 2^(x / 2^24), Q24 (msfa Exp2::lookup): the Q30 mantissa from FM6_EXP2 (513 points, 9 bits of the fraction, linear between them: worst relative error 2.3e-7), shifted by the integer part */
 static inline uint32_t fm6_mant(int32_t x)
 {
-    uint32_t f = (uint32_t)x & 0xFFFFFFu, k = f >> 14, a = FM6_EXP2[k];
-    return (1u << 30) + a + (uint32_t)(((uint64_t)(FM6_EXP2[k + 1u] - a) * (f & 0x3FFFu)) >> 14);
+    uint32_t f = (uint32_t)x & 0xFFFFFFu, k = f >> 15, a = FM6_EXP2[k];
+    return (1u << 30) + a + (uint32_t)(((uint64_t)(FM6_EXP2[k + 1u] - a) * (f & 0x7FFFu)) >> 15);
 }
 static inline int32_t fm6_exp2(int32_t x)
 {
@@ -76,8 +76,9 @@ static inline int32_t fm6_sin(int32_t ph)
 /* ------------------------------------------------------------ envelope --- */
 typedef struct {                 /* msfa Env: level in Q24 log2 (2^24 = 6 dB), 16 more bits than the original */
     int32_t level, target, inc, statc;
-    int16_t outlevel;            /* microsteps (99 * 32 = full) */
+    int16_t outlevel;            /* the note-on output level, microsteps (99 * 32 = full) */
     uint8_t rscale, ix, rising, down;
+    uint8_t key, velocity;       /* the note-on key and velocity, for fm6_live_level (in the struct's existing padding) */
 } fm6_env_t;
 
 static const uint8_t FM6_LEVELLUT[20] = {0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46};
@@ -118,11 +119,15 @@ static void fm6_env_advance(fm6_env_t *e, const uint8_t *op, uint32_t ix)
     e->inc = (4 + (qrate & 3)) << (2 + FM6_LG_N + (qrate >> 2));
 }
 
-static void fm6_env_init(fm6_env_t *e, const uint8_t *op, int32_t outlevel, int32_t rate_scaling)
+/* a note-on. fresh: the level starts at 0; else (a retrigger or a steal of a sounding voice) it stays where it is and
+ * the attack runs from there, as the DX7 does, so a slow attack does not fall to silence and click */
+static void fm6_env_init(fm6_env_t *e, const uint8_t *op, int32_t outlevel, int32_t rate_scaling, int fresh)
 {
     e->outlevel = (int16_t)outlevel;
     e->rscale = (uint8_t)rate_scaling;
-    e->level = 0;
+    e->key = e->velocity = 0;
+    if (fresh)
+        e->level = 0;
     e->down = 1;
     fm6_env_advance(e, op, 0);
 }
@@ -264,7 +269,7 @@ static int32_t fm6_lfo_sample(fm6_lfo_t *l)   /* 0..1, Q24; once a block */
     case 3:                                       /* square */
         return (int32_t)(((~l->phase) >> 7) & (1u << 24));
     case 4:                                       /* sine */
-        return (1 << 23) + (fm6_sin((int32_t)(l->phase >> 8)) << 8);
+        return (1 << 23) + (fm6_sin((int32_t)(l->phase >> 8)) * 256);
     case 5:                                       /* sample and hold */
         if (l->phase < l->delta)
             l->rnd = (uint8_t)((l->rnd * 179 + 17) & 0xff);
@@ -323,6 +328,9 @@ typedef struct {                 /* msfa FmOpParams */
 } fm6_op_t;
 
 #define FM6_THRESH 1120          /* msfa kLevelThresh: an operator below it on both block ends is skipped */
+#ifndef FM6_CULL                 /* (tests/cull_test.c builds the reference without the cull with -DFM6_CULL=1120, the threshold above) */
+#define FM6_CULL 16384           /* the CULL (fm6_note_done): a released note whose loudest carrier is below it (2^-11 of a full carrier, -66 dB) ends */
+#endif
 
 /* one operator over the block: modulated by in (0: none), into out (add: += else =). Four loops, so none
  * tests a flag per sample */
@@ -338,9 +346,9 @@ static __attribute__((noinline)) void fm6_op_run(int32_t *out, const int32_t *in
     int32_t dg = (g2 - g1 + (FM6_N >> 1)) >> FM6_LG_N, g = g1;
     uint32_t i;
     if (in && add)
-        FM6_OP_LOOP(phase + in[i], +=)
+        FM6_OP_LOOP((int32_t)((uint32_t)phase + (uint32_t)in[i]), +=)
     else if (in)
-        FM6_OP_LOOP(phase + in[i], =)
+        FM6_OP_LOOP((int32_t)((uint32_t)phase + (uint32_t)in[i]), =)
     else if (add)
         FM6_OP_LOOP(phase, +=)
     else
@@ -357,7 +365,7 @@ static __attribute__((noinline)) void fm6_op_fb(int32_t *out, int32_t phase, int
         int32_t s = (y0 + y) >> (shift + 1);
         g += dg;
         y0 = y;
-        y = (int32_t)(((int64_t)fm6_sin(phase + s) * g) >> 15);
+        y = (int32_t)(((int64_t)fm6_sin((int32_t)((uint32_t)phase + (uint32_t)s)) * g) >> 15);
         out[i] = add ? out[i] + y : y;
         phase = (int32_t)((uint32_t)phase + (uint32_t)freq);
     }
@@ -408,7 +416,8 @@ typedef struct {                 /* a sounding note (msfa's note): 252 bytes */
     fm6_penv_t penv;
     uint8_t fixed;               /* bit k: operator k has a fixed frequency */
     uint8_t live, down, rsv;
-    uint8_t ol0[6];              /* each operator's OL at the note-on, or when last followed (fm6_note_ol: the morph moves it live) */
+    uint8_t xb, xs, xr; /* crossing frequency side, active stand-ins, pending restores */
+    uint8_t ol0[6];              /* each operator's OL at the note-on (a live OL other than this is applied after the envelope: fm6_live_level) */
     int32_t dc;                  /* (eng_fm6.c) the output's DC blocker */
 } fm6_note_t;
 
@@ -429,7 +438,7 @@ static const uint32_t FM6_AMSENS[4] = {0, 4342338, 7171437, 16777216};
 static int32_t fm6_scale_vel(int32_t vel, int32_t sens)
 {
     int32_t v = FM6_VELDATA[(vel < 0 ? 0 : vel > 127 ? 127 : vel) >> 1] - 239;
-    return ((sens * v + 7) >> 3) << 4;
+    return ((sens * v + 7) >> 3) * 16;
 }
 static int32_t fm6_scale_rate(int32_t note, int32_t sens)
 {
@@ -454,25 +463,39 @@ static int32_t fm6_scale_level(int32_t note, const uint8_t *op)
 }
 
 /* the operator's pitch (msfa note osc_freq): ratio mode as an offset from the note, fixed mode absolute */
+/* Mode, coarse, fine and detune are four adjacent bytes in a DX7 operator.
+ * The crossing planner retains only those bytes; ordinary voices use the wrapper. */
+_Static_assert(FP_FC == FP_MODE + 1 && FP_FF == FP_MODE + 2 && FP_DET == FP_MODE + 3, "FM6 tuning byte order");
+static int32_t fm6_osc_base4(const uint8_t *op, int32_t note, int32_t extra)
+{
+    int32_t det = op[3];
+    if (!op[0]) {
+        int32_t lf = (int32_t)FM6_DETUNE[note] * (det - 7) + FM6_COARSE[op[1] & 31u] + extra;
+        return op[2] ? lf + FM6_FINE[op[2] % 100u] : lf;
+    }
+    return ((4458616 * ((op[1] & 3) * 100 + op[2] % 100u)) >> 3) + (det > 7 ? 13457 * (det - 7) : 0);
+}
+
 static int32_t fm6_osc_base(const uint8_t *op, int32_t note, int32_t extra)
 {
-    int32_t det = op[FP_DET];
-    if (!op[FP_MODE]) {
-        int32_t lf = (int32_t)FM6_DETUNE[note] * (det - 7) + FM6_COARSE[op[FP_FC] & 31u] + extra;
-        return op[FP_FF] ? lf + FM6_FINE[op[FP_FF] % 100u] : lf;
-    }
-    return ((4458616 * ((op[FP_FC] & 3) * 100 + op[FP_FF] % 100u)) >> 3) + (det > 7 ? 13457 * (det - 7) : 0);
+    return fm6_osc_base4(op + FP_MODE, note, extra);
 }
 
 /* a note-on (msfa note init) of patch p, MIDI note `note` (transposed), velocity vel. fresh: from silence
- * (phases, gains, feedback 0); else a retrigger keeps them, as msfa does */
+ * (phases, gains, feedback 0; the phases anywhere with OKS off); else a retrigger keeps them, as msfa does */
+static uint32_t fm6_oks_seed = 0x2545F491u;             /* the free-running start phases of OKS OFF patches (any non-zero value) */
 static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t vel, int fresh)
 {
     uint32_t k;
     note = note < 0 ? 0 : note > 127 ? 127 : note;
     if (fresh) {
-        for (k = 0; k < 6u; k++)
+        for (k = 0; k < 6u; k++) {
             n->op[k].phase = n->op[k].gain_out = 0;
+            if (!p[FP_OKS]) {                           /* OKS off: the oscillators are not synced to the key: a new note starts them anywhere (a DX7 free-runs them) */
+                fm6_oks_seed = fm6_oks_seed * 1664525u + 1013904223u;
+                n->op[k].phase = (int32_t)fm6_oks_seed;
+            }
+        }
         n->fb[0] = n->fb[1] = 0;
         n->dc = 0;
     }
@@ -480,9 +503,11 @@ static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t
     for (k = 0; k < 6u; k++) {
         const uint8_t *op = p + k * FP_OP;
         int32_t ol = fm6_scaleout(op[FP_OL]) + fm6_scale_level(note, op);
-        ol = (ol > 127 ? 127 : ol) << 5;
+        ol = (ol > 127 ? 127 : ol) * 32;
         ol += fm6_scale_vel(vel, op[FP_KVS]);
-        fm6_env_init(&n->env[k], op, ol < 0 ? 0 : ol, fm6_scale_rate(note, op[FP_RS]));
+        fm6_env_init(&n->env[k], op, ol < 0 ? 0 : ol, fm6_scale_rate(note, op[FP_RS]), fresh);
+        n->env[k].key = (uint8_t)note;
+        n->env[k].velocity = (uint8_t)(vel < 0 ? 0 : vel > 127 ? 127 : vel);
         n->ol0[k] = op[FP_OL];
         n->base[k] = fm6_osc_base(op, note, 0);
         n->fixed |= (uint8_t)((op[FP_MODE] & 1u) << k);
@@ -491,27 +516,28 @@ static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t
     n->live = n->down = 1;
 }
 
-/* DUELL MORPH: an operator's OL that changed under a sounding note (the morph moves it per block) shifts that operator's
- * envelope by the same number of levels (each OL step = 32 units); nothing changed: nothing done (bit-identical) */
-static void fm6_note_ol(fm6_note_t *n, const uint8_t *p)
+/* DUELL MORPH (JAM fix, 2026-10-29): an operator's OL that moved under a sounding note (the morph moves it per block) is a
+ * gain over the note-on envelope, not an edit of its state. Before, the EG's level and target were shifted and clamped,
+ * so an OL that went to 0 and back lost its attenuation and the note came back louder or silent. The key and velocity
+ * scaling are re-evaluated before the clamp (an operator that started silent keeps them too), and the current patch's
+ * EG ceiling keeps an all-zero envelope silent. Unchanged OL: not called (bit-identical) */
+static __attribute__((noinline)) int32_t fm6_live_level(const fm6_env_t *e, const uint8_t *op, int32_t level)
 {
-    uint32_t k;
-    for (k = 0; k < 6u; k++) {
-        uint32_t ol = p[k * FP_OP + FP_OL];
-        fm6_env_t *e = &n->env[k];
-        int32_t d, ne;
-        if (ol == n->ol0[k])
-            continue;
-        d = (fm6_scaleout((int32_t)ol) - fm6_scaleout(n->ol0[k])) << 5;
-        n->ol0[k] = (uint8_t)ol;
-        ne = e->outlevel + d;
-        e->outlevel = (int16_t)(ne < 0 ? 0 : ne > 4096 ? 4096 : ne);
-        e->level += d << 16;
-        e->level = e->level < 0 ? 0 : e->level > (17 << 24) ? 17 << 24 : e->level;
-        e->target += d << 16;
-        e->target = e->target < (16 << 16) ? 16 << 16 : e->target > (17 << 24) ? 17 << 24 : e->target;
-        e->rising = e->target > e->level;
-    }
+    int32_t ol = fm6_scaleout(op[FP_OL]) + fm6_scale_level(e->key, op), peak = 0;
+    uint32_t i;
+    if (!e->down && e->ix >= 4u)
+        return level;                               /* released and finished: an OL turned up later must not bring it back (the note never ended: fm6_note_done) */
+    ol = (ol > 127 ? 127 : ol) * 32 + fm6_scale_vel(e->velocity, op[FP_KVS]);
+    if (ol < 0)
+        ol = 0;
+    for (i = 0; i < 4u; i++)
+        if (op[FP_L1 + i] > peak)
+            peak = op[FP_L1 + i];
+    peak = (fm6_scaleout(peak) >> 1) * 64 + ol - 4256;
+    if (peak < 16)
+        peak = 16;
+    level += (ol - e->outlevel) * 65536;
+    return level < 0 ? 0 : level > peak * 65536 ? peak * 65536 : level;
 }
 
 static void fm6_note_key(fm6_note_t *n, const uint8_t *p, int down)
@@ -530,26 +556,36 @@ static int32_t fm6_note_logfreq(int32_t pitch16, int32_t fine)
     return FM6_LOGF0 + (int32_t)(((int64_t)pitch16 * ((1 << 24) / 12)) >> 4) + fine * 5909;
 }
 
-/* one block (msfa note compute): the LFO's value and delay (Q24), the note's log2 frequency, the patch's
+/* K7: what the part's LFO adds to every voice of the block, computed once per part and block (eng_fm6.c fm6_block), not once per voice: the
+ * pitch term (signed, Q24 log2, the depth through the delay and the sensitivity) and the amplitude modulation depth (Q24) */
+typedef struct { int32_t pm; uint32_t am; } fm6_lfot_t;
+static void fm6_lfo_terms(fm6_lfot_t *c, const uint8_t *p, int32_t lfo_val, int32_t lfo_delay)
+{
+    uint32_t pmd = (uint32_t)((p[FP_LPMD] % 100u) * 165u >> 6) * (uint32_t)lfo_delay;   /* Q32 */
+    int32_t senslfo = FM6_PMS[p[FP_LPMS] & 7u] * (lfo_val - (1 << 23));
+    int32_t pmod = (int32_t)(((int64_t)pmd * senslfo) >> 39);
+    uint32_t amd = (uint32_t)((p[FP_LAMD] % 100u) * 165u >> 6), amod;
+    pmod = pmod < 0 ? -pmod : pmod;
+    c->pm = senslfo < 0 ? -pmod : pmod;
+    amod = (uint32_t)(((int64_t)amd * lfo_delay) >> 8);                 /* Q24 */
+    c->am = (uint32_t)(((int64_t)amod * ((1 << 24) - lfo_val)) >> 24);
+}
+/* one block (msfa note compute): the part's LFO terms (fm6_lfo_terms), the note's log2 frequency, the patch's
  * algorithm and feedback (already through the macros), dt[k]: a pitch offset per operator (Q24),
  * modlvl: a level offset of the operators that are not carriers (Q24 log2), ulvl: one per operator (0 = none; DUELL
  * ARP TARGET, eng_fm6.c fm6_render). Writes out (Q24); 0 = silent
  * (out untouched). out: 3 x FM6_N (the output and the two operator buses) */
-static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, int32_t lfo_val, int32_t lfo_delay,
+static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, const fm6_lfot_t *lt,
                              int32_t logfreq, uint32_t alg, int32_t fb, const int32_t *dt, int32_t modlvl,
                              const int32_t *ulvl)
 {
-    uint32_t pmd = (uint32_t)((p[FP_LPMD] % 100u) * 165u >> 6) * (uint32_t)lfo_delay;   /* Q32 */
-    int32_t senslfo = FM6_PMS[p[FP_LPMS] & 7u] * (lfo_val - (1 << 23));
-    int32_t pmod = (int32_t)(((int64_t)pmd * senslfo) >> 39), pitch_mod;
-    uint32_t amd = (uint32_t)((p[FP_LAMD] % 100u) * 165u >> 6), amod, car = fm6_carriers(alg), k;
-    pmod = pmod < 0 ? -pmod : pmod;
-    pitch_mod = fm6_penv_get(&n->penv, p) + (senslfo < 0 ? -pmod : pmod);
-    amod = (uint32_t)(((int64_t)amd * lfo_delay) >> 8);                 /* Q24 */
-    amod = (uint32_t)(((int64_t)amod * ((1 << 24) - lfo_val)) >> 24);
+    int32_t pitch_mod = fm6_penv_get(&n->penv, p) + lt->pm;
+    uint32_t amod = lt->am, car = fm6_carriers(alg), k;
     for (k = 0; k < 6u; k++) {
         const uint8_t *op = p + k * FP_OP;
         int32_t level = fm6_env_get(&n->env[k], op);
+        if (op[FP_OL] != n->ol0[k])                /* (the morph moved this operator's OL under the note) */
+            level = fm6_live_level(&n->env[k], op, level);
         uint32_t ams = FM6_AMSENS[op[FP_AMS] & 3u];
         n->op[k].freq = fm6_freq((n->fixed >> k) & 1u ? n->base[k] : logfreq + n->base[k] + pitch_mod + dt[k]);
         if (ams) {                                 /* msfa: pt = exp(sensamp / 262144 * 0.07 + 12.2) */
@@ -576,16 +612,19 @@ static int fm6_note_compute(fm6_note_t *n, const uint8_t *p, int32_t *out, int32
 }
 
 /* the note can be dropped: every carrier silent for good (released and done, or held at a silent
- * sustain whose release can only fall) */
+ * sustain whose release can only fall). Returns 1 for that (the voice ends at once, below msfa's threshold, -89 dB), 2 for the CULL: the note is released and its carriers together
+ * (the sum of their gains: an upper bound of the output, six carriers add up) are below FM6_CULL (-66 dB of one carrier at full level), so the rest of the tail is inaudible and the voice
+ * fades out over its last block (voice.c: as a voice_kill) instead of running its operators for seconds more. A held note (n->down) is never culled */
 static int fm6_note_done(const fm6_note_t *n, const uint8_t *p, uint32_t alg)
 {
-    uint32_t car = fm6_carriers(alg), k;
+    uint32_t car = fm6_carriers(alg), k, quiet = 1, sum = 0;
     for (k = 0; k < 6u; k++) {
         const fm6_env_t *e = &n->env[k];
         if (!((car >> k) & 1u))
             continue;
-        if (n->op[k].gain_out >= FM6_THRESH)
+        if (n->op[k].gain_out >= FM6_THRESH && n->down)
             return 0;
+        sum += (uint32_t)n->op[k].gain_out;
         if (e->ix < 3u)
             return 0;
         if (e->ix == 3u && !e->down && e->rising)
@@ -595,6 +634,9 @@ static int fm6_note_done(const fm6_note_t *n, const uint8_t *p, uint32_t alg)
             if ((a < 16 ? 16 : a) << 16 > e->level)
                 return 0;
         }
+        quiet &= n->op[k].gain_out < FM6_THRESH;
     }
-    return 1;
+    if (!n->down && sum >= FM6_CULL && !quiet)
+        return 0;
+    return quiet ? 1 : 2;
 }

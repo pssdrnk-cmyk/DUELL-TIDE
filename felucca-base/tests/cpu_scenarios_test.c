@@ -8,7 +8,7 @@
  * guards on the fader in the middle (SMART's wake rule, morph.c morph_wake_half: the morph must not creep back up); C, the VOICE CAP
  * (voice.c vcap: the caps of heavy pairs and the factory multis, measured with and without, never below 4, new notes only).
  * DUELL 0.2.23: the multis of Q, N, K, O are the TEST SCENES of tests/scenes.h (0.2.22's factory multis and CPU TEST multis, byte for byte, loaded as then);
- * G (default) today's sixteen factory multis (MODE RECALL ON), 4 + 4 notes at fader 63, guarded at 100 % (M16 the STRESS TEST unguarded); S the STRESS TEST
+ * G (default) today's sixteen factory multis (MODE RECALL ON), 4 + 4 notes at fader 63, guarded at 100 % (U2 B: M16 is CELLAR TAPE, guarded too; the STRESS TEST is tests/scenes/M16_STRESS_TEST.bin); S the STRESS TEST
  * played from the keys in LAYER / STEREO / DUEL, 1..8 keys (docs/TESTING.md).
  * CPU_SCEN=letters for more: I the INSERT types incl. TAPE, VINYL (0.2.14), N the other factory multis (M02, M07..M10) as Q (no guard), P the cap's per-voice table, E engine pairs x SMART / WILD rolls, M what a factory End B moves, X the
  * stages a small move wakes, W WAVE incl. the kitchen sink, K the faded choices of M04 (WIRED SNAIL) / M14 / M15, F bursts (retrigger, 64 MIDI
@@ -154,10 +154,10 @@ static double run(const scn_t *s)
     if (s->perf == 2) perf_press(PF_OUP, 1);
     if (s->perf == 3) perf_press(PF_FRZ, 1);
     if (s->perf == 4) { perf_press(PF_FLG, 1); perf_press(PF_PHS, 1); perf_press(PF_DRV, 1); perf_press(PF_PUMP, 1); }
-    if (s->morph == 3) { morph_rebase_all(); morph_set_target(1); morph_set_fader((uint32_t)g_fader); }
+    if (s->morph == 3) { morph_rebase_all(); SEL_BOTH = 1; morph_set_fader((uint32_t)g_fader); }
     else if (s->morph) {
         if (s->morph == 2) morph.cfg |= MC_WILD;
-        morph_set_target(1); morph_set_amount((uint32_t)g_amt);
+        SEL_BOTH = 1; morph_set_amount((uint32_t)g_amt);
         morph_roll(0); morph_roll(1);
         morph_set_fader((uint32_t)g_fader);
     }
@@ -212,7 +212,7 @@ static void load_scene_of(uint32_t slot)
         scene_load(slot, OLD_SCENE[slot]);
     else {
         scene_put(slot, OLD_SCENE[slot]);
-        project_load(slot);
+        project_load(MIDX(slot));
     }
 }
 /* the multis as stored (the scenes, above), nn notes (4: 4 + 4 on both parts, 8: on part 1), the fader at f; avg (returned) and *pk the worst half */
@@ -224,11 +224,11 @@ static double multi_run(uint32_t slot, uint32_t nn, uint32_t f, double *pk)
     power();
     if (g_factory) {
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-        project_load(slot);
+        project_load(MIDX(slot));
     } else
         load_scene_of(slot);
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; }
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_fader(f);
     for (i = 0; i < nn; i++) {
         trk_note_on(&trk[0], N8[i], 110);
@@ -274,7 +274,7 @@ static void cap_scene(const scn_t *s)
     setpart(&trk[1], s->e2, s->k2, s);
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; }
     morph_rebase_all();
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_fader(64);
     vcap_poll();
 }
@@ -344,10 +344,10 @@ static void cap_tests(void)
         ok &= c[1] >= VC_MIN || c[1] == vc_eng_cap(ENGINES[eng_idx(trk[1].eng_req)]);
     }
     {   /* the factory multis as loaded (0.2.23: all sixteen, with their MODE: MODE RECALL ON) */
-        for (i = 0; i < MU_SLOTS; i++) {
+        for (i = 0; i < MU_SHOWN; i++) {
             power();
             ui_prefs2 |= PREF_MODE_RECALL >> 16;
-            project_load(i);
+            project_load(MIDX(i));
             frame();
             printf("C M%02u %-12s (%s / %s) as loaded: caps %u / %u, predicted worst %5.1f %%\n", i + 1, mu_names[i], ENGINES[eng_idx(trk[0].eng_req)]->name,
                    ENGINES[eng_idx(trk[1].eng_req)]->name, vcap_shown(0), vcap_shown(1), vcap_worst / 10.0);
@@ -440,7 +440,7 @@ static double stress_run(uint32_t mode, uint32_t nk, uint32_t fader, uint32_t co
     uint32_t i, n, keys = 0, vb = 0;
     power();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(15);
+    scene_load(15, "M16_STRESS_TEST");               /* (U2 B: the STRESS TEST is a test scene, no longer the factory M16) */
     duell_mode_req = (uint8_t)mode;
     if (comp) {
         song.cp[0] = 20; song.cp[1] = 4;
@@ -448,7 +448,7 @@ static double stress_run(uint32_t mode, uint32_t nk, uint32_t fader, uint32_t co
     ovl_lite = (uint8_t)g_ovl;
     frame();
     for (i = 0; i < 40; i++) { half(0); while (wave_service()) ; frame(); }
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_fader(fader);
     for (i = 0; i < nk; i++) {
         keys |= 1u << key_of_note(KN[i]);
@@ -532,13 +532,17 @@ int main(void)
     if (strchr(sec, 'G')) {                       /* 0.2.23: the factory multis of today (MODE RECALL ON), 4 + 4 notes, fader 63; M16 (the STRESS TEST) unguarded */
         uint32_t m;
         g_factory = 1;
-        for (m = 0; m < MU_SLOTS; m++) {
+        for (m = 0; m < MU_SHOWN; m++) {
             double pk, av = multi_run(m, 4, 63, &pk);
             printf("G M%02u %-12s 4+4 notes fader  63: avg %5.1f %%  peak half %5.1f %%  (parts: %s / %s, mode %u)\n", m + 1, mu_names[m], av, pk,
                    ENGINES[trk[0].engine]->name, ENGINES[trk[1].engine]->name, (unsigned)dm_cur);
-            if (m < 15u) {
-                snprintf(b, sizeof b, "M%02u %s 4 + 4 notes, fader 63, average (a factory multi)", m + 1, mu_names[m]);
-                guard(b, av, 100.0);
+            snprintf(b, sizeof b, "M%02u %s 4 + 4 notes, fader 63, average (a factory multi)", m + 1, mu_names[m]);
+            guard(b, av, 100.0);
+            if (m >= MU_SLOTS) {                  /* TIDE b6: the ROM drone multis as played: a held 3-note chord a part */
+                av = multi_run(m, 3, 63, &pk);
+                printf("G M%02u %-12s 3+3 notes fader  63: avg %5.1f %%  peak half %5.1f %%\n", m + 1, mu_names[m], av, pk);
+                snprintf(b, sizeof b, "M%02u %s 3 + 3 notes (a held chord), fader 63, peak half (a drone multi)", m + 1, mu_names[m]);
+                guard(b, pk, 100.0);
             }
         }
         g_factory = 0;

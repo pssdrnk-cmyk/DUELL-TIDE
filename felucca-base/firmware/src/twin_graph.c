@@ -35,7 +35,7 @@ static int32_t tg_f2(const track_t *t, uint32_t hz)
         uint64_t f0 = ((uint64_t)33488u * pitch_inc((uint32_t)(960 + 16 * tune))) / pitch_inc(960u);   /* C3 in Hz Q8, moved */
         uint32_t ph = (uint32_t)(((uint64_t)hz << 40) / (f0 ? f0 : 1u)), w = (uint32_t)(((uint64_t)hz << 32) / FS);   /* cycles of the tooth, the angle of the one-pole */
         int32_t cw = sine_i(w + 0x40000000u), cth = sine_i(ph + 0x40000000u), p2 = (int32_t)((int64_t)18432 * 32768 / (34816 - (cw >> 1)));   /* |damping|^2 = 0.5625 / (1.0625 - 0.5 cos w), Q15 */
-        a = (fb * (int32_t)ins_isqrt((uint32_t)p2 << 15)) >> 12;   /* the loop's gain: fb x |damping|, Q15 */
+        a = (fb * (int32_t)isqrt32((uint32_t)p2 << 15)) >> 12;   /* the loop's gain: fb x |damping|, Q15 */
         c = cth;
         den = (int32_t)((((int64_t)1 << 30) + (int64_t)a * a - 2 * (int64_t)a * c) >> 15);   /* Q15 */
         num = (int32_t)(((int64_t)nm * 8 * nm * 8) >> 15);

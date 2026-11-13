@@ -1,0 +1,1201 @@
+{
+ "_schema": "genres.<name>.targets.<metric> = {min, max, unit, source, basis}; null = open end. basis: sourced | sourced-disputed | sourced-other-genre | example (one source, one value) | rule (work/b9/MUSICAL_RULES_B9.md) | measured-gate. A metric not listed is not checked: 'rules --genre' prints it as UNSURE. Ranges measured on the owner-approved multis are added by the atlas (fill from the atlas after the first build). Sources are cited as file:section; the research files carry the URLs.",
+ "genres": {
+  "dub-techno": {
+   "multis": [
+    1,
+    2
+   ],
+   "sources": [
+    "work/b9/research/dub-techno.md"
+   ],
+   "qualitative": "minor triad or m7, short loose syncopated stabs, tape-style echo, sparse and slowly changing",
+   "targets": {
+    "tempo_bpm": {
+     "min": 110,
+     "max": 125,
+     "unit": "bpm",
+     "source": "work/b9/research/dub-techno.md:Rhythm (Wikipedia, source 5); the Attack example runs 145, sources disagree",
+     "basis": "sourced-disputed"
+    },
+    "delay_time": {
+     "min": null,
+     "max": null,
+     "unit": "note value",
+     "source": "work/b9/research/dub-techno.md:Effects (sources 2, 3, 4): 1/8 dotted",
+     "basis": "sourced"
+    },
+    "delay_feedback_pct": {
+     "min": 30,
+     "max": 85,
+     "unit": "%",
+     "source": "work/b9/research/dub-techno.md:Effects (source 3 base 30 %, source 1 second tap ~85 %)",
+     "basis": "sourced"
+    },
+    "repeat_highcut_hz": {
+     "min": null,
+     "max": 5000,
+     "unit": "Hz",
+     "source": "work/b9/research/dub-techno.md:Effects (source 3: high cut ~5 kHz in the loop)",
+     "basis": "sourced"
+    },
+    "repeat_lowcut_hz": {
+     "min": 200,
+     "max": 280,
+     "unit": "Hz",
+     "source": "work/b9/research/dub-techno.md:Effects (source 3 ~200 Hz, source 1 shelf 280 Hz)",
+     "basis": "sourced"
+    },
+    "reverb_decay_s": {
+     "min": null,
+     "max": 5,
+     "unit": "s",
+     "source": "work/b9/research/dub-techno.md:Effects (source 4 hall ~5 s; source 2 'short'; sources disagree)",
+     "basis": "sourced-disputed"
+    },
+    "sub_lowpass_hz": {
+     "min": null,
+     "max": 37,
+     "unit": "Hz",
+     "source": "work/b9/research/dub-techno.md:Mix role (source 2)",
+     "basis": "sourced"
+    },
+    "side_mid_db": {
+     "min": -11,
+     "max": null,
+     "unit": "dB",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 4 (side -8 to -11 dB or wider: -11 or higher; a higher side/mid is wider)",
+     "basis": "rule"
+    },
+    "bed_notes_mean": {
+     "min": 2.5,
+     "max": null,
+     "unit": "notes",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 3",
+     "basis": "rule"
+    },
+    "hf_drop_per_repeat_db": {
+     "min": null,
+     "max": 0,
+     "unit": "dB",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 4 (repeats darken; negative = darker)",
+     "basis": "rule"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 489.2,
+     "max": 601.29,
+     "unit": "Hz",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 9.14,
+     "max": 16.56,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.13,
+     "max": 1.42,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.05,
+     "max": 1.32,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -6.08,
+     "max": -4.98,
+     "unit": "dB",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 5.74,
+     "max": 6.86,
+     "unit": "notes",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 2.25,
+     "max": 3.25,
+     "unit": "onsets",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -20.79,
+     "max": -20.45,
+     "unit": "LUFS",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0,
+     "max": 0,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M01,M02, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "deep-house": {
+   "multis": [
+    3,
+    4
+   ],
+   "sources": [
+    "work/b9/research/deep-house.md"
+   ],
+   "qualitative": "m7/m9/m11 voicings, offbeat stabs, next chord on the last 16th, Juno chorus pads",
+   "targets": {
+    "delay_time": {
+     "min": null,
+     "max": null,
+     "unit": "note value",
+     "source": "work/b9/research/deep-house.md:Effects (S5 dotted 1/8; S2 1/8 on electric piano)",
+     "basis": "sourced"
+    },
+    "tempo_bpm": {
+     "min": 120,
+     "max": 125,
+     "unit": "bpm",
+     "source": "work/b9/research/attack/house.md:6 (Dusted deep house)",
+     "basis": "sourced"
+    },
+    "swing_pct": {
+     "min": 70,
+     "max": 80,
+     "unit": "% (Attack scale, 50 = straight)",
+     "source": "work/b9/research/attack/house.md:6",
+     "basis": "sourced"
+    },
+    "reverb_length_pct": {
+     "min": null,
+     "max": 55,
+     "unit": "% of range",
+     "source": "work/b9/research/deep-house.md:Effects (S5: short airy, ~55 % length)",
+     "basis": "sourced"
+    },
+    "wet_pct": {
+     "min": null,
+     "max": 25,
+     "unit": "%",
+     "source": "work/b9/research/deep-house.md:Effects (S5: ~25 % overall, delay:reverb about 50/50)",
+     "basis": "sourced"
+    },
+    "reverb_lowcut_hz": {
+     "min": 200,
+     "max": null,
+     "unit": "Hz",
+     "source": "work/b9/research/deep-house.md:Effects (S5)",
+     "basis": "sourced"
+    },
+    "side_mid_db": {
+     "min": -11,
+     "max": null,
+     "unit": "dB",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 4 (side -8 to -11 dB or wider: -11 or higher; a higher side/mid is wider)",
+     "basis": "rule"
+    },
+    "bed_notes_mean": {
+     "min": 2.5,
+     "max": null,
+     "unit": "notes",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 3",
+     "basis": "rule"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 435.76,
+     "max": 559.53,
+     "unit": "Hz",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 11.41,
+     "max": 20.41,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.42,
+     "max": 2.34,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.9,
+     "max": 2.01,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -7.14,
+     "max": -6.92,
+     "unit": "dB",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 4.98,
+     "max": 7.8,
+     "unit": "notes",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 4.25,
+     "max": 6.75,
+     "unit": "onsets",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -20.85,
+     "max": -20.59,
+     "unit": "LUFS",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0,
+     "max": 0.12,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M03,M04, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "classic-house": {
+   "multis": [
+    5,
+    6
+   ],
+   "sources": [
+    "work/b9/research/classic-house.md"
+   ],
+   "qualitative": "minor chords, 4/4 quantised, simple bass line; no tempo, swing or reverb figure found (UNSURE)",
+   "targets": {
+    "wet_pct": {
+     "min": null,
+     "max": 25,
+     "unit": "%",
+     "source": "work/b9/research/classic-house.md:Effects (S4, a deep-house source; no Chicago-specific figure)",
+     "basis": "sourced-other-genre"
+    },
+    "tempo_bpm": {
+     "min": 122,
+     "max": 127,
+     "unit": "bpm",
+     "source": "work/b9/research/attack/house.md:19 (90s House, not Chicago-specific)",
+     "basis": "sourced-other-genre"
+    },
+    "swing_pct": {
+     "min": 55,
+     "max": 60,
+     "unit": "% (Attack scale, 50 = straight)",
+     "source": "work/b9/research/attack/house.md:19",
+     "basis": "sourced-other-genre"
+    },
+    "delay_time": {
+     "min": null,
+     "max": null,
+     "unit": "note value",
+     "source": "work/b9/research/classic-house.md:Effects (S4: dotted 1/8)",
+     "basis": "sourced-other-genre"
+    },
+    "side_mid_db": {
+     "min": -11,
+     "max": null,
+     "unit": "dB",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 4 (side -8 to -11 dB or wider: -11 or higher; a higher side/mid is wider)",
+     "basis": "rule"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 496.43,
+     "max": 558.14,
+     "unit": "Hz",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 8.17,
+     "max": 25.74,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.17,
+     "max": 0.59,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.01,
+     "max": 2.87,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -8.78,
+     "max": -6.86,
+     "unit": "dB",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 4.24,
+     "max": 7.6,
+     "unit": "notes",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 6,
+     "max": 6,
+     "unit": "onsets",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -20.54,
+     "max": -20.43,
+     "unit": "LUFS",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0.04,
+     "max": 0.04,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M05,M06, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "detroit": {
+   "multis": [
+    7,
+    8
+   ],
+   "sources": [
+    "work/b9/research/detroit-techno.md"
+   ],
+   "qualitative": "minor-key stabs and synth strings over a 4/4 kick; the sources give no numeric target (UNSURE)",
+   "targets": {
+    "deesser_hz": {
+     "min": 5000,
+     "max": 6000,
+     "unit": "Hz",
+     "source": "work/b9/research/attack/detroit.md:26 (Mills Amazon: de-esser on violins)",
+     "basis": "sourced"
+    },
+    "chord_top_note_max": {
+     "min": null,
+     "max": 63,
+     "unit": "MIDI (D#4)",
+     "source": "work/b9/research/attack/detroit.md:31 (chord tops stop around D#4)",
+     "basis": "sourced"
+    },
+    "side_mid_db": {
+     "min": -11,
+     "max": null,
+     "unit": "dB",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 4 (side -8 to -11 dB or wider: -11 or higher; a higher side/mid is wider)",
+     "basis": "rule"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 493.6,
+     "max": 504.99,
+     "unit": "Hz",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 2.94,
+     "max": 17.83,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.0,
+     "max": 0.16,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.69,
+     "max": 0.79,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -6.91,
+     "max": -5.6,
+     "unit": "dB",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 5.49,
+     "max": 6.42,
+     "unit": "notes",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 5,
+     "max": 5.5,
+     "unit": "onsets",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -21.46,
+     "max": -20.01,
+     "unit": "LUFS",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0.32,
+     "max": 0.77,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M07,M08, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "acid": {
+   "multis": [
+    9,
+    10,
+    11
+   ],
+   "sources": [
+    "work/b9/research/acid.md"
+   ],
+   "qualitative": "303 saw, 24 dB low-pass, accents and slides, overdrive; a bare square lead is allowed here (rule 6)",
+   "targets": {
+    "tempo_bpm": {
+     "min": 122,
+     "max": 129,
+     "unit": "bpm",
+     "source": "work/b9/research/attack/acid.md:5 (129, ABL2) and :12 (122, Armando 151)",
+     "basis": "sourced"
+    },
+    "reverb_decay_s": {
+     "min": 2.5,
+     "max": 2.5,
+     "unit": "s",
+     "source": "work/b9/research/attack/acid.md:13 (Armando: ~2.5 s, lows cut on the return)",
+     "basis": "example"
+    },
+    "reverb_send_db": {
+     "min": -19,
+     "max": -19,
+     "unit": "dB",
+     "source": "work/b9/research/attack/acid.md:13",
+     "basis": "example"
+    },
+    "delay_time": {
+     "min": null,
+     "max": null,
+     "unit": "note value",
+     "source": "work/b9/research/acid.md: source 1 (dotted 1/8, repeats high-passed)",
+     "basis": "sourced"
+    },
+    "bass_lowcut_hz": {
+     "min": 85,
+     "max": 85,
+     "unit": "Hz",
+     "source": "work/b9/research/acid.md: source 1",
+     "basis": "example"
+    },
+    "reverb_lowcut_hz": {
+     "min": 400,
+     "max": 400,
+     "unit": "Hz",
+     "source": "work/b9/research/acid.md: source 1 (reverb rolled off up to ~400 Hz)",
+     "basis": "example"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 292.74,
+     "max": 756.43,
+     "unit": "Hz",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 26.92,
+     "max": 48.46,
+     "unit": "%",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.05,
+     "max": 0.2,
+     "unit": "%",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.13,
+     "max": 0.18,
+     "unit": "%",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -7.91,
+     "max": -6.29,
+     "unit": "dB",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 1.98,
+     "max": 5.14,
+     "unit": "notes",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 10.75,
+     "max": 17.25,
+     "unit": "onsets",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -21.96,
+     "max": -20.24,
+     "unit": "LUFS",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0.12,
+     "max": 32.91,
+     "unit": "%",
+     "n": 3,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M09,M10,M11, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "electro": {
+   "multis": [
+    12,
+    13
+   ],
+   "sources": [
+    "work/b9/research/electro.md"
+   ],
+   "qualitative": "808 drums, mono bass, arps and bell tones, heavy reverb / delay / chorus (source 1); no numbers (UNSURE)",
+   "targets": {
+    "tempo_bpm": {
+     "min": 125,
+     "max": 134,
+     "unit": "bpm",
+     "source": "work/b9/research/attack/electro-idm.md:5 (125, Clear) and :11 (134)",
+     "basis": "sourced"
+    },
+    "room_reverb_ms": {
+     "min": 710,
+     "max": 710,
+     "unit": "ms",
+     "source": "work/b9/research/attack/electro-idm.md:6 (drum room, 8 % wet)",
+     "basis": "example"
+    },
+    "side_mid_db": {
+     "min": -11,
+     "max": null,
+     "unit": "dB",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 4 (side -8 to -11 dB or wider: -11 or higher; a higher side/mid is wider)",
+     "basis": "rule"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 636.17,
+     "max": 651.48,
+     "unit": "Hz",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 0.05,
+     "max": 36.49,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.01,
+     "max": 8.9,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.12,
+     "max": 0.34,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -9.35,
+     "max": -4.45,
+     "unit": "dB",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 4.07,
+     "max": 6.91,
+     "unit": "notes",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 7.25,
+     "max": 10.5,
+     "unit": "onsets",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -22.95,
+     "max": -22.52,
+     "unit": "LUFS",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0,
+     "max": 0.11,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M12,M13, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "idm": {
+   "multis": [
+    14
+   ],
+   "sources": [
+    "work/b9/research/idm.md"
+   ],
+   "qualitative": "detuned unison, tape wobble, dark roomy reverb, melody and mood first",
+   "targets": {
+    "tempo_bpm": {
+     "min": 80,
+     "max": 170,
+     "unit": "bpm",
+     "source": "work/b9/research/idm.md: source 2 (80, Roygbiv); work/b9/research/attack/berlin-sequenced.md:10 (150, Polynomial-C); work/b9/research/attack/electro-idm.md:16 (about 170, Vordhosbn)",
+     "basis": "sourced-disputed"
+    },
+    "pitch_lfo_hz": {
+     "min": 0.75,
+     "max": 1,
+     "unit": "Hz",
+     "source": "work/b9/research/idm.md: source 2 (wow / flutter)",
+     "basis": "sourced"
+    },
+    "echo_lfo_hz": {
+     "min": 3,
+     "max": 5,
+     "unit": "Hz",
+     "source": "work/b9/research/idm.md: source 3",
+     "basis": "sourced"
+    },
+    "echo_lowpass_hz": {
+     "min": 2000,
+     "max": 5000,
+     "unit": "Hz",
+     "source": "work/b9/research/idm.md: source 3 (tape echo band-limited ~5 kHz; emulate with a 2-5 kHz low-pass)",
+     "basis": "sourced"
+    },
+    "lowpass_hz": {
+     "min": 1600,
+     "max": 1600,
+     "unit": "Hz",
+     "source": "work/b9/research/idm.md: source 2",
+     "basis": "example"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 593.45,
+     "max": 593.45,
+     "unit": "Hz",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 0.17,
+     "max": 0.17,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.03,
+     "max": 0.03,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.8,
+     "max": 0.8,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -4.71,
+     "max": -4.71,
+     "unit": "dB",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 7.63,
+     "max": 7.63,
+     "unit": "notes",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 4.5,
+     "max": 4.5,
+     "unit": "onsets",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -21.25,
+     "max": -21.25,
+     "unit": "LUFS",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0.6,
+     "max": 0.6,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M14, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "berlin-school": {
+   "multis": [
+    15
+   ],
+   "sources": [
+    "work/b9/research/berlin-school.md"
+   ],
+   "qualitative": "driving sequencer bass line, Mellotron choir, heavy reverb into delays; no tempo or effect numbers (UNSURE)",
+   "targets": {
+    "sequence_cycle_bars": {
+     "min": 4,
+     "max": 8,
+     "unit": "bars",
+     "source": "work/b9/research/berlin-school.md: source 1 (linked sequencers of 4 and 8 bars)",
+     "basis": "sourced"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 593.09,
+     "max": 593.09,
+     "unit": "Hz",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 20.56,
+     "max": 20.56,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.13,
+     "max": 0.13,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.11,
+     "max": 0.11,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -6.41,
+     "max": -6.41,
+     "unit": "dB",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 4.0,
+     "max": 4.0,
+     "unit": "notes",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 8.75,
+     "max": 8.75,
+     "unit": "onsets",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -19.32,
+     "max": -19.32,
+     "unit": "LUFS",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0,
+     "max": 0,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M15, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "ambient": {
+   "multis": [
+    16
+   ],
+   "sources": [
+    "work/b9/research/ambient.md"
+   ],
+   "qualitative": "no pulse, sustained pad / vocal bed, long echo and reverb; one sourced semitone clash (source 1)",
+   "targets": {
+    "loop_length_s": {
+     "min": 23.5,
+     "max": 29.94,
+     "unit": "s",
+     "source": "work/b9/research/ambient.md: source 1 (unequal loops 23.5, 25.875, 29.94 s)",
+     "basis": "sourced"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 436.56,
+     "max": 436.56,
+     "unit": "Hz",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 13.73,
+     "max": 13.73,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.3,
+     "max": 0.3,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.27,
+     "max": 0.27,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -7.11,
+     "max": -7.11,
+     "unit": "dB",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 4.23,
+     "max": 4.23,
+     "unit": "notes",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 1,
+     "max": 1,
+     "unit": "onsets",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -22.08,
+     "max": -22.08,
+     "unit": "LUFS",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0.13,
+     "max": 0.13,
+     "unit": "%",
+     "n": 1,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M16, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  },
+  "drone": {
+   "multis": [
+    17,
+    18
+   ],
+   "sources": [
+    "work/b9/reports/DRONE-BASS.md",
+    "work/b9/reports/B9-DRONE.md"
+   ],
+   "qualitative": "held bed, sparse by design; Attack ambient pad numbers only (UNSURE: a rule 3 exception needs a quoted source)",
+   "targets": {
+    "delay_feedback_pct": {
+     "min": 70,
+     "max": 70,
+     "unit": "%",
+     "source": "work/b9/research/attack/drone.md:10 (ambient techno pad, ping-pong)",
+     "basis": "example"
+    },
+    "pad_lowpass_hz": {
+     "min": 720,
+     "max": 720,
+     "unit": "Hz",
+     "source": "work/b9/research/attack/drone.md:8",
+     "basis": "example"
+    },
+    "pad_attack_s": {
+     "min": 5,
+     "max": 5,
+     "unit": "s",
+     "source": "work/b9/research/attack/drone.md:7",
+     "basis": "example"
+    },
+    "share_under_150hz_pct": {
+     "min": 20,
+     "max": null,
+     "unit": "%",
+     "source": "work/b9/reports/B9-DRONE.md:Render check (gate >= 20 %)",
+     "basis": "measured-gate"
+    },
+    "lufs_vs_median_db": {
+     "min": -3,
+     "max": 3,
+     "unit": "dB",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 7",
+     "basis": "rule"
+    },
+    "true_peak_dbfs": {
+     "min": null,
+     "max": -1,
+     "unit": "dBFS",
+     "source": "work/b9/MUSICAL_RULES_B9.md rule 7",
+     "basis": "rule"
+    }
+   },
+   "measured": {
+    "centroid_hz": {
+     "min": 112.82,
+     "max": 344.8,
+     "unit": "Hz",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_150hz_pct": {
+     "min": 36.09,
+     "max": 90.75,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_under_60hz_pct": {
+     "min": 0.0,
+     "max": 8.38,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "share_above_4khz_pct": {
+     "min": 0.0,
+     "max": 0.01,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "side_mid_db": {
+     "min": -14.86,
+     "max": -5.16,
+     "unit": "dB",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "bed_notes_mean": {
+     "min": 1.79,
+     "max": 2,
+     "unit": "notes",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "onsets_per_bar": {
+     "min": 0.5,
+     "max": 0.75,
+     "unit": "onsets",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "lufs": {
+     "min": -21.36,
+     "max": -19.45,
+     "unit": "LUFS",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    },
+    "tail_pct": {
+     "min": 0.0,
+     "max": 0.0,
+     "unit": "%",
+     "n": 2,
+     "source": "soundlab atlas on fork/b9-rc5 a6f0dac, multis M17,M18, PLAY alone no key, 4 bars (atlas/multis.json, variant play)",
+     "basis": "measured"
+    }
+   }
+  }
+ },
+ "_measured": "genres.<name>.measured = the range of soundlab's own numbers over that genre's factory multis in rc5 (owner-approved set), as a regression band for 'rules --genre'; n = how many multis. Sourced targets are in 'targets'."
+}

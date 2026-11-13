@@ -181,6 +181,36 @@ int main(void)
     tc_host_tick_step = 1u;
     expect("7 a job left open: stopped after 20 ms (FLASH), a strike", !tc.up && tc.failed == TCR_FLASH && tc.strike && tc_host_ticks >= TC_PARK_US * TC_TICKS_PER_US);
 
+    /* 7c (b7, review F1): the store's gate, inside each IRQ-off window: an idle core 1 parks nothing; a job left open is stopped after 20 ms (FLASH) */
+    boot_up();
+    tc_post(1u);
+    tc_c1_step(&c1);
+    tc_host_ticks = 0;
+    tc_store_wait();
+    expect("7c the store's gate, core 1 idle: nothing parked or counted, no fault", tc.up && !tc.park && tc.parks == 0u && tc_host_ticks < 100u);
+    tc_post(2u);
+    tc_host_ticks = 0;
+    tc_host_tick_step = 50u;
+    tc_store_wait();
+    tc_host_tick_step = 1u;
+    expect("7c the store's gate, a job left open: stopped after 20 ms (FLASH), a strike", !tc.up && tc.failed == TCR_FLASH && tc.strike && tc_host_ticks >= TC_PARK_US * TC_TICKS_PER_US);
+
+    /* 7b the job number wraps past 2^32 without ever being 0 (0 = no job) */
+    boot_up();
+    tc.job = tc_mb.job = tc_mb.done = tc_mb.claim = c1.last = 0xFFFFFFFFu;
+    tc_mb.yld = 0xFFFFFFFEu; tc_mb.take = 0xFFFFFFFFu;                         /* (a take left by the job before: nonzero) */
+    expect("7b the job before the wrap is closed", tc_closed());
+    i = runs;
+    j = tc_post(0x31u);
+    expect("7b the next number skips 0", j == 1u && tc_mb.job == 1u && tc.job == 1u);
+    tc_c1_step(&c1);
+    expect("7b core 1 runs job 1 once, done", runs == i + 1u && last_arg == 0x31u && tc_answer(j) == TCA_DONE && tc_closed());
+    expect("7b no refusal", !TC_LD(&tc_mb.bad_job));
+    j = tc_post(0x32u);
+    tc_c1_step(&c1);
+    expect("7b and job 2 follows", j == 2u && runs == i + 2u && tc_answer(j) == TCA_DONE);
+    expect("7b tc_next skips 0 both ways", tc_next(0xFFFFFFFFu) == 1u && tc_next(0u) == 1u && tc_next(5u) == 6u);
+
     /* 8 */
     nv.magic = TCNV_MAGIC, nv.state = TCNV_RAN, nv.last = 0;
     expect("8 RAN + watchdog: WDT", tc_boot_reason(&nv, 4u, 0) == TCR_WDT);

@@ -18,13 +18,19 @@ matrix, a name over 12 characters, a bad category or engine, factory indices not
 End B AS VALUES (owner 2026-10-29: a pre-loaded patch carries its End B exactly like a saved patch, PT_VER 4): 'bend' {label: End B value} (only the values that differ from
 the Original; the labels are bend_labels()'s: a P_ name without P_, E1..E8, "<group> <label>" for an extension slot), 'bpin' [labels] (the values set by hand: the marks),
 'bfm' [65 FM6 bytes of End B] (FM6 only). They are packed into the End B block of the patch record (tools/endb.py = morph.c morph_bv_make's format) and written as
-DS_ENDB / DS_ENDB_AT. The AMOUNT in the block is 'bamt' (the category's if absent). A sound with 'bend' has its End B from the block; one without keeps the seed (below).
+DS_ENDB / DS_ENDB_AT. The AMOUNT in the block is 'bamt' (the category's if absent).
+'lcat' (optional): the category the generator's defaults (End B AMOUNT, KEY TRK 0 of a bass or hit) and the browse order were made with; a sound re-filed under another 'cat' (a role for JRNY and the TYPE filter) keeps its sound, its End B and its place in the list. A sound with 'bend' has its End B from the block; one without keeps the seed (below).
 End B by a seed (morph.c morph_rebase_part): 'bamt' (the AMOUNT %, default by category: CAT_BAMT) and 'bseed' (1..65535, chosen by
 tests/sound_audit.c SOUND_BSEED=1 so End B keeps A's loudness and roughly its brightness; absent: the hash of (engine, idx)).
+'tamt' (optional, TIDE only): the MUSICAL AMOUNT (1..40) TIDE rolls this factory sound's End B at, instead of MUSICAL's own 40 (tide.h
+TIDE_FACTORY_BAMT; the part's AMOUNT knob stays 40). For a sound whose level rides on its decay, where AMOUNT 40's SHAPE dial moves
+the level out of the End B window (b6, sound audit T2). Plain DUELL never reads it.
 
-Output (firmware/src/sounds.c reads it): DS_PAIR (2 bytes a pair), DS_SOUNDS (engine-major: sound k of engine e is
+Output (firmware/src/sounds.c reads it): DS_PACKED (bitstream of signed value bytes and lossless ID deltas), DS_SOUNDS (engine-major: sound k of engine e is
 DS_SOUNDS[DS_ENG_AT[e] + k], k = its 'idx', the identity favourites, shadows and the End B seed use: append-only per
 engine), DS_LIST (the browse order: category, then engine in ENGINE_ORDER, then name).
+The first N_BASE sounds of duell_sounds.py (the 128 of the bank: the patch slots' factory places, upreset.c) keep their browse places; a sound after them ('late') is
+listed after those, in the same order among themselves, so no place of the 128 moves when sounds are added (upreset.c UP_NXTRA: read-only places after the USER slots').
 """
 import importlib.util
 import math
@@ -126,7 +132,7 @@ def parse_xtp(names):
         k = slots.index(m.group(1))
         n = names[m.group(3)]
         out[m.group(1)] = (XW_BASE + k, m.group(2), 0, len(n) - 1, int(m.group(4)), n)
-    for m in re.finditer(r"\[(X_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):   # the brace form (none today; the KEY OFFSET had it)
+    for m in re.finditer(r"\[(X_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):   # the brace form (none today; the KEY OFFSET had it)
         k = slots.index(m.group(1))
         out[m.group(1)] = (XW_BASE + k, m.group(2), int(m.group(3)), int(m.group(4)), int(m.group(5)), None)
     if len(out) != len(XGROUP):
@@ -162,7 +168,7 @@ def parse_tp(ids):
     for m in re.finditer(r"\[(P_\w+)\]\s*=\s*PE\(\"([^\"]*)\",\s*(\w+),\s*(-?\d+)\)", body):
         n = names[m.group(3)]
         tp[m.group(1)] = (m.group(2), 0, len(n) - 1, int(m.group(4)), n)
-    for m in re.finditer(r"\[(P_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):
+    for m in re.finditer(r"\[(P_\w+)\]\s*=\s*\{\"([^\"]*)\",\s*\w+,\s*\w+,\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),", body):
         tp[m.group(1)] = (m.group(2), int(m.group(3)), int(m.group(4)), int(m.group(5)), None)
     for k in range(1, 9):
         tp[f"P_M{k}SRC"] = (f"SRC{k}", 0, len(names["N_MSRC"]) - 1, 0, names["N_MSRC"])
@@ -191,7 +197,7 @@ def parse_engines():
             nm = re.search(r"\.name\s*=\s*\"([^\"]+)\"", b)
             ed = b[b.index(".edit"):] if ".edit" in b else ""
             rows = []
-            for r in re.finditer(r"\{\"([^\"]*)\",\s*(F_\w+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*(\w+)", ed):
+            for r in re.finditer(r"\{\"([^\"]*)\",\s*(F_\w+),\s*\w+,\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*(\w+)", ed):   # {label, fmt, unit, lo, hi, def, names} (SP4)
                 lab, lo, hi, df, nl = r.group(1), r.group(3).strip(), r.group(4).strip(), r.group(5).strip(), r.group(6)
                 nlist = arrays.get(nl) if nl != "0" else None
 
@@ -302,9 +308,11 @@ def build(data):
         for key in ("engine", "idx", "name", "cat", "p"):
             if key not in s:
                 die(f"{where}: no '{key}'")
-        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "bend", "bpin", "bfm"}
+        unknown = set(s) - {"engine", "idx", "name", "cat", "p", "mono", "recipe", "bamt", "bseed", "tamt", "bend", "bpin", "bfm", "lcat", "text"}
         if unknown:
             die(f"{where}: unknown keys {sorted(unknown)}")
+        if "text" in s and (s["text"] is not True or s["cat"] != "FX"):
+            die(f"{where}: 'text' is True and only on an FX sound (a texture or drone; TIDE's JOURNEY family TEXT, the DSF_TEXT flag)")
         name = s["name"]
         if not 0 < len(name) <= 12 or not all(32 <= ord(c) < 127 for c in name) or '"' in name or "\\" in name:
             die(f"{where}: the name must be 1..12 plain characters")
@@ -313,6 +321,8 @@ def build(data):
         e = eng_by_name[s["engine"]]
         if s["cat"] not in CATS:
             die(f"{where}: category {s['cat']!r} not one of {CATS}")
+        if s.get("lcat", s["cat"]) not in CATS:
+            die(f"{where}: lcat {s['lcat']!r} not one of {CATS}")
         edit = engines[e]["edit"]
         if len(edit) != 8:
             die(f"{where}: {s['engine']}'s EDIT table could not be read (8 rows)")
@@ -371,7 +381,7 @@ def build(data):
             vid = ids["P_VOICE"]
             if vid not in pairs:
                 pairs[vid] = names["N_VOICE"].index("LEG")      # as the old presets' mono flag: LEGATO
-        if (s["cat"] in ("BASS", "PERC") or "KICK" in name) and ids["P_KTRK"] not in pairs:
+        if (s.get("lcat", s["cat"]) in ("BASS", "PERC") or "KICK" in name) and ids["P_KTRK"] not in pairs:
             pairs[ids["P_KTRK"]] = 0       # 0.2.22: KEY TRK defaults to +51 %; a bass, kick or percussion hit must not close its low notes: explicit 0
         # 0.2.24 (owner): the matrix stays PACKED: a sound's used slots (SRC not OFF) move up in their order, the rest is left out
         # (sound-identical: the firmware sums the slots in slot order; it packs a sound with gaps as it loads anyway, mod.c mod_compact)
@@ -398,11 +408,14 @@ def build(data):
         seen[key] = name
         arp = any(ids["P_" + a] in pairs for a in ARP_IDS)
         keys = any(ids["P_" + a] in pairs for a in KEY_IDS)
-        bamt, bseed = s.get("bamt", CAT_BAMT[s["cat"]]), s.get("bseed", 0)
+        bamt, bseed = s.get("bamt", CAT_BAMT[s.get("lcat", s["cat"])]), s.get("bseed", 0)
         if not isinstance(bamt, int) or isinstance(bamt, bool) or not (0 <= bamt <= 100 if "bend" in s else 1 <= bamt <= 40):
             die(f"{where}: bamt {bamt!r}: the End B AMOUNT is 1..40 (%); 0..100 for a sound with 'bend' (its block holds the knob exactly)")
         if not isinstance(bseed, int) or isinstance(bseed, bool) or not 0 <= bseed <= 65535:
             die(f"{where}: bseed {bseed!r}: 1..65535 (0 / absent: the hash of (engine, idx))")
+        tamt = s.get("tamt", 0)
+        if not isinstance(tamt, int) or isinstance(tamt, bool) or not 0 <= tamt <= 40:
+            die(f"{where}: tamt {tamt!r}: TIDE's End B AMOUNT is 1..40 (0 / absent: MUSICAL's own, 40)")
         block = None
         if "bend" in s or "bpin" in s or "bfm" in s:
             if "bend" not in s:
@@ -426,9 +439,9 @@ def build(data):
                 block = endb.encode(e, bamt + 1, vals, None, marks, fm)   # (no Original here: the firmware adds routes at a load, mod.c; tools/convert_endb.py checks against the firmware's own)
             except ValueError as x:
                 die(f"{where}: {x}")
-        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "mono": bool(s.get("mono")), "arp": arp,
-                       "keys": keys, "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
-                       "bseed": bseed, "endb": block})
+        sounds.append({"e": e, "idx": idx, "name": name, "cat": s["cat"], "lcat": s.get("lcat", s["cat"]), "mono": bool(s.get("mono")), "arp": arp, "late": n >= getattr(data, "N_BASE", 1 << 30), "tail": (n - getattr(data, "N_LATE", 1 << 30)) if n >= getattr(data, "N_LATE", 1 << 30) else -1,
+                       "keys": keys, "text": bool(s.get("text")), "pairs": sorted(pairs.items()), "recipe": s.get("recipe", ""), "bamt": bamt,
+                       "bseed": bseed, "tamt": tamt, "endb": block})
     for e in {x["e"] for x in sounds}:
         got = sorted(x["idx"] for x in sounds if x["e"] == e)
         if got != list(range(len(got))):
@@ -437,7 +450,7 @@ def build(data):
         die("more than 255 sounds: widen DS_LIST / DS_ENG_AT")
     sounds.sort(key=lambda x: (x["e"], x["idx"]))
     rank = {e: i for i, e in enumerate(order)}
-    lst = sorted(range(len(sounds)), key=lambda g: (CATS.index(sounds[g]["cat"]), rank.get(sounds[g]["e"], 99),
+    lst = sorted(range(len(sounds)), key=lambda g: (sounds[g]["late"], sounds[g]["tail"], CATS.index(sounds[g]["lcat"]), rank.get(sounds[g]["e"], 99),
                                                     sounds[g]["name"]))
     idname = {v: k for k, v in ids.items()}
     for xn, (wid, *_rest) in xtp.items():
@@ -450,24 +463,63 @@ def emit(path, sounds, lst, engines, cats, idname):
          " * firmware/src/sounds.c). Do not edit: edit tools/duell_sounds.py */", "#pragma once", "",
          f"#define DS_N {len(sounds)}u", f"#define DS_NENG {NENG_TABLE}u"]
     npairs = sum(len(s["pairs"]) for s in sounds)
-    L += [f"#define DS_NPAIRS {npairs}u", "",
-          "static const ds_pair_t DS_PAIR[DS_NPAIRS ? DS_NPAIRS : 1u] = {"]
-    at = 0
+    bits = []
+
+    def put_bits(value, n):
+        for shift in range(n - 1, -1, -1):
+            bits.append((value >> shift) & 1)
+
     for s in sounds:
-        s["at"] = at
-        L.append(f"    /* {engines[s['e']]['name']} {s['idx']} {s['name']} */")
-        row = [f"{{{idname[i]}, {v}}}" for i, v in s["pairs"]]
-        for i in range(0, len(row), 6):
-            L.append("    " + ", ".join(row[i:i + 6]) + ",")
-        at += len(s["pairs"])
+        s["at"] = len(bits)
+        pairs = s["pairs"]
+        if pairs:
+            put_bits(pairs[0][0], 8)                   # first parameter ID is absolute
+            for j, (pid, value) in enumerate(pairs):
+                if j:
+                    delta = pid - pairs[j - 1][0]
+                    if not 1 <= delta <= 255:
+                        die(f"{s['name']}: parameter IDs must be strictly increasing bytes")
+                    if delta <= 15:
+                        put_bits(delta - 1, 4)           # nibble 15 is reserved for an absolute-ID escape
+                    else:
+                        put_bits(15, 4)
+                        put_bits(pid, 8)
+                put_bits(value & 0xFF, 8)                # exact two's-complement byte representation
+    packed_bits = len(bits)
+    if packed_bits > 0xFFFFFF:
+        die(f"packed ID/value stream is {packed_bits} bits; ds_sound_t.at is limited to 24 bits")
+    packed = [sum(bits[i + j] << (7 - j) for j in range(min(8, len(bits) - i)))
+              for i in range(0, len(bits), 8)]
+    L += [f"#define DS_NPAIRS {npairs}u", f"#define DS_PACKED_BITS {packed_bits}u",
+          f"#define DS_PACKED_BYTES {len(packed)}u", "",
+          "/* Per sound: first ID (8 bits), then each exact value byte; before values after the first, a 4-bit delta minus one (1..15),",
+          " * or nibble 15 followed by an absolute ID byte. The final partial byte is zero padded; the pair count bounds every reader. */",
+          "static const uint8_t DS_PACKED[DS_PACKED_BYTES ? DS_PACKED_BYTES : 1u] = {"]
+    for i in range(0, len(packed), 20):
+        L.append("    " + ", ".join(map(str, packed[i:i + 20])) + ",")
+    if not packed:
+        L.append("    0")
     L += ["};", "", "/* engine-major: sound k of engine e = DS_SOUNDS[DS_ENG_AT[e] + k] (k: the factory index) */",
           "static const ds_sound_t DS_SOUNDS[DS_N ? DS_N : 1u] = {"]
     for s in sounds:
-        fl = " | ".join(f for f, on in (("DSF_MONO", s["mono"]), ("DSF_ARP", s["arp"]), ("DSF_KEYS", s["keys"])) if on) or "0"
-        L.append(f"    {{\"{s['name']}\", {s['e']}, {cats[s['cat']]}, {fl}, {len(s['pairs'])}, {s['bamt']}, {s['at']}, "
-                 f"{s['bseed']}u}},"
+        fl = " | ".join(f for f, on in (("DSF_MONO", s["mono"]), ("DSF_ARP", s["arp"]), ("DSF_KEYS", s["keys"]), ("DSF_TEXT", s["text"])) if on) or "0"
+        L.append(f"    {{\"{s['name']}\", {s['e']}, {cats[s['cat']]}, {fl}, {len(s['pairs'])}, {s['at']}u, "
+                 f"{s['bseed']}u, {s['bamt']}" + (f" DS_TAMT({s['tamt']})" if s['tamt'] else "") + "},"
                  f"   /* {s['cat']}; {s['recipe']} */")
     L += ["};"]
+    L += ["", "/* Test-only independent reference: original uncompressed (ID, signed value) pairs. */",
+          "#ifdef DS_PACK_EQUIV_TEST",
+          "static const ds_pair_t DS_REF_PAIR[DS_NPAIRS ? DS_NPAIRS : 1u] = {"]
+    ref_at = 0
+    ref_offsets = []
+    for s in sounds:
+        ref_offsets.append(ref_at)
+        row = [f"{{{idname[i]}, {v}}}" for i, v in s["pairs"]]
+        for i in range(0, len(row), 6):
+            L.append("    " + ", ".join(row[i:i + 6]) + ",")
+        ref_at += len(s["pairs"])
+    L += ["};", f"static const uint16_t DS_REF_AT[DS_N + 1u] = {{" + ", ".join(map(str, ref_offsets + [ref_at])) + "};",
+          "#endif", ""]
     L += ["", "/* End B as exact values (tools/endb.py = morph.c's End B block, MBV, as a patch record carries it): DS_ENDB_AT[g]..DS_ENDB_AT[g + 1] are sound g's block bytes",
           " * in DS_ENDB (g = its DS_SOUNDS index); equal = the sound has no block (its End B is rolled from its seed). Load: morph.c morph_bv_load. */"]
     at, offs, flat = 0, [], []
@@ -485,26 +537,52 @@ def emit(path, sounds, lst, engines, cats, idname):
     L += ["};", f"static const uint16_t DS_ENDB_AT[DS_N + 1u] = {{" + ", ".join(map(str, offs)) + "};", ""]
     eng_at = [sum(1 for s in sounds if s["e"] < e) for e in range(NENG_TABLE + 1)]
     L += ["static const uint8_t DS_ENG_AT[DS_NENG + 1u] = {" + ", ".join(map(str, eng_at)) + "};",
-          "/* the browse order (BASS LEAD PAD PLUCK KEYS FX OTHER; within one by ENGINE_ORDER, then name): DS_SOUNDS indices */",
+          "/* the browse order (BASS LEAD PAD PLUCK KEYS FX OTHER; within one by ENGINE_ORDER, then name; the sounds past N_BASE after those, the same way): DS_SOUNDS indices */",
           "static const uint8_t DS_LIST[DS_N ? DS_N : 1u] = {" + ", ".join(map(str, lst)) + "};", ""]
     Path(path).write_text("\n".join(L))
-    return npairs
+    return npairs, len(packed)
 
 
 def table(sounds, lst, engines):
-    print(f"{'#':>3} {'NAME':<13}{'CAT':<6} {'ENGINE':<7}{'IDX':>4} {'PAIRS':>5}  ARP MONO BAMT BSEED")
+    print(f"{'#':>3} {'NAME':<13}{'CAT':<6} {'ENGINE':<7}{'IDX':>4} {'PAIRS':>5}  ARP MONO TEXT BAMT BSEED")
     for n, g in enumerate(lst):
         s = sounds[g]
         print(f"{n + 1:>3} {s['name']:<13}{s['cat']:<6} {engines[s['e']]['name']:<7}{s['idx']:>4} {len(s['pairs']):>5}"
-              f"  {'ON ' if s['arp'] else '-  '} {'Y' if s['mono'] else '-'}    {s['bamt']:>4} {s['bseed'] or 'hash':>5}")
+              f"  {'ON ' if s['arp'] else '-  '} {'Y' if s['mono'] else '-'}    {'Y' if s['text'] else '-'}    {s['bamt']:>4} {s['bseed'] or 'hash':>5}")
+    flagged = [sounds[g]["name"] for g in lst if sounds[g]["text"]]
+    print(f"TEXT (DSF_TEXT, TIDE's JOURNEY texture family): {len(flagged)} sounds: {', '.join(flagged)}")
+
+
+PIN = Path(__file__).resolve().parent / "sound_numbering.pin"
+N_PIN = 163                       # #1 .. #163: shipped (the 128 of the bank, MIDI bank 2 programs, favourites): append-only, never renumbered
+
+
+def pin_lines(sounds, lst, engines):
+    return [f"{n + 1} {engines[sounds[g]['e']]['name']} {sounds[g]['idx']} {sounds[g]['name']}" for n, g in enumerate(lst[:N_PIN])]
+
+
+def check_pin(sounds, lst, engines):
+    """Finding 10 (audit 2026-11-08): the browse numbers #1..#163 (n, engine, idx, name) equal tools/sound_numbering.pin. A new sound
+    goes at the END of duell_sounds.py (a later number, the next idx of its engine); changing the pin is a change of what a user has stored."""
+    got = pin_lines(sounds, lst, engines)
+    want = PIN.read_text().splitlines()
+    want = [x for x in want if x and not x.startswith("#")]
+    bad = [(w, g) for w, g in zip(want, got) if w != g]
+    if len(got) != len(want) or bad:
+        die(f"sound numbering #1..#{N_PIN} differs from {PIN.name} (append-only): " + (f"first: pinned {bad[0][0]!r}, now {bad[0][1]!r}" if bad else f"{len(got)} sounds, {len(want)} pinned"))
 
 
 def main(argv):
     data = load_data(Path(__file__).resolve().parent / "duell_sounds.py")
     sounds, lst, engines, cats, idname = build(data)
+    if len(argv) > 1 and argv[1] == "--print-pin":
+        for line in pin_lines(sounds, lst, engines):
+            print(line)
+        return
+    check_pin(sounds, lst, engines)
     if len(argv) > 1 and argv[1] != "--check":
-        n = emit(argv[1], sounds, lst, engines, cats, idname)
-        size = 2 * n + len(sounds) * (12 + 4) + sum(len(s["name"]) + 1 for s in sounds) + NENG_TABLE + 1
+        n, packed_bytes = emit(argv[1], sounds, lst, engines, cats, idname)
+        size = packed_bytes + len(sounds) * (12 + 4) + sum(len(s["name"]) + 1 for s in sounds) + NENG_TABLE + 1
         print(f"gen_duell_sounds: {len(sounds)} sounds, {n} pairs, ~{size} B flash -> {argv[1]}")
     else:
         table(sounds, lst, engines)

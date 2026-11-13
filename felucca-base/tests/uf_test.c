@@ -56,14 +56,17 @@ static int32_t ob[2 * CTL];
 static int32_t *rec_l;                                   /* shared with the render's child process (mmap) */
 static volatile uint32_t *rec_nsh;
 #define rec_n (*rec_nsh)
+static int32_t *cut_sh;                                  /* filter 1's slewed CUT (Q8 dial steps) of part 1 per block of the last render */
+#define EFF_CUT() (ucut_sm[0])
 static int32_t *peak_sh;                                 /* the part's peak per block of the last render (t->peak), MAXB entries */
 static void shared_init(void)
 {
-    uint32_t sz = MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t) + 64u;
+    uint32_t sz = MAXB * CTL * sizeof(int32_t) + 2u * MAXB * sizeof(int32_t) + 64u;
     uint8_t *m = mmap(0, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
     rec_l = (int32_t *)m;
     peak_sh = (int32_t *)(m + MAXB * CTL * sizeof(int32_t));
-    rec_nsh = (volatile uint32_t *)(m + MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t));
+    cut_sh = (int32_t *)(m + MAXB * CTL * sizeof(int32_t) + MAXB * sizeof(int32_t));
+    rec_nsh = (volatile uint32_t *)(m + MAXB * CTL * sizeof(int32_t) + 2u * MAXB * sizeof(int32_t));
 }
 static uint32_t eng_named(const char *n)
 {
@@ -116,6 +119,7 @@ static void mblk(uint32_t n)
     while (n--) {
         mix_block(ob, CTL);
         if (rec_n < MAXB * CTL) {
+            cut_sh[rec_n / CTL] = EFF_CUT();
             peak_sh[rec_n / CTL] = trk[0].peak;              /* the part's own level this block (mix_part's running maximum) */
             trk[0].peak = 0;
             for (uint32_t i = 0; i < CTL; i++)
@@ -266,8 +270,8 @@ static void t_who_params(void)
          fmt_is(P_FREEC, 65, "BP>HP", "") && fmt_is(P_FREEC, 126, "BP>HP", "") && fmt_is(P_FREEC, 127, "HP", "") &&
          fmt_is(P_FREED, 1, "12dB", "") && fmt_is(P_FREED, 2, "24dB", "");
     expect("MODE shows LP / LP>BP / BP / BP>HP / HP (5 characters at most), SLOPE 12dB / 24dB", ok);
-    expect("CUT and RES can be automated (a knob move is a parameter lock / event); MODE and SLOPE are settings (not)",
-           motion_param(P_FREEA) && motion_param(P_FREEB) && !motion_param(P_FREEC) && !motion_param(P_FREED));
+    expect("CUT, RES and MODE can be automated (1.1: the matrix destinations, MODE one since 0.2.25); SLOPE is a setting (not)",
+           motion_param(P_FREEA) && motion_param(P_FREEB) && motion_param(P_FREEC) && !motion_param(P_FREED));
     ok = 1;
     for (i = 0; i < NELEM(MIDI_CC_ENG); i++)
         ok &= ENGINES[i]->ufilt == 1u ? MIDI_CC_ENG[i] == MCC_UF : ENGINES[i]->ufilt == 2u ? MIDI_CC_ENG[i] && MIDI_CC_ENG[i] != MCC_UF : 1;
@@ -386,7 +390,7 @@ static void open_routes(track_t *t)                      /* routes that only ope
 }
 static void routes_on(track_t *t)
 {
-    t->p[P_ED_FLT] = -40; t->p[P_LD_FLT] = 50; t->p[P_E2FLT] = 60; t->p[P_L2FLT] = 30;
+    t->p[P_LD_FLT] = 50; t->p[P_E2FLT] = -60;       /* (1.1: AMP ENV and LFO 2 FLT depths no longer act (voice.c); ENV 2 below the open end closes it) */
     t->p[P_E2SUS] = 127; t->p[P_L2PIT] = 0; t->p[P_LRATE] = 90;
 }
 static void routes_zero(track_t *t)                      /* every route present but at depth 0 / amount 0 */
@@ -433,7 +437,7 @@ static void t_bypass(void)
     expect("the defaults (MODE LP, CUT 82): RES 127 and SLOPE 24 dB change nothing, bit for bit, on all nine engines (the filter does not run)", ok_res);
     expect("  .. routes that only open it (ENV 1 / ENV 2 FLT +, VEL -> CUT +) keep it at the open end: bit for bit", ok_open);
     expect("  .. every route assigned at 0 (depths 0, matrix CUT routes at AMT 0): bit for bit", ok_zero);
-    expect("  .. routes that close it (ENV 1 FLT -40, the LFOs) run it: the render differs", ok_routes);
+    expect("  .. routes that close it (ENV 2 FLT -60, LFO 1 FLT) run it: the render differs", ok_routes);
     expect("CUT 81 (one step in) is nearly transparent on every engine: it runs on all of them, additively", ok_near);
     {   /* the exact rule: the bypass is MODE LP at the open end; every other MODE runs there */
         uint32_t e = eng_named("PHASE");
@@ -502,7 +506,7 @@ static void t_bypass_series(void)
 }
 
 /* ------------------------------------------------------------------ 4 RESPONSE --- */
-#define TAMP 16000.0
+static double TAMP = 16000.0;                            /* (the RES LAW check measures at 2000: under the soft knee at full RES) */
 /* the gain of uf_run at frequency f (a sine, from rest: 0.3 s to settle, 0.3 s measured), CUT step c (Q8 any), MODE, RES, SLOPE; the
  * bypass (MODE LP at the open end): 1 */
 static double uf_gain(int32_t cq8, int32_t mode, int32_t res, int32_t slope, double f)
@@ -620,7 +624,7 @@ static void t_response(void)
                                                          * (away from the table's ends: the bilinear warp near 22 kHz, the fixed point's floor near 30 Hz) */
                     ok_slope &= s == 2u ? sl < -20.0 && sl > -27.0 : sl < -9.0 && sl > -13.5;
                 if (m == 64 && c == 41) {                   /* the band-pass round 690 Hz: its peak there, both sides down */
-                    ok_bp &= d[3] > -3.0 && d[4] > (s == 2u ? -4.5 : -3.5) && d[0] < -12.0 && d[7] < -12.0;
+                    ok_bp &= d[3] > (s == 2u ? -3.5 : -3.0) && d[4] > (s == 2u ? -4.5 : -3.5) && d[0] < -12.0 && d[7] < -12.0;
                 }
                 if (m == 32 && c == 41)                     /* LP>BP: between the two, nothing beyond either */
                     ok_blend &= d[0] < 0.5 && d[0] > -12.0 && d[7] < -12.0;
@@ -643,6 +647,31 @@ static void t_response(void)
     expect("BP (MODE 64) at CUT 41: the band round 690 Hz within 3.5 dB (24 dB: 4.5), 50 Hz and 10 kHz 12 dB down or more", ok_bp);
     expect("MODE 32 (LP>BP) and 96 (BP>HP): the blends, one end kept, the other 12 dB down, nothing above 0.5 dB", ok_blend);
     expect("RES 127 raises the cutoff by 12 dB or more over RES 0 (12 and 24 dB), below 24 dB", ok_res);
+    {   /* RES LAW (audit P07): the damping exponential in RES, so the whole knob is resonance: a peak from RES 32 on, about equal dB every 32 steps.
+         * The peak over the passband (LP at CUT 41: the largest gain from 0.6 to 1.4 x the cutoff against the gain at 1/8 of it).
+         * The linear law of before: 12 dB 0 / 0.9 / 5.7 / 16.8 dB at RES 32 / 64 / 96 / 127 (no peak at all up to RES 48) */
+        double pk[2][4], fc = uf_hz(41);
+        int ok_law = 1;
+        TAMP = 2000.0;
+        for (s = 1; s <= 2u; s++) {
+            for (q = 0; q < 4u; q++) {
+                int32_t rr = q < 3u ? 32 * (int32_t)(q + 1u) : 127;
+                double g0 = uf_gain(41 << 8, 0, rr, (int32_t)s, fc / 8), m = 0;
+                for (r = 0; r <= 16u; r++) {
+                    double g = uf_gain(41 << 8, 0, rr, (int32_t)s, fc * (0.6 + 0.05 * r));
+                    m = g > m ? g : m;
+                }
+                pk[s - 1u][q] = db_of(m / g0);
+            }
+            printf("uf:   RES law, %s: the peak over the passband at RES 32 / 64 / 96 / 127: %.1f / %.1f / %.1f / %.1f dB\n", s == 2u ? "24 dB" : "12 dB",
+                   pk[s - 1u][0], pk[s - 1u][1], pk[s - 1u][2], pk[s - 1u][3]);
+            ok_law &= pk[s - 1u][0] > 0.5;
+            for (q = 1; q < 4u; q++)
+                ok_law &= pk[s - 1u][q] - pk[s - 1u][q - 1u] > 3.0 && pk[s - 1u][q] - pk[s - 1u][q - 1u] < 8.0;
+        }
+        TAMP = 16000.0;
+        expect("RES LAW: a peak from RES 32 on and 3..8 dB more every 32 steps up to 127, 12 and 24 dB (the linear law gave none below 48)", ok_law);
+    }
 }
 
 /* ------------------------------------------------------------------ 4b BASS AT HIGH RES --- */
@@ -671,6 +700,53 @@ static int32_t uf_saw_peak(int32_t cq8, int32_t res, int32_t slope, double f, in
                     pk = abs(b[j]);
     }
     return pk;
+}
+/* ------------------------------------------------------------------ 4c BELOW 100 Hz (audit P03) --- */
+/* the mean of uf_run's output for a sine (steady state): the truncated fixed point left a DC offset of 0.5 / g, about -30 dBFS at a 40 Hz cutoff */
+static double uf_dc(int32_t cq8, int32_t res, double f)
+{
+    voice_t v;
+    int16_t p[P_COUNT];
+    int32_t b[CTL];
+    double sum = 0;
+    uint32_t i, j, N = (uint32_t)(0.8 * FS) / CTL * CTL, from = (uint32_t)(0.4 * FS), n = 0;
+    memset(&v, 0, sizeof v);
+    memset(p, 0, sizeof p);
+    p[P_FREEB] = (int16_t)res;
+    p[P_FREED] = 1;
+    for (i = 0; i < N; i += CTL) {
+        for (j = 0; j < CTL; j++)
+            b[j] = (int32_t)lround(TAMP * sin(2 * M_PI * f * (i + j) / FS));
+        uf_run(&v, b, CTL, cq8, p);
+        if (i >= from)
+            for (j = 0; j < CTL; j++)
+                sum += b[j], n++;
+    }
+    return sum / n;
+}
+static void t_lowcut(void)
+{
+    static const double HZ[] = {45, 60, 100};
+    uint32_t q;
+    int ok_peak = 1, ok_stop = 1, ok_dc = 1;
+    for (q = 0; q < NELEM(HZ); q++) {
+        int32_t cq = uf_q8_of_hz(HZ[q]);
+        double fc = 30.0 * pow(16000.0 / 30.0, (40 + ((cq * 99) >> 6)) / 256.0 / 127.0), ideal = 20 * log10(4096.0 / (8192 - 7600)), dc;   /* (1 / k at the cutoff) */
+        double pk, st, t0;
+        t0 = TAMP;
+        TAMP = 1500.0;
+        pk = db_of(uf_gain(cq, 0, 127, 1, fc));
+        TAMP = t0;
+        st = db_of(uf_gain(cq, 0, 0, 1, 4 * fc));
+        dc = uf_dc(cq, 0, 4 * fc);
+        printf("uf:   CUT %.0f Hz: RES 127 peak %+.1f dB (ideal %+.1f), RES 0 at 4 x the cutoff %+.1f dB (ideal -24.6), DC %+.0f\n", fc, pk, ideal, st, dc);
+        ok_peak &= pk > ideal - 1.5 && pk < ideal + 1.5;
+        ok_stop &= st < -23.1 && st > -26.1;
+        ok_dc &= fabs(dc) < 40;
+    }
+    expect("below 100 Hz (CUT 45 / 60 / 100 Hz, 12 dB LP): the RES 127 peak at the cutoff within 1.5 dB of the ideal +16.8 (the Q13 coefficients gave +14.5 at 100 Hz, +15.4 at 60 Hz)", ok_peak);
+    expect("below 100 Hz: RES 0 at 4 x the cutoff within 1.5 dB of the ideal -24.6", ok_stop);
+    expect("below 100 Hz: a steady sine leaves no DC offset (under 40 of +-16000; the truncating filter left 700 .. 1200)", ok_dc);
 }
 static void t_bass(void)
 {
@@ -736,7 +812,7 @@ static void ref_uf_run(ref_v_t *v, int32_t *buf, uint32_t n, int32_t c, int32_t 
     if (!hp && !ic1 && !ic2)
         ic2 = buf[0] >> 1;
     for (i = 0; i < n; i++) {
-        int32_t x = buf[i] >> 1, v3 = x - ic2, v1 = (f.a1 * ic1 + f.a2 * v3) >> 13, v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3) >> 13), y;
+        int32_t x = buf[i] >> 1, v3 = x - ic2, v1 = ic1 + ((f.b1 * ic1 + f.a2 * v3 + (1 << (f.sh - 1))) >> f.sh), v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3 + (1 << (f.sh - 1))) >> f.sh), y;
         ic1 = clamp(2 * v1 - ic1, -150000, 150000);
         ic2 = clamp(2 * v2 - ic2, -150000, 150000);
         y = hp ? x - ((k * v1) >> 12) - v2 : v2;
@@ -868,6 +944,34 @@ static void fb_cut_hp(track_t *t, uint32_t b)            /* HP: CUT 60 up to 82 
     t->p[P_FREEA] = (int16_t)(k < 22u ? 60u + k : 104u - k);
 }
 static void fb_slope(track_t *t, uint32_t b) { set_f(t); t->p[P_FREED] = (int16_t)(b / 100u % 2u ? 2 : 1); }
+/* the CUT dial slewed (audit P08): a sweep of the dial over 1 s moves filter 1's cutoff in steps well under a dial step a block (it moved 1.32 semitones at a block edge),
+ * lands exactly, and a jump of 8 steps or more (a sound load) is not slewed */
+static void fb_ramp(track_t *t, uint32_t b)              /* CUT 20 up to 60, a dial step every 34 blocks (1 s) from block 100 */
+{
+    uint32_t k = b < 100u ? 0u : (b - 100u) / 34u;
+    set_f(t);
+    t->p[P_FREEA] = (int16_t)(20u + (k > 40u ? 40u : k));
+}
+static void fb_cjump(track_t *t, uint32_t b) { set_f(t); t->p[P_FREEA] = (int16_t)(b < 300u ? 10 : 80); }
+static void t_cutslew(void)
+{
+    int32_t worst = 0, lag = 0, d;
+    uint32_t b, e = eng_named("PHASE");
+    sf(20, 60, 0, 1);
+    render_blk(e, fb_ramp);
+    for (b = 101u; b < 1500u; b++) {
+        d = cut_sh[b] - cut_sh[b - 1u];
+        worst = d < 0 ? (-d > worst ? -d : worst) : (d > worst ? d : worst);
+        d = cut_sh[b] - (int32_t)(20u + ((b - 100u) / 34u > 40u ? 40u : (b - 100u) / 34u)) * 256;
+        lag = d < 0 ? (-d > lag ? -d : lag) : (d > lag ? d : lag);
+    }
+    printf("uf:   CUT dial swept 20 .. 60 in 1 s: the largest move of the cutoff in one block %d of 256 (a dial step), the largest lag behind the dial %d\n", worst, lag);
+    expect("the CUT dial swept over 1 s: the cutoff moves under half a dial step (128 / 256) in any block, not a whole step", worst > 0 && worst <= 128);
+    expect("the swept CUT lands exactly on the dial (60) and never trails it by more than a dial step", cut_sh[1500] == 60 * 256 && lag <= 256);
+    sf(10, 60, 0, 1);
+    render_blk(e, fb_cjump);
+    expect("a CUT jump of 70 steps (a sound load) is not slewed: the cutoff is at the new dial in that block", cut_sh[299] == 10 * 256 && cut_sh[300] == 80 * 256);
+}
 static void t_sweeps(void)
 {
     static const char *const E[3] = {"PHASE", "WHEEL", "WAVE"};
@@ -920,10 +1024,8 @@ static void t_sweeps(void)
 }
 
 /* ------------------------------------------------------------------ 7 ROUTES --- */
-static void r_env1(track_t *t) { set_f(t); t->p[P_ED_FLT] = 40; }
 static void r_env2(track_t *t) { set_f(t); t->p[P_E2FLT] = 40; t->p[P_E2SUS] = 127; }
 static void r_lfo1(track_t *t) { set_f(t); t->p[P_LD_FLT] = 60; t->p[P_LRATE] = 100; t->p[P_LWAVE] = 2; }
-static void r_lfo2(track_t *t) { set_f(t); t->p[P_L2FLT] = 60; t->p[P_L2RATE] = 100; t->p[P_L2WAVE] = 2; }
 static void r_vel(track_t *t) { set_f(t); t->p[P_M1SRC] = MS_VEL; t->p[P_M1DST] = MD_CUT; t->p[P_M1AMT] = 63; }
 static void r_env(track_t *t) { set_f(t); t->p[P_M1SRC] = MS_ENV; t->p[P_M1DST] = MD_CUT; t->p[P_M1AMT] = 40; }
 static void r_at(track_t *t) { set_f(t); t->p[P_M1SRC] = MS_AT; t->p[P_M1DST] = MD_CUT; t->p[P_M1AMT] = 40; t->at = 127; }
@@ -943,8 +1045,8 @@ static double hi_swing(void)                              /* the high band over 
 static void t_routes(void)
 {
     static const struct { const char *n; setup_t s; int moves; } R[] = {
-        {"ENV 1 FLT +40", r_env1, 0}, {"ENV 2 FLT +40", r_env2, 0}, {"matrix VEL -> CUT +63", r_vel, 0}, {"matrix ENV -> CUT +40", r_env, 0},
-        {"matrix AT -> CUT +40", r_at, 0}, {"LFO 1 FLT +60", r_lfo1, 1}, {"LFO 2 FLT +60", r_lfo2, 1}, {"matrix LFO2 -> CUT +40", r_lfo2m, 1}};
+        {"ENV 2 FLT +40", r_env2, 0}, {"matrix VEL -> CUT +63", r_vel, 0}, {"matrix ENV -> CUT +40", r_env, 0},
+        {"matrix AT -> CUT +40", r_at, 0}, {"LFO 1 FLT +60", r_lfo1, 1}, {"matrix LFO2 -> CUT +40", r_lfo2m, 1}};
     uint32_t i, k, ok = 1, s;
     static const char *const E[2] = {"PHASE", "WAVE"};   /* (GRAIN until 0.2.8) */
     for (s = 1; s <= 2u; s++)
@@ -965,7 +1067,7 @@ static void t_routes(void)
                     ok &= h > base + 4.0;
             }
         }
-    expect("PHASE, WAVE at CUT 37, 12 and 24 dB: ENV 1 / ENV 2 FLT, matrix VEL / ENV / AT -> CUT open the filter; LFO 1 / LFO 2 FLT, matrix LFO2 -> CUT sweep it", ok);
+    expect("PHASE, WAVE at CUT 37, 12 and 24 dB: ENV 2 FLT, matrix VEL / ENV / AT -> CUT open the filter; LFO 1 FLT, matrix LFO2 -> CUT sweep it (1.1: AMP ENV and LFO 2 FLT no longer act)", ok);
     {   /* the sum clamps: a deep route cannot leave the dial (the open end at most) */
         sf(70, 0, 0, 1);
         render(eng_named("PHASE"), r_vel, 100);
@@ -1145,18 +1247,10 @@ static void t_migrate(void)
         {
             uint32_t len = pt_encode(5u, 1u, &r, 0), n = 0, at, has48 = 0, has45 = 0;
             const uint8_t *o = pt_enc;
-            if (!(o[4] & PTF_BM)) {
-                n = o[19];
-                at = PT_FIX;
-                for (i = 0; i < n; i++) {
-                    has45 |= o[at + 2u * i] == P_FREEA && o[at + 2u * i + 1u] == UF_STEPS + 64;
-                    has48 |= o[at + 2u * i] == P_FREED && o[at + 2u * i + 1u] == 1 + 64;
-                }
-            } else {
-                has45 = o[PT_FIX + P_FREEA / 8u] >> (P_FREEA % 8u) & 1u;
-                has48 = o[PT_FIX + P_FREED / 8u] >> (P_FREED % 8u) & 1u;
-            }
-            expect("a patch of today (the bypass) is stored with CUT 82 and SLOPE 12 dB (4 bytes more than before: the mark of today's CUT)", len > PT_FIX && has45 && has48);
+            (void)n; (void)at;                        /* (PT_VER 4: the values are always a bitmap, a bit per id) */
+            has45 = o[PT_FIX + P_FREEA / 8u] >> (P_FREEA % 8u) & 1u;
+            has48 = o[PT_FIX + P_FREED / 8u] >> (P_FREED % 8u) & 1u;
+            expect("a patch of today (the bypass) is stored with the mark of today's CUT (82); SLOPE 12 dB is the default and, in the sparse PT_VER 4 record, left out", len > PT_FIX && has45 && !has48);
         }
     }
     {   /* projects: 0.2.14 converts no 0.2.2 CUT (SLOPE 0) any more; a project of today restores as it is, the CUT automation too */
@@ -1411,7 +1505,7 @@ static void t_ktrk_params(void)
     param_format(&TP[P_KTRK], 32, b, &u); ok &= str_eq(b, "+51");
     param_format(&TP[P_KTRK], 1, b, &u); ok &= str_eq(b, "+2");
     expect("  .. shown -100 % .. 0 .. +100 % (63 = +100, 32 = +51)", ok);
-    expect("  .. automatable (a knob move is a lock / event), MIDI LEARN takes it (every id below P_E0)", motion_param(P_KTRK) && P_KTRK < P_E0);
+    expect("  .. not automatable (1.1: only the matrix destinations are recorded, HANDOFF_V2 item 34), every id below P_E0 for MIDI LEARN", !motion_param(P_KTRK) && P_KTRK < P_E0);
     ok = 1;
     {   /* a stored patch keeps it: SAVE writes it (it used to write QNT's default there), LOAD brings it back; the store's default is 0 */
         track_t *t;
@@ -1438,7 +1532,7 @@ static void t_ktrk_params(void)
 }
 
 static int hid(uint32_t id) { return card_hidden_vp(&TSEL->p[id]); }
-static const char *card_label(uint32_t c, int16_t **vp)
+static const char *card_lbl(uint32_t c, int16_t **vp)        /* (ui_draw.c has its own card_label since 1.1) */
 {
     const param_desc_t *d = page_desc(cur_page(), c, vp);
     return d ? d->label : "";
@@ -1452,57 +1546,50 @@ static void t_ktrk_ui(void)
     init_engine_of(TSEL, eng_named("PHASE")); plain_filter(TSEL);
     go_title("MULTI FILTER 2/2"); frame();
     ok = str_eq(cur_page()->title, "MULTI FILTER 2/2");
-    ok &= str_eq(card_label(0, &vp), "KTRK") && vp == &TSEL->p[P_KTRK] && str_eq(card_label(1, &vp), "ENV 2") && vp == &TSEL->p[P_E2FLT] &&
-          str_eq(card_label(2, &vp), "LFO 1") && vp == &TSEL->p[P_LD_FLT] && str_eq(card_label(3, &vp), "LFO 2") && vp == &TSEL->p[P_L2FLT];
-    ok &= !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT) && !hid(P_L2FLT);
+    ok &= str_eq(card_lbl(0, &vp), "KTRK") && vp == &TSEL->p[P_KTRK] && str_eq(card_lbl(1, &vp), "ENV 2") && vp == &TSEL->p[P_E2FLT] &&
+          str_eq(card_lbl(2, &vp), "LFO 1") && vp == &TSEL->p[P_LD_FLT];
+
+    ok &= !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT);
     turn(EN_K1, 5); ok &= TSEL->p[P_KTRK] == 5;
     turn(EN_K2, 3); ok &= TSEL->p[P_E2FLT] == 3;
     turn(EN_K3, -4); ok &= TSEL->p[P_LD_FLT] == -4;
-    turn(EN_K4, 6); ok &= TSEL->p[P_L2FLT] == 6;
-    expect("PHASE (ufilt 1): MULTI FILTER 2/2 is K1 KTRK, K2 ENV 2 (the id P_E2FLT of the DEST page: ONE stored value), K3 LFO 1 (P_LD_FLT), K4 LFO 2 (P_L2FLT; no AMP ENV card); all four live", ok);
+    expect("PHASE (ufilt 1): MULTI FILTER 2/2 is K1 KTRK, K2 ENV 2 (the id P_E2FLT of the DEST page: ONE stored value), K3 LFO 1 (P_LD_FLT); K4 empty (1.1: the LFO 2 and AMP ENV cutoff depths are gone); all three live", ok);
     go_title("ENV 2 DEST"); frame();
-    ok2 = !hid(P_E2FLT) && !hid(P_E2SHP);
+    ok2 = !hid(P_E2FLT);
     b = TSEL->p[P_E2FLT];
     turn(EN_K1, 2);
     ok2 &= TSEL->p[P_E2FLT] == b + 2;
-    turn(EN_K2, 4); ok2 &= TSEL->p[P_E2SHP] == 4;
+
     go_title("LFO 1 DEST"); frame();
     ok2 &= !hid(P_LD_FLT) && !hid(P_LD_PIT) && !hid(P_LD_SHP) && !hid(P_LD_AMP);
     b = TSEL->p[P_LD_FLT];
     turn(EN_K2, 2); ok2 &= TSEL->p[P_LD_FLT] == b + 2;
-    go_title("AMP DEST"); frame();
-    ok2 &= !hid(P_ED_FLT);
-    go_title("LFO 2 DEST"); frame();
-    ok2 &= !hid(P_L2FLT);
-    b = TSEL->p[P_L2FLT];
-    turn(EN_K2, 3); ok2 &= TSEL->p[P_L2FLT] == b + 3;
     go_title("MULTI FILTER 2/2"); frame();
-    ok2 &= card_label(1, &vp)[0] == 'E' && vp == &TSEL->p[P_E2FLT] && TSEL->p[P_E2FLT] == 3 + 2 && TSEL->p[P_LD_FLT] == -4 + 2 && TSEL->p[P_L2FLT] == 6 + 3;
-    expect("  .. the same stored values on the DEST pages: ENV 2 DEST, LFO 1 DEST and LFO 2 DEST draw their FLT cards too (ufilt 1), the knobs move the value MULTI FILTER 2/2 shows; AMP DEST keeps its own FLT (no card on 2/2)", ok2);
+    ok2 &= card_lbl(1, &vp)[0] == 'E' && vp == &TSEL->p[P_E2FLT] && TSEL->p[P_E2FLT] == 3 + 2 && TSEL->p[P_LD_FLT] == -4 + 2;
+    expect("  .. the same stored values on the DEST pages: ENV 2 DEST and LFO 1 DEST draw their FLT cards too (ufilt 1), the knobs move the value MULTI FILTER 2/2 shows (AMP DEST and LFO 2 DEST have no FLT card in 1.1)", ok2);
     ui_power_on();
     init_engine_of(TSEL, eng_named("ANALOG"));
     go_title("MULTI FILTER 2/2"); frame();
-    ok3 = !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT) && !hid(P_L2FLT);
+    ok3 = !hid(P_KTRK) && !hid(P_E2FLT) && !hid(P_LD_FLT);
     b = TSEL->p[P_KTRK]; turn(EN_K1, 7); ok3 &= TSEL->p[P_KTRK] == b + 7;
     b = TSEL->p[P_E2FLT]; turn(EN_K2, 3); ok3 &= TSEL->p[P_E2FLT] == b + 3;
     b = TSEL->p[P_LD_FLT]; turn(EN_K3, 3); ok3 &= TSEL->p[P_LD_FLT] == b + 3;
-    b = TSEL->p[P_L2FLT]; turn(EN_K4, 3); ok3 &= TSEL->p[P_L2FLT] == b + 3;
     go_title("ENV 2 DEST"); frame();
     ok3 &= !hid(P_E2FLT);
     b = TSEL->p[P_E2FLT]; turn(EN_K1, 3); ok3 &= TSEL->p[P_E2FLT] == b + 3;
     go_title("LFO 1 DEST"); frame();
     ok3 &= !hid(P_LD_FLT);
     b = TSEL->p[P_LD_FLT]; turn(EN_K2, 3); ok3 &= TSEL->p[P_LD_FLT] == b + 3;
-    expect("ANALOG (ufilt 1 since cloud job J): MULTI FILTER 2/2 shows KTRK, ENV 2, LFO 1, LFO 2, all live; the DEST pages keep their FLT cards", ok3);
+    expect("ANALOG (ufilt 1 since cloud job J): MULTI FILTER 2/2 shows KTRK, ENV 2, LFO 1, all live; ENV 2 DEST and LFO 1 DEST keep their FLT cards", ok3);
     for (k = 0, ok = 1; k < NENG_SHOWN; k++) {
         const engine_t *e = ENGINES[eng_vis(k)];
         init_engine_of(TSEL, eng_vis(k));
         go_title("ENV 2 DEST"); frame();
         ok &= !hid(P_E2FLT);
         go_title("MULTI FILTER 2/2"); frame();
-        ok &= hid(P_E2FLT) == (e->ufilt != 1u) && hid(P_L2FLT) == (e->ufilt != 1u) && hid(P_LD_FLT) == (e->ufilt != 1u) && !hid(P_KTRK);
+        ok &= hid(P_E2FLT) == (e->ufilt != 1u) && hid(P_LD_FLT) == (e->ufilt != 1u) && !hid(P_KTRK);
     }
-    expect("  .. every engine shown: the DEST pages always draw their FLT cards; MULTI FILTER 2/2 draws ENV 2, LFO 1 and LFO 2 on the engines where they drive the multimode filter (ufilt 1) only", ok);
+    expect("  .. every engine shown: the DEST pages always draw their FLT cards; MULTI FILTER 2/2 draws ENV 2 and LFO 1 on the engines where they drive the multimode filter (ufilt 1) only", ok);
 }
 static void t_ktrk_roll(void)
 {
@@ -1782,8 +1869,10 @@ int main(void)
     t_bypass_edge();
     t_response();
     t_bass();
+    t_lowcut();
     t_exact();
     t_sweeps();
+    t_cutslew();
     t_routes();
     t_stable();
     t_migrate();

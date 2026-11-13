@@ -1,19 +1,32 @@
 name: Bug report
-description: Something in DUELL (the firmware, the emulator or the installer page) does not work as expected
+description: Something in TIDE (the firmware, the emulator, the installer or the editor) does not work as expected
 title: "[bug] "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        **DUELL** - MultiMorphing Bitimbral Synthesizer by OSCILL/R.
-        Thanks for testing the beta. DUELL is licensed under the GPL-3.0 with no warranty, and is not affiliated with M-VAVE.
-        Please do not paste private information. Back up your data before testing.
-  - type: input
-    id: version
+        **TIDE** is pssdrnk's fork of DUELL 1.1 by OSCILL/R. Report TIDE problems and problems with this fork's installer, emulator and editor here.
+        A problem that plain DUELL has too (it happens without TIDE, on OSCILL/R's own build) goes to [OSCILL/R](https://github.com/oscillr/DUELL/issues/new/choose).
+        Please read [Known issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_ISSUES.md) first. Do not paste private information.
+        Flashing is at your own risk and there is no warranty (GPL-3.0). If a flash failed, see [Recovery](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md).
+  - type: dropdown
+    id: channel
     attributes:
-      label: Firmware version
-      description: Hold HOME and open ABOUT, or the emulator page footer. For example "DUELL 0.2.1 beta".
+      label: Build channel
+      description: Which build shows the problem?
+      options:
+        - Stable (the validated build)
+        - Beta (the build under test)
+        - Built from the source (a branch or commit)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: TIDE version
+      description: The TIDE version MENU > SYSTEM > ABOUT shows next to the date (for example 1.0.0 or 1.0.0-b2; a trailing + means a build that is not exactly that release). Built it yourself? Give the branch or commit too.
     validations:
       required: true
   - type: dropdown
@@ -24,16 +37,21 @@ body:
         - Real FM-1 hardware
         - Browser emulator
         - Installer page
-        - Host tests / building
+        - Web editor
+        - Building or the host tests
     validations:
       required: true
   - type: input
-    id: hardware
+    id: setup
     attributes:
       label: Hardware and setup
-      description: FM-1 revision or serial info if you know it, computer and browser, USB cable (data cable, hub or not), MIDI devices connected.
-    validations:
-      required: true
+      description: Computer and browser, USB cable (data cable, hub or not), MIDI devices and clock source connected. Write "emulator" if there is no unit.
+  - type: textarea
+    id: tide
+    attributes:
+      label: TIDE settings in use
+      description: If TIDE is involved, give the AUTO TIDE page's MODE, TIME and WAIT and ALGORITHM (PART 1, PART 2 or BOTH), and the TIDE SETTINGS rows STYLE, TARGET, ROLL, TURNS, POLY, SYNC and ARC (and VARY BARS, WASH LEVEL if you changed them). Write "not TIDE" if it happens without a tide running.
+      placeholder: "MODE JRNY, TIME 16, WAIT 2, BOTH\nSTYLE DUB, TARGET BOTH, ROLL MUSIC, TURNS LEAD, POLY GENTLE, SYNC SOFT, ARC RISE"
   - type: textarea
     id: steps
     attributes:
@@ -51,18 +69,20 @@ body:
     id: actual
     attributes:
       label: Actual
-      description: What happened instead. Screen text, error messages, sounds.
+      description: What happened instead. Screen text, error messages, sounds. A photo or a short video helps.
     validations:
       required: true
   - type: textarea
     id: files
     attributes:
       label: Saved patches and files
-      description: Drag in your saved patches, MULTIs, backup file or the emulator's "Download saved data" file if they help reproduce this.
+      description: Drag in your backup file, saved patches or MULTIs, or the emulator's "Download saved data" file if they help reproduce this.
   - type: checkboxes
     id: checks
     attributes:
       label: Before sending
       options:
-        - label: I backed up my data, and I understand this is a beta with no warranty.
+        - label: I have a backup of my unit's data (or I am using the emulator), and I understand this is pre-release software with no warranty.
+          required: true
+        - label: I read the known issues and this is not listed there.
           required: true

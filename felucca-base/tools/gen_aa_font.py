@@ -24,11 +24,13 @@ Output (a C header; the glyph / font types live in the renderer, firmware/src/gf
                 a run of 1..16 zeros or 15s, or one value 1..14 (huff_pack; about 28 % less than 2 px per byte)
   AF_<N>_HC     the code: the number of codes of each length 1..15, then the symbols in code order
                 ((count - 1) << 4 | value)
-  AF_<N>_G      aag_t {off, adv (1/16 px), bx, by, bw, bh} per glyph and phase (PHASES of S M, PHASES_L of L:
+  AF_<N>_G      aag_t {off, shape} per glyph and phase (shape packs bx, width and vertical phase deltas;
+                PHASES of S M, PHASES_L of L:
                 the glyph drawn at a pen of +0, +1/phases .. px, next to each other), ASCII 32..126, then the
                 extras (Latin-1 by their code; the ellipsis U+2026 as code 0x85, as in Windows-1252)
   AF_<N>_KERN / _KD  kerning pairs (key = a<<8|b, sorted) and their deltas in 1/16 px (GPOS of the weight)
-  AF_<N>        aafont_t (its last field: log2 of the phases)
+  AF_<N>_METRICS shared advance (1/16 px), y bearing and height, once per character
+  AF_<N>        aafont_t (includes phase count, bitmap code and shared metrics)
 Prints the byte cost of every face.
 """
 import argparse
@@ -45,10 +47,12 @@ LOCAL_INTER = os.path.expanduser("~/Library/Fonts/Inter.ttc")   # 4.001: 0 Regul
 EXTRAS = [0xA9, 0xB0, 0xB7, 0xC4, 0xD6, 0xDC, 0xE4, 0xF6, 0xFC, 0x2026]  # (c) deg . A: O: U: a: o: u: (Latin-1), ...
 CODE = {0x2026: 0x85}                  # characters outside Latin-1 -> their one-byte code in the firmware
 PHASES, PHASES_L = 4, 2                # horizontal phases per glyph (aa_raster.raster_font): S M, L
-# faces stored Huffman-coded (--huff): M and L. S, the most drawn and the least compressible (-15 %), stays
-# 2 px per byte, so the labels draw at full speed
+PHASES_TXT = 2                         # barlow S M T (b10 font lever, owner 2026-11-12): 2 pen positions (1/2 px) instead of 4: -14.7 KB of flash, no visible change at 1x
+# Keep the frequently drawn S labels and tiny D digits as nibbles. The other
+# faces use the existing lossless decoder; glyph pixels and metrics stay exact.
 PLAIN = []             # (filled by main(): every face of the barlow preset is PLAIN: as the design pictures set text, no kerning, no OpenType features)
-HUFF = [("M", "L")]   # (gfx.c HC_FONTS: three Huffman tables, M, L and the icons; the other faces stay nibbles)
+HUFF = [("S", "M", "L", "T", "D", "N", "X", "B", "P")]
+CODES = {}             # each Huffman face's code (emit), for face_code
 # L draws only "FELUCCA", the UPDATE MODE countdown digit, the calibration's control names (panel.c
 # B_NAME / E_NAME) (until DUELL 0.2.2 also MENU > LARGE's card values and page titles: some glyphs of the set below were only for those, a later size trim): a sparse face of those glyphs, the
 # space as its range and the rest as extras
@@ -61,10 +65,10 @@ def preset(name):
         d = FONTS.parent / "assets" / "fonts"  # All faces PLAIN (no kerning, no OpenType features: as the design pictures set text; also what makes them reproducible without Raqm).
         sb, md, bd = (str(d / f"BarlowSemiCondensed-{w}.ttf") for w in ("SemiBold", "Medium", "Bold"))
         dig = [ord(c) for c in "0123456789"]
-        return [("S", sb, 15, (32, 126), [0xFC, 0x2026], 0.0, PHASES),      # S: SemiBold 15, small text of every kind: capsule letters / numbers, footer, labels, hints, notes, legends, list rows (was S 12 and F 15)
-                ("M", md, 15, (32, 126), [0x2026], 0.0, PHASES),            # M: Medium 15: engine name, units, patch numbers, menu rows (the design's M 15 / M 16 / M 18 roles)
+        return [("S", sb, 15, (32, 126), [0xFC, 0x2026], 0.0, PHASES_TXT),      # S: SemiBold 15, small text of every kind: capsule letters / numbers, footer, labels, hints, notes, legends, list rows (was S 12 and F 15)
+                ("M", md, 15, (32, 126), [0x2026], 0.0, PHASES_TXT),            # M: Medium 15: engine name, units, patch numbers, menu rows (the design's M 15 / M 16 / M 18 roles)
                 ("L", bd, 23, (32, 126), [], 0.0, PHASES_L),                # L: Bold 23: values and big headings (the design's S 20 / S 23 values, the guide's headings, the splash word)
-                ("T", bd, 15, (32, 90), [], 0.0, PHASES),                   # T: Bold 15, capitals: the header's page title (a lower case letter shows as its capital: gfx.c glyph)
+                ("T", bd, 15, (32, 90), [], 0.0, PHASES_TXT),                   # T: Bold 15, capitals: the header's page title (a lower case letter shows as its capital: gfx.c glyph)
                 ("D", sb, 12, (32, 32), dig, 0.0, PHASES),                  # D: SemiBold 12 digits only: the number inside a numbered dot (knob marks 1 .. 4; a 15 px digit does not fit the 11 px dot)
                 ("N", bd, 31, (32, 32), [ord(c) for c in "0123456789.-+%"], 0.0, PHASES_L),   # N: Bold 31 figures only: the design's big values (ENGINE page, FINAL_V1_02); text values use L
                 ("X", bd, 38, (32, 32), [ord(c) for c in "AB0123456789"], 0.0, PHASES_L),     # X: Bold 38: HOME's big MORPH value (A, B and figures)
@@ -161,6 +165,60 @@ def huff_pack(glyph_values):
     return hc, out
 
 
+def huff_pack_with(hc, glyph_values):
+    """[alpha values per glyph] -> [bytes per glyph] in an existing code hc (another face's AF_<N>_HC; the keycaps,
+    tools/gen_aa_keycaps.py): each run of zeros or 15s split into the code's run symbols at the fewest bits; a value
+    the code has no symbol for is an error"""
+    order, ln = hc[HC_MAXLEN:], []
+    for n in range(1, HC_MAXLEN + 1):
+        ln += [n] * hc[n - 1]
+    length, code, c, prev = dict(zip(order, ln)), {}, 0, ln[0]
+    for s in order:                                    # canonical, as huff_pack
+        c <<= length[s] - prev
+        prev = length[s]
+        code[s] = c
+        c += 1
+    out = []
+    for v in glyph_values:
+        syms, i = [], 0
+        while i < len(v):
+            j = i + 1
+            if v[i] in (0, 15):
+                while j < len(v) and v[j] == v[i]:
+                    j += 1
+                best = [(0, [])] + [None] * (j - i)     # fewest bits for the first a values of the run
+                for a in range(1, j - i + 1):
+                    for r in range(1, min(16, a) + 1):
+                        s = (r - 1) << 4 | v[i]
+                        if s in length and best[a - r] and (not best[a] or best[a - r][0] + length[s] < best[a][0]):
+                            best[a] = (best[a - r][0] + length[s], best[a - r][1] + [s])
+                assert best[j - i], f"a run of {j - i} x {v[i]} has no symbols in the code"
+                syms += best[j - i][1]
+            else:
+                assert v[i] in length, f"value {v[i]} has no symbol in the code"
+                syms.append(v[i])
+            i = j
+        acc, nb, b = 0, 0, bytearray()
+        for s in syms:
+            acc, nb = (acc << length[s]) | code[s], nb + length[s]
+            while nb >= 8:
+                nb -= 8
+                b.append((acc >> nb) & 255)
+        if nb:
+            b.append((acc << (8 - nb)) & 255)
+        out.append(bytes(b))
+    return out
+
+
+def face_code(name):
+    """the Huffman code (AF_<name>_HC) of a face of the barlow preset, as main() makes it with build.py's arguments"""
+    face = next(f for f in preset("barlow") if f[0] == name)
+    if name not in PLAIN:
+        PLAIN.append(name)
+    emit(face, 0.0, 1.0, 1)
+    return CODES[name]
+
+
 def huff_unpack(hc, data, n):
     """the decoder (gfx.c cv_alpha_hc), for the self-check: n values from the bit stream data"""
     out, pos = [], 0
@@ -204,6 +262,7 @@ def emit(face, tracking, gamma, kern_min):
                 v += [byte >> 4, byte & 15]
             vals.append(v[:e[4] * e[5]])
         hc, packed = huff_pack(vals)
+        CODES[name] = hc
         data, newoff = bytearray(), {}
         for off, v, b in zip(offs, vals, packed):
             assert huff_unpack(hc, b, len(v)) == v
@@ -225,8 +284,23 @@ def emit(face, tracking, gamma, kern_min):
     if hc:
         lines.append(ar.c_array(f"AF_{name}_HC", "uint8_t", hc, 24))
     lines.append(f"static const aag_t AF_{name}_G[{len(table)}] = {{")
-    for off, adv, bx, by, bw, bh in table:
-        lines.append(f"    {{{off}, {adv}, {bx}, {by}, {bw}, {bh}}},")
+    for i, (off, adv, bx, by, bw, bh) in enumerate(table):
+        base = table[i - i % phases]
+        dy, dh = by - base[3], bh - base[5]
+        assert -32 <= bx <= 31 and 0 <= bw <= 63, "glyph geometry out of range"
+        assert -1 <= dy <= 1 and -1 <= dh <= 1, "vertical phase delta out of range"
+        shape = (bx & 63) | (bw << 6) | ((dy + 1) << 12) | ((dh + 1) << 14)
+        lines.append(f"    {{{off}, {shape}}},")
+    lines.append("};")
+    metrics = []
+    for i in range(0, len(table), phases):
+        base = table[i]
+        metrics.append((base[1], base[3], base[5]))
+        for g in table[i:i + phases]:
+            assert g[1] == base[1], "advance differs between phases"
+    lines.append(f"static const aagm_t AF_{name}_METRICS[{len(metrics)}] = {{")
+    for adv, by, bh in metrics:
+        lines.append(f"    {{{adv}, {by}, {bh}}},")
     lines.append("};")
     if keys:
         lines.append(ar.c_array(f"AF_{name}_KERN", "uint16_t", keys, 12))
@@ -235,13 +309,14 @@ def emit(face, tracking, gamma, kern_min):
     lines.append(f"static const uint8_t AF_{name}_EX[{max(1, len(extras))}] = {{{ex}}};")
     lines.append(f"static const aafont_t AF_{name} = {{{r['h']}, {r['asc']}, {first}, {last}, {len(extras)}, {len(keys)}, "
                  f"AF_{name}_G, AF_{name}_DATA, {'AF_%s_KERN' % name if keys else '0'}, "
-                 f"{'AF_%s_KD' % name if keys else '0'}, AF_{name}_EX, {psh}, {'AF_%s_HC' % name if hc else '0'}}};")
+                 f"{'AF_%s_KD' % name if keys else '0'}, AF_{name}_EX, {psh}, {'AF_%s_HC' % name if hc else '0'}, "
+                 f"AF_{name}_METRICS}};")
     ref = "H" if "H" in chars else "0" if "0" in chars else None
     if ref:                                           # the capitals' band (gfx.c CAP_IN: centring text by it); a figures-only face: the band of 0
         cap = table[chars.index(ref) * phases]
         lines.append(f"#define AF_{name}_CAP_Y {cap[3]}   /* the ink of H: rows {cap[3]} .. {cap[3] + cap[5] - 1} of the line */")
         lines.append(f"#define AF_{name}_CAP_H {cap[5]}")
-    cost = {"data": len(data) + len(hc), "glyph_table": 8 * len(table), "kern": 3 * len(keys), "extras": len(extras),
+    cost = {"data": len(data) + len(hc), "glyph_table": 4 * len(table) + 4 * len(metrics), "kern": 3 * len(keys), "extras": len(extras),
             "glyphs": len(chars), "phases": phases, "pairs": len(keys), "h": r["h"], "asc": r["asc"], "px": px,
             "font": os.path.basename(font.split("#")[0]), "adv_digit": r["glyphs"]["0"][0] / 16}
     cost["total"] = cost["data"] + cost["glyph_table"] + cost["kern"] + cost["extras"]

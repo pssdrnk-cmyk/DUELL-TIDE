@@ -8,6 +8,7 @@
  *   build/host/gen_factory_multis build tools/factory_multis    writes the built slots' Mnn.bin (tools/factory_multis.py build does it)
  *   build/host/gen_factory_multis dump [SLOT ..]                 what the factory multis of the generated header hold (default: all)
  *   build/host/gen_factory_multis loud                           the loudness of the factory multis (needs the header regenerated with them)
+ *   build/host/gen_factory_multis lowend [SLOT ..]               (b9) each multi's share under 150 Hz and its low band's onsets per beat (tests/lowend_probe.inc)
  *   build/host/gen_factory_multis search SLOT PART AMOUNT N [SEED]  (0.2.13) End B candidates of PART at AMOUNT: level, brightness against End A
  *   build/host/gen_factory_multis eval SLOT [S1 A1 S2 A2]         (0.2.13) End A against End B (both parts, each alone; 3 keys and C4)
  *   build/host/gen_factory_multis moves SLOT [S1 A1 [S2 A2]]       the values End B moves (optionally rolled again with these seeds / AMOUNTs)
@@ -28,10 +29,11 @@ typedef struct {
     const char *sound;                           /* its name (checked) */
     int16_t set[96];                             /* (P_ id, value) pairs after the load, END-terminated */
     const char *steps;                           /* the SEQUENCER arp's pattern (space separated): "." rest, a signed offset in
-                                                  * semitones from the held key, suffix A accent; 0: no pattern */
+                                                  * semitones from the held key, "-" a tie (after a note), "vNN" the velocity, suffix A accent; 0: no pattern */
     uint8_t len;
     uint16_t bseed;                              /* End B: 0 the sound's own; else rolled again with this seed (the sound's AMOUNT) */
     uint8_t amt;                                 /* 0.2.13: 0 the sound's AMOUNT; else End B rolled at this AMOUNT (%) and the part's AMOUNT set to it */
+    int16_t bset[40];                            /* reel (2026-11-10): End B values set by hand after the roll, (P_ id, value) pairs, END-terminated: morph.c morph_b_set, what a player does at the B end of the fader */
 } part_t;
 typedef struct {
     const char *name;
@@ -48,6 +50,22 @@ typedef struct {
 #include "factory_multis_def.h"
 #define NM (sizeof MM / sizeof *MM)
 
+/* T1: what follows a step's notes: "vNN" its velocity 1..127 (default 100), then any "A" accent: "12v90A" */
+static const char *step_tail(step_t *st, const char *s)
+{
+    if (*s == 'v') {
+        int32_t v = 0;
+        s++;
+        if (*s < '0' || *s > '9') { fprintf(stderr, "velocity without a number\n"); exit(1); }
+        while (*s >= '0' && *s <= '9' && v < 1000) v = v * 10 + (*s++ - '0');
+        if (v < 1 || v > 127) { fprintf(stderr, "velocity %d out of 1..127\n", (int)v); exit(1); }
+        st->vel = (uint8_t)v;
+    }
+    for (; *s == 'A' || *s == 'S'; s++)                 /* (reel, 2026-11-10: S a slide into the next step: a plain pattern on a MONO / LEGATO sound glides, seq.c seq_step) */
+        st->flags |= *s == 'A' ? SF_ACCENT : SF_SLIDE;
+    return s;
+}
+
 static int parse_steps(track_t *t, const char *s, uint32_t len)
 {
     uint32_t i = 0;
@@ -61,6 +79,27 @@ static int parse_steps(track_t *t, const char *s, uint32_t len)
         step_t *st = &t->step[i];
         while (*s == ' ') s++;
         if (*s == '.') { st->time = ST_REST; s++; }
+        else if (*s == '-' && (s[1] == ' ' || !s[1])) {                 /* a bare "-": a tie (the patterns' T_ flag: holds the note before) */
+            if (!i || t->step[i - 1u].time == ST_REST) {                /* (T1: a tie holds a note, so it needs one before it) */
+                fprintf(stderr, "tie without a note (step %u)\n", i + 1u);
+                exit(1);
+            }
+            st->time = ST_TIE; st->n = 0; s++;
+        }
+        else if (*s == 'n') {                    /* U2 B: "n60+64+67" a plain pattern's step, up to four absolute notes (C4 = 60), suffix A an accent */
+            s++;
+            st->time = ST_NOTE;
+            st->vel = 100;
+            for (;;) {
+                int32_t v = 0;
+                while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0');
+                if (st->n >= 4u) { fprintf(stderr, "more than four notes in a step\n"); exit(1); }
+                st->note[st->n++] = (uint8_t)v;
+                if (*s != '+') break;
+                s++;
+            }
+            s = step_tail(st, s);
+        }
         else {
             int32_t sg = 1, v = 0;
             if (*s == '+' || *s == '-')
@@ -74,8 +113,11 @@ static int parse_steps(track_t *t, const char *s, uint32_t len)
             st->n = 1;
             st->vel = 100;
             st->note[0] = (uint8_t)(60 + sg * v);
-            for (; *s == 'A'; s++)
-                st->flags |= SF_ACCENT;
+            s = step_tail(st, s);
+        }
+        if (*s && *s != ' ') {
+            fprintf(stderr, "bad step '%s'\n", s);
+            exit(1);
         }
         while (*s == ' ') s++;
     }
@@ -102,13 +144,16 @@ static void build(const multi_t *m)
         }
         for (i = 0; p->set[i] != END; i += 2u) {
             uint32_t id = (uint32_t)p->set[i];
-            if (id == P_M8SRC && t->p[P_M8SRC]) {
-                fprintf(stderr, "%s part %u: matrix slot 8 is the sound's own\n", m->name, k + 1u);
+            if (mod_is_src(id) && t->p[id] && t->p[id + 1u] && t->p[id + 2u]) {   /* (reel: any slot, not only the eighth; a slot with no destination or no amount does nothing and is free) */
+                fprintf(stderr, "%s part %u: that matrix slot is the sound's own\n", m->name, k + 1u);
                 exit(1);
             }
             t->p[id] = p->set[i + 1u];
         }
         parse_steps(t, p->steps, p->len);
+        for (i = 0; p->set[i] != END; i += 2u)           /* (reel: a multi may set its plain pattern's DIV; parse_steps wrote 1/16) */
+            if (p->set[i] == P_SDIV)
+                t->p[P_SDIV] = p->set[i + 1u];
     }
     for (k = 0; k < 2u; k++)
         if (m->p[k].bseed || m->p[k].amt) {
@@ -117,6 +162,15 @@ static void build(const multi_t *m)
             morph_roll_cfg(k, 1u, m->p[k].bseed ? m->p[k].bseed : (uint32_t)(blk[1] | blk[2] << 8), m->p[k].amt ? m->p[k].amt : blk[3], blk[4]);
             if (m->p[k].amt)
                 morph_ready(k)->amount = m->p[k].amt;   /* (the record's AMOUNT byte and the block's knob byte) */
+        }
+    for (k = 0; k < 2u; k++)
+        for (i = 0; m->p[k].bset[i] != END; i += 2u) {   /* (reel: the designed End B, value by value) */
+            morph_part_t *mp = morph_ready(k);
+            uint32_t id = (uint32_t)m->p[k].bset[i];
+            if (!morph_editable(mp, id, 0) || morph_b_set(k, id, m->p[k].bset[i + 1u])) {
+                fprintf(stderr, "%s part %u: End B cannot hold value id %u (not a morphed value, or more than the hand-set list holds)\n", m->name, k + 1u, id);
+                exit(1);
+            }
         }
     for (i = 0; m->g[i] != END; i += 2u)
         song.g[m->g[i]] = m->g[i + 1u];
@@ -135,7 +189,7 @@ static void dump(uint32_t k)
         printf("M%02u: no factory multi\n", k + 1u);
         return;
     }
-    project_load(k);
+    project_load(MIDX(k));
     printf("M%02u %-12s MODE %s  BPM %d SWING %d  DLY %s fdbk %d mix %d  REV %s size %d damp %d  PING %d  DMOD %d  XF %u SPLIT %u\n",
            k + 1u, proj_name, DM_NAME[duell_mode_req], song.g[G_BPM], song.g[G_SWING], N_DIV[song.g[G_DTIME] % 17], song.g[G_DFDBK],
            song.g[G_DMIX], N_RTYPE[song.g[G_RTYPE] % 5], song.g[G_RSIZE], song.g[G_RDAMP], song.g[G_DMODE] == DMD_PING, song.g[G_DMDEP], mix_xf, mix_split);
@@ -149,7 +203,7 @@ static void dump(uint32_t k)
         printf("  part %u: %-6s #%-2u %-12s | End B seed %u AMOUNT %u | LVL %d | VCE %s TRN %d | arp %s hold %s | CHRD %s %s | "
                "CHO %d DLY %d REV %d | M8 %s>%s %d | LEN %d | ATK %d | ARP RATE %s GATE %d OCT %d | UF CUT %d SLOPE %d\n",
                pi + 1u, ENGINES[t->eng_req % NENGINES]->name, t->preset, nm, b[1] | b[2] << 8, morph_amount_of(pi), t->p[P_TRIM],
-               N_VOICE[t->p[P_VOICE] % 4], t->p[P_TRANS], N_AMODE[t->p[P_AMODE] % 16], N_HOLD[t->p[P_AHOLD] % 3], N_CHRD[t->p[P_CHRD] % 10],
+               N_VOICE[t->p[P_VOICE] % 4], t->p[P_TRANS], N_AMODE[t->p[P_AMODE] % 16], N_HOLD[t->p[P_AHOLD] % 3], N_CHRD[t->p[P_CHRD] % 16],
                N_VOIC[t->p[P_VOIC] % 5], t->p[P_CHOR], t->p[P_DLY], t->p[P_REV], N_MSRC[t->p[P_M8SRC] % 15], N_MDST[t->p[P_M8DST] % 23],
                t->p[P_M8AMT], t->p[P_SLEN], t->p[P_ATK], N_DIV[t->p[P_ARATE] % 17], t->p[P_AGATE], t->p[P_AOCT], t->p[P_FREEA], t->p[P_FREED]);
         printf("    steps:");
@@ -166,6 +220,7 @@ static void dump(uint32_t k)
                 printf("-");
             for (j = 0; j < s->n && s->time != ST_TIE; j++)
                 printf("%s%u", j ? "+" : "", s->note[j]);
+            if (s->vel && s->vel != 100) printf("v%u", s->vel);
             if (s->flags & SF_ACCENT) printf("A");
             if (s->flags & SF_SLIDE) printf("S");
         }
@@ -223,7 +278,7 @@ static void loud(uint32_t k, uint32_t nkeys, uint32_t solo)   /* solo: 0 both pa
                                                   * MODE RECALL OFF the keys played part 1 alone in a power-on's DUEL) */
     for (i = 0; i < nkeys; i++)
         kmask |= 1u << key_of(KEYS[i]);         /* (the keys of a power-on: the multi's TRN must not move them) */
-    project_load(k);
+    project_load(MIDX(k));
     song.master_q12 = 2048;                      /* (MASTER at its default position, main.c) */
     if (solo)
         trk[2u - solo].p[P_MUTE] = 1;
@@ -282,6 +337,7 @@ static void loud(uint32_t k, uint32_t nkeys, uint32_t solo)   /* solo: 0 both pa
            -0.691 + 10 * log10(e / n + 1e-30), 20 * log10(pk + 1e-12), r > 0 ? sqrt(d / r) * FS / (2.0 * M_PI) : 0.0);
 }
 
+#include "lowend_probe.inc"                     /* b9: `lowend`, the share under 150 Hz and the low band's onsets per beat */
 int main(int argc, char **argv)
 {
     uint32_t i;
@@ -323,7 +379,7 @@ int main(int argc, char **argv)
         uint32_t k = (uint32_t)atoi(argv[2]) - 1u, pt = (uint32_t)atoi(argv[3]), n = (uint32_t)atoi(argv[4]), seed;
         uint8_t blk[MB_N];
         ui_power_on();
-        project_load(k);
+        project_load(MIDX(k));
         morph_blk_make(pt - 1u, blk);
         seed = blk[1] | blk[2] << 8;
         printf("M%02u part %u: End B seed %u AMOUNT %u cfg %u\n", k + 1u, pt, seed, blk[3], blk[4]);
@@ -378,7 +434,7 @@ int main(int argc, char **argv)
         uint32_t k = (uint32_t)atoi(argv[2]) - 1u, pi, id;
         int32_t out[2 * CTL];
         ui_power_on();
-        project_load(k);
+        project_load(MIDX(k));
         for (pi = 0; pi < 2u && argc > 4u + 2u * pi; pi++) {   /* moves SLOT [SEED1 AMOUNT1 [SEED2 AMOUNT2]]: End B rolled again first */
             uint8_t blk[MB_N];
             morph_blk_make(pi, blk);
@@ -393,6 +449,17 @@ int main(int argc, char **argv)
                 if (morph_view(pi, id) != trk[pi].p[id])
                     printf(" %s(%d>%d)", param_desc_of(trk[pi].engine, id)->label, trk[pi].p[id], (int)morph_view(pi, id));
             printf("\n");
+        }
+        return 0;
+    }
+    if (argc > 1 && str_eq(argv[1], "lowend")) {   /* lowend [SLOT ..]: PLAY or C4 E4 G4 held, as loud() */
+        uint32_t a;
+        for (i = 0; i < MU_SLOTS; i++) {
+            int want = argc <= 2;
+            for (a = 2; a < (uint32_t)argc; a++)
+                want |= (uint32_t)atoi(argv[a]) == i + 1u;
+            if (want)
+                lowend(i, 3u);
         }
         return 0;
     }

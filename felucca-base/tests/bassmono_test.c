@@ -24,7 +24,7 @@
 #include <sys/resource.h>
 #endif
 
-#define MODE_STEREO_HASH 0xC04494F53D46F0F0ull   /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* the same constant as mode_test.c (0.2.21: re-based with the STEREO CHORUS; the sources before BASS MONO gave 0xA77A7B40656EB88D, and still do with the second chorus tap set to the first, -DCHO_OFF=0u) */
+#define MODE_STEREO_HASH 0x3A9DBEE74D50A5E4ull /* (RE-BASED 2026-11-11, b9 G1/G2 echo: the first repeat leaves through the loop low-pass, the loop low cut 165 -> 219 Hz (fork/b9-sound 1b9cc6f); was 0xC33B71E6E406F881) */   /* audit E3: HALL's pre-delay (SIZE's), re-based on purpose, was 0x7A78DAC0261F9A8F */ /* audit R09: ROOM runs the HALL's code (the first block's model fade from the power-on ROOM is stereo now), re-based on purpose, was 0x17213CD2BD841732 */ /* audit E2: the delay loop's low cut and soft knee (fx.c dly_wr), re-based on purpose, was 0x1E23D58DCF34873C */ /* audit R08: the loops' rounding dead bands closed (fx.c mulq15d), re-based on purpose, was 0xD873D87A2ACCFF78 */ /* master soft knee instead of the always-on tanh (audit R05, owner D22): re-based on purpose, was 0x366B468DC2425A83 */   /* DUELL-TIDE T0: mode_test.c's DUELL 1.1 value (its items 127 / 144 / 148: the 1.1 reverb and feedback rounding, VS_MAX); against 1.0 the render keeps level, spectrum and 100 ms envelope, residual -43 dB (docs/JAM11_SOUND_REFERENCES.md); was 0xC04494F53D46F0F0 */ /* 0.2.30: merged line (cloud wave 6 + click fixes), re-based on purpose, was 0x1CC6C8241C84C0DA; before:  0.2.29: re-based on purpose, the scenario runs the HALL and its quiet lines now round to the nearest (fx.c hall_end; 0.2.21..0.2.28: 0xC970174114DFD9BA) */   /* the same constant as mode_test.c (0.2.21: re-based with the STEREO CHORUS; the sources before BASS MONO gave 0xA77A7B40656EB88D, and still do with the second chorus tap set to the first, -DCHO_OFF=0u) */
 
 static uint8_t nor[0x100000];
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
@@ -697,10 +697,10 @@ static void test_control(void)
     song.bm = 5;
     project_save_as(10, "BM TEST");                     /* M11 (saved over its factory multi) */
     song.bm = 0;
-    project_load(10);
+    project_load(MIDX(10));
     expect("a multi saved with BASS MONO 100 Hz does not bring it back on load (song.bm stays 0, as the unit has it)", song.bm == 0);
     song.bm = 8;
-    project_load(10);
+    project_load(MIDX(10));
     expect("  .. and a load leaves the unit's own 315 Hz as it is", song.bm == 8);
     {
         project_t q;
@@ -710,8 +710,8 @@ static void test_control(void)
         memset(blk, 0, sizeof blk);
         song.bm = 5;
         project_capture(&q);
-        len = mu_pack(rec, &q, blk, &cut);
-        ok = len > MU_G_AT && q.bm == 0 && rec[5] == (uint8_t)(morph.target == MT_BOTH);
+        len = mu_pack(rec, &q, &cut);
+        ok = len > MU_G_AT && q.bm == 0 && rec[5] == (uint8_t)(SEL_BOTH);
         expect("a save writes byte 5 bits 1..4 as 0 and project byte 65 as 0 (BASS MONO 100 Hz on the unit)", ok);
         rec[5] = (uint8_t)((rec[5] & 1u) | 7u << 1);    /* a record of 0.2.19 / 0.2.20 with BASS MONO 125 Hz in it */
         {
@@ -719,22 +719,23 @@ static void test_control(void)
             project_t q2;
             project_capture(&q2);
             q2.bm = 3;
-            ok = mu_unpack(&q2, blk, amt, set, rec, len) && q2.bm == 3u;
+            ok = mu_unpack(&q2, amt, set, rec, len) && q2.bm == 3u;
             rec[5] = (uint8_t)((rec[5] & 1u) | 12u << 1);   /* a code past BM_N */
-            ok &= mu_unpack(&q2, blk, amt, set, rec, len) && q2.bm == 3u;
+            ok &= mu_unpack(&q2, amt, set, rec, len) && q2.bm == 3u;
             rec[5] |= 0x20u;                            /* a reserved bit set: not a multi this firmware loads */
-            ok &= !mu_unpack(&q2, blk, amt, set, rec, len);
+            ok &= !mu_unpack(&q2, amt, set, rec, len);
         }
         expect("  .. an older record with BASS MONO in it loads with the unit's value kept (any code); a stray bit 5..7 in byte 5 is still no multi", ok);
     }
     song.bm = 0;
     project_save_as(11, "BM OFF");
     song.bm = 9;
-    project_load(11);
+    project_load(MIDX(11));
     expect("a multi saved with OFF leaves the 400 Hz that was set", song.bm == 9);
     ok = 1;
-    for (v = 0; v < DF_N; v++) {                        /* the factory multis: byte 5 holds no BASS MONO bit */
-        ok &= (DM_REC[DM_AT[v] + 5u] >> 1) == 0u;
+    for (v = 0; v < DF_N; v++) {                        /* the factory multis: byte 5 bits 1..4 are the delay CLFO since b10 (0..15), never BASS MONO; bits 5..7 stay 0 */
+        static uint8_t dmb[2048];
+        ok &= (dm_rec(v, dmb)[5] >> 5) == 0u;
     }
     {
         uint32_t k;
@@ -742,11 +743,11 @@ static void test_control(void)
             if (df_of(k) >= DF_N)
                 continue;
             song.bm = 7;
-            project_load(k);
+            project_load(MIDX(k));
             ok &= song.bm == 7;
         }
     }
-    expect("every factory multi (M01.., byte 5 bits 1..4 clear) leaves BASS MONO as it is", ok);
+    expect("every factory multi (M01.., byte 5 bits 5..7 clear; bits 1..4 are the CLFO since b10) leaves BASS MONO as it is", ok);
 
     /* the project: byte 65 is written 0 and not read (the format keeps its size): BASS MONO is the unit's (0.2.24) */
     boot();

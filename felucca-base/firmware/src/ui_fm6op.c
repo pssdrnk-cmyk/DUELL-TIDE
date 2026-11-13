@@ -10,7 +10,7 @@
  * and its frequency top right ("x1.50", "440HZ"); OP ENV its envelope (graph_fm6env), the stage picked in the accent.
  * A detent writes one byte of the patch (fm6_set_patch: the audio ISR takes it at its next block) and makes the patch
  * the track's own: SLOT OWN (as a patch from the editor; a factory F n edited is OWN from then on). Each knob gesture is
- * one undo (SAVE held: the sound before it, the patch and SLOT with it; ui.c edit_undo_take). The patch is saved with
+ * one undo (OCT- + a PRESETS turn: the sound before it, the patch and SLOT with it; ui.c edit_undo_take). The patch is saved with
  * projects and user presets as before (no new format, no new parameter ids: nothing here is automatable or lockable).
  * The values shown are the patch's own: EDIT 1 / 2's macros still apply on top of it as before (MLVL moves the
  * modulators' LEVEL, MRAT their RATIO, MEG their RATEs, VMOD their VEL, DTUN the carriers' pitch, FB the feedback, ALG
@@ -97,7 +97,7 @@ static void fop_dec(char *s, uint32_t w, uint32_t frac, uint32_t digits)
     *s = 0;
 }
 /* the operator's frequency (op: its 21 bytes): "x1.50" (ratio: COARSE, 0 = 0.50, x (1 + FINE / 100)) or "440HZ"
- * (fixed: 10 ^ (COARSE & 3 + FINE / 100) Hz, as fm6_core.c fm6_op_freq); s holds 12 */
+ * (fixed: 10 ^ (COARSE & 3 + FINE / 100) Hz, as fm6_core.c); s holds 12 */
 static void fop_freq(const uint8_t *op, char *s)
 {
     uint32_t c = op[FP_FC] & 31u, f = op[FP_FF] % 100u, m = 1000u, k;

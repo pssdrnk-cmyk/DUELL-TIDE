@@ -29,19 +29,26 @@
  *            true cost) and running part 2's true cost, + 6 points of a block (the peak allowance) ends before the wait limit (least slack printed, also with 13 points: the measured
  *            worst single job, item 139); CORE 0: BUDGET_LIMIT + 6 <= 90. The least slack by limit 80 .. 88 is printed (caps worked out here at each limit)
  *   and SAME / LATER / INSIDE / TRUE / KEPT above against the new limit, the new hashes DL_REF2 (posted deadlines) and DL_REF3 (the new limits), the limits changed by block
+ * CPU fix (wave 14, 2026-11-05): BUDGET_LIMIT 84 -> 72 with BUDGET_PEAK 18 (budget.h: the unit's per-second peaks against the model), so CORE 0 is BUDGET_LIMIT + BUDGET_PEAK = 90 and CORE 1 keeps
+ * the allowance in points of a block as BUDGET_PEAK too (58.9 points of slack after 6, 46.9 after 18 at limit 72; the table of limits now runs 64 .. 88). The deadline and the wait limit read neither:
+ * DL_REF, DL_REF2 and DL_REF3 hold unchanged.
  * Build: cc -O1 -w -DHOST_MIX_FOLLOWS_MASTER=1 -DDUELL_TEST_MODE=1 -Ibuild/gen_test -Ibuild/gen -Ifirmware/src -Itests -fno-builtin -D_FORTIFY_SOURCE=0
  *        -o build/host/deadline_test tests/deadline_test.c -lm -lpthread   (host_tests.sh name: deadline) */
 #define DUELL_TWOCORE 1
 #define TC_AUTO_ARM 0
 #define UI_TEST_NO_MAIN 1
 #include <stdint.h>
+#include <time.h>
 #include "ui_test.c"
+#include "scenes.h"
 
-#define DL_REF 0xb8db0653a8dfc654ull                    /* the pre-item-132 sources (BUDGET_LIMIT 80, BUDGET_HO charged), this test, 2026-10-26 (item 142: with the 1.15 limit as worked out here) */
-#define DL_REF2 0x40924773c6c4fbf0ull                   /* item 142: the posted deadlines (tcr_post_deadline) at 16 post moments with the new wait limit (item 137's was 0xccfd48c6e1c8ecc7) */
-#define DL_REF3 0x70d45c7084c0d110ull                   /* item 142: the new wait limits (recorded on the item 142 sources, 2026-10-27) */
+#define DL_REF 0x30da22d099ce7e28ull   /* RE-BASED 2026-11-11 (b9 rework3: the records of M02 (EQ, phaser) and M06 HSE FRENCH (MELLOW EP + FRETLESS, was HSE PIANO) and M18 (PRIO LOW) load other sounds and values; no firmware source changed; was 0x215d66fdb3d7ece0). RE-BASED 2026-11-11 (b9 rework2: the records of M02, M07, M08, M12, M15, M16 and the drone M18 AMB GROWL load other sounds, notes and values; no firmware source changed; was 0x858490f0773a1cc7). RE-BASED 2026-11-11 (b9 rc2: the records of the b9 sound set, M01 to M16 re-voiced and renamed (b9-sound, lanes A and B, the names): the 16-multi loop loads them; with the b9-integ records (py and bins) put back the value below passes; was 0x6d79ef90178eb8c2). Earlier: RE-BASED 2026-11-11 (b9 drone sub: the records of M17 DUNE HORN and M18 VOID DEEP, slot 16 here, carry the sub (SUB LEVEL 72, OCTAVE 1) and -2 part levels; the records only: with fce3d8b's M17 / M18 bins the old value comes back; was 0x213b3e19ecfda305). RE-BASED 2026-11-11 (b8: factory multis M09 HYPNO 303, M10 TWO 303S, M11 ACID LINES are slots 9, 10, 11 of the loop below; the records only, no firmware cost model: with b7's duell_multis.h the old value comes back, with and without DRIFT; was 0xcbd7ab6687fa2552).                  /* RE-BASED 2026-11-10 (the reel re-voiced: beds, echoes and part swaps in M01, M03..M16; was 0x397c31ec82ee61c2). RE-BASED 2026-11-10 (reel, 2026-11-10: the fifteen new factory multis M01, M03..M16 load other sounds, patterns and values; no firmware source and no cost model changed, the records only; was 0xca501cf07736094f). RE-BASED 2026-11-10 (b7 integration: MULTIS' and TECHNO's records together, TECHNO's M03 / M04 / M07 / M13-M15 new; no cost model changed); was 0x9d8e57de94896d21. RE-BASED 2026-11-10 (b7 MULTIS: M05 swing, M08 / M09 pads an octave down, M17 / M18 beds as ARP SEQ + slower steps + levels, M10 / M11 / M13 / M16 levels and M16 low cut change the loaded multis); was 0x2e8bf35f0db5d399. RE-BASED 2026-11-09 (TIDE b6, fix/b6-droneseq: M17 DUNE HORN, this test's slot 16, has a sequence on part 1 now (ARP SEQ, tools/drone_pack.py); nothing else moved (verified: with the 44067bd M17 / M18 records all three hashes are their earlier values exactly); was 0x7354ac5679c0af7d). RE-BASED 2026-11-09 (TIDE b6, drones: M17/M18 added to the factory multis, so this test's slot 16 is now M17 DUNE HORN where it wrapped to M01 before MU_SHOWN 18; M01-M16 unchanged (verified: with slot 16 loading M01, all three hashes are b5's exactly); was 0x9b99961d4f7e9462). RE-BASED 2026-11-05 (D31, audit G14: the same: the parts of the 16 multis are other parts, no cost model changed; was 0x7c9f17ff34b5a9bc). RE-BASED 2026-11-05 (audit A01: TIDE's DSP items, budget.c BD_TIDE_*, are in the parts of the 16 factory multis, the only setups here with a MORPH; was 0x16fbf57e4a8345f2). RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0xe2d0569e4ca5f697; the pre-item-132 sources (BUDGET_LIMIT 80, BUDGET_HO charged), this test, 2026-10-26 (item 142: with the 1.15 limit as worked out here; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0xb8db0653a8dfc654) */ /* (b9: b10 round 5: DUB MINIMAL's tape hiss a steady quiet floor; DUB CHORD's stab cleaner and steadier, proven by revert; was 0x622a4c62b306ee9e) */
+#define DL_REF2 0x9105e9b4bf01c9aeull   /* RE-BASED 2026-11-11 (b9 rework3: the records of M02 (EQ, phaser) and M06 HSE FRENCH (MELLOW EP + FRETLESS, was HSE PIANO) and M18 (PRIO LOW) load other sounds and values; no firmware source changed; was 0xd73b1b3233981cf0). RE-BASED 2026-11-11 (b9 rework2: the records of M02, M07, M08, M12, M15, M16 and the drone M18 AMB GROWL load other sounds, notes and values; no firmware source changed; was 0xd5d9ee365f4bd39f). RE-BASED 2026-11-11 (b9 rc2: the records of the b9 sound set, M01 to M16 re-voiced and renamed (b9-sound, lanes A and B, the names): the 16-multi loop loads them; with the b9-integ records (py and bins) put back the value below passes; was 0xbd1ef98985b38e60). Earlier: RE-BASED 2026-11-11 (b9 drone sub: the records of M17 DUNE HORN and M18 VOID DEEP, slot 16 here, carry the sub (SUB LEVEL 72, OCTAVE 1) and -2 part levels; the records only: with fce3d8b's M17 / M18 bins the old value comes back; was 0x7cc92a93eb9d4edc). RE-BASED 2026-11-11 (b8: factory multis M09 HYPNO 303, M10 TWO 303S, M11 ACID LINES are slots 9, 10, 11 of the loop below; the records only, no firmware cost model: with b7's duell_multis.h the old value comes back, with and without DRIFT; was 0x494154b548342a05).                 /* RE-BASED 2026-11-10 (the reel re-voiced, as DL_REF; was 0xc407d74db6dda025). RE-BASED 2026-11-10 (reel, 2026-11-10, as DL_REF; was 0x9be0bfca379fcba4). RE-BASED 2026-11-10 (b7 integration, as DL_REF; was 0x4a4bc366ce67e484 after b7 MULTIS); before that 0x571e0398c0feeb09. RE-BASED 2026-11-09 (TIDE b6, fix/b6-droneseq: M17 DUNE HORN, this test's slot 16, has a sequence on part 1 now (ARP SEQ, tools/drone_pack.py); nothing else moved (verified: with the 44067bd M17 / M18 records all three hashes are their earlier values exactly); was 0xbc1d8cc3ae626df6). RE-BASED 2026-11-09 (TIDE b6, drones: M17/M18 added to the factory multis, so this test's slot 16 is now M17 DUNE HORN where it wrapped to M01 before MU_SHOWN 18; M01-M16 unchanged (verified: with slot 16 loading M01, all three hashes are b5's exactly); was 0xe409915f0a1142ca). RE-BASED 2026-11-05 (D31, audit G14: the same: the parts of the 16 multis are other parts, no cost model changed; was 0x4b7848a52aa8bddd). RE-BASED 2026-11-05 (audit A01: TIDE's DSP items in the multis' parts; was 0x1f20de1d06f657f3). RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0xc0af709a3883c486; item 142: the posted deadlines (tcr_post_deadline) at 16 post moments with the new wait limit (item 137's was 0xccfd48c6e1c8ecc7; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x40924773c6c4fbf0) */ /* (b9: b10 round 5: DUB MINIMAL's tape hiss a steady quiet floor; DUB CHORD's stab cleaner and steadier, proven by revert; was 0x9cb1e3bb8042179d) */
+#define DL_REF3 0x88d980090d06976bull   /* RE-BASED 2026-11-11 (b9 rework3: the records of M02 (EQ, phaser) and M06 HSE FRENCH (MELLOW EP + FRETLESS, was HSE PIANO) and M18 (PRIO LOW) load other sounds and values; no firmware source changed; was 0x8eefdc5bbcb649d7). RE-BASED 2026-11-11 (b9 rework2: the records of M02, M07, M08, M12, M15, M16 and the drone M18 AMB GROWL load other sounds, notes and values; no firmware source changed; was 0x8633818f5c1ad186). RE-BASED 2026-11-11 (b9 rc2: the records of the b9 sound set, M01 to M16 re-voiced and renamed (b9-sound, lanes A and B, the names): the 16-multi loop loads them; with the b9-integ records (py and bins) put back the value below passes; was 0xc558c6bdf7a5fad0). Earlier: RE-BASED 2026-11-11 (b9 drone sub: the records of M17 DUNE HORN and M18 VOID DEEP, slot 16 here, carry the sub (SUB LEVEL 72, OCTAVE 1) and -2 part levels; the records only: with fce3d8b's M17 / M18 bins the old value comes back; was 0xb1c18d8cb6cce4e2). RE-BASED 2026-11-11 (b8: factory multis M09 HYPNO 303, M10 TWO 303S, M11 ACID LINES are slots 9, 10, 11 of the loop below; the records only, no firmware cost model: with b7's duell_multis.h the old value comes back, with and without DRIFT; was 0x67196918df2bde7d).                 /* RE-BASED 2026-11-10 (the reel re-voiced, as DL_REF; was 0x44dc5099aaa98111). RE-BASED 2026-11-10 (reel, 2026-11-10, as DL_REF; was 0xaf84b86293170187). RE-BASED 2026-11-10 (b7 integration, as DL_REF; was 0x6bfa7a8aa7e01964 after b7 MULTIS); before that 0xefce42cd64a43d3a. RE-BASED 2026-11-09 (TIDE b6, fix/b6-droneseq: M17 DUNE HORN, this test's slot 16, has a sequence on part 1 now (ARP SEQ, tools/drone_pack.py); nothing else moved (verified: with the 44067bd M17 / M18 records all three hashes are their earlier values exactly); was 0x503d075fcf1b8842). RE-BASED 2026-11-09 (TIDE b6, drones: M17/M18 added to the factory multis, so this test's slot 16 is now M17 DUNE HORN where it wrapped to M01 before MU_SHOWN 18; M01-M16 unchanged (verified: with slot 16 loading M01, all three hashes are b5's exactly); was 0xcf4b39279a8e8e89). RE-BASED 2026-11-05 (D31, audit G14: the same: the parts of the 16 multis are other parts, no cost model changed; was 0x400bc7ef6465b408). RE-BASED 2026-11-05 (audit A01: TIDE's DSP items in the multis' parts; was 0x5a319bd6ae893342). RE-BASED 2026-11-05 on integ 202400b: 793f41f fix/fx-extend (audit R09: ROOM charged as HALL, budget.c BD_REV; moves M01, M02 and M15) and 9aaac54 fix/bank-content (audit G06, G10, G12, G15: the factory sounds re-voiced / re-ordered, three FM6 dub voices added; items of the same kind, no cost model change); was 0x05a0318a41d71b48; item 142: the new wait limits (recorded on the item 142 sources, 2026-10-27; re-based 2026-11-03: U2 B, ten factory multis hold sequences / other arps, was 0x70d45c7084c0d110) */ /* (b9: b10 round 5: DUB MINIMAL's tape hiss a steady quiet floor; DUB CHORD's stab cleaner and steadier, proven by revert; was 0x35ae00abede37c1d) */
 static uint64_t h3 = 1469598103934665603ull;
 static uint64_t n_lim_chg[4], bad_wltrue, bad_wllater, bad_wlsafe, n_lim;
+static uint64_t n_hand, bad_hand;                       /* b11 HANDOVER (from DUELL 1.2's deadline_test, OSCILL/R, GPL-3.0): the main loop's items (budget.c bd_dl_publish) = the runner's own */
+static uint32_t n_lclear;                               /* b11 LOAD / AGE: the clears, publishes and the age limit seen (6 of 6) */
 static int32_t lim_chg_max;
 static void put3(uint32_t v)
 {
@@ -109,7 +116,9 @@ static void clean(track_t *t, int va)
 }
 /* CORE 1 (item 137, extended by item 142): both parts at their two-core caps at limit L (KEY SENSE +57 as on the unit): core 1's job k is posted at S + k P (S = 0.27 block, the polymax median
  * of item 139; P = the globals + the dearer of part 1 and the job, true cost) and runs part 2's true cost; its slack to the runner's wait limit of block k, points of a block */
-#define NL 9u                                           /* limits 80 .. 88 */
+#define LMIN 64u                                        /* the limits worked out: LMIN .. LMIN + NL - 1 (wave 14: BUDGET_LIMIT 72, was 80 .. 88 for 81 / 84) */
+#define NL 25u
+#define PKA ((double)BUDGET_PEAK)                      /* the peak allowance of the CORE 1 check, points of a block (wave 14: 18, was the 6 of items 137 / 142) */
 static double c1_min[NL], c1_min13 = 1e9, c1_old_min = 1e9;   /* (c1_old: the same check against the 1.15 limit: what the change is for) */
 static uint32_t c1_old_n6;
 static uint32_t c1_n6[NL], c1_bad, c1_blk_min;
@@ -131,7 +140,7 @@ static void core1_slack(void)
     b.fx += 57u;                                        /* (KEY SENSE: device builds) */
     if (!b.p[1].on)
         return;
-    for (L = 80u; L < 80u + NL; L++) {
+    for (L = LMIN; L < LMIN + NL; L++) {
         uint32_t gu = BD_U(b.idle + b.fx);
         uint32_t f1 = BD_UDL(b.p[0].ins + b.p[0].sat + b.p[0].eq + b.p[0].misc + b.p[0].base), v1 = BD_UDL(b.p[0].eng + b.p[0].filt + b.p[0].ext);
         uint32_t f2 = BD_UDL(b.p[1].ins + b.p[1].sat + b.p[1].eq + b.p[1].misc + b.p[1].base), v2 = BD_UDL(b.p[1].eng + b.p[1].filt + b.p[1].ext), g = BD_UDL(b.idle + b.fx);
@@ -150,9 +159,9 @@ static void core1_slack(void)
         for (k = 0; k < TCR_BLOCKS; k++) {
             int32_t old, lim = lim_of(f1, v1, f2, v2, g, k, n[0], n[1], 1u, &old);
             double sl = (lim * 10000.0 / TCR_BLOCK_TICKS - (2700.0 + k * per + job)) / 100.0;   /* points of a block before the allowance */
-            if (sl - 6.0 < c1_min[L - 80u])
-                c1_min[L - 80u] = sl - 6.0;
-            c1_n6[L - 80u] += sl < 6.0;
+            if (sl - PKA < c1_min[L - LMIN])
+                c1_min[L - LMIN] = sl - PKA;
+            c1_n6[L - LMIN] += sl < PKA;
             if (L != BUDGET_LIMIT)
                 continue;
             {
@@ -161,12 +170,12 @@ static void core1_slack(void)
                     c1_old_min = so - 6.0;
                 c1_old_n6 += so < 6.0;
             }
-            if (sl - 6.0 < c1_blk[k])
-                c1_blk[k] = sl - 6.0;
+            if (sl - PKA < c1_blk[k])
+                c1_blk[k] = sl - PKA;
             if (sl - 13.0 < c1_min13)
                 c1_min13 = sl - 13.0;
-            c1_bad += sl < 6.0;
-            if (sl - 6.0 <= c1_min[L - 80u])
+            c1_bad += sl < PKA;
+            if (sl - PKA <= c1_min[L - LMIN])
                 snprintf(c1_where, sizeof c1_where, "mode %d, %s %u + %s %u notes, block %u", duell_mode_req, ENGINES[eng_idx(trk[0].eng_req)]->name, n[0],
                          ENGINES[eng_idx(trk[1].eng_req)]->name, n[1], k);
         }
@@ -183,6 +192,18 @@ static void sweep(void)                                 /* every rule, block and
     for (k = 0; k < NVOICE; k++)
         keep[0][k] = trk[0].v[k].active, keep[1][k] = trk[1].v[k].active;
     core1_slack();
+    {   /* HANDOVER (b11, from DUELL 1.2): the items the main loop hands over (budget.c bd_dl_publish) are the ones the runner works out itself, and the runner takes them */
+        uint32_t d1f, d1v, d2f, d2v, dg;
+        int nf;
+        part_dl(&trk[0], &d1f, &d1v), part_dl(&trk[1], &d2f, &d2v), dg = global_cost_dl();
+        bd_dl_publish();
+        tcr.blk = 0, tcr.cost_ok = 0, tcr.t0 = 1000000u;
+        tcr.c1f = tcr.c1v = tcr.c2f = tcr.c2v = tcr.g = 0xFFFFFFFFu;
+        (void)tcr_deadline(tcr.t0, &nf);
+        bad_hand += !bd_dl_ok || tcr.c1f != d1f || tcr.c1v != d1v || tcr.c2f != d2f || tcr.c2v != d2v || tcr.g != dg;
+        n_hand++;
+        bd_dl_ok = 0;                                   /* (the rest of the sweep: the runner's own working out, as before; the hashes below are of that) */
+    }
     for (two = 0; two < 2u; two++) {
         uint32_t e1f, e1v, e2f, e2v, eg;                /* item 137: the exact true items (BUDGET_MARGIN 100) */
         tc.up = 1, tc.failed = 0, tcr.paused = (uint8_t)!two;
@@ -248,6 +269,88 @@ static void sweep(void)                                 /* every rule, block and
     tcr.paused = 0, tc.up = 0, tcr.cost_ok = 0;
     setups++;
 }
+/* A01 (audit 2026-11-04): TIDE's audio DSP is in the model (budget.c BD_TIDE_*: an estimate from the host's time ratios, until the unit measures it). A scene with all four stages: a factory
+ * multi with FM6 on a part (the bridge), a live MORPH on both parts (the valley and the voices' dip), WASH MID (the wash), both parts at their two-core caps with the TIDE items in. Checks, per
+ * mode (LAYER, DUEL): the items are in the deadline's figures (part_dl: WASH adds exactly BD_UDL(BD_TIDE_WASH) to a part's fixed cost, FM6 pays BD_TIDE_FM6 a voice more than the dip alone);
+ * the wait limit with WASH MID is not later than with WASH OFF, and the CORE 1 check of the caps (core 1's job posted 0.27 block + k periods, +6 points) still ends before the limit. The hashes
+ * above are not touched by this scene (they are saved and put back); a failure here adds to c1_bad. */
+static double tide_slack = 1e9;
+static uint32_t tide_scenes, tide_bad;
+static void tide_scene(void)
+{
+    uint64_t sh = h, sh2 = h2, sh3 = h3, snv = n_val;
+    uint32_t i, m, k, found = 0;
+    for (i = 0; i < UP_VSLOTS && tide_scenes < 8u; i++)
+        for (m = 0; m < 2u; m++) {
+            uint32_t p, w0f[2], w0v[2], w2f[2], w2v[2], wl0, wl2, d0, d2, spin;
+            int nofit;
+            if (i >= UP_USER0 && i < UP_SLOTS)
+                continue;
+            boot();
+            duell_mode_force(m ? DM_SPLIT : DM_LAYER);
+            pc_recall(0, i, 0);                       /* part 1: factory sound i (its MORPH End B rolled by the load) */
+            if (ENGINES[eng_idx(trk[0].eng_req)] != &ENG_FM6)
+                continue;
+            pc_recall(1, 0, 0);                       /* part 2: #01 BEHIVE, ANALOG */
+            for (spin = 0; spin < 40u; spin++) {
+                int32_t o[2 * CTL];
+                mix_block(o, CTL);
+                frame();
+            }
+            if (!(mph[0].nid || mph[0].fnid) || !(mph[1].nid || mph[1].fnid) || morph_stale(&trk[0], &mph[0]) || morph_stale(&trk[1], &mph[1]) || trk[0].p[P_MUTE] || trk[1].p[P_MUTE])
+                continue;
+            bd_mv[0] = bd_mv[1] = 1;                  /* both faders are moving: with FELUCCA_MOVECOST (the shipped build; b10 round 6) the valley and the wash are charged only while a transition is under way
+                                                       * (budget.c bd_where; at rest only the wash's meter is), and this scene is about their full figures. Without the switch they are always charged: no change there. */
+            trk[1].p[P_FREEC] = 40;                   /* part 2's filter MODE is no low-pass (a band-pass patch): its voices' filter cannot carry the dip, the valley after them does */
+            {   /* all four stages: the valley is possible on a part too */
+                bd_part_t r0, r1;
+                morph_wlvl = 2;
+                bd_part(&trk[0], &r0);
+                bd_part(&trk[1], &r1);
+                morph_wlvl = 0;
+                if (r0.tide < BD_TIDE_VALLEY + BD_TIDE_WASH && r1.tide < BD_TIDE_VALLEY + BD_TIDE_WASH)
+                    continue;
+            }
+            found++;
+            tide_scenes++;
+            tc.up = 1, tc.failed = 0, tcr.paused = 0, tcr.cost_ok = 0, tcr.t0 = 1000000u, tcr.blk = 0;
+            set_active(&trk[0], 4u);
+            set_active(&trk[1], 4u);
+            morph_wlvl = 0;
+            for (p = 0; p < 2u; p++)
+                part_dl(&trk[p], &w0f[p], &w0v[p]);
+            d0 = tcr_deadline(tcr.t0, &nofit);
+            wl0 = tcr.lim;
+            morph_wlvl = 2;
+            for (p = 0; p < 2u; p++)
+                part_dl(&trk[p], &w2f[p], &w2v[p]);
+            d2 = tcr_deadline(tcr.t0, &nofit);
+            wl2 = tcr.lim;
+            for (p = 0; p < 2u; p++) {
+                bd_part_t r;
+                bd_part(&trk[p], &r);
+                tide_bad += w2f[p] + 1u < w0f[p] + BD_UDL(BD_TIDE_WASH) || w2f[p] > w0f[p] + BD_UDL(BD_TIDE_WASH) + 1u || w2v[p] != w0v[p];   /* (WASH MID adds the wash to the fixed cost, rounding aside) */
+                tide_bad += r.misc < r.tide || r.tide < BD_TIDE_WASH || r.ext < BD_MORPH + BD_TIDE_DIP + (ENGINES[eng_idx(trk[p].eng_req)] == &ENG_FM6 ? BD_TIDE_FM6_IDLE : 0u);   /* (the bridge's full charge only while a glide / the fader moves: budget.c bd_mv) */
+            }
+            tide_bad += (int32_t)(wl2 - wl0) > 0 || (int32_t)(d2 - d0) > 0;     /* the dearer scene never gets a later deadline or wait limit */
+            {   /* the CORE 1 check of these caps (core1_slack at BUDGET_LIMIT, WASH MID in the items) */
+                double keep = c1_min[BUDGET_LIMIT - LMIN];
+                uint32_t bad0 = c1_bad;
+                c1_min[BUDGET_LIMIT - LMIN] = 1e9;
+                core1_slack();
+                if (c1_min[BUDGET_LIMIT - LMIN] < tide_slack)
+                    tide_slack = c1_min[BUDGET_LIMIT - LMIN];
+                tide_bad += c1_bad != bad0;
+                if (keep < c1_min[BUDGET_LIMIT - LMIN])
+                    c1_min[BUDGET_LIMIT - LMIN] = keep;
+            }
+            morph_wlvl = 0;
+            tc.up = 0, tcr.cost_ok = 0;
+            bd_mv[0] = bd_mv[1] = 0;
+        }
+    h = sh, h2 = sh2, h3 = sh3, n_val = snv;
+    tide_bad += !found;
+}
 int main(void)
 {
     static const int MODES[3] = {DM_LAYER, DM_STEREO, DM_SPLIT};
@@ -274,9 +377,11 @@ int main(void)
                         }
                 mods_off = 0;
             }
-    for (m = 0; m < 2u; m++)                            /* every factory sound as stored (inserts, SAT, EQ, matrix, SUB, TWIN, morph-free), both parts */
+    for (m = 0; m < 2u; m++)                            /* every factory sound as stored (inserts, SAT, EQ, matrix, SUB, TWIN, morph-free), both parts: the bank's 128 (the references are theirs;
+                                                         * tools/duell_sounds.py N_BASE: the sounds added after them, indices from DL_BANK_N up, are not part of "the same as before") */
         for (e1 = 0; e1 < NENG_SHOWN; e1++) {
-            uint32_t en = ENGINE_ORDER[e1], n = ds_count(en);
+            static const uint8_t DL_BANK_N[16] = {20, 0, 11, 9, 0, 8, 13, 7, 0, 12, 0, 11, 14, 0, 23, 0};
+            uint32_t en = ENGINE_ORDER[e1], n = ds_count(en) < DL_BANK_N[en] ? ds_count(en) : DL_BANK_N[en];
             boot();
             duell_mode_force(m ? DM_SPLIT : DM_LAYER);
             for (f = 0; f < n; f++) {
@@ -288,13 +393,71 @@ int main(void)
                 sweep();
             }
         }
-    for (i = 1; i <= 16u; i++) {                        /* the 16 factory multis as loaded (MODE RECALL), morphs included */
+    for (i = 1; i <= 16u; i++) {                        /* the 16 factory multis as loaded (MODE RECALL), morphs included (slots 1..16: M02..M15, the STRESS TEST scene, and since TIDE b6 slot 16 = M17 AMB DUNEHORN; until b6 slot 16 wrapped to M01) */
         boot();
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-        project_load((int)i);
+        if (i == 15u)
+            scene_load(15, "M16_STRESS_TEST");          /* (U2 B: the STRESS TEST, now a test scene, as these hashes had it; CELLAR TAPE is the factory M16) */
+        else
+            project_load(MIDX((int)i));
         frame();
         sweep();
     }
+    tide_scene();
+    {   /* b11: a load clears the hand-over (ui.c load_begin, project.c project_restore_runtime): the runner works the items out again until budget_poll's next publish.
+         * And the host's time for the block-0 items, worked out (the old way, in the audio interrupt) against read from the copy (an equivalent of the unit's st_budget_us) */
+        struct timespec t0, t1;
+        double us_calc, us_copy;
+        uint32_t r, c1f, c1v, c2f, c2v, g, sum = 0;
+        boot();
+        project_load(MIDX(6));                          /* (slot 6, HSE RHODES: the sweep's worst multi) */
+        budget_poll();                                  /* (the main loop's pass: main.c; the tests' frame() does not run it, so every other host test keeps the runner's own working out) */
+        n_lclear = bd_dl_ok;
+        load_begin(&trk[0], UNDO_SOUND), load_end(&trk[0]);
+        n_lclear += !bd_dl_ok;
+        bd_dl_publish();
+        project_load(MIDX(2));
+        n_lclear += !bd_dl_ok;
+        budget_poll();
+        n_lclear += bd_dl_ok;
+        {   /* AGE: a copy BD_DL_AGE_MS old is not used (the main loop stalled): the copy's items spoiled, the runner reads them 1 ms before the limit and works its own at the limit */
+            uint32_t w1f, w1v, w2f, w2v, wg, ms0 = fm1_ms;
+            int nf;
+            bd_dl_t *d = &bd_dl_buf[bd_dl_i];
+            part_dl(&trk[0], &w1f, &w1v), part_dl(&trk[1], &w2f, &w2v), wg = global_cost_dl();
+            d->c1f = d->c1v = d->c2f = d->c2v = d->g = 0x7777u;
+            fm1_ms = ms0 + BD_DL_AGE_MS - 1u;
+            tcr.blk = 0, tcr.cost_ok = 0, tcr.t0 = 1000000u;
+            (void)tcr_deadline(tcr.t0, &nf);
+            n_lclear += tcr.c1f == 0x7777u && tcr.g == 0x7777u;
+            fm1_ms = ms0 + BD_DL_AGE_MS;
+            tcr.blk = 0, tcr.cost_ok = 0;
+            (void)tcr_deadline(tcr.t0, &nf);
+            n_lclear += tcr.c1f == w1f && tcr.c1v == w1v && tcr.c2f == w2f && tcr.c2v == w2v && tcr.g == wg;
+            fm1_ms = ms0;
+            bd_dl_publish();
+        }
+        clock_gettime(CLOCK_MONOTONIC, &t0);
+        for (r = 0; r < 20000u; r++) {
+            part_dl(&trk[0], &c1f, &c1v), part_dl(&trk[1], &c2f, &c2v), g = global_cost_dl();
+            sum += c1f + c1v + c2f + c2v + g;
+        }
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        us_calc = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / 20000.0;
+        clock_gettime(CLOCK_MONOTONIC, &t0);
+        for (r = 0; r < 20000u; r++) {
+            const bd_dl_t *d = &bd_dl_buf[bd_dl_i];
+            c1f = d->c1f, c1v = d->c1v, c2f = d->c2f, c2v = d->c2v, g = d->g;
+            sum += c1f + c1v + c2f + c2v + g;
+            __asm__ volatile("" ::: "memory");
+        }
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        us_copy = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / 20000.0;
+        printf("deadline:   block-0 items on the host (multi 2 loaded): worked out %.3f us, read from the copy %.4f us (%u)\n", us_calc, us_copy, sum & 1u);
+    }
+    printf("deadline: %s HANDOVER: the main loop's items (budget.c bd_dl_publish) are the runner's own, and the runner reads them (%llu setups, %llu wrong)\n", bad_hand || !n_hand ? "FAIL" : "ok  ",
+           (unsigned long long)n_hand, (unsigned long long)bad_hand);
+    printf("deadline: %s LOAD: budget_poll publishes, a sound load and a multi load clear it, the next budget_poll publishes again; a copy BD_DL_AGE_MS old is not used (%u of 6)\n", n_lclear == 6u ? "ok  " : "FAIL", n_lclear);
     printf("deadline: %u setups, %llu values, hash 0x%016llx (reference 0x%016llx)\n", setups, (unsigned long long)n_val, (unsigned long long)h, (unsigned long long)DL_REF);
     printf("deadline: %s the runner's deadline, wait limit and cost items are the same as before item 132 for every setup\n", h == DL_REF ? "ok  " : "FAIL");
     printf("deadline: item 137, posted deadlines: %llu (setup x rule x block x voices x 16 post moments); 1.15 deadline past under the two-core rule: %llu, of them given a take-over deadline: %llu\n",
@@ -320,15 +483,17 @@ int main(void)
     printf("deadline: %s WL-LATER: never earlier than the 1.15 limit, never after the half's end (%llu wrong)\n", bad_wllater ? "FAIL" : "ok  ", (unsigned long long)bad_wllater);
     printf("deadline: %s WL-SAFE: a moved limit + the exact true rest (1.00 items) <= t0 + H - TCR_SLACK (%llu wrong)\n", bad_wlsafe ? "FAIL" : "ok  ", (unsigned long long)bad_wlsafe);
     printf("deadline: %s the new-limit hash equals DL_REF3\n", h3 == DL_REF3 ? "ok  " : "FAIL");
-    printf("deadline:   CORE 1 by BUDGET_LIMIT (caps worked out at each limit, least slack after 6 points / setup x blocks under 6):");
+    printf("deadline:   CORE 1 by BUDGET_LIMIT (caps worked out at each limit, least slack after BUDGET_PEAK points / setup x blocks under BUDGET_PEAK):");
     for (i = 0; i < NL; i++)
-        printf(" %u: %.1f/%u", 80u + i, c1_min[i], c1_n6[i]);
+        printf(" %u: %.1f/%u", LMIN + i, c1_min[i], c1_n6[i]);
     printf("\n");
-    printf("deadline: %s CORE 1 at the caps of BUDGET_LIMIT %u / margin %u %%: every block's job (posted 0.27 block + k periods) + 6 points ends before the wait limit (least slack after 6 points %.1f: %s; "
-           "by block 0..3: %.1f %.1f %.1f %.1f; after 13 points %.1f; %u under 6)\n",
-           c1_bad ? "FAIL" : "ok  ", BUDGET_LIMIT, BUDGET_MARGIN, c1_min[BUDGET_LIMIT - 80u], c1_where, c1_blk[0], c1_blk[1], c1_blk[2], c1_blk[3], c1_min13, c1_bad);
+    printf("deadline: %s CORE 1 at the caps of BUDGET_LIMIT %u / margin %u %%: every block's job (posted 0.27 block + k periods) + BUDGET_PEAK points ends before the wait limit (least slack after BUDGET_PEAK points %.1f: %s; "
+           "by block 0..3: %.1f %.1f %.1f %.1f; after 13 points %.1f; %u under BUDGET_PEAK)\n",
+           c1_bad ? "FAIL" : "ok  ", BUDGET_LIMIT, BUDGET_MARGIN, c1_min[BUDGET_LIMIT - LMIN], c1_where, c1_blk[0], c1_blk[1], c1_blk[2], c1_blk[3], c1_min13, c1_bad);
     printf("deadline:   (the same caps against the 1.15 wait limit of before item 142: least slack after 6 points %.1f, %u setup x blocks under 6)\n", c1_old_min, c1_old_n6);
-    printf("deadline: %s CORE 0: BUDGET_LIMIT %u + 6 points of peak <= 90 %%\n", BUDGET_LIMIT + 6u <= 90u ? "ok  " : "FAIL", BUDGET_LIMIT);
-    return h != DL_REF || bad_same || bad_later || bad_inside || bad_true || bad_kept || h2 != DL_REF2 || c1_bad || bad_wltrue || bad_wllater || bad_wlsafe || h3 != DL_REF3 ||
-           BUDGET_LIMIT + 6u > 90u || BUDGET_LIMIT < 80u || BUDGET_LIMIT >= 80u + NL;
+    printf("deadline: %s TIDE (A01, an estimate until the unit measures it): %u scenes (an FM6 factory sound on part 1, BEHIVE with a band-pass filter MODE on part 2, LAYER and DUEL) with FM6 (bridge), a live MORPH on both parts (valley, dip) and WASH MID: the TIDE items are in the figures, the dearer scene never gets a later deadline, and core 1's job at the two-core caps ends before the wait limit (least slack after 6 points %.1f)\n",
+           tide_bad ? "FAIL" : "ok  ", tide_scenes, tide_slack);
+    printf("deadline: %s CORE 0: BUDGET_LIMIT %u + BUDGET_PEAK %u points of peak = 90 %%\n", BUDGET_LIMIT + BUDGET_PEAK == 90u ? "ok  " : "FAIL", BUDGET_LIMIT, BUDGET_PEAK);
+    return tide_bad || bad_hand || !n_hand || n_lclear != 6u || h != DL_REF || bad_same || bad_later || bad_inside || bad_true || bad_kept || h2 != DL_REF2 || c1_bad || bad_wltrue || bad_wllater || bad_wlsafe || h3 != DL_REF3 ||
+           BUDGET_LIMIT + BUDGET_PEAK != 90u || BUDGET_LIMIT < LMIN || BUDGET_LIMIT >= LMIN + NL;
 }

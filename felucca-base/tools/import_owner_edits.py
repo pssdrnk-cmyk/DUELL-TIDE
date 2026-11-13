@@ -39,7 +39,7 @@ TOOLS = ROOT / "tools"
 sys.path.insert(0, str(TOOLS))
 import endb                                                          # the End B block (the firmware's format), shared with gen_duell_sounds.py / convert_endb.py
 CATS = ["", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER"]        # category.c (record byte; 0: none)
-PTF = dict(PAT=1, TR=2, FM6=4, MB=8, XB=16, AK=32, BM=64, CB=128)   # MB (PT_VER 4): End B as values; XB and BM (16, 64) are PT_VER 3's and are refused
+PTF = dict(PAT=1, TR=2, FM6=4, MB=8, XB=16, AK=32, W4=64, BM=64, CB=128)   # MB (PT_VER 4): End B as values; XB (16) is PT_VER 3's and is refused; W4 (b9, upreset.c PTF_W4; PT_VER 3's BM is the same bit, kept for tools/convert_twin.py and import_bank.py): ANALOG's WAVE takes 4 bits in the record (without: saved before b8, 3 bits)
 AK_NAMES = ["P_AMODE", "P_ARATE", "P_AOCT", "P_AGATE", "P_ASWING", "P_APROB", "P_AHOLD", "P_AORDER", "P_SCALE", "P_CHRD", "P_VOIC", "P_SLEN", "P_SDIV", "P_SSWING", "P_SGATE", "P_SQNT"]
 STORE_ZERO = ["P_KTRK", "P_FREEA", "P_FREED", "P_L2TRIG", "P_LTRIG", "P_DKCRV", "P_DKSRC"]       # upreset.c up_def: the stored default is 0 (0.2.24: DUCK SRC too, its stored default stays PUMP)
 RETIRED_ID = 127            # the SCALE (ordinal 8 of a record's keys group) is retired, its id 25 is the TWIN FILTER's RES 2 now (cloud job B): the value is read and dropped (no name for 127)
@@ -89,7 +89,9 @@ class Ctx:
         d = self.layout["XTP"][w - 128] if w >= 128 else self.layout["ENG"][eng]["edit"][w - self.e0] if w >= self.e0 else self.layout["TP"][w]
         return d["min"], d["max"]
 
-    def bits(self, eng, w):
+    def bits(self, eng, w, w4=True):
+        if not w4 and eng == 0 and w == self.e0:       # a record / block saved before b8 (WAVE 0..6): morph.c wv_bitsl
+            return 3
         lo, hi = self.rng(eng, w)
         n, b = hi - lo + 1, 0
         while b < 16 and (1 << b) < n:
@@ -110,14 +112,14 @@ PT_FIX, PT_VB, PT_WORST = 20, 20, 577       # upreset.c PT_VER 4: the fixed part
 
 def mbv_size(ctx, b, o, avail, eng):
     """the length of the End B block (morph.c MBV, morph_bv_size) at b[o:], 0 when it is no block"""
-    if avail < 22 or (b[o] & ~3) or b[o + 1] > 101 or (b[o] & 2 and eng != ctx.eng_names.index("FM6")):
+    if avail < 22 or (b[o] & ~11) or b[o + 1] > 101 or (b[o] & 2 and eng != ctx.eng_names.index("FM6")):
         return 0
     nb = 0
     for w in range(160):
         if b[o + 2 + (w >> 3)] >> (w & 7) & 1:
             if not wid_ok(w) or w in MBV_NEVER:
                 return 0
-            nb += ctx.bits(eng, w)
+            nb += ctx.bits(eng, w, b[o] & 8)       # (MBV_W4)
     n = 22 + (nb + 7) // 8
     if b[o] & 1:
         if n + 20 > avail:
@@ -145,9 +147,9 @@ def parse_record(ctx, b):
     f = b[4]
     if not f & PTF["CB"]:
         raise ValueError("a record of a firmware before 0.2.14")
-    if f & (PTF["XB"] | PTF["BM"]):
+    if f & PTF["XB"]:
         raise ValueError("a record of an older DUELL version (PT_VER 3), which this firmware does not load")
-    if f & ~(PTF["PAT"] | PTF["TR"] | PTF["FM6"] | PTF["MB"] | PTF["AK"] | PTF["CB"]):
+    if f & ~(PTF["PAT"] | PTF["TR"] | PTF["FM6"] | PTF["MB"] | PTF["AK"] | PTF["W4"] | PTF["CB"]):
         raise ValueError("unknown flags")
     eng = b[5]
     if eng >= len(ctx.eng_names):
@@ -160,7 +162,7 @@ def parse_record(ctx, b):
         if b[PT_FIX + (w >> 3)] >> (w & 7) & 1:
             if not wid_ok(w):
                 raise ValueError("it stores a parameter that does not exist")
-            code, at = get_bits(b, at, ctx.bits(eng, w))
+            code, at = get_bits(b, at, ctx.bits(eng, w, f & PTF["W4"]))
             lo, hi = ctx.rng(eng, w)
             v = min(lo + code, hi)
             nv += 1
@@ -214,10 +216,33 @@ def parse_record(ctx, b):
     return dict(engine=eng, cat=b[6], name=name, values=full, mb=mb, steps=steps, fm6=fm6, ext=ext)
 
 
+LEGACY = [("P_ED_FLT", 2, 2), ("P_E2SHP", 11, 3), ("P_L2PIT", 12, 1), ("P_L2FLT", 12, 2), ("P_L2SHP", 12, 3)]   # mod.c mod_legacy_move L[]: card, MS_ source, MD_ destination
+
+
+def drop_preselect(ctx, vals, factory):
+    """DUELL 1.1 MATRIX PRESELECTION (mod.c mod_preselect): a sound that loads gets default pairs at AMOUNT 0 in its free slots, and a save stores them; at amount 0 they
+    play nothing and the next load fills them again, so they are not the owner's: a slot with AMT 0 is dropped and the used slots packed up (mod_compact's order)"""
+    sl = [[ctx.ids["P_M%d%s" % (k + 1, f)] for f in ("SRC", "DST", "AMT")] for k in range(8)]
+    for card, src, dst in reversed(LEGACY):     # DUELL 1.1 mod_legacy_move put a retired card's value into a free slot as the sound loaded: back onto its card (the recipes' form, the same sound)
+        hit = [ids for ids in sl if (vals.get(ids[0], 0), vals.get(ids[1], 0)) == (src, dst) and vals.get(ids[2], 0)]
+        if hit and not vals.get(ctx.ids[card], 0) and factory["p"].get(card[2:]):   # (only where the recipe has the card: a route of its own stays)
+            vals[ctx.ids[card]] = vals[hit[-1][2]]
+            for i in hit[-1]:
+                vals[i] = 0
+    used = [[vals.get(i, 0) for i in ids] for ids in sl if vals.get(ids[0], 0) and vals.get(ids[2], 0)]
+    for k, ids in enumerate(sl):
+        for i, v in zip(ids, used[k] if k < len(used) else (0, 0, 0)):
+            vals[i] = v
+
+
 def sound_from_record(ctx, rec, factory):
     """the duell_sounds.py form of a record: p = every value off the INIT defaults (not the track's own), End B from the block"""
     eng = rec["engine"]
     p = {}
+    drop_preselect(ctx, rec["values"], factory)
+    if ctx.eng_names[eng] == "FM6":                  # DUELL 1.1 (eng_fm6.c fm6_env_look NEW): a factory FM6 sound's AMP ENV knobs start on its patch's own numbers as it loads: not the owner's
+        for nm in ("P_ATK", "P_DEC", "P_SUS", "P_REL"):
+            rec["values"][ctx.ids[nm]] = ctx.default(eng, ctx.ids[nm])
     for pid in sorted(rec["values"]):
         nm = ctx.name_of.get(pid)
         if nm is None or (pid < ctx.e0 and nm[2:] in SKIP_NAMES):
@@ -234,18 +259,13 @@ def sound_from_record(ctx, rec, factory):
         if v != df:
             p["%s %s" % (ctx.gs.XGROUP[xn[2:]], label)] = v
     cat0 = CATS[rec["cat"]] if rec["cat"] else factory["cat"]       # (a BASS / PERC / KICK sound without KEY TRK gets 0 from the generator: write the record's value, 32 included)
-    if (cat0 in ("BASS", "PERC") or "KICK" in rec["name"]) and "KTRK" not in p:
+    if (factory.get("lcat", cat0) in ("BASS", "PERC") or "KICK" in rec["name"]) and "KTRK" not in p:   # (lcat: the category the generator's defaults were made with, gen_duell_sounds.py)
         p["KTRK"] = rec["values"][ctx.ids["P_KTRK"]]
     s = dict(engine=ctx.eng_names[eng], idx=factory["idx"], name=rec["name"], cat=CATS[rec["cat"]] if rec["cat"] else factory["cat"], p=p)
-    if rec["mb"]:                                    # PT_VER 4: End B as exact values (the block of the record): 'bend' {label: End B value} (where it differs from the Original), 'bpin' (the marks of the values set by hand), 'bfm' (FM6 bytes), 'bamt' (the AMOUNT)
-        d = endb.decode(rec["mb"], eng)
-        if d["amt"]:
-            s["bamt"] = d["amt"] - 1
-        s["bend"] = {ctx.wlabel[w]: v for w, v in sorted(d["vals"].items())}
-        if d["marks"]:
-            s["bpin"] = [ctx.wlabel[w] for w in d["marks"]]
-        if d["fm"] is not None:
-            s["bfm"] = d["fm"]
+    if "lcat" in factory:
+        s["lcat"] = factory["lcat"]
+    # TIDE (firmware tide.h H6): a factory sound's B is rolled MUSICAL as it loads, the recipe's End B is not used; the record's is that roll: the recipe's stays
+    s.update({k: v for k, v in factory.items() if k in ("bseed", "bamt", "bend", "bpin", "bfm")})
     return s
 
 
@@ -368,8 +388,8 @@ def write_sounds(entries, path):
         tail = ""
         if "bend" in s:                                   # End B as values, in the form duell_sounds.py holds it (tools/endb.py sound_kwargs)
             tail = ",\n         " + ",\n         ".join(endb.sound_kwargs(s["bend"], s.get("bpin"), s.get("bfm")))
-        lines.append("    dict(engine=%r, idx=%d, name=%r, cat=%r%s%s,\n         p=%s%s)," % (
-            s["engine"], s["idx"], s["name"], s["cat"], ", bseed=%d" % s["bseed"] if "bseed" in s else "", ", bamt=%d" % s["bamt"] if "bamt" in s else "", py(s["p"]), tail))
+        lines.append("    dict(engine=%r, idx=%d, name=%r, cat=%r%s%s%s,\n         p=%s%s)," % (
+            s["engine"], s["idx"], s["name"], s["cat"], ", lcat=%r" % s["lcat"] if "lcat" in s else "", ", bseed=%d" % s["bseed"] if "bseed" in s else "", ", bamt=%d" % s["bamt"] if "bamt" in s else "", py(s["p"]), tail))
     lines.append("]")
     Path(path).write_text("\n".join(lines) + "\n")
 
@@ -404,8 +424,11 @@ def main(argv):
     fm6_seen = steps_seen = unchanged = changed = 0
     cand = {}
     for slot in sorted(patches):
-        if slot >= len(ctx.browse):
+        if slot >= ctx.layout["SLOTS"]:
             refused.append("slot #%d: there are 128 slots" % (slot + 1))
+            continue
+        if ctx.browse[slot] is None:        # (a TIDE build's USER slot: it holds no factory sound to replace)
+            refused.append("slot #%d: a USER slot holds no factory sound: not imported" % (slot + 1))
             continue
         eng_i, idx = ctx.browse[slot]
         eng = ctx.eng_names[eng_i]
@@ -462,7 +485,7 @@ def main(argv):
                 report.append("#%d %s: edited (%s)" % (slot + 1, s["name"], ", ".join(diff[:8]) + (" ..." if len(diff) > 8 else "") if diff else "End B only"))
             own[k] = s
     if fm6_seen:
-        report.append("note: %d FM6 patch(es) in the files: their operator data is not imported (duell_sounds.py has no place for it); the values are" % fm6_seen)
+        report.append("note: %d FM6 patch(es) in the files: their operator data is not imported (duell_sounds.py has no place for it), nor the AMP ENV knobs (a factory FM6 sound's start on its patch's numbers); the other values are" % fm6_seen)
     if steps_seen:
         report.append("note: %d patch(es) carry SEQUENCER steps: not imported" % steps_seen)
     # ---- multis

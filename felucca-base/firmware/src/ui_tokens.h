@@ -35,25 +35,24 @@
  * are mixed from (the colours of the final pictures), never drawn as a fill. tests/ui_render.c box_lint finds a flat fill of 12 x 12 px or more that is neither the background nor
  * allowed (GFX_HOOK_ALLOW) on every screen in every palette and fails on one. */
 
-/* ---- header: the two capsules [part number | morph end letter | voices number] ---- */
+/* ---- header: the two capsules [part number | morph end letter] (b10, owner 2026-11-12: the voices number is gone) ---- */
 #define UT_CAP_X 4              /* left capsule's left edge; the right capsule ends at 240 - UT_CAP_X (x 235) */
 #define UT_CAP_Y 4              /* rows 4 .. 19 */
-#define UT_CAP_W 37             /* x 4 .. 40 and 199 .. 235, outline included */
+#define UT_CAP_W 25             /* x 4 .. 28 and 211 .. 235, outline included (b10: two cells, was 37 with the voices) */
 #define UT_CAP_H 16
 #define UT_CAP_R 5              /* outer corner radius; the dim half's is one less (1 px outline) */
-#define UT_CAP_CELL 12          /* the number cell (outline included) and the letter / voices text cells: 12 px each, the text centred in its cell by its advance */
+#define UT_CAP_CELL 12          /* the number cell (outline included) and the letter's text cell: 12 px each, the text centred in its cell by its advance */
 #define UT_CAP_BASE 16          /* the capitals' last row of the capsule text; the page title shares it */
 #define UT_CAP_DIM_PCT 27       /* a lit capsule's dim half: BG -> the part colour, % (VIOLET: 66,15,75) */
 #define UT_CAP_OFF_PCT 10       /* an unlit capsule's dim half: BG -> TEXT, % (VIOLET: 32,28,32); its outline and number cell are T_DIM */
-#define UT_CAP_LETTER_PCT 88    /* the morph end letter: BG -> TEXT, % (VIOLET: 222,218,230); the number and the voices number are T_TEXT (white; dark in the light palettes) */
-#define UT_CAP_VOICES_OWN 1    /* item 117: STEREO and LAYER show the SELECTED part's number (the same one in both capsules, as the one shared number was). 1: each capsule shows its OWN part's number (as in DUEL, and as the pictures' 8 | 6) */
+#define UT_CAP_LETTER_PCT 88    /* the morph end letter: BG -> TEXT, % (VIOLET: 222,218,230); the number is T_TEXT (white; dark in the light palettes) */
 
 /* ---- header: the page title (face T, T_TEXT, centred on the screen's middle, no line, no colour) ---- */
 #define UT_TITLE_CX 120
 #define UT_TITLE_BASE 16        /* capitals' last row: the capsule text's */
 #define UT_TITLE_GAP 6          /* free room between the title and a capsule */
-#define UT_TITLE_L (UT_CAP_X + UT_CAP_W + UT_TITLE_GAP)           /* 47: the title room with capsules */
-#define UT_TITLE_R (240 - UT_CAP_X - UT_CAP_W - UT_TITLE_GAP)     /* 193 */
+#define UT_TITLE_L (UT_CAP_X + UT_CAP_W + UT_TITLE_GAP)           /* 35: the title room with capsules (b10: was 47) */
+#define UT_TITLE_R (240 - UT_CAP_X - UT_CAP_W - UT_TITLE_GAP)     /* 205 (b10: was 193) */
 #define UT_TITLE_GL 8           /* the title room of a page without capsules (global pages) */
 #define UT_TITLE_GR 232
 
@@ -146,7 +145,6 @@
 #define UT_T2_VAL2_BASE1 43     /* rel: a two-line value, no bar */
 #define UT_T2_VAL2_BASE2 58
 #define UT_T2_UNIT_GAP 0
-#define UT_T2_NUM_DX -1         /* the N face's first ink sits 1 px right of the picture's: its figures are drawn this much left (the unit keeps its place) */
 #define UT_T2_BAR_Y 75          /* rel; height, radius, track and minimum as template 1 */
 #define UT_T2_ENUM_BAR 0        /* 0: a NAME (WAVE SAW) has no bar, as the picture; 1: it gets one */
 #define UT_T2_LIST_Y 7          /* the engine list's first row, from the picture card's top (3 rows of UT_T3_ROW_H + 2 gaps = 61 px in 76) */
@@ -209,14 +207,7 @@
 #define UT_T4_BAR_MIN 3
 #define UT_T4_TICK_DY 1         /* PAN's middle tick starts this many rows above the bar and ends this many under it */
 #define UT_T4_TRACK_PCT 13      /* a bar's and the meter's empty track: card -> TEXT, % */
-#define UT_T4_HOLD_BASE 32      /* rel (MUTE card): "Hold" and its GLO keycap */
-#define UT_T4_PRESS_BASE 48     /* rel (MUTE card): "and press" and its OCT- / OCT+ keycap */
 #define UT_T4_KEY_GAP 3         /* the word -> its keycap */
-#define UT_T4_METER_X 106       /* rel (MUTE card) */
-#define UT_T4_METER_Y 8
-#define UT_T4_METER_W 6
-#define UT_T4_METER_H 44
-#define UT_T4_METER_R 3
 
 /* ---- TEMPLATE 5, the SENDS page (the 'fxsum' page, FX's last; item 117; FINAL_V1_04_fx-send): no card, no box, no bar, everything on the background, left aligned; screen rows (the capitals' last row = the baseline) ----
  * The state text (M, TEXT-MID colour) at x 9, baseline 48; two info rows, labels (S, grey) at x 9 and 148, values (M, the part's colour; dim when that effect is not fed) at x 66 and 186, baselines 92 (DELAY: mode, TIME)
@@ -241,8 +232,8 @@
 #define UT_OFF_W 222            /* the longest line: x 9 .. 231 */
 #define UT_OFF_TXT_ARP "THE ARPEGGIATOR IS SWITCHED OFF"
 #define UT_OFF_TXT_SEQ "THE SEQUENCER IS SWITCHED OFF"
-#define UT_OFF_TXT_SENDS "THE EFFECT SENDS ARE SWITCHED OFF"
-#define UT_OFF_TXT_PFX "THE PART EFFECTS ARE SWITCHED OFF"
+#define UT_OFF_TXT_SENDS "EFFECT SENDS ARE SWITCHED OFF"
+#define UT_OFF_TXT_PFX "PART EFFECTS ARE SWITCHED OFF"
 #define UT_OFF_NOTE_IT "TURN A KNOB TO SWITCH IT ON IN MODULES"      /* ARP, SEQ */
 #define UT_OFF_NOTE_THEM "TURN A KNOB TO SWITCH THEM ON IN MODULES"  /* SENDS, PART FX */
 #define UT_T5_X 9               /* state text, row labels and note */
@@ -292,7 +283,7 @@
 #define UT_T6_G_TH 26           /* a sentence's last baseline -> the next heading's baseline */
 /* MODE (live page): its list rows keep their place (ui_graph.c graph_mode); the picked row takes the same fill and corners */
 
-/* ---- TEMPLATE 7, the STEP sequencer page (FINAL_V1_07_sequencer, item 118; final_pages.py page_step / roll_draw2) and its help page (FINAL_V1_07b_sequencer_help) ----
+/* ---- TEMPLATE 7, the STEP sequencer page (FINAL_V1_07_sequencer, item 118; final_pages.py page_step / roll_draw2) ----
  * The roll card: x 3 .. 236, rows 27 .. 173 (hard corners). Inside: 17 semitone rows of UT_T7_RH px from row UT_T7_Y0 (the highest on top), the step columns from x UT_T7_X0, 12 px each, the keyboard strip at UT_T7_KX
  * (white keys 8 px, black keys 4 px, one row less than the row's height); the C, E and G rows named at the strip's left (S, T_DIM, ink ending at x UT_T7_NAME_R, capitals' last row = the row's top + RH);
  * a note is 10 px wide (x + 1) and RH - 2 high, an accent the row's whole height in TEXT; the cursor frame 1 px, 2 rows over the first row and 1 under the last; a lock mark 7 x 2 under the step.
@@ -331,12 +322,6 @@
 #define UT_T7_VAL_X 5
 #define UT_T7_VAL_BASE 35       /* rel: as the list heads (UT_T3_VAL_BASE - UT_T3_HEAD_Y) */
 #define UT_T7_VAL_PAD_R 2
-/* the help page: eight rows 23 px apart from row 33 (the legend symbol at x 9 centred on the row's cap rows, the word S at x 30, its meaning M grey at x 86) */
-#define UT_T7_HELP_Y0 33
-#define UT_T7_HELP_PITCH 23
-#define UT_T7_HELP_SYM_X 9
-#define UT_T7_HELP_WORD_X 30
-#define UT_T7_HELP_MEAN_X 86
 
 /* ---- TEMPLATE 8, the CELL pages (item 156; owner-approved design_grid_2x2_REVERB.png, design_fill_2_and_3.png, design_choice_bars.png in DUELL/release_drafts) ----
  * The pages whose picture was only the calm curve (graph GR_NONE) have no picture: the cards that show fill the body, rows 27 .. 215, as big cells with template 2's rows (dot + label S on rel 19,

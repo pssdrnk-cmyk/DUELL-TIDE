@@ -14,6 +14,7 @@
  * 5. the cost per type and track (instructions / sample, host) against an 8-voice ANALOG part.
  * 6. demos (DEMO_DIR): each TYPE on a loop (acid line + drums), two bars dry, two bars with the INSERT. */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                              /* (the grid cards are read from the texts drawn in them: ui_test.c card_match) */
 #include "ui_test.c"
 #ifdef __APPLE__
 #include <libproc.h>
@@ -336,7 +337,7 @@ static void test_motion(void)
     t->p[P_SLEN] = 16;
     t->seq_active = 1;
     ok_a &= !motion_set_event(t, 0, P_IMIX, 0) && !motion_set_event(t, 8, P_IMIX, 127);
-    ok_l &= !motion_set_lock(t, 4, P_ITYPE, IT_CRUSH);
+    ok_l &= motion_set_lock(t, 4, P_ITYPE, IT_CRUSH) == 1;       /* (DUELL 1.1, owner item 34: INSERT TYPE is no matrix destination, so no step can lock it: refused) */
     seq_start();
     for (k = 0; k < 2750u; k++) {                       /* 16 steps of 172.3 blocks (1/16 at 120 BPM), not again */
         uint32_t idx;
@@ -354,12 +355,12 @@ static void test_motion(void)
             seen_c |= t->p[P_ITYPE] == IT_CRUSH;
         if (idx == 5u)
             seen_back |= t->p[P_ITYPE] == IT_FOLD;
-        ok_l &= idx == 4u || t->p[P_ITYPE] == IT_FOLD;
+        ok_l &= t->p[P_ITYPE] == IT_FOLD;
     }
     seq_stop();
     ck("MIX as automation: 0 on steps 1..8 (nothing runs), 100 % from step 9, the wet share there 4 blocks on",
        ok_a && step_s && seen_w);
-    ck("TYPE as a step's lock: CRUSH on step 5 only, FOLD before and after", ok_l && seen_c && seen_back);
+    ck("TYPE as a step's lock: refused (1.1: not a matrix destination), the TYPE stays FOLD on every step", ok_l && !seen_c && seen_back);
 }
 
 /* ------------------------------------------------------------------ 4 --- */
@@ -391,7 +392,7 @@ static void test_stored(void)
     up_values(&r, v);
     ok = v[P_ITYPE] == 3 && v[P_IA] == 11 && v[P_IMIX] == 101;
     ck("user presets: the INSERT's values kept", ok);
-    /* the pages: INSERT and INSERT 2 after FX (DUELL: the SLICER is removed), then EQ 1, the labels and values per TYPE */
+    /* the pages: INSERT and INSERT 2 after FX (SEND FX is gone, b4 UI round 2) (DUELL: the SLICER is removed), then EQ 1, the labels and values per TYPE */
     {
         uint32_t p, ps = 0, pi = 0, pi2 = 0, pd = 0;
         char val[16];
@@ -422,7 +423,8 @@ static void test_stored(void)
               str_eq(track_desc(t, P_IC)->label, "FDBK");
         t->p[P_ITYPE] = IT_OFF;
         ok &= str_eq(track_desc(t, P_IA)->label, "INS A") && str_eq(param_desc_of(0, P_IB)->label, "INS B");
-        for (i = P_ITYPE; i <= P_IMIX; i++)
+        ok &= !motion_param(P_ITYPE);                   /* (DUELL 1.1, owner item 34: the TYPE is no matrix destination: it is no lock or automation target) */
+        for (i = P_IA; i <= P_IMIX; i++)
             ok &= motion_param(i) && !param_kept(i);
         ck("pages: FX, INSERT (TYPE A B C), INSERT 2 (MIX), EQ 1; A B C named by TYPE; recordable; part of the sound", ok);
     }
@@ -839,7 +841,7 @@ static void test_bits_knob(void)
         frames(16);
     }
     ck("BITS knob: TYPE turned to CRUSH, BITS reads A (A stays 64: 6 bits on the new curve)",
-       TSEL->p[P_ITYPE] == IT_CRUSH && TSEL->p[P_IA] == 64 && !strncmp(ui.col[1], "BITS|6|", 7));
+       TSEL->p[P_ITYPE] == IT_CRUSH && TSEL->p[P_IA] == 64 && card_match(1, "BITS|6|"));
     prev = TSEL->p[P_IA];
     for (i = 0; i < 140u; i++) {                        /* all the way down: one step a detent, the card follows */
         turn(EN_K2, -1);
@@ -847,7 +849,7 @@ static void test_bits_knob(void)
         moved &= TSEL->p[P_IA] == (prev > 0 ? prev - 1 : 0);
         prev = TSEL->p[P_IA];
         snprintf(want, sizeof want, "BITS|%s|", N_IBITS[prev]);
-        ok &= !strncmp(ui.col[1], want, strlen(want));
+        ok &= card_match(1, want);
         mark |= (uint32_t)morph_view_moved(song.sel, P_IA);
         if ((uint32_t)atoi(N_IBITS[prev]) != last) {
             last = (uint32_t)atoi(N_IBITS[prev]);
@@ -861,8 +863,8 @@ static void test_bits_knob(void)
         frames(16);
         prev = TSEL->p[P_IA];
         snprintf(want, sizeof want, "BITS|%s|", N_IBITS[prev]);
-        ok &= !strncmp(ui.col[1], want, strlen(want));
-        n16 += !strncmp(ui.col[1], "BITS|16|", 8) && prev != last16;   /* (clicks past 127 stay on it) */
+        ok &= card_match(1, want);
+        n16 += card_match(1, "BITS|16|") && prev != last16;   /* (clicks past 127 stay on it) */
         last16 = prev;
     }
     ck("BITS knob: 140 detents up, A 127 and the card 16 (on the last two detents only); every reading matches A", ok && prev == 127 && n16 == 2u);
@@ -957,16 +959,17 @@ static void test_bits_knob(void)
 /* DIST as it was before 0.2.14 (the wet signal alone, the states as they are): what the blend is built from */
 static void dist_ref_wet(track_t *t, int32_t *b, uint32_t n)
 {
-    int32_t d = t->p[P_DIST], i, g, k, mk, bias = 2400, b0;
+    int32_t d = t->p[P_DIST], i, g, k, mk, bias = 2400, b0, xl;
     g = 4096 + d * d * 2;
     k = 32000 - d * 95;
     mk = 30000 - d * 120;
     b0 = softclip(bias);
+    xl = g > 9216 ? 57500 : 230000;                  /* (DUELL 1.1 BIT DEPTH: the wet of fx.c without the two-bit pre-shift, the input limited by the drive instead) */
     for (i = 0; i < (int32_t)n; i++) {
         int32_t x = b[i], y;
         t->dist_hp += (x - t->dist_hp + 64) >> 7;
-        x = clamp(x - t->dist_hp, -230000, 230000);
-        y = softclip((((x >> 2) * g) >> 10) + bias) - b0;
+        x = clamp(x - t->dist_hp, -xl, xl);
+        y = softclip(((x * g) >> 12) + bias) - b0;
         t->dist_lp1 += mulq15(y - t->dist_lp1, k);
         t->dist_lp2 += mulq15(t->dist_lp1 - t->dist_lp2, k);
         b[i] = mulq15(t->dist_lp2, mk);
@@ -1117,7 +1120,7 @@ static void test_dist(void)
 /* ------------------------------------------------------- BITS curve, old stores --- */
 /* DUELL 0.2.14: INS A of CRUSH is the detent of 1 .. 16 bits (ins_bits.h). What was stored before held A as (A >> 3) + 1 bits; those stores
  * (a project of revision 0, a multi of version 2, a patch without PTF_CB) are no longer read, nothing converts them: here they are refused.
- * The factory multis are rewritten as version 3, then 4 (tools/factory_multis): WIRED SNAIL's CRUSH part (M04 until 0.2.22, M10 since 0.2.23, the record kept)
+ * The factory multis are rewritten as version 3, then 4 (tools/factory_multis): WIRED SNAIL's CRUSH part (M04 until 0.2.22, M10 since 0.2.23, the record kept; out of the sixteen since D31)
  * holds the detent of the bit count it always played. */
 static int32_t old_crush(int32_t v, int32_t a)       /* the quantiser of before 0.2.14 */
 {
@@ -1156,40 +1159,44 @@ static void test_bits_migrate(void)
         memcpy(st.raw + PROJ_STORE_SIZE - 4u, &sum, 4);
     }
     ck("project: byte 67 = 0 (before 0.2.14, the hash right): refused, not converted", !proj_import(&b, &st, sizeof st));
-    /* 3. a multi: version 7 as written loads as it is; a version 6 (before the extension slots), a version 5, a version 4 (0.2.16 .. 0.2.18: one level), 3 (0.2.14 / 0.2.15: the PING switch) or 2 record is refused; the factory multis (version 7) load */
+    /* 3. a multi: version 8 as written loads as it is; a version 7 (the edit list), 6 (before the extension slots), 5, 4 (0.2.16 .. 0.2.18: one level), 3 (0.2.14 / 0.2.15: the PING switch) or 2 record is refused; the factory multis (version 8) load */
     {
-        static uint8_t rec[MU_REC_MAX + 8u], blk[NSHOWN][MB_N], amt[NSHOWN], set[6];
+        static uint8_t rec[MU_REC_MAX + 8u], amt[NSHOWN], set[6];
         uint32_t len, cut = 0, crush_parts = 0;
         static project_t q;
-        memset(blk, 0, sizeof blk);
-        len = mu_pack(rec, &a, blk, &cut);
-        ok = rec[0] == MU_VER && MU_VER == 7u && mu_unpack(&q, blk, amt, set, rec, len) && q.t[0].p[P_IA] == 60 && !memcmp(&q.motion, &a.motion, sizeof a.motion);
+        len = mu_pack(rec, &a, &cut);
+        ok = rec[0] == MU_VER && MU_VER == 8u && mu_unpack(&q, amt, set, rec, len) && q.t[0].p[P_IA] == 60 && !memcmp(&q.motion, &a.motion, sizeof a.motion);
         rec[0] = 2u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 3u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 4u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 5u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
         rec[0] = 6u;
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
-        rec[0] = 7u; rec[1] = (uint8_t)(P_COUNT - 1u);
-        ok &= !mu_unpack(&q, blk, amt, set, rec, len);
-        ck("multi: version 6 as written loads as it is; a version 5 (0.2.19 .. 0.2.21: DUCK SRC 2..17 were channels), 4, 3 or 2 record, or one of another P_COUNT, is refused", ok);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
+        rec[0] = 7u;
+        ok &= !mu_unpack(&q, amt, set, rec, len);
+        rec[0] = 8u; rec[1] = (uint8_t)(P_COUNT - 1u);
+        ok &= !mu_unpack(&q, amt, set, rec, len);
+        ck("multi: version 8 as written loads as it is; a version 7, 6, 5 (0.2.19 .. 0.2.21: DUCK SRC 2..17 were channels), 4, 3 or 2 record, or one of another P_COUNT, is refused", ok);
         ok = 1;
         for (k = 0; k < DF_N; k++) {
             static project_t o;
             uint32_t t;
-            ok &= DM_REC[DM_AT[k]] == MU_VER && mu_unpack(&o, blk, amt, set, DM_REC + DM_AT[k], DM_LEN[k]);
+            static uint8_t dmb[2048];
+            ok &= dm_rec(k, dmb)[0] == MU_VER && mu_unpack(&o, amt, set, dm_rec(k, dmb), DM_LEN[k]);
             for (t = 0; t < NSHOWN; t++)
                 if (o.t[t].p[P_ITYPE] == IT_CRUSH) {
                     printf("insert:   factory multi #%u part %u: INSERT CRUSH, A %d = %s bits\n", k, t + 1u, o.t[t].p[P_IA], N_IBITS[o.t[t].p[P_IA]]);
-                    ok &= o.t[t].p[P_IA] == INS_BITS_KNOT[7];     /* WIRED SNAIL's: the old A 60 (8 bits), as the loader moved it */
-                    crush_parts++;
+                    if (k == 9u && t == 1u)                       /* b7 (TECHNO): IRON WORKS carries its own CRUSH, 3 bits on its knot (reel, 2026-11-10: it is part 2 of M10 SEVEN LOOP; M07 before) */
+                        ok &= o.t[t].p[P_IA] == INS_BITS_KNOT[2];
+                    else
+                        ok &= o.t[t].p[P_IA] == INS_BITS_KNOT[7], crush_parts++;   /* WIRED SNAIL's: the old A 60 (8 bits), as the loader moved it */
                 }
         }
-        ck("multi: the factory multis (version 6) load; WIRED SNAIL's CRUSH part (M10) is the 8-bit detent it played before", ok && crush_parts == 1u);
+        ck("multi: the factory multis (version 8) load; a CRUSH part among them (WIRED SNAIL's, M10, was the only one; it left the sixteen in D31) is the 8-bit detent it played before; M10's IRON WORKS its own 3 bits (b7; reel, 2026-11-10: M10 SEVEN LOOP, the only CRUSH among the eighteen)", ok && crush_parts <= 1u);
     }
     /* 4. a stored patch: written now it carries PTF_CB; one without (before 0.2.14) is no record */
     {

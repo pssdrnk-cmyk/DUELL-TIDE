@@ -314,7 +314,7 @@ static void trio_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     for (i = 0; i < n; i++) {
         int32_t x = cur + cr[i];                        /* one sample late: its corrections are complete */
         cur = mix[i];
-        out[i] += voice_amp(x, m, i) << 1;
+        out[i] += voice_amp(x, m, i) * 2;
     }
     prev = cur + cr[n];
     v->ph[0] = ph0;
@@ -325,6 +325,7 @@ static void trio_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     v->s[4] = prev;
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t TRIO_PRESETS[] = {
     /* name, {WAVE, INT2, INT3, DTN, -, -, -, PW} (MODE CUT RES are filter 2's since cloud job J), {A D S R}, fenv, mono */
     {"FAT BASS", {0, 0, -12, 9, 0, 0, 0, 64}, {0, 62, 60, 25}, 40, 1, FX(10, 0, 10, 10), PAT(2)},
@@ -333,6 +334,7 @@ static const preset_t TRIO_PRESETS[] = {
     {"RING BELL", {13, 0, 18, 6, 0, 0, 0, 64}, {0, 92, 0, 80}, 0, 0, FX(0, 20, 35, 55), PAT(7)},
     {"CHIP CHOIR", {1, 0, 12, 7, 0, 0, 0, 40}, {70, 90, 110, 85}, 30, 0, FX(0, 50, 20, 65), PAT(5)},
 };
+#endif
 
 static const uint8_t TRIO_UIORD[8] = {0, 1, 2, 3, 7, 4, 5, 6};   /* card position -> E index: ENGINE WAVE INT2 INT3; EDIT 1 DTN PW (MODE CUT RES are unused slots, hidden); the stored ids never move */
 
@@ -340,17 +342,19 @@ static const engine_t ENG_TRIO = {
     .name = "TRIO",
     .page_title = {"OSC", "TONE"},
     .edit = {
-        {"WAVE", F_ENUM, 0, 15, 0, N_TRIO_WAVE, 0},
-        {"INT2", F_SEMI, -24, 24, 0, 0, 0},
-        {"INT3", F_SEMI, -24, 24, -12, 0, 0},
-        {"DTN", F_INT, 0, 50, 6, 0, "ct"},
+        {"WAVE", F_ENUM, 0, 0, 15, 0, N_TRIO_WAVE},
+        {"INT2", F_SEMI, 0, -24, 24, 0, 0},
+        {"INT3", F_SEMI, 0, -24, 24, -12, 0},
+        {"DTN", F_INT, U_CT, 0, 50, 6, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was MODE: filter 2's TYPE */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was CUT: filter 2's CUTOFF */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES: filter 2's RES */
-        {"PW", F_PCT, 0, 127, 64, 0, 0},
+        {"PW", F_PCT, 0, 0, 127, 64, 0},
     },
+#if DUELL_PRESETS
     .presets = TRIO_PRESETS,
     .npresets = NELEM(TRIO_PRESETS),
+#endif
     .note_on = trio_note_on,
     .render = trio_render,
     .knob = {P_FREEA, P_FREEB, P_E7, P_E1},   /* filter 1's CUT and RES (the engine's own CUT and RES were here) */

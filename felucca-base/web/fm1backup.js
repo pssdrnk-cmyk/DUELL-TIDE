@@ -22,7 +22,7 @@ const idsOf = (n) => [BACKUP_IDS_P16, BACKUP_IDS_WT, BACKUP_IDS_FULL, BACKUP_IDS
 // INFO (cmd 1) as the installer needs it: the version string, and the capability tags that follow the engine names, NTRK and the song-rows byte
 // (Felucca sent 16 song rows, DUELL sends 0: the byte is skipped, never compared). Tags are `id 01 value...` of the lengths below.
 // caps = the `42 01 caps` value (bit 0 bounded full backup, bit 2 multis + patterns, bit 3 wavetables, bit 4 16 patch chunks); null when the unit has no such tag.
-const INFO_TAG_LEN = { 0x55: 3, 0x4d: 4, 0x42: 3, 0x46: 4, 0x53: 3, 0x50: 3, 0x4e: 3, 0x52: 3, 0x4c: 3, 0x41: 4, 0x54: 3, 0x56: 3, 0x43: 3, 0x58: 4, 0x5a: 3 };
+const INFO_TAG_LEN = { 0x55: 3, 0x4d: 4, 0x42: 3, 0x46: 4, 0x53: 3, 0x50: 3, 0x4e: 3, 0x52: 3, 0x4c: 3, 0x41: 4, 0x54: 3, 0x56: 3, 0x43: 3, 0x58: 4, 0x5a: 3, 0x59: 3, 0x5b: 3, 0x4b: 3, 0x4f: 3, 0x44: 3 };
 export function parseInfo(a) {
   let pos = a.indexOf(0); if (pos < 0) throw new Error("Invalid INFO");
   const version = String.fromCharCode(...a.slice(0, pos)); pos++;
@@ -34,7 +34,7 @@ export function parseInfo(a) {
     tags.set(a[pos], a.slice(pos + 2, pos + INFO_TAG_LEN[a[pos]])); pos += INFO_TAG_LEN[a[pos]];
   }
   const caps = tags.has(0x42) ? tags.get(0x42)[0] : null;
-  return { version, tags, caps, patchCap: tags.has(0x58) ? tags.get(0x58)[0] | tags.get(0x58)[1] << 7 : null };
+  return { version, tags, caps, tide: tags.has(0x44) && (tags.get(0x44)[0] & 1) === 1, patchCap: tags.has(0x58) ? tags.get(0x58)[0] | tags.get(0x58)[1] << 7 : null };
 }
 export const BACKUP_CMD = { LIST: 65, GET: 66, PUT: 67 };
 const BACKUP_CHUNK = 256;
@@ -73,7 +73,7 @@ export function bkCrc(bytes) {
   return (~c) >>> 0;
 }
 function bkCheck(rc) {
-  if (rc) throw new Error(({ 1: "Invalid archive object", 2: "Archive data failed validation", 3: "Stop playback first", 4: "Flash write failed", 5: "Start a fresh backup" })[rc] || `Archive error ${rc}`);
+  if (rc) throw new Error(({ 1: "Invalid archive object", 2: "Archive data failed validation", 3: "Stop playback first", 4: "Flash write failed", 5: "Start a fresh backup", 6: "Store full" })[rc] || `Archive error ${rc}`);
 }
 export function bkManifest(a) {
   if (a[0] !== 1) throw new Error("Unsupported archive protocol");

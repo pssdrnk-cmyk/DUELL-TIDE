@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b10
+- **Fixed (developer tooling, b11 tests lane):** the host groups `take` and `answer` (live assist: `tests/take_test.c`, `tests/answer_test.c`) and `guards` (`tests/guards_test.c`) were defined in `host_tests.sh` but missing from its default list, so neither CI nor `--changed` ever ran them; they are in the list now (and in the group map: they read `tide_take.c`, `seq.c`, `tide_seq.c`). The other groups outside the list say why in their own comment (`budgetcal`, `physcost`, `tidecost`: report only; `polycalib`: macOS; `twocore_tsan`: slow; `soundlab`, `emu`: need tools).

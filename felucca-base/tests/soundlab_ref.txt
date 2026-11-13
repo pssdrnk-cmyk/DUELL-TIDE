@@ -1,0 +1,7 @@
+level.lufs -20.67
+level.true_peak_dbfs -4.27
+level.rms_dbfs -23.55
+spectrum.bands_pct.lt150 23.32
+spectrum.bands_pct.gt2k 0.70
+spectrum.centroid_hz 418.14
+space.side_mid_db -6.64

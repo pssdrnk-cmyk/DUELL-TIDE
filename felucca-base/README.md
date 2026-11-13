@@ -1,8 +1,8 @@
 # Felucca
 
-> **DUELL note.** This is Felucca's README, kept as it was; parts of it no longer describe DUELL. DUELL differs: two parts instead of four tracks; ten engines (ANALOG, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYSICAL, NOISE, FM6, WAVE), as SAMPLE, GRAIN and SLICE are removed with their samples and the user sample slots (0.2.9); hold FX opens PERFORM instead of the FX layer; MOMENTARY is gone; the quick edit layers are hold EDIT, LFO, ENV, ARP and GLO (SEL held: the scale layer); REC arms recording on the sequencer pages and is the HOLD switch on the others; PLAY/STOP is green when stopped and red when playing; GLO's pages are GLO (mutes and levels), TEMPO, SIDECHAIN, BASS MONO, MIDI, MODULES and MIDI LEARN. For DUELL see [../docs/QUICKSTART.md](../docs/QUICKSTART.md) and [../SPEC.md](../SPEC.md).
+> **DUELL note.** This is Felucca's README, kept as it was; parts of it no longer describe DUELL. DUELL differs: two parts instead of four tracks; ten engines (ANALOG, PHASE, LOFI, VOICE, TRIO, WHEEL, PHYSICAL, NOISE, FM6, WAVE), as SAMPLE, GRAIN and SLICE are removed with their samples and the user sample slots (0.2.9); hold FX opens PERFORM instead of the FX layer; MOMENTARY is gone; the quick edit layers are hold EDIT, LFO, ENV, ARP and GLO (SEL held: the scale layer); REC arms recording on the sequencer pages and is the HOLD switch on the others; PLAY/STOP is green when stopped and red when playing; GLO's pages are GLO (mutes and levels), TEMPO, SIDECHAIN, BASS MONO, MIDI, MODULES and MIDI LEARN. For DUELL see [../docs/QUICKSTART.md](../docs/QUICKSTART.md) and [../SPEC.md](../SPEC.md); for TIDE, [../README.md](../README.md) and [../docs/TIDE_GUIDE.md](../docs/TIDE_GUIDE.md).
 >
-> **Saves may change before version 1.0.** Until the 1.0 release, the way patches, multis, settings and everything else are saved may change. Saves may stop loading between versions, and a backup made with one version may not restore in the next. Do not rely on them yet.
+> **Back up before you update.** A backup made with one version may not restore in another.
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/hugelton)
@@ -321,7 +321,7 @@ PIANO HD); 1.5 brings the full piano back.
 
 **Reverb** (GLO > REVERB, TYPE): **HALL** (since 1.4, the default on a fresh start: eight delay lines feeding each
 other with slowly drifting taps, stereo, SIZE the decay up to about 4.5 s, DAMP how fast the highs die), **ROOM** (the
-default up to 1.1.5), **SPRING**, **SHIM** (ROOM with an octave-up shimmer fed back into it) and **RESO** (four combs tuned to the part's scale; both ported from JIANT, see LICENSING.md). **PLATE** (DUELL 0.2.14: a plate reverb, stereo, smooth and dense; based on the reverb of the CHOMPI firmware, MIT, see LICENSING.md). A project plays the TYPE it was saved with.
+default up to 1.1.5), **SPRING**, **SHIM** (the old four-comb room with an octave-up shimmer fed back into it) and **RESO** (four combs tuned to the part's scale; both ported from JIANT, see LICENSING.md). **PLATE** (DUELL 0.2.14: a plate reverb, stereo, smooth and dense; based on the reverb of the CHOMPI firmware, MIT, see LICENSING.md). A project plays the TYPE it was saved with.
 
 ## Scale keyboard
 
@@ -339,8 +339,8 @@ minor blues (BLUES), whole tone (WHOLE), half-whole diminished (DIMHW), and
 whole-half diminished (DIMWH).
 Drum kits keep their own note mapping (never snapped); incoming MIDI notes follow the same SNAP / PLAY rule as the keys.
 
-Press the scale button (**SEL**) again for the **CHORD** page: CHRD picks the chord keys (OFF, the scale's triads or
-sevenths, or a fixed shape) and VOIC the voicing.
+Press the scale button (**SEL**) again for the **CHORD** page: CHRD picks the chord keys (OFF, the scale's triads, sevenths or ninths
+(DIA3, DIA7, DIA9), or a fixed shape: MAJ, MIN, DOM7, MAJ7, MIN7, SUS4, POW, MIN9, MAJ9, SUS2, ADD9, MIN11) and VOIC the voicing.
 
 ## Layout
 
@@ -370,8 +370,8 @@ the FM-1 can be brought back:
 If Felucca is useful to you, [sponsoring on GitHub](https://github.com/sponsors/hugelton) or a donation
 on [itch.io](https://hugelton.itch.io/felucca) helps keep its development going.
 
-For DUELL, bugs and ideas go to [Issues](https://github.com/oscillr/DUELL/issues/new/choose): the bug report form for
-reproducible bugs (one per issue) and the idea form for requests. Pull requests are welcome: see
+For TIDE, bugs and ideas go to [this fork's issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose): the bug report form for
+reproducible bugs (one per issue) and the idea form for requests. For plain DUELL: OSCILL/R's [issues](https://github.com/oscillr/DUELL/issues/new/choose). Pull requests are welcome: see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## AI disclaimer
@@ -390,7 +390,7 @@ For more details, see [On AI-Assisted Development and Responsibility](https://gi
   font ([MIT](LICENSES/MIT-Fukiai.txt))
 - Fonts: [Inter Tight](https://github.com/rsms/inter-tight) by The Inter Project Authors, [SIL OFL 1.1](LICENSES/OFL-InterTight.txt);
   the browser emulator's labels: [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by The DotGothic16 Project Authors, [SIL OFL 1.1](LICENSES/OFL-DotGothic16.txt)
-- Samples: [Versilian Studios](https://versilian-studios.com/) [VSCO-2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and [VCSL](https://github.com/sgossner/VCSL), CC0 1.0: the SAMPLE sets, also SLICE's PIANO and PIANO HD ([attribution](assets/samples-cc0/ATTRIBUTION.txt))
+- Samples: [Versilian Studios](https://versilian-studios.com/) [VSCO-2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and [VCSL](https://github.com/sgossner/VCSL), CC0 1.0: the SAMPLE sets, also SLICE's PIANO and PIANO HD (Felucca's sample sets; DUELL no longer carries them)
 - VOICE engine: after [klattsch](https://github.com/tgies/klattsch) by Tony Gies (MIT); formant data from Klatt (1980) and Hillenbrand et al. (1995)
 - PHYSICAL engine: models ported from [DaisySP](https://github.com/electro-smith/DaisySP) by Electrosmith and Emilie Gillet ([MIT](LICENSES/MIT-DaisySP.txt)) and from Emilie Gillet's [eurorack](https://github.com/pichenettes/eurorack) code ([MIT](LICENSES/MIT-Rings.txt))
 - FM6 engine: msfa from [Dexed](https://github.com/asb2m10/dexed) by Google Inc. and Pascal Gauthier ([Apache-2.0](LICENSES/Apache-2.0-msfa.txt))

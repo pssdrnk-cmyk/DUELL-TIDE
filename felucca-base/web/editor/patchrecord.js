@@ -11,8 +11,8 @@
 // (tests/editordump.c); tests/rangedump.c dumps the unit's table for the check in web/test_ranges.mjs. No DOM, no I/O.
 import { L, P_E0, descOf, valueText } from "./layout.js";
 
-export const PTF = { PAT: 1, TR: 2, FM6: 4, MB: 8, AK: 32, CB: 128, ALL: 175 };   // TR (0.2.19): the loudness is the pair of P_TRIM and the record carries no mixer level (P_LEVEL); a record without it held it as P_LEVEL: read as the trim. (PT_VER 3's XB 16 and BM 64 are gone: a record with them is refused)
-export const FIX = 20, VB = 20, WORST = 577;        // the fixed part; the values' bitmap; the biggest record there can be: the unit's PT_WORST (the firmware refuses a longer one)
+export const PTF = { PAT: 1, TR: 2, FM6: 4, MB: 8, AK: 32, W4: 64, CB: 128, ALL: 239 };   // TR (0.2.19): the loudness is the pair of P_TRIM and the record carries no mixer level (P_LEVEL); a record without it held it as P_LEVEL: read as the trim. (PT_VER 3's XB 16 and BM 64 are gone: a record with 16 is refused; b9: 64 is W4, ANALOG's WAVE takes 4 bits in the record's values and its End B block says so in its own flag 8: a record or block WITHOUT it was saved before b8, WAVE 0..6 in 3 bits, upreset.c PTF_W4 / morph.c MBV_W4)
+export const FIX = 20, VB = 20, WORST = 580;        // the fixed part; the values' bitmap; the biggest record there can be: the unit's PT_WORST (the firmware refuses a longer one; TIDE: 577 + MBV_FMT's 3)
 export const NX = 28, XW_BASE = 128;                // the extension slots (DUELL 1.1: NX 28)
 export const XB_DEFS = [64, 65, 64, 64, 64, 64, 64, 65, 64, 64, 64, 74, 134, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 191, 191, 64];   // slot k's default is XB_DEFS[k] - 64 (up_xb.h XB_DEFS: TWIN LINK is ON, SUB OCTAVE is -1, the two LFO LEVELs are 127)
 export const XB_NAMES = ["TWIN ROUTE", "TWIN LINK", "TWIN KEY TRACK", "TWIN FILTER ENV DEPTH", "TWIN LFO 1 DEPTH", "TWIN LFO 2 DEPTH", "SUB LEVEL", "SUB OCTAVE", "SUB WAVE", "SUB HARMONICS",
@@ -31,7 +31,8 @@ export function rangeOf(eng, w) {
   if (w >= XW_BASE) return L.XTP[w - XW_BASE];
   return w >= P_E0 ? L.ENG[eng].edit[w - P_E0] : L.TP[w];
 }
-export function widBits(eng, w) {                   // morph.c wv_bits: the bits of the range
+export function widBits(eng, w, w4 = true) {         // morph.c wv_bits (wv_bitsl for a stored record / block: w4 false = saved before b8, ANALOG's WAVE in 3 bits): the bits of the range
+  if (!w4 && eng === 0 && w === P_E0) return 3;
   const r = rangeOf(eng, w), s = r.max - r.min + 1; let b = 0;
   while (b < 16 && (1 << b) < s) b++;
   return b;
@@ -71,10 +72,12 @@ const NFM = 65, MBV_HDR = 22, MBV_FMN = 57, PIN_BYTES = 20, FM6_ENGINE = () => e
 // The End B block (morph.c MBV) at b[at] with avail bytes there, for an engine eng: its length, 0 = no block (morph_bv_size).
 //   [0] flags (1 the marks of the hand-set values follow, 2 the 65 FM6 End B bytes follow)   [1] AMOUNT + 1 (0 not stored; at most 101)   [2..21] a bit per wide id: End B differs from the Original
 //   then the values of the set bits at their range bits, padded to the byte   [flag 1] 20 bytes of marks   [flag 2] 57 bytes: 65 FM6 bytes, 7 bits each (each at most 99)
+//   [flag 8, b9] ANALOG's WAVE takes 4 bits in this block (no flag: made before b8, 3 bits)
+//   [flag 4, TIDE's MBV_FMT, FM6 only] 3 bytes: End B's MORPH TO target (its factory index + 1, never 0) and the check sum of its patch (kept as they are)
 export function endBSize(b, at, avail, eng) {
-  if (avail < MBV_HDR || eng >= L.NENGINES || (b[at] & ~3) || b[at + 1] > 101 || ((b[at] & 2) && eng !== FM6_ENGINE())) return 0;
+  if (avail < MBV_HDR || eng >= L.NENGINES || (b[at] & ~15) || b[at + 1] > 101 || ((b[at] & 6) && eng !== FM6_ENGINE())) return 0;
   let nb = 0;
-  for (let w = 0; w < 160; w++) if (b[at + 2 + (w >> 3)] >> (w & 7) & 1) { if (!widOk(w) || NEVER.has(w)) return 0; nb += widBits(eng, w); }
+  for (let w = 0; w < 160; w++) if (b[at + 2 + (w >> 3)] >> (w & 7) & 1) { if (!widOk(w) || NEVER.has(w)) return 0; nb += widBits(eng, w, b[at] & 8); }
   let len = MBV_HDR + (nb + 7 >> 3);
   if (b[at] & 1) {
     if (len + PIN_BYTES > avail) return 0;
@@ -87,12 +90,17 @@ export function endBSize(b, at, avail, eng) {
     for (let i = 0; i < NFM; i++) if (bsGet(b, p, 7) > 99) return 0;
     len += MBV_FMN;
   }
+  if (b[at] & 4) {
+    if (len + 3 > avail || !b[at + len]) return 0;
+    len += 3;
+  }
   return len;
 }
 // An End B block (the form endBSize reads; morph.c morph_bv_make): engine; amount: the part's AMOUNT knob 0..100 or null (not stored); values: { wide id: End B's value } for the values that differ from the Original
 // (a wide id that never differs, or none, is refused); marks: wide ids set by hand or null; fm6: End B's 65 FM6 bytes (0..99) or null (FM6 only)
 export function buildEndB({ engine, amount = null, values = {}, marks = null, fm6 = null }) {
   const ids = Object.keys(values).map(Number).sort((a, b) => a - b), hdr = new Uint8Array(MBV_HDR), bits = new Uint8Array(200), at = { n: 0 };
+  if (engine === 0 && ids.includes(P_E0)) hdr[0] = 8;   // (b9: the width flag, morph.c MBV_W4; the firmware sets it in every block, this editor where it matters: ANALOG's WAVE in the block)
   if (amount !== null && !(Number.isInteger(amount) && amount >= 0 && amount <= 100)) throw new Error("The AMOUNT of End B is 0 to 100.");
   hdr[1] = amount === null ? 0 : amount + 1;
   for (const w of ids) {
@@ -109,22 +117,34 @@ export function buildEndB({ engine, amount = null, values = {}, marks = null, fm
   for (const p of parts) { out.set(p, o); o += p.length; }
   return out;
 }
-function valueBits(b, o, eng) {                     // upreset.c pt_vbits: the bits of the values the bitmap at b[o] names
+function valueBits(b, o, eng, w4) {                     // upreset.c pt_vbits: the bits of the values the bitmap at b[o] names
   let nb = 0;
-  for (let w = 0; w < VB * 8; w++) if ((b[o + (w >> 3)] >> (w & 7) & 1) && widOk(w)) nb += widBits(eng, w);
+  for (let w = 0; w < VB * 8; w++) if ((b[o + (w >> 3)] >> (w & 7) & 1) && widOk(w)) nb += widBits(eng, w, w4);
   return nb;
 }
 function layout(b) {                                // where the parts start (upreset.c pt_layout_x); total = the length the flags imply
   const f = b[4], rl = rd16(b, 0), eng = b[5], at = {}; let o = FIX;
   at.pr = o; at.mb = at.pat = at.fm = at.ak = o;
   if (o + VB > rl || eng >= L.NENGINES) return { at, total: o + 65536 };   // (a total that cannot be the record's)
-  o += VB + (valueBits(b, o, eng) + 7 >> 3);
+  o += VB + (valueBits(b, o, eng, f & PTF.W4) + 7 >> 3);
   at.mb = o; if (f & PTF.MB) { const n = o < rl ? endBSize(b, o, rl - o, eng) : 0; if (!n) return { at, total: o + 65536 }; o += n; }
   at.pat = o; if (f & PTF.PAT) o += 32;
   at.fm = o; if (f & PTF.FM6) o += 112;
   at.ak = o;
   if (f & PTF.AK) { if (o + 2 > rl) return { at, total: o + 65536 }; o += 2 + rd16(b, o); }
   return { at, total: o };
+}
+// A record for a unit without TIDE (plain DUELL 1.1 refuses MBV_FMT and would drop the record at the chunk's next write): End B's flag 4 and its 3 bytes taken out, the
+// length field made right; End B keeps its blended bytes (D02). Any other record, or one this editor cannot lay out, comes back as it is (the same array).
+export function stripEndBFmt(bytes) {
+  const b = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
+  if (b.length < FIX + VB || rd16(b, 0) !== b.length || !(b[4] & PTF.MB) || b[5] >= L.NENGINES) return bytes;
+  const { at, total } = layout(b);
+  if (total !== b.length || !(b[at.mb] & 4)) return bytes;
+  const out = new Uint8Array(b.length - 3);
+  out.set(b.subarray(0, at.pat - 3)); out.set(b.subarray(at.pat), at.pat - 3);   // (the 3 bytes are the last of End B's block)
+  out[at.mb] &= ~4; out[0] = out.length & 255; out[1] = out.length >> 8;
+  return out;
 }
 const nameOf = (b, o) => { let s = ""; for (let i = 0; i < 12 && b[o + i]; i++) s += String.fromCharCode(b[o + i]); return s; };
 
@@ -143,7 +163,7 @@ export function parseRecord(bytes) {
   const p = { n: (at.pr + VB) * 8 }; let n = 0;
   for (let w = 0; w < VB * 8; w++) if (b[at.pr + (w >> 3)] >> (w & 7) & 1) {
     if (!widOk(w)) return bad("The record stores a parameter that does not exist.");
-    const v = widVal(eng, w, bsGet(b, p, widBits(eng, w))); n++;
+    const v = widVal(eng, w, bsGet(b, p, widBits(eng, w, flags & PTF.W4))); n++;
     if (w < L.P_COUNT) { values[w] = v; pairs.set(w, v); } else xv[w - XW_BASE] = v;
   }
   if (n !== b[19]) return bad("The record's value count does not match its bitmap.");
@@ -212,7 +232,7 @@ export function buildRecord({ engine, name, cat = 0, values, mb = null, pat = nu
     }
     if (widCode(engine, w, v) !== widCode(engine, w, d)) { bm[w >> 3] |= 1 << (w & 7); bsPut(bits, at, widCode(engine, w, v), widBits(engine, w)); n++; }
   }
-  const f = (engine === engineIndex("FM6") && patch128 ? PTF.FM6 : 0) | PTF.TR | PTF.CB | (mbb ? PTF.MB : 0) | (pat && !(gm & 4) ? PTF.PAT : 0) | (hasAk ? PTF.AK : 0);
+  const f = (engine === engineIndex("FM6") && patch128 ? PTF.FM6 : 0) | PTF.TR | PTF.CB | (engine === 0 && bm[P_E0 >> 3] >> (P_E0 & 7) & 1 ? PTF.W4 : 0) | (mbb ? PTF.MB : 0) | (pat && !(gm & 4) ? PTF.PAT : 0) | (hasAk ? PTF.AK : 0);
   const head = new Uint8Array(FIX);
   head[4] = f; head[5] = engine; head[6] = cat; nm.forEach((c, i) => { head[7 + i] = c; }); head[19] = n;
   const parts = [head, bm, bits.subarray(0, at.n + 7 >> 3)];

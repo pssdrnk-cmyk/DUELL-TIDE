@@ -1,12 +1,18 @@
 # Credits
 
-**DUELL**<br>
-**MultiMorphing Bitimbral Synthesizer**<br>
-**by OSCILL/R**
+**TIDE**<br>
+**by pssdrnk**<br>
+**Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0.**
+
+The base it is built on, DUELL (**MultiMorphing Bitimbral Synthesizer**, by **OSCILL/R**):
 
 Thank you. Each line names the source, the link, the licence and what DUELL uses. The same list, with the exact files, is in [NOTICE.md](NOTICE.md) and [felucca-base/LICENSING.md](felucca-base/LICENSING.md). DUELL itself is GPL-3.0-only.
 
+**This fork**
+- **TIDE** (AUTO TIDE, TIDE SETTINGS, SEQ MORPH, the added sounds and patterns, and the fixes listed in the [README](README.md)) by **pssdrnk**, <https://github.com/pssdrnk-cmyk/DUELL-TIDE>. TIDE is a fork of DUELL 1.1 and is not made or endorsed by OSCILL/R.
+
 **The base**
+- **DUELL** 1.1 by **OSCILL/R**, <https://github.com/oscillr/DUELL>, GPL-3.0-only.
 - **Felucca** by Leo Kuroshita (@kurogedelic), Hügelton Instruments, <https://github.com/hugelton/Felucca>, GPL-3.0. DUELL is a modified version of it.
 
 **Ideas and code that came into DUELL**
@@ -19,6 +25,7 @@ Thank you. Each line names the source, the link, the licence and what DUELL uses
 - **CrispyZebra** by Leo Kuroshita (Hügelton Instruments), <https://github.com/hugelton/CrispyZebra>, GPL-3.0. The PHASE engine's oscillator.
 - **klattsch** by Tony Gies, <https://github.com/tgies/klattsch>, MIT. A design reference for the VOICE engine; no code copied.
 - **aquanodemusic** (Aquanode Soundscapes), <https://github.com/aquanodemusic/aquanode-soundscapes>, CC0 1.0. One FM bass voice (the sound FM BASS 2).
+- **Igor Pavlov** (7-Zip, LZMA), public domain. The LZMA decoder in `ramplace.c` is written after his `LzmaSpec.cpp`; no credit is required, it is given.
 - **J. W. Cooley and J. W. Tukey** (the fast Fourier transform, 1965) and the wavetable file convention of **Xfer Serum**, also used by Vital and Surge: ideas for the WAVE user tables; no code of anyone else.
 
 **Fonts, icons and the packages**

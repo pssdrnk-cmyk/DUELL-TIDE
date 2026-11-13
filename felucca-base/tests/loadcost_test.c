@@ -146,7 +146,7 @@ static void load_old(uint32_t k)                        /* a load as then: the C
     uint8_t keep = ui_prefs2;
     if (k >= 12u)
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(k);
+    project_load(MIDX(k));
     ui_prefs2 = keep;
 }
 
@@ -428,14 +428,14 @@ static void op_roll(uint32_t a)                         /* a 0: ROLL B; 1: ROLL 
 static void pre_morph(uint32_t a)
 {
     (void)a;
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_roll(1);
     morph_set_amount(100);
 }
 static void pre_morph_sel(uint32_t a)
 {
     (void)a;
-    morph_set_target(0);
+    SEL_BOTH = 0;
     morph_roll(1);
     morph_set_amount(100);
 }

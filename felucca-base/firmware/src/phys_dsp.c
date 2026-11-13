@@ -71,15 +71,6 @@
 static inline int32_t px_m(int32_t a, int32_t b, int sh) { return (int32_t)(((int64_t)a * b) >> sh); }
 static inline int32_t px_clamp(int32_t v, int32_t lo, int32_t hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static inline uint32_t px_rand(uint32_t *s)              /* xorshift32 */
-{
-    uint32_t x = *s;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    return *s = x;
-}
-
 /* sin(2 pi ph), ph a turn in Q32; Q30 (odd polynomial of the quarter wave, error ~4e-6) */
 static int32_t px_sin(uint32_t ph)
 {
@@ -138,21 +129,20 @@ static int32_t px_atan(int32_t x)
     return px_m(x, p, 30);
 }
 
-static uint32_t px_isqrt64(uint64_t v)                    /* floor(sqrt(v)) */
+/* atan2(y, x) in turns, Q32 (-1/2 .. 1/2 turn); y, x Q30 (|.| <= 2); one 64 / 32 division (per block only) */
+static int64_t px_atan2t(int32_t y, int32_t x)
 {
-    uint64_t r = 0, b = (uint64_t)1 << 62;
-    while (b > v)
-        b >>= 2;
-    while (b) {
-        if (v >= r + b) {
-            v -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return (uint32_t)r;
+    int32_t ay = y < 0 ? -y : y, ax = x < 0 ? -x : x;
+    int64_t t;
+    if (!ay)
+        t = 0;
+    else if (ay <= ax)
+        t = px_m(px_atan((int32_t)(((int64_t)ay << 30) / ax)), 683565276, 30);   /* rad / 2 pi */
+    else
+        t = (1 << 30) - px_m(px_atan((int32_t)(((int64_t)ax << 30) / ay)), 683565276, 30);
+    if (x < 0)
+        t = ((int64_t)1 << 31) - t;
+    return y < 0 ? -t : t;
 }
 
 /* --------------------------------------------- ResonatorSvf (band / low) --- */
@@ -183,8 +173,8 @@ static void px_csvf_coef(px_csvf_t *c, uint32_t f, int32_t res, int32_t pre_driv
     int32_t fr = px_sin(a >> 1) << 1;                    /* 2 sin(pi a), Q30 */
     int32_t r4 = 0, d1, d2;
     if (res > 0) {                                       /* res^0.25 = sqrt(sqrt(res)) */
-        r4 = (int32_t)px_isqrt64((uint64_t)res << 16);   /* Q16 */
-        r4 = (int32_t)px_isqrt64((uint64_t)r4 << 16);
+        r4 = (int32_t)isqrt64((uint64_t)res << 16);   /* Q16 */
+        r4 = (int32_t)isqrt64((uint64_t)r4 << 16);
     }
     d1 = (65536 - r4) << 13;                             /* 2 (1 - res^0.25), Q28 */
     if (fr > 0) {                                        /* min(2, 2 / freq - freq / 2) */
@@ -415,7 +405,7 @@ static void px_modal_run(const px_modal_blk_t *B, px_modal_t *M, int32_t *out, i
         for (i = 0; i < n; i++) {                        /* ResonatorSvf<1>, low-pass */
             int64_t in = 0;
             if (B->dust_thr) {                           /* Dust */
-                uint32_t u = px_rand(&rs);
+                uint32_t u = xs32(&rs);
                 if (u < B->dust_thr)
                     in = (int64_t)(((((uint64_t)u * B->dust_inv) >> 32) * (uint32_t)B->dust_gain) >> 7);   /* Q24 */
             } else if (!i && B->strike) {
@@ -467,6 +457,7 @@ typedef struct {
     int32_t out0, out1;                                  /* the last two outputs */
     px_csvf_st_t ex;                                     /* exciter Svf */
     px_csvf_t exc;
+    uint32_t lk_delay, lk_df, lk_nl, lk_dl, lk_mn;       /* the loop lag's inputs (delay, df, |nl|) and results (dl, mn): kept while unchanged */
     uint32_t bk, bn, bd;                                 /* burst: sample, length (a period), comb delay */
     uint32_t nz_a, nz_b;                                 /* burst noise, and the same noise bd samples later */
     uint32_t rng;
@@ -474,11 +465,10 @@ typedef struct {
 } px_string_t;
 
 typedef struct {                                         /* per block */
-    uint32_t delay;                                      /* samples, Q16 */
     int32_t src_ratio;                                   /* Q30, 1.0 = no resampling */
-    int32_t comp;                                        /* damping compensation, Q30 */
+    uint32_t dl;                                         /* the delay line's read delay, steps Q16 (no all-pass) */
     int32_t G;                                           /* OnePole: g / (1 + g), Q30 */
-    int32_t m_ap, m_main;                                /* ap / main delay out of the delay, Q30 */
+    uint32_t ap, mn;                                     /* with the dispersion all-pass: its delay and the line's, Q16 */
     int32_t ap_gain;                                     /* Q30 */
     int32_t noise_amt, noise_flt;                        /* Q30 */
     int32_t curving;                                     /* bridge curving, Q30 */
@@ -499,7 +489,7 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
 {
     int32_t b = brightness + px_m(accent >> 2, 65536 - brightness, 16);
     int32_t d = damping + px_m(accent >> 2, 65536 - damping, 16);
-    int32_t nl, dcut, sp, sc, x;
+    int32_t nl, dcut, sp;
     uint32_t f = f0 > 0x40000000u ? 0x40000000u : f0, delay, df, ratio;
     if (f < 65536u)                                      /* 0.67 Hz */
         f = 65536u;
@@ -517,7 +507,7 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
             S->bk = 0;
             S->bn = per >> 16;
             S->bd = (uint32_t)(((uint64_t)per * (uint32_t)pos) >> 33);   /* pos / 2 of a period */
-            S->nz_a = S->nz_b = px_rand(&S->rng) | 1u;
+            S->nz_a = S->nz_b = xs32(&S->rng) | 1u;
             S->trig = 0;
         }
     }
@@ -544,7 +534,6 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
     B->src_ratio = ratio >= 1073634406u ? 1 << 30 : (int32_t)ratio;   /* >= 0.9999: none */
     if (B->src_ratio == 1 << 30)
         S->src = 1u << 30;
-    B->delay = delay;
     dcut = 786432 + px_m(px_m(d, d, 16), 3932160, 16) + brightness * 24;   /* 12 + 60 d^2 + 24 b semitones, Q16 */
     if (dcut > 84 << 16)
         dcut = 84 << 16;
@@ -568,20 +557,52 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
         int32_t s = px_sin(df >> 1), c = px_sin((df >> 1) + 0x40000000u);
         B->G = (int32_t)(((int64_t)s << 30) / (s + c));
     }
-    /* damping compensation 1 - 2 atan(1 / ratio) / 2 pi, ratio = 2^(dcut / 12) >= 2 */
-    x = (int32_t)(((uint64_t)1 << 46) / px_exp2(dcut / 12));   /* 1 / ratio, Q30 */
-    B->comp = (1 << 30) - px_m(px_atan(x), 341782638, 30);    /* * 1 / pi */
     sp = px_m(px_m(nl, 131072 - nl, 16), 14746, 16);     /* nl (2 - nl) 0.225, Q16 */
-    sc = (int32_t)(((uint64_t)delay * 238) >> 16);       /* 160 / sr * delay, Q16 */
-    sc = px_clamp(sc, 65536, 137626);
-    B->m_ap = sp << 14;
-    B->m_main = (1 << 30) - px_m(sp, px_m(26739 - px_m(sp, 20185, 16), sc, 16), 2);
     {
         int32_t na = nl > 49152 ? (nl - 49152) * 4 : 0;  /* 4 (nl - 0.75) */
         B->noise_amt = px_m(px_m(na, na, 16), 107374182, 16);   /* ^2 * 0.1, Q30 */
         B->noise_flt = (64424509 + px_m(px_m(b, b, 16), 1009317315, 16));   /* 0.06 + 0.94 b^2 */
         B->curving = px_m(px_m(nl, nl, 16), 10737418, 16);     /* nl^2 0.01 */
         B->ap_gain = -(int32_t)(((int64_t)663568203 * nl) / (9830 + nl));   /* -0.618 nl / (0.15 + nl) */
+    }
+    {   /* (after 2.8.3) the loop in tune: its delays and the phase lags of its filters at the fundamental add up
+         * to one period. DaisySP takes 2 atan(1 / ratio) / 2 pi of a period off for the damping filter (twice the lag
+         * of its OnePole: the compensation of Rings' two-pole Svf) and shortens the line for the dispersion all-pass
+         * by a rule of thumb that grows with the delay: the strings were sharp, by up to +20 cents high and +100 below
+         * F2. Here: the OnePole's lag atan(tan(pi f) / g), the DcBlock's lead, the all-pass's lag at its integer
+         * delay and the linear read's at its fraction, exactly; turns Q32, per block (kept while delay, df and the non-linearity hold) */
+        uint32_t ap = (uint32_t)(((uint64_t)delay * (uint32_t)sp) >> 16), mn;
+        if (S->lk_delay == delay && S->lk_df == df && S->lk_nl == (uint32_t)nl) {   /* a held pitch: the same lag, no divisions */
+            B->dl = S->lk_dl;
+            mn = S->lk_mn;
+        } else {
+            uint32_t ph = (uint32_t)(((uint64_t)1 << 48) / delay);   /* the fundamental, turns per string step, Q32 */
+            int32_t sn = px_sin(ph), cs = px_sin(ph + 0x40000000u);
+            int32_t s = px_sin(df >> 1), c = px_sin((df >> 1) + 0x40000000u);   /* sin, cos (pi df) */
+            int64_t lag = px_atan2t(px_m(px_sin(ph >> 1), c, 30), px_m(px_sin((ph >> 1) + 0x40000000u), s, 30))
+                          - ((1 << 30) - (int64_t)(ph >> 1)
+                             - px_atan2t(px_m(1073498345, sn, 30), (1 << 30) - px_m(1073498345, cs, 30)));   /* - DcBlock */
+            B->dl = delay - (uint32_t)((lag * delay) >> 32);
+            if (ap >= 4u << 16) {
+                uint32_t psi = (ap >> 16) * ph, a;          /* the all-pass: lag psi + 2 atan2(g sin, 1 - g cos) */
+                int64_t lap = psi + 2 * px_atan2t(px_m(B->ap_gain, px_sin(psi), 30),
+                                                  (1 << 30) - px_m(B->ap_gain, px_sin(psi + 0x40000000u), 30));
+                mn = delay - (uint32_t)(((lag + lap) * delay) >> 32);
+                a = (mn & 0xFFFFu) << 14;                   /* the linear read: lag atan2(a sin, 1 - a + a cos) */
+                lap = px_atan2t(px_m((int32_t)a, sn, 30), (1 << 30) - (int32_t)a + px_m((int32_t)a, cs, 30)) -
+                      (int64_t)(((uint64_t)(mn & 0xFFFFu) * ph) >> 16);
+                mn -= (uint32_t)((lap * delay) >> 32);
+            } else {
+                mn = 0;
+            }
+            S->lk_delay = delay;
+            S->lk_df = df;
+            S->lk_nl = (uint32_t)nl;
+            S->lk_dl = B->dl;
+            S->lk_mn = mn;
+        }
+        B->ap = ap;
+        B->mn = mn;
     }
 }
 
@@ -604,14 +625,14 @@ static void px_string_excite(const px_string_blk_t *B, px_string_t *S, int32_t *
     for (i = 0; i < n; i++) {
         int32_t in = 0, x = 0;
         if (B->dust_thr) {
-            uint32_t u = px_rand(&S->rng);
+            uint32_t u = xs32(&S->rng);
             if (u < B->dust_thr)
                 x = (int32_t)(((((uint64_t)u * B->dust_inv) >> 32) * (uint32_t)B->dust_gain) >> 11);   /* Q20 */
         } else if (bk < bend) {                          /* rand in -1..1; with a pluck position, the */
             if (bk < S->bn)                              /* half of it minus its half pos / 2 periods */
-                x = (int32_t)(px_rand(&S->nz_a) >> (S->bd ? 12 : 11)) - (S->bd ? 1 << 19 : 1 << 20);   /* later */
+                x = (int32_t)(xs32(&S->nz_a) >> (S->bd ? 12 : 11)) - (S->bd ? 1 << 19 : 1 << 20);   /* later */
             if (S->bd && bk >= S->bd)
-                x -= (int32_t)(px_rand(&S->nz_b) >> 12) - (1 << 19);
+                x -= (int32_t)(xs32(&S->nz_b) >> 12) - (1 << 19);
             bk++;
         }
         if (x || ex.low || ex.band) {
@@ -643,16 +664,17 @@ static void px_string_run(const px_string_blk_t *B, px_string_t *S, const int32_
         /* the string */
         src += (uint32_t)B->src_ratio;
         if (src > 1u << 30) {
-            uint32_t dl = (uint32_t)(((uint64_t)B->delay * (uint32_t)B->comp) >> 30);
+            uint32_t dl = B->dl;
             int32_t s;
             src -= 1u << 30;
             if (!B->curved) {
-                int32_t nz = (int32_t)(px_rand(&rs) >> 12) - (1 << 19);   /* rand - 0.5 */
+                int32_t nz = (int32_t)(xs32(&rs) >> 12) - (1 << 19);   /* rand - 0.5 */
+                uint32_t q;
                 disp += px_m(B->noise_flt, nz - disp, 30);
-                dl = (uint32_t)(((uint64_t)dl * (uint32_t)((1 << 30) + px_m(disp, B->noise_amt, 20))) >> 30);
+                q = (uint32_t)((1 << 30) + px_m(disp, B->noise_amt, 20));   /* the dispersion noise */
                 {
-                    uint32_t ap = (uint32_t)(((uint64_t)dl * (uint32_t)B->m_ap) >> 30);
-                    uint32_t mn = (uint32_t)(((uint64_t)dl * (uint32_t)B->m_main) >> 30);
+                    uint32_t ap = (uint32_t)(((uint64_t)B->ap * q) >> 30);
+                    uint32_t mn = (uint32_t)(((uint64_t)B->mn * q) >> 30);
                     if (ap >= 4u << 16 && mn >= 4u << 16) {
                         uint32_t t = wp + (mn >> 16);
                         int32_t a = S->line[t & PX_LMASK], bb = S->line[(t + 1u) & PX_LMASK], rd, w;
@@ -663,7 +685,7 @@ static void px_string_run(const px_string_blk_t *B, px_string_t *S, const int32_
                         swp = (swp - 1u) & PX_SMASK;
                         s = rd - px_m(w, B->ap_gain, 30);
                     } else {
-                        s = px_hermite(S->line, wp, dl);
+                        s = px_hermite(S->line, wp, (uint32_t)(((uint64_t)dl * q) >> 30));
                     }
                 }
             } else {

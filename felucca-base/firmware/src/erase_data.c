@@ -3,7 +3,7 @@
  * ERASE_ALL (cmd 80, editor_erase.c, with its token) run the same erase_data_run(); included by project.c.
  *
  * What goes (flash objects, storage.c; a stored object is the A/B pair of sectors, both erased by st_wipe):
- *   the autosave (OBJ_AUTOSAVE), the pattern slots (OBJ_PATSLOT0..2), the multis (OBJ_MULTI0..7: M01..M16 are
+ *   the autosave (OBJ_AUTOSAVE), the pattern slots (OBJ_PATSLOT0..2), the multis (OBJ_MULTI0..7 and OBJ_MULTIX0..4: M01..M26 are
  *   the factory ones again, ROM), the patch store (OBJ_PATCH0..5 and, DUELL 0.2.15, OBJ_PATCHX0..9, the cloud plan's job A: OBJ_PATCHX0..15 (chunks 6..21): every stored patch and every factory sound's shadow copy),
  *   the user wavetables (OBJ_WTAB0..2, DUELL 0.2.14: USR1..USR3 are EMPTY again), DUELL 1.1 (item 91, owner: erase EVERYTHING the user stored) the FM6
  *   voice bank (0xE7000), and the settings (OBJ_SETTINGS: theme, scale, MIDI channels and MIDI MAP / LEARN, the favourites, the preferences). The theme's RAM
@@ -33,13 +33,14 @@ static uint32_t erase_at;                        /* fm1_ms | 1 when the restart 
 static int erase_busy(void) { return erase_at != 0u; }
 static int erase_restart_due(void) { return erase_at && (int32_t)(fm1_ms - (erase_at & ~1u)) >= 0; }
 
-/* 0 done (the restart follows), 3 stop playback first, 4 the flash failed (some objects may be gone already: run it again;
- * the settings were not touched, so the unit is not a new unit) */
+/* 0 done (the restart follows), 3 stop playback first, 4 the flash failed (at least one object could not be wiped, the others are:
+ * the unit restarts either way, the settings go last, and ERASE DATA from the menu repeats it) */
 static int erase_data_run(void)
 {
     static const uint8_t ORDER[] = {OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_PATSLOT0 + 1, OBJ_PATSLOT0 + 2,
                                     OBJ_MULTI0, OBJ_MULTI0 + 1, OBJ_MULTI0 + 2, OBJ_MULTI0 + 3,
                                     OBJ_MULTI0 + 4, OBJ_MULTI0 + 5, OBJ_MULTI0 + 6, OBJ_MULTI0 + 7,
+                                    OBJ_MULTIX0, OBJ_MULTIX0 + 1, OBJ_MULTIX0 + 2, OBJ_MULTIX0 + 3, OBJ_MULTIX0 + 4,   /* (b10 U4: M17..M26) */
                                     OBJ_PATCH0, OBJ_PATCH0 + 1, OBJ_PATCH0 + 2, OBJ_PATCH0 + 3, OBJ_PATCH0 + 4, OBJ_PATCH0 + 5,
                                     OBJ_PATCHX0, OBJ_PATCHX0 + 1, OBJ_PATCHX0 + 2, OBJ_PATCHX0 + 3, OBJ_PATCHX0 + 4,
                                     OBJ_PATCHX0 + 5, OBJ_PATCHX0 + 6, OBJ_PATCHX0 + 7, OBJ_PATCHX0 + 8, OBJ_PATCHX0 + 9,
@@ -53,6 +54,7 @@ static int erase_data_run(void)
     if (!flash_ok || erase_at)
         return 4;
     persist_pending = 0;                         /* nothing queued is written over the empty flash */
+    memset(tide_tail, 0, TIDE_TAIL_N);           /* (TIDE's fields live in the settings record: gone with it) */
     ps_dirty = 0;
     as.wrote = 1;                                /* and no autosave for the next 60 s (autosave_poll's gap) */
     as.last = fm1_ms;

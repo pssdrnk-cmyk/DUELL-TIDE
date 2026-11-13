@@ -59,11 +59,11 @@ ENG_MEM_FITS("PHYS", sizeof(phys_slot_t) * PHYS_POLY);   /* (it sets ENG_MEM_PAR
 static const char *const N_PHYS_MODEL[] = {"MODAL", "STRING", "MEMB", "SYMP"};
 static const char *const N_PHYS_CHORD[] = {"OCT", "5TH", "4TH", "MAJ", "MIN", "SUS", "7TH", "ROOT", 0};
 /* per model: STRC .. EXC under their own names (phys_desc; range and default as edit[], 0 = edit[]) */
-static const param_desc_t PHYS_D_HARM = {"HARM", F_PCT, 0, 127, 64, 0, 0};
-static const param_desc_t PHYS_D_BEND = {"BEND", F_PCT, 0, 127, 0, 0, 0};
-static const param_desc_t PHYS_D_CHRD = {"CHRD", F_INT, 0, 127, 64, N_PHYS_CHORD, 0};
-static const param_desc_t PHYS_D_SYMP = {"SYMP", F_PCT, 0, 127, 20, 0, 0};
-static const param_desc_t PHYS_D_BUZZ = {"BUZZ", F_PCT, 0, 127, 0, 0, 0};
+static const param_desc_t PHYS_D_HARM = {"HARM", F_PCT, 0, 0, 127, 64, 0};
+static const param_desc_t PHYS_D_BEND = {"BEND", F_PCT, 0, 0, 127, 0, 0};
+static const param_desc_t PHYS_D_CHRD = {"CHRD", F_INT, 0, 0, 127, 64, N_PHYS_CHORD};
+static const param_desc_t PHYS_D_SYMP = {"SYMP", F_PCT, 0, 0, 127, 20, 0};
+static const param_desc_t PHYS_D_BUZZ = {"BUZZ", F_PCT, 0, 0, 127, 0, 0};
 static const param_desc_t *const PHYS_DESC[PM_COUNT][8] = {
     [PM_MEMB] = {0, &PHYS_D_HARM, 0, 0, 0, 0, &PHYS_D_BEND, 0},
     [PM_SYMP] = {0, &PHYS_D_CHRD, 0, 0, &PHYS_D_SYMP, 0, &PHYS_D_BUZZ, 0},
@@ -147,7 +147,7 @@ static void phys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     int32_t y[CTL], ax[CTL];
     int32_t sh = m->shape - (64 << 8);                    /* SHP (DUELL): STRC, SYMP's BUZZ */
     int32_t strc = (clamp((p[P_E1] << 8) + sh, 0, 127 << 8) * 516) >> 8, brit = clamp(p[P_E2] * 516, 0, 65536);   /* Q16 0..1 */
-    int32_t damp = p[P_E3] * 516, pos = p[P_E4], exc = p[P_E7] * 258;   /* exc Q15 */
+    int32_t damp = p[P_E3] * 516, pos = p[P_E4], exc = Q15_FROM_127(p[P_E7]);   /* exc Q15 */
     int32_t bow = p[P_E6] * 206;                         /* BOW: Dust at up to 0.4 (DaisySP's sustain: 1) */
     int32_t acc = clamp(p[P_E5] * v->vel * 4 + m->cutoff * 2, 0, 65536);   /* + the accent (velocity over 110): the model's own accent, up to 0.19 */   /* ACC at full velocity, Q16 */
     int32_t g = PHYS_GAIN[md];
@@ -196,12 +196,13 @@ static void phys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
             a = 24000 + (softclip(clamp(a - 24000, 0, 1 << 20) * 2) >> 1);
             s = s < 0 ? -a : a;
         }
-        out[i] += voice_amp(s, m, i) << 1;
+        out[i] += voice_amp(s, m, i) * 2;
     }
 }
 
 /* MODAL partials by STRC: 34 harmonic, 70 1 : 2.83 : 5.48 : 8.90 (a free bar, a chime: 1 : 2.76 : 5.40 : 8.93),
  * 98 1 : 3.57 : 7.65, 116 1 : 4.0 : 9.0 (a tuned bar: 1 : 4 : 10) */
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t PHYS_PRESETS[] = {
     /* name, {MODEL, STRC, BRIT, DAMP, POS, ACC, BOW, EXC}, {A D S R}, fenv, mono */
     {"BELL TREE", {PM_MODAL, 70, 100, 106, 12, 100, 0, 6}, {0, 100, 127, 96}, 0, 0, FX(0, 20, 30, 60), PAT(7)},
@@ -216,22 +217,25 @@ static const preset_t PHYS_PRESETS[] = {
     {"DRONE STRING", {PM_SYMP, 127, 80, 88, 64, 100, 92, 0}, {0, 100, 127, 90}, 0, 0, FX(0, 10, 20, 50), PAT(3)},
     {"HARP", {PM_SYMP, 8, 62, 74, 60, 90, 0, 0}, {0, 100, 127, 80}, 0, 0, FX(0, 20, 20, 60), PAT(3)},
 };
+#endif
 
 static const engine_t ENG_PHYS = {
     .name = "PHYS",
     .page_title = {"BODY", "EXCT"},
     .edit = {
-        {"MODEL", F_ENUM, 0, PM_COUNT - 1, 0, N_PHYS_MODEL, 0},
-        {"STRC", F_PCT, 0, 127, 64, 0, 0},
-        {"BRIT", F_PCT, 0, 127, 80, 0, 0},
-        {"DAMP", F_PCT, 0, 127, 80, 0, 0},
-        {"POS", F_PCT, 0, 127, 20, 0, 0},
-        {"ACC", F_PCT, 0, 127, 90, 0, 0},
-        {"BOW", F_PCT, 0, 127, 0, 0, 0},
-        {"EXC", F_PCT, 0, 127, 0, 0, 0},
+        {"MODEL", F_ENUM, 0, 0, PM_COUNT - 1, 0, N_PHYS_MODEL},
+        {"STRC", F_PCT, 0, 0, 127, 64, 0},
+        {"BRIT", F_PCT, 0, 0, 127, 80, 0},
+        {"DAMP", F_PCT, 0, 0, 127, 80, 0},
+        {"POS", F_PCT, 0, 0, 127, 20, 0},
+        {"ACC", F_PCT, 0, 0, 127, 90, 0},
+        {"BOW", F_PCT, 0, 0, 127, 0, 0},
+        {"EXC", F_PCT, 0, 0, 127, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = PHYS_PRESETS,
     .npresets = NELEM(PHYS_PRESETS),
+#endif
     .note_on = phys_note_on,
     .render = phys_render,
     .knob = {P_E1, P_E2, P_E3, P_E4},

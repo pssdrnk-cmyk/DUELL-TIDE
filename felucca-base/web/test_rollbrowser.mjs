@@ -9,7 +9,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch, CHROME } from "./cdp.mjs";
 
-if (!CHROME) { console.log("no Chrome found: browser test skipped"); process.exit(0); }
+if (!CHROME) { console.log("SKIP rollbrowser: no Chrome found"); process.exit(0); }
 let fails = 0;
 const ok = (c, what) => { console.log(`${what.padEnd(112)} ${c ? "ok" : "FAIL"}`); if (!c) fails++; };
 const ROOT = fileURLToPath(new URL(".", import.meta.url)), SHOTS = process.env.ROLL_SHOTS;
@@ -206,12 +206,14 @@ for (const [W, H] of [[1920, 1080], [1280, 720]]) {
     const tabs = async (tab) => JSON.parse(await E(`(async () => { window.__app.setPartTab(${p}, '${tab}'); await new Promise((r) => setTimeout(r, 250)); const col = document.querySelectorAll('.col.part')[${p}];
       return JSON.stringify([...col.querySelectorAll('.colbody section.card')].map((x) => ({ t: x.querySelector('h3 .ttl')?.textContent ?? '', labs: [...x.querySelectorAll('.cell:not(.gone) .lab')].map((l) => l.textContent) }))); })()`));
     const eng = await tabs("filter"), eng0 = await tabs("engine"), env = await tabs("envelope"), lfo = await tabs("lfo"), mod = [...env, ...lfo], own2 = false;   /* (cloud job J: no engine keeps a filter of its own) */
-    const mf = eng.find((x) => x.t === "MULTI FILTER"), cm = eng.find((x) => x.t === "MULTI CUTOFF MOD");
-    ok(!!mf && mf.labs.slice(0, 4).join() === "CUTOFF,RESONANCE,MODE,SLOPE" && mf.labs.includes("KEY TRACK") === !!own2 && !!cm && cm.labs.join() === (own2 ? "FILTER ENV,LFO 1,LFO 2" : "FILTER ENV,KEY TRACK,LFO 1,LFO 2"),
-       `FILTER tab (cloud job I: the ENGINE tab's filter section moved here), part ${p + 1}: ${eng.map((x) => x.t).join(" > ")}; MULTI CUTOFF MOD ${cm?.labs.join(" ")}`);
+    // DUELL 1.1 (owner items 12, 23): no MULTI CUTOFF MOD box any more: its four amounts are inside MULTI FILTER (web/editor/app.js tab "filter")
+    // (its knob numbers lead the labels: "1CUTOFF"; 1.1 dropped the LFO 2 cutoff depth: params.c MULTI FILTER 2/2 K4)
+    const mf = eng.find((x) => x.t === "MULTI FILTER"), ml = (mf?.labs ?? []).map((l) => l.replace(/^\d/, ""));
+    ok(!!mf && ml.join() === "CUTOFF,RESONANCE,MODE,SLOPE,KEY TRACK,FILTER ENV DEPTH,LFO 1 DEPTH" && !eng.some((x) => x.t === "MULTI CUTOFF MOD") && !own2,
+       `FILTER tab (cloud job I: the ENGINE tab's filter section moved here), part ${p + 1}: ${eng.map((x) => x.t).join(" > ")}; MULTI FILTER ${mf?.labs.join(" ")}`);
     ok(eng0.length === 3 && eng0[1].t === "SUB OSC" && eng0[2].t === "VOICE" && env.map((x) => x.t).filter((t) => t !== "MULTI CUTOFF MOD" && t !== "TWIN CUTOFF MOD").join() === "AMP ENV,FILTER ENV,CYCLE ENV" && !eng0.some((x) => x.t === "MULTI FILTER" || x.t === "MULTI CUTOFF MOD"),
        `ENGINE tab, part ${p + 1}: the engine's one card, SUB OSC, VOICE (CYCLE ENV is on the ENV tab); no filter cards any more (${eng0.map((x) => x.t).join(" > ")})`);
-    ok(!mod.some((x) => x.labs.includes("FILTER DEPTH")) && mod.map((x) => x.t).filter((t) => t !== "MULTI CUTOFF MOD" && t !== "TWIN CUTOFF MOD").join() === "AMP ENV,FILTER ENV,CYCLE ENV,LFO 1,LFO 2", `ENV and LFO tabs, part ${p + 1}: AMP ENV, FILTER ENV, CYCLE ENV, LFO 1, LFO 2, no FILTER DEPTH (the cutoff depths are MULTI CUTOFF MOD's)`);
+    ok(!mod.some((x) => x.labs.includes("FILTER DEPTH")) && mod.map((x) => x.t).filter((t) => t !== "MULTI CUTOFF MOD" && t !== "TWIN CUTOFF MOD").join() === "AMP ENV,FILTER ENV,CYCLE ENV,LFO 1,LFO 2", `ENV and LFO tabs, part ${p + 1}: AMP ENV, FILTER ENV, CYCLE ENV, LFO 1, LFO 2, no FILTER DEPTH (the cutoff depths are inside MULTI FILTER)`);
   }
   {   // 0.2.22: the SIDECHAIN card (the ducker's MIDI setup, MENU settings 38..41) is on the MIDI tab of the GLOBAL column: P1 CH, P1 NOTE, P2 CH, P2 NOTE with the unit's values
     await E("window.__app.setGlobalTab('midi'); true"); await c.sleep(600);

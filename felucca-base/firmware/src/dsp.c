@@ -5,6 +5,7 @@
  * oscillator at amp = 1.0 (Q15 32767) contributes VOICE_FS. */
 #define VOICE_FS 24000           /* per-voice level: one voice peaks near -6 dBFS before the master */
 
+#define Q15_FROM_127(v) ((v) * 258)   /* a 0..127 setting as Q15 (127 gives 32,766, not 32,768: the 28 sites keep their values; the exact map is ins_mixq, fx.c; audit U07) */
 static inline int32_t mulq15(int32_t a, int32_t b) { return (a * b) >> 15; }
 static inline int32_t mulq15r(int32_t a, int32_t b) { return (a * b + 16384) >> 15; }   /* DUELL 1.1: rounded to the nearest (the delay feedback: the repeats no longer lose a little at each pass) */
 /* a * k / 65536 without 64-bit: a up to 2^31, k Q16 */
@@ -51,6 +52,14 @@ static inline int32_t osc_pulse(uint32_t ph, uint32_t inc, uint32_t pw)
     return (osc_saw(ph, inc) - osc_saw(ph + pw, inc)) >> 1;
 }
 
+/* ANALOG PWM's width (audit P09): 50 % at rest, the TIMBRE routings (shape, Q8: 64 << 8 = rest) move it +-25 %, and the PW card (pwk 0..127) adds up to 40 % (to 90 % duty; 0 = the 50 %
+ * every stored sound has). Saturates below 100 % where the two together would wrap */
+static inline uint32_t pulse_pw(int32_t shape, int32_t pwk)
+{
+    uint32_t b = (uint32_t)pwk * 13631488u, a = 0x80000000u + (uint32_t)((shape - (64 << 8)) * 32768) + b;
+    return a < b ? 0xFF000000u : a;
+}
+
 static inline int32_t osc_tri(uint32_t ph)
 {
     int32_t s = (int32_t)(ph >> 15);                 /* 0..131071 */
@@ -69,62 +78,49 @@ static inline int32_t softclip(int32_t x)
     return x < 0 ? -y : y;
 }
 
-/* xorshift32 */
+/* xorshift32 on a signed state word */
 static inline uint32_t noise32(int32_t *st)
 {
     uint32_t s = (uint32_t)*st;
-    s ^= s << 13;
-    s ^= s >> 17;
-    s ^= s << 5;
+    xs32(&s);
     *st = (int32_t)s;
     return s;
 }
 
-/* Random draws of the VOICE stage (job 3: the two parts' stages must not touch the same state). Part 1 draws from the shared generator (libc.c rng(), the one the
- * events, the arp and the note-on seeds use: its sequence is what it always was while part 1 alone draws in the voice stage); the other parts (part 2, hidden 3 and 4)
- * have a generator of their own and do not touch rng(). LFO_SHARED_RNG parts draw shared. Before, parts 1..3 all drew from rng() in whatever order they ran */
+/* Random draws of the VOICE stage. The first LFO_SHARED_RNG parts draw from the shared generator (libc.c rng(), the one the events, the arp and the
+ * note-on seeds use); the other parts keep a generator of their own in *st (seeded on first use), so that no two parts' stages touch the same state */
 #define LFO_SHARED_RNG 1u
 static uint32_t part_rand(track_t *t, uint32_t *st)
 {
     uint32_t s = *st ? *st : 0x9E3779B9u;
     if ((uint32_t)(t - trk) < LFO_SHARED_RNG)
         return rng();
-    s ^= s << 13;
-    s ^= s >> 17;
-    s ^= s << 5;
-    *st = s;
-    return s;
+    return *st = xs32(&s);
 }
 
-/* Trapezoidal SVF (A. Simper), unconditionally stable. Coefficients per
- * block in Q13; signals stay within +-150000 so products fit in 32 bits. */
-typedef struct { int32_t a1, a2, a3; } tsvf_t;
+/* Trapezoidal SVF (A. Simper), unconditionally stable. Coefficients per block: the state update is
+ * v1 = ic1 + ((b1 ic1 + a2 v3) >> sh), v2 = ic2 + ((a2 ic1 + a3 v3) >> sh), v3 = in - ic2 (b1 = a1 - 1, the damping term, small
+ * at low cutoffs). Below ~1 kHz the coefficients are tiny (a3 = g^2 / den: 0 in Q13 under 100 Hz), so sh = 13 + s gives them s more bits,
+ * s picked so that a2 stays under 3072 (signals stay within +-150000: the products fit in 32 bits). */
+typedef struct { int32_t b1, a2, a3, sh; } tsvf_t;
 static inline void tsvf_coef_k(tsvf_t *c, int32_t cut, int32_t k)   /* cut: 0..127 << 8, k: damping Q12 */
 {
-    int32_t i, g, den;
+    uint32_t i, g, gk, den, s = 0;
+    int32_t a2;
     cut = clamp(cut, 0, 127 << 8);
-    i = cut >> 8;
-    g = SVF_G[i];
+    i = (uint32_t)cut >> 8;
+    g = SVF_G[i];                                      /* Q14 */
     if (i < 127)                                       /* between table points: sweeps without 128 steps */
-        g += ((SVF_G[i + 1] - g) * (cut & 255)) >> 8;
-    den = 4096 + ((g * (g + k)) >> 12);
-    c->a1 = (int32_t)((4096u << 13) / (uint32_t)den);
-    c->a2 = (c->a1 * g) >> 12;
-    c->a3 = (c->a2 * g) >> 12;
-}
-static inline void tsvf_coef(tsvf_t *c, int32_t cut, int32_t reso)   /* reso 0..127: damping 2.0 .. ~0.15 */
-{
-    tsvf_coef_k(c, cut, 8192 - reso * 7600 / 127);
-}
-
-static inline int32_t tsvf_lp(const tsvf_t *c, int32_t in, int32_t *ic1, int32_t *ic2)
-{
-    int32_t v3 = in - *ic2;
-    int32_t v1 = (c->a1 * *ic1 + c->a2 * v3) >> 13;
-    int32_t v2 = *ic2 + ((c->a2 * *ic1 + c->a3 * v3) >> 13);
-    *ic1 = clamp(2 * v1 - *ic1, -150000, 150000);
-    *ic2 = clamp(2 * v2 - *ic2, -150000, 150000);
-    return v2;
+        g += (uint32_t)(((int32_t)SVF_G[i + 1] - (int32_t)g) * (cut & 255) >> 8);
+    gk = g + ((uint32_t)k << 2);                       /* g + k, Q14 */
+    den = (1u << 14) + ((g * gk) >> 14);               /* 1 + g (g + k) */
+    while (s < 8u && (g << s) < 3072u)
+        s++;
+    a2 = (int32_t)((g << (13 + s)) / den);             /* g / den, Q(13 + s) */
+    c->a2 = a2;
+    c->a3 = (int32_t)(((uint32_t)a2 * g) >> 14);
+    c->b1 = -(int32_t)(((uint32_t)a2 * gk) >> 14);
+    c->sh = (int32_t)(13 + s);
 }
 
 /* amplitude ramp over the block. Blocks are always CTL long, so x / CTL is a

@@ -33,9 +33,15 @@ GROUPS = {
                    "lfo_sync_inc", "esync_coef", "esync2_coef", "spread_sum"],
     "MOD": ["mod_begin", "mod_tsrc", "mod_depth", "mod_part_put", "mod_gain", "mod_end"],
     "MORPH": ["morph_apply", "morph_begin", "morph_dip"],
-    "HELPERS": ["__udivdi3", "memcpy", "div_divlu", "memset", "div_samples", "beat_samples", "part_rand", "div_nlz32",
+    "HELPERS": ["__udivdi3", "memcpy", "div_divlu", "memset", "div_samples", "beat_samples", "part_rand", "div_nlz32", "isqrt32", "isqrt64",
                 "phys_slot_of", "phys_reset"],
 }
+# TIDE split the blend body from morph_apply; keep the audio body in RAM with its wrapper.
+GROUPS["MORPH"].append("morph_apply_at")
+# K3 (TIDE 1.0.0-b4): the ease ladder's per-half step (audio.c ease_step, a few compares); its level change ease_set stays in the flash (tools/ram_allow.py)
+GROUPS["EASE"] = ["ease_step"]
+# TIDE 1.0.0-b5 (CPU audit K5): the silent delay and master checks, every block (fx.c sil_dly, sil_mst)
+GROUPS["SILENT BUS"] = ["sil_dly", "sil_mst"]
 NAMES = [f for fs in GROUPS.values() for f in fs]
 # DUELL_TWOCORE=1 (two-core stage 1, the merge of cloud/job5 with this line): what core 1 runs beyond the list above. The real call graph of the job (tc_job_run,
 # fm1_c1_main: the relocations of the compiled object, tools/ram_reach.py, docs/TWOCORE_REACH_REAL.md) reaches 153 functions; 109 are placed already (hot 22, X 39, Z 48), 44 are not:
@@ -46,7 +52,7 @@ TWOCORE_GROUPS = {
     "PART CHAIN": ["part_fx", "part_mix", "part_rest", "pfx_mix", "pfx_mute", "pfx_snap", "pfx_restart", "acc_prep", "part_lvl", "pan_follow", "dist_follow",
                    "space_tap", "duck_part", "perf_mute", "perf_mute_sd", "perf_mute_rest",
                    "track_dist_ramp", "mx_slew"],   # (join0233: T0229's matrix round: SAT's blend ramp, which part 2's job calls (mix_ramp is in range X, tools/ram_fns_x.py); mx_slew, eq_taylor and eq_q28 are out-of-line helpers made in join0233-shrink so that mod_begin, mod_depth and eq_design stay small; mod_param is inlined into mod_begin and is no longer a function)
-    "EQ AND INSERTS": ["track_eq", "eq_design", "eq_taylor", "eq_q28", "eq_hz_q8", "eq_rest", "ins_lofi", "ins_drive", "ins_isqrt", "ins_rest", "__divdi3"],
+    "EQ AND INSERTS": ["track_eq", "eq_design", "eq_taylor", "eq_q28", "eq_hz_q8", "eq_rest", "ins_lofi", "ins_drive", "ins_rest", "__divdi3"],
     "CORE 1": ["tc_ctx_hash", "tc_c1_init", "retired_render"],
     # cloud wave 1, job B: what core 1 now reaches in flash that did not exist before (tools/ram_reach.py on the merged base: 1,430 device bytes): the voice chain's sequence
     # (chain_block and what it calls: they run only once a feature job makes chain_on true, but part_voice calls them), the matrix's CYCLE routes (mod_cycle_voice) and mod_begin's
@@ -61,4 +67,10 @@ TWOCORE = os.environ.get("DUELL_TWOCORE") == "1"
 if TWOCORE:
     NAMES = NAMES + [f for fs in TWOCORE_GROUPS.values() for f in fs]
     NAMES = [f for f in NAMES if f not in ("mod_tsrc", "mod_part_put")]   # hunt3: these two are in range X in TWOCORE builds (ram_fns_x.py X_FROM_Z)
+# TIDE 1.0.0-b5 (RAM room for the one-part change): cold code back to the flash, about 1 KB of range Z. The EQ's coefficient design (fx.c eq_design and
+# its helpers eq_q28, eq_taylor, eq_hz_q8, and __divdi3, which only they call from RAM) runs when a band's integer key changes (a knob step, a morph
+# step, a band turned on or off), not every block: track_eq, the per-block filter, stays in range Z (tools/ram_allow.py has the reason). morph_apply
+# is called only from the UI (ui_input, morph_effective_x).
+TIDE_FLASH = ("eq_design", "eq_q28", "eq_taylor", "eq_hz_q8", "__divdi3", "morph_apply")
+NAMES = [f for f in NAMES if f not in TIDE_FLASH]
 HI = 0x01C74000                                 # the stack guard (app_ram.ld _guard0): Z ends below it

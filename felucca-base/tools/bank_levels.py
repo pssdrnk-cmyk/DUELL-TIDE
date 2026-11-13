@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""DUELL 1.0: balance the levels of the 128 factory patches by their TRIM alone (owner, 2026-10-21, item 30; working docs/BANK_LEVELS.md).
+"""DUELL 1.0: balance the levels of the factory sounds by their TRIM alone (owner, 2026-10-21, item 30; working docs/BANK_LEVELS.md).
 
-    tools/bank_levels.py [--passes N] [--md FILE]
+    tools/bank_levels.py [--passes N] [--md FILE] [--write]
+
+Every sound of tools/duell_sounds.py (the 128 of the bank and the ones after them, #129 on), measured, compared with its category's median over all of them.
+Without --write it proposes (the TRIMs are tried in tools/duell_sounds.py and put back at the end); with --write the new TRIMs stay there.
 
 Measures with the recipe's level audit (tools/refine_audit.sh all: C3, velocity 100, held 10 s, ear-weighted, before MASTER), takes per kind (the category)
 the bank's own MEDIAN of the kind's level, and moves every patch that sits more than WINDOW dB from that median onto it, in TRIM steps (0.5 dB each);
-a patch inside the window keeps its TRIM. Nothing else of a patch is touched: the result is tools/factory_bank_trims.json, which tools/import_bank.py lays over
-the bank (no other value changes). Rules:
+a patch inside the window keeps its TRIM. Nothing else of a patch is touched: the result is the "TRIM" of each moved sound in tools/duell_sounds.py
+(until 2026-11-05 tools/factory_bank_trims.json laid over the bank by tools/import_bank.py --write, which is switched off). Rules:
   level      MED (the held body, median of seconds 1..6) for a patch that sustains, LOUD (the loudest 0.5 s window) for PLUCK and KEYS and for a patch that does not
              sustain; a HIT (PERC, and a one-shot OTHER: the audit's 'H' flag) by its PEAK, kept between -6 and -3 dBFS (the audit's hit rule)
   window     median +- 1.0 dB
@@ -17,6 +20,7 @@ the bank (no other value changes). Rules:
 Re-run until nothing moves; the passes and the result are printed.
 """
 import argparse
+import importlib.util
 import json
 import re
 import statistics
@@ -53,9 +57,33 @@ def audit():
         w, lo, hi = (3.5, 0.4, 2.5) if wide else (2.5, 0.5, 2.0)
         bwin = bool(mb) and all(abs(float(x.replace(" ", ""))) <= w for x in mb.groups()[:2]) and all(lo <= float(x) <= hi for x in mb.groups()[2:])
         rows[n] = dict(bwin=bwin, endb="FAIL (End B)" in line, n=n, name=line[6:18].strip(), cat=cat, eng=eng, peak=peak, loud=loud, med=med, tap=tap, hit=flag.endswith("H"), sus=flag == "S", verdict=line.split("   ")[-1].strip() if "FAIL" in line else "ok")
-    if len(rows) != 128:
-        sys.exit("bank_levels: the audit gave %d rows, not 128" % len(rows))
+    if len(rows) != len(SOUNDS):
+        sys.exit("bank_levels: the audit gave %d rows, not the %d sounds" % (len(rows), len(SOUNDS)))
     return rows
+
+
+def load_sounds():
+    spec = importlib.util.spec_from_file_location("duell_sounds", TOOLS / "duell_sounds.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.SOUNDS
+
+
+SOUNDS = []
+TRIM_DEF = 104                                         # (params.c TP[P_TRIM].def: a sound without "TRIM")
+
+
+def set_trims(text, trims):
+    """text of tools/duell_sounds.py with each named sound's "TRIM" in its p block set (inserted after p={ when absent)"""
+    for name, v in trims.items():
+        m = re.search(r"\n    dict\(engine='[A-Z0-9]+', idx=\d+, name='" + re.escape(name) + r"'.*?\n         p=\{", text, re.S)
+        end = text.find("\n         }", m.end())
+        blk = text[m.end():end]
+        blk2, n = re.subn(r"'TRIM': \d+", "'TRIM': %d" % v, blk)
+        if not n:
+            blk2 = "\n            'TRIM': %d," % v + blk
+        text = text[:m.end()] + blk2 + text[end:]
+    return text
 
 
 def metric(r):
@@ -74,22 +102,22 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--passes", type=int, default=4)
     ap.add_argument("--md", default="")
+    ap.add_argument("--write", action="store_true")
     a = ap.parse_args(argv)
-    trims_file = TOOLS / "factory_bank_trims.json"
-    bank = {it["number"]: it for it in json.loads((TOOLS / "factory_bank.duell-patches.json").read_text())["patches"]}
-    if trims_file.exists():
-        trims_file.unlink()
-    subprocess.run([sys.executable, "-I", str(TOOLS / "import_bank.py"), "--write"], cwd=ROOT, check=True, capture_output=True)
+    global SOUNDS
+    SOUNDS = load_sounds()
+    src = TOOLS / "duell_sounds.py"
+    text0 = src.read_text(encoding="utf-8")
+    num = {}                                           # audit row (the browse order) -> name, filled from the first audit
     before = audit()
-    orig = {}
-    import base64
-    ctxm = __import__("importlib.util").util
-    spec = ctxm.spec_from_file_location("ib", TOOLS / "import_bank.py")
-    ib = ctxm.module_from_spec(spec)
-    spec.loader.exec_module(ib)
-    ctx = ib.Ctx()
-    for n, it in bank.items():
-        orig[n] = ib.parse_record(ctx, base64.b64decode(it["record"]))["values"][ctx.ids["P_TRIM"]]
+    for n, r in before.items():
+        num[n] = r["name"]
+    byname = {s["name"]: s for s in SOUNDS}
+    orig = {n: byname[num[n]]["p"].get("TRIM", TRIM_DEF) for n in before}
+
+    def apply(trims):
+        src.write_text(set_trims(text0, {num[k]: v for k, v in trims.items() if v != orig[k]}), encoding="utf-8", newline="\n")
+        return audit()
     groups = {}
     for n, r in before.items():
         groups.setdefault(kind(r), []).append(metric(r)[1])
@@ -130,9 +158,7 @@ def main(argv):
                 continue
             trims[n] = new
             moved += 1
-        trims_file.write_text(json.dumps({str(k): v for k, v in sorted(trims.items()) if v != orig[k]}, indent=0, sort_keys=False) + "\n")
-        subprocess.run([sys.executable, "-I", str(TOOLS / "import_bank.py"), "--write"], cwd=ROOT, check=True, capture_output=True)
-        now = audit()
+        now = apply(trims)
         print("pass %d: %d patches moved" % (p + 1, moved))
         if not moved:
             break
@@ -143,9 +169,7 @@ def main(argv):
         for n in back:
             trims[n] -= 1
             peakfix.add(n)
-        trims_file.write_text(json.dumps({str(k): v for k, v in sorted(trims.items()) if v != orig[k]}, indent=0, sort_keys=False) + "\n")
-        subprocess.run([sys.executable, "-I", str(TOOLS / "import_bank.py"), "--write"], cwd=ROOT, check=True, capture_output=True)
-        now = audit()
+        now = apply(trims)
         print("End B peak guard pass %d: %d patches one step down" % (p + 1, len(back)))
     lines = ["| # | NAME | kind | measure | TRIM before -> after | level before -> after (dBFS) | peak before -> after | note |", "|---|---|---|---|---|---|---|---|"]
     for n in sorted(now):
@@ -166,6 +190,9 @@ def main(argv):
         Path(a.md).write_text("\n".join(lines) + "\n\nmedians: " + ", ".join("%s %.1f" % (k, v) for k, v in sorted(median.items())) + "\n")
     print("\n".join(lines))
     print("medians:", {k: round(v, 2) for k, v in sorted(median.items())})
+    if not a.write:
+        src.write_text(text0, encoding="utf-8", newline="\n")
+        print("bank_levels: proposal only; tools/duell_sounds.py put back (--write keeps the TRIMs)")
     return 0
 
 

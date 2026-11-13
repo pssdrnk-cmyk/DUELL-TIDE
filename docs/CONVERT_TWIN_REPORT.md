@@ -1,5 +1,7 @@
 # Conversion twin report (cloud job J)
 
+> Developer reference, historical. A sound-comparison report from the conversion of the engine filters to the twin filter (DUELL 1.0 development). Kept at this path because source and test comments cite it.
+
 Old build: `cloud/base3-wave4` (828d04b). New build: this branch. Same note, same hold, STEREO, the mix before MASTER, 48 kHz, as measured by
 `tests/sound_audit.c` (`SOUND_DUMP`) and `tests/multi_render_test.c` (`MULTI_DUMP`). Compared by `tools/convert_twin_report.py`. Nothing was tuned.
 

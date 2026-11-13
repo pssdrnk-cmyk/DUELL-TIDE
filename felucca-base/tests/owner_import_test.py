@@ -4,7 +4,7 @@
 
   python3 tests/owner_import_test.py        (from felucca-base; needs build/gen from DUELL/gen_only.py; host_tests.sh runs it as `ownerimport`)
 
-1. round trip: all 128 factory sounds saved and read back as PATCH_RAW reads them, imported: 128 equal to the recipe sounds, nothing written;
+1. round trip: all 128 factory sounds (124 with TIDE: the last four slots are USER slots) saved and read back as PATCH_RAW reads them, imported: 128 equal to the recipe sounds, nothing written;
 2. three knobs turned in three slots: exactly three sounds change in the resulting factory data (and only the turned values), everything else identical;
 3. the same import twice: the files are byte for byte the same; the unchanged export afterwards drops the entries again (undo);
 4b. the editor's duell-multis file: same record bytes out as in; a wrong CRC is skipped;
@@ -16,6 +16,7 @@ import base64
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -50,12 +51,16 @@ ctx = imp.Ctx()
 gen = ROOT / "build" / "host" / "owner_export_gen"
 FV = [l for l in (ROOT / "build/gen/duell_version.h").read_text().splitlines() if "DUELL_VERSION_STR" in l][0].split('"')[1]
 cc = ["cc", "-O1", "-w", "-DDUELL_TEST_MODE=1", "-Ibuild/gen_test", "-Ibuild/gen", "-Ifirmware/src", "-Itests", '-DFELUCCA_VERSION="%s"' % FV, "-o", str(gen), "tests/owner_export_gen.c", "-lm"]
+if os.name == "nt":                 # Windows: Python would start llvm-mingw's cc.exe, not the shell's cc (the POSIX stand-ins of jam/wincompat)
+    cc = ["sh", "-c", 'exec cc "$@"', "cc", *cc[1:]]
 (ROOT / "build/gen_test").mkdir(parents=True, exist_ok=True)
 subprocess.run([sys.executable, str(TOOLS / "gen_duell_multis.py"), "build/gen_test/duell_multis.h", "--test-mode"], cwd=ROOT, capture_output=True)
 ok(subprocess.run(cc, cwd=ROOT).returncode == 0, "tests/owner_export_gen.c compiles")
 tmp = Path(tempfile.mkdtemp(prefix="owner_import_"))
 P = ctx.ids
 base = {}
+# the records the export holds: the 124 that hold a factory sound (the last four are USER slots)
+NREC = 124
 
 
 def build(lst):
@@ -66,9 +71,9 @@ def build(lst):
 a = tmp / "unchanged.json"
 subprocess.run([str(gen), str(a)], cwd=ROOT, check=True, capture_output=True)
 rc, out = run("--dry-run", "--out", str(tmp / "o1"), str(a))
-ok(rc == 0 and "128 patches read (0 edited, 128 equal to the recipe sound)" in out, "round trip: the 128 factory sounds, saved and read back, import as equal to the recipe sounds, nothing edited")
+ok(rc == 0 and "%d patches read (0 edited, %d equal to the recipe sound)" % (NREC, NREC) in out, "round trip: the %d factory sounds, saved and read back, import as equal to the recipe sounds, nothing edited" % NREC)
 j = json.loads(a.read_text())
-ok(len(j["patches"]) == 128 and all(zlib.crc32(base64.b64decode(p["record"])) == int(p["crc32"], 16) for p in j["patches"]), "the synthetic export has 128 records, each with its checksum")
+ok(len(j["patches"]) == NREC and all(zlib.crc32(base64.b64decode(p["record"])) == int(p["crc32"], 16) for p in j["patches"]), "the synthetic export has %d records, each with its checksum" % NREC)
 
 # 2: three knobs
 edits = [(1, "P_REV", 33), (20, "P_CHOR", 11), (77, "P_DLY", 44)]
@@ -77,7 +82,7 @@ subprocess.run([str(gen), str(b)] + [str(x) for s, n, v in edits for x in (s, P[
 o2 = tmp / "o2"
 o2.mkdir()
 rc, out = run("--out", str(o2), str(b))
-ok(rc == 0 and "(3 edited, 125 equal" in out, "three knobs turned in three slots: three edited, 125 equal")
+ok(rc == 0 and "(3 edited, %d equal" % (NREC - 3) in out, "three knobs turned in three slots: three edited, %d equal" % (NREC - 3))
 own = load(o2 / "owner_sounds.py", "own2").OWNER_SOUNDS
 ok(len(own) == 3, "owner_sounds.py holds three sounds")
 base_list = list(ctx.base.values())
@@ -123,12 +128,12 @@ rc, out = run("--out", str(o4), str(tmp / "backup.json"))
 ok(rc == 0 and "1 multis edited" in out and (o4 / "factory_multis" / "M03.bin").read_bytes() == bytes(m3x) and not (o4 / "factory_multis" / "M04.bin").exists(),
    "a backup file with a changed M03 and an unchanged M04: M03's record is kept byte for byte, M04 is not touched")
 om = load(o4 / "owner_multis.py", "om4").OWNER_MULTIS
-ok(len(om) == 1 and om[0]["slot"] == 3 and om[0]["name"] == "PAD SPLIT" and [p["sound"] for p in om[0]["parts"]] == ["EVOLVING PAD", "EMBER GLOW"] and om[0]["mode"] == "LAYER",
-   "owner_multis.py lists M03 PAD SPLIT, LAYER, #61 EVOLVING PAD + #44 EMBER GLOW")
+ok(len(om) == 1 and om[0]["slot"] == 3 and om[0]["name"] == "HSE JUNO" and [p["sound"] for p in om[0]["parts"]] == ["WARM WASH", "RUBBER BAND"] and om[0]["mode"] == "LAYER",
+   "owner_multis.py lists M03 HSE JUNO, LAYER, WARM WASH + RUBBER BAND (the factory M03 since the reel, 2026-11-10)")
 
 # 4b: the editor's own multi file (duell-multis, stored.js multiFile): export-format file -> importer -> the same record bytes
 mf = {"format": "duell-multis", "version": 1, "firmware": FV, "created": "2026-01-01T00:00:00.000Z",
-      "multis": [{"slot": 3, "label": "M03", "name": "PAD SPLIT", "version": m3x[0], "size": len(m3x), "crc": zlib.crc32(bytes(m3x)), "data": base64.b64encode(bytes(m3x)).decode()}]}
+      "multis": [{"slot": 3, "label": "M03", "name": "HSE JUNO", "version": m3x[0], "size": len(m3x), "crc": zlib.crc32(bytes(m3x)), "data": base64.b64encode(bytes(m3x)).decode()}]}
 (tmp / "m.duell-multis.json").write_text(json.dumps(mf))
 o4b = tmp / "o4b"
 o4b.mkdir()
@@ -157,7 +162,7 @@ if node:
     js = tmp / "parse.mjs"
     js.write_text('import {readFileSync} from "node:fs"; import {parseFile} from "%s/web/editor/patchfile.js"; const r = parseFile(readFileSync(process.argv[2], "utf8")); console.log(r.ok, r.items.length, r.problems.length);' % ROOT)
     r = subprocess.run([node, str(js), str(a)], capture_output=True, text=True)
-    ok(r.stdout.split() == ["true", "128", "0"], "the editor's patchfile.js parseFile reads the synthetic export: 128 records, no problems (%s)" % (r.stdout.strip() or r.stderr.strip()[-80:]))
+    ok(r.stdout.split() == ["true", str(NREC), "0"], "the editor's patchfile.js parseFile reads the synthetic export: %d records, no problems (%s)" % (NREC, r.stdout.strip() or r.stderr.strip()[-80:]))
 else:
     print("owner_import: (no emsdk node: the editor parser check skipped)")
 print("owner_import: all ok" if not fails else "owner_import: FAILED (%d)" % fails)

@@ -1,5 +1,7 @@
 # DUELL factory sound recipes (research notes)
 
+> Research notes from the DUELL 1.0 sound design, kept as written. The factory sounds changed afterwards; the list that ships is [docs/PATCH_NUMBERS.md](docs/PATCH_NUMBERS.md).
+
 Purpose: typical settings of classic synth patches, in generic synth terms, as a starting point for DUELL factory presets. Written 2026-10-11, built up incrementally.
 
 ## How to read this
@@ -514,7 +516,7 @@ Sources for the playing styles (fetched 2026-10-14, data only):
 - **Part 2: #126 TABLA TALK** (PHYS; hand drum): a SEQUENCER arp at 1/16, GATE 64: `0(acc) . 0 +7 . 0 . +5(acc) 0 . +7 . 0(acc) . +12 .`; REV 21; LEVEL 112.
 - **Globals:** delay 1/8 dotted FDBK 27 MIX 71; ROOM SIZE 61. Loudness -17.6 dB.
 
-## 7.16 M16 STRESS TEST (a CPU test, not music; 0.2.23)
+## 7.16 M16 STRESS TEST (a CPU test, not music; 0.2.23 until U2 B: since then the test scene tests/scenes/M16_STRESS_TEST.bin, and M16 is CELLAR TAPE)
 - The owner plays it to see how many notes the unit takes (docs/TESTING.md). The two dearest sounds by the host count (`cpu_scenarios_test` per voice: PHYS about 17 to 20 %, WAVE about 8 to 9.5 %): **#37 PAN WHISTLE** (PHYS, POLY) and **#60 DIGITAL PAD** (WAVE, POLY, an arp UP 1/16 over 2 octaves, GATE 127, its long release overlapping). Both: the multimode filter HP 24 dB at 61 Hz (RES 17: it runs, the sound barely changes), an insert (FLANG / CHOR, MIX 97), SAT 41, EQ +4 / -3 / +3 dB, the DUCK PUMP 1/4 DEPTH 41 %, CHO 71, DLY 61, REV 71, LEVEL 112. **Globals:** 137 BPM, chorus DEPTH 77, the delay RANDOM (CHANCE 71 %) 1/8 FDBK 61, SHIM SIZE 107 with PITCH BOTH and MOD 51. The master COMP is the unit's (turn it on by hand). Host model (`CPU_SCEN=S`): LAYER 1 key 78 %, 2 keys 110 %, 3 and more 136 % (8 voices); DUEL with part 2 on channel 2: 92 / 124 / 150 %.
 
 ---
@@ -534,10 +536,10 @@ Read from `felucca-base/firmware/src/eng_*.c` (headers, `edit[]` tables, render 
 - Velocity/aftertouch/mod wheel go through the 8-slot matrix (sources include velocity, aftertouch, mod wheel, MORPH; destinations include every knob parameter). [SPEC.md]
 
 ## ANALOG  [OSC: WAVE DTN MIX NOIS | FLT: CUT RES DRV KTR]
-- WAVE: SAW SQR TRI SIN PWM SYNC SUB. DTN = osc 2 detune in cents (shown SYNC under WAVE SYNC: osc 2 above osc 1, 3/16 semitone a step, up to +23.8 st). MIX = osc 1/2 balance (shown SUB under WAVE SUB: sub level, osc 2 a square one octave below). NOIS = noise level. CUT/RES = state-variable filter (the filter TYPE LP/BP/HP is on EDIT > FILTER). DRV = drive. KTR = key tracking.
+- WAVE: SAW SQR TRI SIN PWM SYNC SUB ACID ACSQ (b8: ACID is a saw, ACSQ a square, one oscillator; the accents of a sound with either play like a TB-303's: a shorter filter sweep (ENV 2's decay forced to ~200 ms), a burst of level that follows it, and a cutoff push through a lag that grows with RES, so accents in a row climb. A plain ACID note plays at one fixed level (velocity does not change it; ~7 dB under SAW at the same TRIM) and a slid step glides as an RC lag (90 % in 53 ms, 99 % in 106 ms). Use VOICE LEG and a filter ENV 2 (E2FLT) with the pattern's SLIDE and accent steps). DTN = osc 2 detune in cents (shown SYNC under WAVE SYNC: osc 2 above osc 1, 3/16 semitone a step, up to +23.8 st). MIX = osc 1/2 balance (shown SUB under WAVE SUB: sub level, osc 2 a square one octave below). NOIS = noise level. CUT/RES = state-variable filter (the filter TYPE LP/BP/HP is on EDIT > FILTER). DRV = drive. KTR = key tracking.
 - Maps to: cutoff = CUT (FLT input adds), resonance = RES, osc mix = MIX, drive = DRV.
 - **SHP:** pulse width on PWM (and the pulse waves), sync detune on SYNC (3/16 semitone a step), so FILTER ENV SHP/LFO 2 SHP gives PWM and the sync sweep.
-- Suits: Moog bass, 303 acid (WAVE SAW/SQR, CUT low, RES 90-110, DRV, FILTER ENV FLT + short decay), sub bass (SUB or SIN), Reese (SAW, DTN 20-60 ct, MIX 64), pluck bass, Moog mono lead, sync lead (SYNC + FILTER ENV SHP), brassy lead and brass stab, PWM string pad and Juno-style pad (PWM + LFO 2 SHP), dark drone, noise sweep/wind (NOIS up, WAVE low, CUT sweep). Only two oscillators: a true seven-voice supersaw is approximate (use DTN + chorus). Factory presets of the engine include SAW LEAD, SOFT PAD, SQR BASS, PWM STR, ACID, SUB BASS, PLUCK, BRASS, WIND, STRINGS.
+- Suits: Moog bass, 303 acid (WAVE ACID / ACSQ, CUT low, RES 90-110, DRV, FILTER ENV FLT + short decay), sub bass (SUB or SIN), Reese (SAW, DTN 20-60 ct, MIX 64), pluck bass, Moog mono lead, sync lead (SYNC + FILTER ENV SHP), brassy lead and brass stab, PWM string pad and Juno-style pad (PWM + LFO 2 SHP), dark drone, noise sweep/wind (NOIS up, WAVE low, CUT sweep). Only two oscillators: a true seven-voice supersaw is approximate (use DTN + chorus). Factory presets of the engine include SAW LEAD, SOFT PAD, SQR BASS, PWM STR, ACID, SUB BASS, PLUCK, BRASS, WIND, STRINGS.
 
 ## TRIO  [OSC: WAVE INT2 INT3 DTN | TONE: MODE CUT RES PW]
 - WAVE: 16 sets (SAW3 PLS3 PPT SST TRI3 S&T P&S P+N NOIS SYNC SYNCP SYNC3 RING RING3 R+S R+SP), i.e. three oscillators with ring mod and hard sync. INT2/INT3 = interval of osc 2/3 in semitones. DTN = osc 2 up / osc 3 down in cents (0-50). MODE: LP BP HP NOT, 12 dB/oct. Cutoff drifts slowly at random.
@@ -596,7 +598,7 @@ Read from `felucca-base/firmware/src/eng_*.c` (headers, `edit[]` tables, render 
 - Suits: whatever the built-in sets contain, lofi keys (BITS), looped pads; the set names were not read (the list is generated by tools/gen_samples.py), so check SET on the device.
 
 ## FM6  [PATCH: SLOT ALG FB MLVL | MACRO: MRAT MEG VMOD DTUN]   (0.2.18: SLOT first; until 0.2.17 OPS: ALG FB MLVL MRAT | PATCH: MEG VMOD DTUN SLOT)
-- Six-operator FM (Dexed core). The patch is the sound; the 8 EDIT values are macros: ALG (PAT or 1..32 algorithms), FB = added feedback (-7..+7), MLVL = output level of all modulators (-36..+36 dB: the brightness / "cutoff" of FM), MRAT = added to modulators' coarse ratio, MEG = modulator envelope times (slower/faster), VMOD = modulators' velocity sensitivity, DTUN = carrier spread (about +-36 ct), SLOT = patch (F1-F8 factory, OWN, B1-B32 bank).
+- Six-operator FM (Dexed core). The patch is the sound; the 8 EDIT values are macros: ALG (PAT or 1..32 algorithms), FB = added feedback (-7..+7), MLVL = output level of all modulators (-36..+36 dB: the brightness / "cutoff" of FM), MRAT = added to modulators' coarse ratio, MEG = modulator envelope times (slower/faster), VMOD = modulators' velocity sensitivity, DTUN = carrier spread (neighbouring carriers up to 12 ct apart; no effect on the algorithms with one carrier), SLOT = patch (F1-F8 factory, OWN, B1-B32 bank).
 - Maps to: cutoff = MLVL (the FLT input moves MLVL), resonance ~ FB, velocity brightness = VMOD, oscillator mix = none (operator levels are in the patch).
 - **SHP:** feedback (FB).
 - The operator envelopes are the voice amplitude: the header says the track's ADSR, ENV DEST and the matrix's ENV "do nothing" here, yet in the same comment says ENV/LFO -> FLT moves MLVL. These statements conflict as written; whether FILTER ENV DEST FLT acts on FM6 (as the filter-envelope route to MLVL) is **unsure** and should be tested on the device before relying on it. AMP ENV (ATK/DEC/SUS/REL) is probably inactive for the same reason (source: eng_fm6.c header).

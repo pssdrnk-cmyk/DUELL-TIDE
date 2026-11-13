@@ -19,6 +19,7 @@
  * Built and run by DUELL/host_tests.sh (name: modules). */
 #define UI_TEST_NO_MAIN 1
 #define FELUCCA_FLASH 1
+#define UI_TEXT_CAPTURE 1                              /* (a card is read from the texts drawn in it: ui_test.c card_match; ui.col is a hash since 1.1) */
 #include "ui_test.c"
 #include "scenes.h"                                   /* (0.2.23: 0.2.22's M01 / M03 as test scenes) */
 
@@ -330,10 +331,10 @@ static void test_arp(void)
     go_main_to(HP_MORPH);
     frame();
     press(B_REC);
-    expect("REC (HOLD) with ARP OFF on an arp part: HOLD ALL (the keys latch), HOLD ON said", trk[0].p[P_AHOLD] == 2 && msg_is("HOLD ON"));
+    expect("REC (HOLD) with ARP OFF on an arp part: HOLD ALL (the keys latch), HOLD ON said", trk[0].p[P_AHOLD] == 2 && (msg_is("HOLD ON") || msg_is("HOLD ON: SEQ+REC=REC")));
     frames(600);
     press(B_REC);
-    expect("  .. again: HOLD OFF", trk[0].p[P_AHOLD] == 0 && msg_is("HOLD OFF"));
+    expect("  .. again: HOLD OFF", trk[0].p[P_AHOLD] == 0 && (msg_is("HOLD OFF") || msg_is("HOLD OFF: SEQ+REC=REC")));
     trk[0].p[P_AHOLD] = 1;
     frames(600);
     press(B_REC);
@@ -743,7 +744,7 @@ static void test_ui(void)
     show("DUCK 2/2");
     expect("  .. DUCK 2/2", off_module(cur_page()) == MODS_PFX);
     show("SIDECHAIN");
-    expect("  .. GLO > SIDECHAIN (the DUCK's SRC and NOTE), not a notice page, its cards not drawn", !off_module(cur_page()) && card_hid(0) && card_hid(1));
+    expect("  .. GLO > SIDECHAIN (the DUCK's SRC and NOTE): a PART FX notice page too (b4 UI round 2: was a blank page)", off_module(cur_page()) == MODS_PFX);
     set(MODS_PFX, 0u);
     show("FX");
     expect("all ON: no notice page, every card drawn", !off_module(cur_page()) && !card_hid(0) && !card_hid(1));
@@ -778,7 +779,7 @@ static void test_ui(void)
     trk[0].p[P_AMODE] = AM_SEQ;
     show("ARP 1/3");
     expect("  .. an arp in SEQUENCER: its cards not drawn (HOLD, which applies, moved left to K1), no step strip",
-           !off_module(cur_page()) && !strncmp(ui.col[0], "HOLD|", 5) && card_hid(1) && card_hid(2) && !foot_steps());
+           !off_module(cur_page()) && card_match(0, "HOLD") && card_hid(1) && card_hid(2) && !foot_steps());
     trk[0].p[P_AMODE] = 0;
     go_page(GR_EVENTS); ui.force = 1; frame();
     expect("  .. AUTOMATION: a SEQ notice page, no step strip", off_module(cur_page()) == MODS_SEQ && !foot_steps());

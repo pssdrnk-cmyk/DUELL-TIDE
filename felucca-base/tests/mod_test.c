@@ -194,7 +194,7 @@ static void test_math(void)
     slot(t, 0, MS_LFO, MD_PITCH, 63);
     unslew();                                      /* (0.2.25: a mapping probe: the value at once, not the source slew) */
     mod_begin(t);
-    check("LFO -> PITCH +63: +12 semitones (63 acts as 64, 1.0)", trk[0].mdw.pit == (lfo * 64 * 3) >> 15 && trk[0].mdw.pit == 191);
+    check("LFO -> PITCH +63: +12 semitones (63 acts as 64, 1.0)", trk[0].mdw.pit == (lfo * 64 * 3) >> 11 && trk[0].mdw.pit >> 4 == 191);
     mod_end(t);
     lfo_at(t, -32768);
     slot(t, 0, MS_LFO, MD_SHP, 63);
@@ -258,14 +258,14 @@ static void test_math(void)
     m.inc = pitch_inc(1000);
     m.amp1 = 20000;
     v = &t->v[0];
-    mod_voice(t, v, &m, 0);
+    mod_voice(t, v, &m);
     check("KEY -> CUT +63: an octave above C4 = +12 steps (key tracking 1:1; 63 acts as 64, 1.0)", m.cutoff == (12 * 512 * 64) >> 7 && m.cutoff / 256 == 12);
     check("VEL -> AMP +63: velocity 127 keeps the amplitude", m.amp1 == mulq15(20000, mulq15(32767, mod_gain(MS_VEL, 127 * 258, 64))) && m.amp1 > 19900 && v->env_out == m.amp1);
     check("ENV -> SHP +40: half the envelope = +20 steps", m.shape == (64 << 8) + ((16384 * 41) >> 7));   /* (+40 acts as 41, 1.0) */
-    check("RAND -> PITCH: the voice's own random offset", m.pitch16 == 1000 + ((v->mrnd * 20 * 3) >> 15) && m.inc == pitch_inc(m.pitch16));
+    check("RAND -> PITCH: the voice's own random offset", m.pitch16 == 1000 + ((v->mrnd * 20 * 3) >> 11 >> 4) && m.inc == pitch_inc(m.pitch16) + (uint32_t)((int32_t)(pitch_inc(m.pitch16) >> 12) * m.fine));
     memset(&m, 0, sizeof m);
     m.amp1 = 20000;
-    mod_voice(t, &t->v[1], &m, 0);
+    mod_voice(t, &t->v[1], &m);
     check("KEY below C4 negative, VEL 1 -> AMP almost closed", m.cutoff == -((12 * 512 * 64) >> 7) && m.amp1 < 600);
     mod_end(t);
 
@@ -281,7 +281,7 @@ static void test_math(void)
     memset(&m, 0, sizeof m);
     m.cutoff = 100 << 8;
     m.pitch16 = 1920;
-    mod_voice(t, &t->v[0], &m, 0);
+    mod_voice(t, &t->v[0], &m);
     check("CUT sums clamp to what the fixed routings reach (+150), PITCH to 2047", m.cutoff == 150 * 256 && m.pitch16 == 2047);
     mod_end(t);
 
@@ -354,7 +354,7 @@ static void test_math(void)
           t->p[P_E0 + 1] < -10);
     mod_end(t);
     check("the engine parameters restored", t->p[P_E0 + k_pw] == 100 && t->p[P_E0 + 1] == 0);
-    check("DST names: E1..E8 by the engine's labels", str_eq(mod_dst_name(t, MD_E1 + (int32_t)k_pw), "PW") &&
+    check("DST names: E1..E8 by the engine's labels", str_eq(mod_dst_name(t, MD_E1 + (int32_t)k_pw), "PULSE WIDTH") &&
                                                           str_eq(mod_dst_name(t, MD_CUT), "MULTI\nCUTOFF"));
 
     /* per-voice sources on a per-block destination: the latest note-on */
@@ -773,7 +773,7 @@ static void test_part2_modes(void)
     part2_run(DM_LAYER, MS_LFO2, MD_PAN, -64, &lo, &hi, &r, 0);
     check("LAYER: part 2's LFO 2 -> PAN -64 swings both ways too", lo < -80 && hi > 80);
     part2_run(DM_SPLIT, MS_LFO, MD_PAN, 63, &lo, &hi, &r, 0);
-    check("SPLIT: part 2 stays hard right (PAN and its modulation are not heard, by design)", lo == 100 && hi == 100);
+    check("SPLIT: part 2 stays hard right (PAN and its modulation are not heard, by design; the left may hold a LSB of the DC blocker: the master knee is linear, the old tanh squashed it to 0)", lo >= 98 && hi >= 99);
     for (k = 0, ok = 1; k < 5u; k++) {             /* every destination class: part 2's sound changes in LAYER */
         double d = 0, e = 0;
         uint32_t i;
@@ -889,9 +889,9 @@ static void test_dest027(void)
     int16_t keep[P_COUNT];
     uint64_t l0, r0, l1, r1;
 
-    for (k = 0, ok = MD_N == 56 && MD_FMODE == 46 && MD_AATK == 47 && MD_N_026 == 23 && MD_DEPTH == 20 && MD_DEPTH2 == 22; k < MD_N_026; k++)
+    for (k = 0, ok = MD_N == 57 && MD_FMODE == 46 && MD_AATK == 47 && MD_N_026 == 23 && MD_DEPTH == 20 && MD_DEPTH2 == 22; k < MD_N_026; k++)
         ok &= str_eq(N_MDST[k], OLD[k]);
-    check("0.2.7: DST 0..22 are 0.2.6's (a stored matrix means what it meant); 23 new ones appended (46), 0.2.25 FMODE the 47th, T0229 the AMP ENV times 48th .. 51st", ok);
+    check("0.2.7: DST 0..22 are 0.2.6's (a stored matrix means what it meant); 23 new ones appended (46), 0.2.25 FMODE the 47th, T0229 the AMP ENV times 48th .. 51st, 1.1 SPACE the 57th", ok);
     check("  the editor's DESC lists every DST name (the limit is 64 now)", MD_N <= 64);
     {   /* no new DST name is an engine's EDIT label: gen_duell_sounds.py reads a sound's MOD route "RES" (ANALOG's E6) by N_MDST
          * first, so a DST called RES moved ANALOG SQUELCH's route to the universal filter's RES (its golden changed) */
@@ -917,18 +917,20 @@ static void test_dest027(void)
             ok &= str_len(b) > 6u && (!MD_IS_BUS(v) || more);   /* (a bus value: always which bus; a faded one: why; 0.2.25: FMODE, after the bus values, is a part value) */
         }
         mod_dst_line(&trk[0], MD_RDAMP, b, &more);
-        ok &= str_eq(b, "DEST: REVERB DAMP") && str_eq(more, "SHARED BUS: BOTH PARTS ADD");
+        ok &= str_eq(b, "DEST: REVERB DAMPING") && str_eq(more, "SHARED BUS: BOTH PARTS ADD");
         mod_dst_line(&trk[0], MD_LEVEL, b, &more);
         ok &= str_eq(b, "DEST: PATCH LEVEL");   /* (0.2.25 layout round: TRIM is shown PATCH LEVEL) */
         mod_dst_line(&trk[0], MD_DEPTH, b, &more);
-        ok &= str_eq(b, "DEST: LFO 1 DEPTH");
+        ok &= str_eq(b, "DEST: LFO 1 LEVEL");   /* (D20, audit S15: DEP1 is the LFO 1 LEVEL knob, not a second LFO 1 DEPTH) */
+        mod_dst_line(&trk[0], MD_DEPTH2, b, &more);
+        ok &= str_eq(b, "DEST: LFO 2 LEVEL");
         mod_dst_line(&trk[0], MD_E1 + 2, b, &more);
         ok &= str_eq(b, "DEST: ANALOG ") == 0 && b[13] != 0;
         duell_mode_req = DM_SPLIT;
         mod_dst_line(&trk[1], MD_CRATE, b, &more);
         ok &= str_eq(b, "DEST: CHORUS RATE") && str_eq(more, "MOVES BUS B ONLY (PART 2)");
         duell_mode_req = DM_STEREO;
-        check("  the MATRIX page's DEST line names every destination in words (\"DEST: REVERB DAMP\", which bus it moves)", ok);
+        check("  the MATRIX page's DEST line names every destination in words (\"DEST: REVERB DAMPING\", which bus it moves)", ok);
     {   /* 0.2.25: FILTER MODE (MD_FMODE 46): the multimode filter's MODE per block, put back after; named FMODE, "DEST: FILTER 1 MODE" */
         char b2[32];
         const char *more2;
@@ -990,15 +992,15 @@ static void test_dest027(void)
             mix_block(out_buf, CTL);
         ok &= w->h.want == want && w->h.have == want && !w->h.fade && t->p[P_E0] == tab;
         check("WAVE: MODW -> POS and -> E7 (STEPS) move them; -> TABLE (REBUILD) does nothing: no table change, no rebuild", ok);
-        check("  the MATRIX page: TABLE faded REBUILD, E7 (STEPS) and POS live (E8 faded UNUSED); its line \"DEST: WAVE POS\"",
+        check("  the MATRIX page: TABLE faded REBUILD, E7 (STEPS) and POS live (E8 faded UNUSED); its line \"DEST: WAVE POSITION\"",
               str_eq(mod_dst_why(t, MD_E1), "REBUILD") && !mod_dst_why(t, MD_E1 + 6) && str_eq(mod_dst_why(t, MD_E1 + 7), "UNUSED") && !mod_dst_why(t, MD_E1 + 1));
         {
             char b2[32];
             const char *more;
             mod_dst_line(t, MD_E1 + 1, b2, &more);
-            ok = str_eq(b2, "DEST: WAVE POS") && !more;
+            ok = str_eq(b2, "DEST: WAVE POSITION") && !more;   /* (DUELL 1.1: POSITION in full) */
             mod_dst_line(t, MD_E1 + 7, b2, &more);
-            check("  .. \"DEST: WAVE POS\"; the unused slot \"DEST: WAVE EDIT 2 KNOB 4\" + NOT USED BY THIS ENGINE",
+            check("  .. \"DEST: WAVE POSITION\"; the unused slot \"DEST: WAVE EDIT 2 KNOB 4\" + NOT USED BY THIS ENGINE",
                   ok && str_eq(b2, "DEST: WAVE EDIT 2 KNOB 4") && more && str_eq(more, "NOT USED BY THIS ENGINE"));
             mod_dst_line(t, MD_E1 + 6, b2, &more);
             check("  .. E7: \"DEST: WAVE STEPS\", nothing against it", str_eq(b2, "DEST: WAVE STEPS") && !more);
@@ -1104,19 +1106,19 @@ static void test_dest027(void)
         uint8_t sv = mrc;
         memset(o, 0, sizeof o);
         for (sd = 0; sd < 400u; sd++) {
-            uint32_t rs = morph_state(sd, 0);
+            uint32_t rs = morph_state(sd, 0), rz = rs;   /* (ROLL CHAINED: rz the zero-amount stream; the start st and the Original org are o: a first roll) */
             o[MSLOT_ID(0)] = MS_LFO;
             o[MSLOT_ID(0) + 1u] = (int8_t)(sd & 1u ? MD_CUT : MD_RSIZE);
             o[MSLOT_ID(0) + 2u] = 40;
             memcpy(end, o, sizeof end);
             mrc = MC_WILD | MC_PIT;
-            morph_slot(&rs, ENGINES[0], o, end, 0, 100, 1);
+            morph_slot(&rs, &rz, ENGINES[0], o, o, o, end, 0, 100, 1);
             newd += (sd & 1u) && (uint8_t)end[MSLOT_ID(0) + 1u] >= MD_N_026;
             nn += end[MSLOT_ID(0) + 1u] != o[MSLOT_ID(0) + 1u];
-            rs = morph_state(sd, 1);
+            rs = rz = morph_state(sd, 1);
             mrc = MC_PIT;
             memcpy(end, o, sizeof end);
-            morph_slot(&rs, ENGINES[0], o, end, 0, 100, 1);
+            morph_slot(&rs, &rz, ENGINES[0], o, o, o, end, 0, 100, 1);
             kept &= end[MSLOT_ID(0)] == o[MSLOT_ID(0)] && end[MSLOT_ID(0) + 1u] == o[MSLOT_ID(0) + 1u];
         }
         mrc = sv;

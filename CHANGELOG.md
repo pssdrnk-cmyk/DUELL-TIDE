@@ -6,6 +6,10 @@ by OSCILL/R
 
 Each release: a one-line summary, then New, Fixed, Compatibility, Install, Files.
 
+## DUELL 1.1 with TIDE (pssdrnk's fork)
+
+Not an OSCILL/R release. The fork's changes (TIDE and the fixes made on top of DUELL 1.1) are listed in [CHANGELOG-TIDE.md](CHANGELOG-TIDE.md). New TIDE lines go to CHANGELOG-TIDE.md, not here; this file keeps DUELL's own history.
+
 ## DUELL 1.1
 
 An update for the M-VAVE FM-1. The whole user interface is redesigned, so you see more at a glance, and PERFORM, STRUM and MORPH have new things to play with.

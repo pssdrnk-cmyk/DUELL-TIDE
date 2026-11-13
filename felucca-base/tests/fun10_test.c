@@ -81,11 +81,11 @@ static int lfo(void)
         song.g[G_CLOCK] = 1;
         midi_beat_samples = 0;
         memset(&midi_clock, 0, sizeof midi_clock);
-        for (i = 0; i < 13u; i++, ms += 25u)
+        for (i = 0; i < 25u; i++, ms += 25u)         /* (the tempo is measured over 24 pulses, a beat) */
             midi_clock_pulse(ms);
         t->lfo_ph = 0;
         ok = midi_beat_samples == 26460u && fabs(lfo_cycles(t, 26460u * 4u / CTL) - (double)(26460u * 4u / CTL) * CTL / 26460.0) < 1e-4;
-        for (i = 0; i < 13u; i++, ms += 30u)        /* slower: 83 BPM */
+        for (i = 0, ms += 5u; i < 96u; i++, ms += 30u)   /* slower: 83 BPM (four beats to settle, first pulse 30 ms from the last) */
             midi_clock_pulse(ms);
         t->lfo_ph = 0;
         ok &= midi_beat_samples == 31752u && fabs(lfo_cycles(t, 31752u * 2u / CTL) - (double)(31752u * 2u / CTL) * CTL / 31752.0) < 1e-4;
@@ -221,7 +221,7 @@ static uint32_t play(track_t *t, uint32_t blocks, uint32_t *at, uint8_t *note, u
 /* the block step i (from PLAY, no swing) plus `off` samples falls in, as a sample */
 static uint32_t blk(uint32_t i, int32_t off)
 {
-    uint32_t s = (uint32_t)((int32_t)(i * P16) + off);
+    uint32_t s = (uint32_t)((int32_t)((i * beat_samples() + 3u) / 4u) + off);   /* (b8 DRIFT: a step starts on the exact beat grid, i * 5512.5 samples at 120 BPM, rounded up; was i * P16, the rounded-down 5512) */
     return (s + CTL - 1u) / CTL * CTL;
 }
 
@@ -315,15 +315,15 @@ static int nudge(void)
     memset(&midi_clock, 0, sizeof midi_clock);
     midi_beat_samples = 0;
     seq_start();
-    for (i = 0; i < 13u; i++)
-        midi_clock_pulse(1000u + 25u * i);           /* 100 BPM */
+    for (i = 0; i < 25u; i++)
+        midi_clock_pulse(1000u + 25u * i);           /* 100 BPM (a beat of pulses measures it) */
     P16 = div_samples(2);
     t->seq_idx = 0;
     t->seq_pos = P16 - 10u;
     seq_tick(t, CTL);                                /* step 2 starts: its play latched at 6/16 */
     ok = t->seq_idx == 1u && t->nd_late == 6u * P16 / 16u + 1u;
-    for (i = 0; i < 13u; i++)
-        midi_clock_pulse(2000u + 50u * i);           /* 50 BPM: the step twice as long */
+    for (i = 0; i < 96u; i++)
+        midi_clock_pulse(1650u + 50u * i);           /* 50 BPM: the step twice as long (four beats to settle) */
     ok &= t->nd_late > 2u * (6u * P16 / 16u) - 8u && t->nd_late < 2u * (6u * P16 / 16u) + 8u;
     seq_stop();
     song.g[G_CLOCK] = 0;

@@ -4,14 +4,15 @@
 /* Audio ISR state. Input timestamps keep USB/TRS jitter outside the render loop. */
 static struct {
     uint32_t pos, rendered, last_ms, start_ms, rem, interval_ms;
-    uint32_t pulse_samples, interp_q8, tempo_ms;
-    uint8_t mode, have_pulse, tempo_valid, tempo_n;
+    uint32_t pulse_units, interp_q8, tempo_ms[4];
+    uint8_t mode, have_pulse, tempo_valid, tempo_n, tempo_i, tempo_beats;
     uint8_t seen;                                  /* a clock pulse of the selected source has arrived (the UI's EXT / NO CLOCK) */
     uint8_t stopped;                               /* an external Stop (0xFC or this unit's STOP) until the next Start / Continue: the arp waits */
     uint8_t lock;                                  /* CLK AUTO: the port locked onto (1 USB, 2 TRS), 0 = none, the internal clock runs */
     uint8_t det_n[3];                              /* AUTO, unlocked: a port's plausible pulses in a row (det_t0: the first one's time) */
     uint32_t det_t0[3], det_last[3];
 } midi_clock;
+static uint8_t midi_bar;                           /* the pulses of the master's bar (0..95) counted so far, 0 after its Start; bit 7: this unit's PLAY waits for the next bar (audit S08) */
 
 /* DUELL 0.2.14, CLK AUTO (SPEC 4.2, MIDI clock): a port locks after AUTO_LOCK_N pulses AUTO_MIN_MS..AUTO_MAX_MS apart (24 ppqn at ~31..312 BPM)
  * within AUTO_LOCK_MS, or at once on its Start / Continue; the other port is ignored while locked; no pulse for AUTO_DROP_MS: back to the
@@ -43,24 +44,30 @@ static uint32_t clock_state(void)
  * internal clock's next step, lands on its new boundary) */
 static __attribute__((noinline)) void clock_rescale(uint32_t old_beat, uint32_t new_beat)
 {
-    uint32_t i, ratio = (new_beat << 12) / old_beat;
+    uint32_t i;
     for (i = 0; i < NTRK; i++) {
-        if (trk[i].seq_pos < (uint32_t)FS * 2u)
-            trk[i].seq_pos = (uint32_t)(((uint64_t)trk[i].seq_pos * ratio + 2048u) >> 12);
-        if (trk[i].seq_off)
-            trk[i].seq_off = (uint32_t)(((uint64_t)trk[i].seq_off * ratio + 2048u) >> 12);
-        if (trk[i].nd_late)            /* (NUDGE: the latched plays, seq_pos + 1, with the step) */
-            trk[i].nd_late = (uint32_t)(((uint64_t)(trk[i].nd_late - 1u) * ratio + 2048u) >> 12) + 1u;
-        if (trk[i].nd_early)
-            trk[i].nd_early = (uint32_t)(((uint64_t)(trk[i].nd_early - 1u) * ratio + 2048u) >> 12) + 1u;
+        uint32_t div = (uint32_t)trk[i].p[P_SDIV];
+        uint32_t op = midi_clock_period(old_beat, div), np = midi_clock_period(new_beat, div);
+        if (trk[i].seq_pos < 0x7FFFFFFFu)
+            trk[i].seq_pos = midi_clock_scale_phase(trk[i].seq_pos, np, op, &midi_seq_grid[i], div);
+        if (trk[i].seq_off) trk[i].seq_off = midi_clock_scale(trk[i].seq_off, np, op);
+        if (trk[i].nd_late) trk[i].nd_late = midi_clock_scale(trk[i].nd_late - 1u, np, op) + 1u;
+        if (trk[i].nd_early) trk[i].nd_early = midi_clock_scale(trk[i].nd_early - 1u, np, op) + 1u;
+        div = (uint32_t)trk[i].p[P_ARATE];
+        op = midi_clock_period(old_beat, div); np = midi_clock_period(new_beat, div);
+        if (trk[i].arp_pos < 0x8000000u)             /* (not a step still to wait for: seq.c arp_wait) */
+            trk[i].arp_pos = midi_clock_scale_phase(trk[i].arp_pos, np, op, &midi_arp_grid[i], div);
+        if (trk[i].arp_off) trk[i].arp_off = midi_clock_scale(trk[i].arp_off, np, op);
     }
-    if (clk_pos < (uint32_t)FS * 2u)   /* (the metronome's beat as the steps) */
-        clk_pos = (uint32_t)(((uint64_t)clk_pos * ratio + 2048u) >> 12);
+    if (clk_pos != CLK_START)
+        clk_pos = midi_clock_scale_phase(clk_pos, new_beat / 4u, old_beat / 4u, &midi_click_grid, 2u);
+    beat_pos = midi_clock_scale_phase(beat_pos, new_beat, old_beat, &midi_beat_grid, 0u);
 }
 
 static __attribute__((noinline)) void midi_clock_transport(uint32_t status, uint32_t ms)
 {
     if (status == 0xFAu) {                         /* Start: step zero */
+        midi_bar = 0;
         midi_clock.pos = midi_clock.rendered = midi_clock.rem = 0;
         midi_clock.have_pulse = midi_clock.tempo_valid = 0;
         midi_clock.interval_ms = 0;
@@ -79,46 +86,60 @@ static __attribute__((noinline)) void midi_clock_transport(uint32_t status, uint
         song.playing = 1;
     } else if (status == 0xFCu) {
         midi_clock.stopped = 1;                    /* (the arp waits for the next Start; the pulses are not counted) */
+        midi_bar &= 0x7Fu;
         seq_stop();
     }
 }
 
 static __attribute__((noinline)) void midi_clock_pulse(uint32_t ms)
 {
-    uint32_t q;
-    if (!midi_clock.tempo_valid) {
+    if (!midi_clock.tempo_valid || ms - midi_clock.last_ms > AUTO_MAX_MS) {
         midi_clock.tempo_valid = 1;
-        midi_clock.tempo_ms = ms;
+        midi_clock.tempo_ms[0] = ms;
         midi_clock.tempo_n = 0;
-    } else if (++midi_clock.tempo_n == 6u) {
-        uint32_t dt = ms - midi_clock.tempo_ms;
-        midi_clock.tempo_ms = ms;
+        midi_clock.tempo_i = midi_clock.tempo_beats = 0;
+    } else if (++midi_clock.tempo_n == 24u) {
+        uint32_t i = (midi_clock.tempo_i + 1u) & 3u, beats = midi_clock.tempo_beats;
+        if (beats < 4u) beats++;
+        uint32_t dt = ms - midi_clock.tempo_ms[(i + 4u - beats) & 3u];
+        midi_clock.tempo_ms[i] = ms;
+        midi_clock.tempo_i = (uint8_t)i;
+        midi_clock.tempo_beats = (uint8_t)beats;
         midi_clock.tempo_n = 0;
-        /* Six clocks are a quarter of a beat. Reject gaps and corrupt bursts. */
-        if (dt >= 62u && dt <= 375u) {
-            uint32_t old_beat = beat_samples(), new_beat = (uint32_t)FS * dt / 250u;
+        /* Estimate once a beat, over up to four beats. The first beat acquires tempo; the longer window keeps +/-1 ms
+         * timestamp jitter within 0.2 % even at 240 BPM. Round fractional sample periods rather than biasing them down.
+         * Pulse counting and interpolation below still set phase. */
+        if (dt >= 250u * beats && dt <= 1500u * beats) {
+            uint32_t old_beat = beat_samples(), new_beat = ((uint32_t)FS * dt + 500u * beats) / (1000u * beats);
             if (song.playing && new_beat != old_beat)
                 clock_rescale(old_beat, new_beat);   /* (the master changed tempo: each track's step phase kept) */
             midi_beat_samples = new_beat;
-            song.g[G_BPM] = (int16_t)clamp((int32_t)((15000u + dt / 2u) / dt), 40, 240);
+            song.g[G_BPM] = (int16_t)clamp((int32_t)((60000u * beats + dt / 2u) / dt), 40, 240);
         }
     }
+    if (midi_bar == 0x80u)                  /* this unit's PLAY, pressed under an external clock: it starts on the master's bar (96 pulses) */
+        midi_clock_transport(0xFAu, ms);
+    midi_bar = (uint8_t)((midi_bar & 0x80u) | ((midi_bar & 0x7Fu) < 95u ? (midi_bar & 0x7Fu) + 1u : 0u));
     midi_clock.seen = 1;
     if (song.playing || !midi_clock.stopped) {     /* (a clock running without a Start still steps the ARP: events_block) */
+        if (song.playing && !midi_clock.have_pulse) {
+            for (uint32_t i = 0; i < NSHOWN; i++) {
+                seq_tick(&trk[i], 0);
+                if (trk[i].arp_pos == 0xFFFFFFFu) arp_step(&trk[i], 0, 0);
+            }
+        }
         if (midi_clock.have_pulse) {
             uint32_t interval = ms - midi_clock.last_ms;
             if (interval >= 8u && interval <= 80u)
                 midi_clock.interval_ms = interval;
-            q = beat_samples() + midi_clock.rem;
-            midi_clock.pos += q / 24u;
-            midi_clock.rem = q % 24u;
+            midi_clock.pos += MIDI_CLOCK_GRID / 24u;
         }
         midi_clock.have_pulse = 1;
     }
-    midi_clock.pulse_samples = beat_samples() / 24u;
+    midi_clock.pulse_units = MIDI_CLOCK_GRID / 24u;
     if (!midi_clock.interval_ms)
         midi_clock.interval_ms = beat_samples() * 1000u / ((uint32_t)FS * 24u);
-    midi_clock.interp_q8 = midi_clock.pulse_samples * 256u / midi_clock.interval_ms;
+    midi_clock.interp_q8 = midi_clock.pulse_units * 256u / midi_clock.interval_ms;
     midi_clock.last_ms = ms;
 }
 
@@ -134,27 +155,29 @@ static uint32_t midi_clock_advance(uint32_t now)
          * 24 pulses of beat_samples() / 24 a beat run at the audio rate), so a clock that stops hands over to the internal one without
          * a gap. A pulse that comes after all puts it right (rendered ahead of pos waits; after a gap: clock_auto) */
         if (song.g[G_CLOCK] == CLK_AUTO && elapsed < AUTO_DROP_MS)
-            extra = (elapsed - midi_clock.interval_ms) * (uint32_t)FS / 1000u;
+            extra = (uint32_t)((uint64_t)(elapsed - midi_clock.interval_ms) * MIDI_CLOCK_GRID * FS / (1000u * beat_samples()));
         elapsed = midi_clock.interval_ms;
     }
     offset = elapsed * midi_clock.interp_q8 >> 8;
-    if (offset >= midi_clock.pulse_samples)
-        offset = midi_clock.pulse_samples - 1u;
+    if (offset >= midi_clock.pulse_units)
+        offset = midi_clock.pulse_units - 1u;
     offset += extra;
     target = midi_clock.pos + offset;
     n = (int32_t)(target - midi_clock.rendered) > 0 ? target - midi_clock.rendered : 0u;
-    if (n > (uint32_t)FS / 8u)
-        n = (uint32_t)FS / 8u;
+    if (n > MIDI_CLOCK_GRID / 2u)
+        n = MIDI_CLOCK_GRID / 2u;
     midi_clock.rendered += n;
     return n;
 }
 
 
 /* AUTO: lock onto port src (its pulses from now on are the clock). The steps keep their phase (the counters start from here: the next
- * pulses continue the current step), the tempo is the internal one until six pulses have measured the master's; a count-in on the
+ * pulses continue the current step), the tempo is the internal one until 24 pulses (one beat) have measured the master's; a count-in on the
  * internal clock is cancelled (an external clock never counts in) */
 static __attribute__((noinline)) void clock_lock(uint32_t src, uint32_t ms)
 {
+    midi_grid_reset();
+    midi_bar = 0;
     midi_clock.lock = (uint8_t)src;
     midi_clock.pos = midi_clock.rendered = midi_clock.rem = 0;
     midi_clock.have_pulse = midi_clock.tempo_valid = midi_clock.tempo_n = 0;
@@ -240,6 +263,7 @@ static __attribute__((noinline)) void clock_choice(uint32_t mode)
         now = mode < CLK_AUTO ? mode : 0u;
     if (now != was) {
         seq_stop();
+        midi_bar = 0;
         memset(&midi_clock, 0, sizeof midi_clock);
         midi_beat_samples = 0;
     }

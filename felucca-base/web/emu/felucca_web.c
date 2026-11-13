@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #define FELUCCA_WEB 1
+#define DUELL_VCAP 1                     /* this build never calls budget_poll: the 0.2.11 VOICE CAP (voice.c vcap_poll) stays what limits its notes (core.h) */
 #define FELUCCA_METER_EST 1              /* audio.c: no clock here, the CPU meter reads a voice-count model (labelled EST) */
 /* (FELUCCA_CDC: src/felucca.c's default: the console and MENU > USB SERIAL only in a DUELL_TEST_MODE build; the product emulator has neither) */
 #define FELUCCA_FLASH 1
@@ -138,7 +139,7 @@ static void fm1_irq_on(void) {}
 
 /* ----------------------------------------------------------- the screen --- */
 static uint16_t web_fb[240 * 240];       /* RGB565 as the panel gets it (high byte first) */
-static uint32_t web_draws;
+static uint32_t web_draws, web_blit_px;      /* (web_blit_px: pixels lcd_blit was given, for the host tests) */
 static void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 {
     uint32_t i, j;
@@ -147,14 +148,21 @@ static void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
         for (i = 0; i < w && x + i < 240u; i++)
             web_fb[(y + j) * 240u + x + i] = sw;
     web_draws++;
+#ifdef WEB_LCD_HOOK
+    WEB_LCD_HOOK(x, y, w, h, 0);                /* (emu_run's `trace`: one picture a transfer) */
+#endif
 }
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 {
     uint32_t i, j;
+    web_blit_px += w * h;
     for (j = 0; j < h && y + j < 240u; j++)
         for (i = 0; i < w && x + i < 240u; i++)
             web_fb[(y + j) * 240u + x + i] = p[j * w + i];
     web_draws++;
+#ifdef WEB_LCD_HOOK
+    WEB_LCD_HOOK(x, y, w, h, 1);
+#endif
 }
 static void lcd_sync(void) {}
 static void lcd_power(uint32_t s)              /* MENU > SCREEN OFF (lcd.c): off, the page dark; on: redrawn before */
@@ -216,6 +224,7 @@ static void fl_plain_window_init(void) {}
 #include "../../firmware/src/storage.c"
 #include "../../firmware/src/upreset.c"
 #include "../../firmware/src/project.c"
+#include "../../firmware/src/tide_store.c"
 
 /* ------------------------------------------------- main.c and its HAL --- */
 typedef struct { uint32_t magic, count, vec, pc, emu, dbg, rets; } fm1_crash_t;
@@ -297,7 +306,7 @@ static void web_frame(void)
     felucca_dbg.ui_frames++;
     ui_input();
     wave_service();                                       /* main.c: a frame of a WAVE table build */
-    vcap_poll();                                          /* main.c: the VOICE CAP (DUELL 0.2.11) */
+    vcap_poll();                                          /* the VOICE CAP (DUELL 0.2.11, voice.c): this build never calls budget_poll, so the cap is what limits the notes here, as before */
     settings_poll();
     autosave_poll();
     ui_leds();
@@ -334,7 +343,7 @@ static void web_ms(void)
         splash_begin();                                   /* main.c: the splash proper, drawn by the loop below */
         web_last_frame = fm1_ms - 15u;
     }
-    if (fm1_ms - web_last_frame >= 15u) {                /* main.c: a frame, then ui_input until 15 ms are over */
+    if (fm1_ms - web_last_frame >= 15u || mv_due()) {    /* main.c: a frame, then ui_input until 15 ms are over or a MORPH picture is due */
         web_last_frame = fm1_ms;
         web_frame();
     } else {
@@ -404,6 +413,7 @@ EXPORT void web_enc(uint32_t role, int32_t n)
         web_enc_steps[panel.enc[role] % 7u] += n * panel.dir[role];
 }
 EXPORT void web_master(uint32_t v) { web_master_adc = v > 1023u ? 1023u : v; }
+EXPORT void web_palette(uint32_t n) { settings.palette = (uint8_t)n; palette_set(n); ui.force = 1; }   /* (the screen-dump runs, live_graph_emu.mjs: a palette without the MENU) */
 /* a channel message from Web MIDI, as a USB-MIDI packet arrives (usb.c midi_enqueue): 0 = the ring was full */
 EXPORT uint32_t web_midi(uint32_t status, uint32_t d1, uint32_t d2)
 {

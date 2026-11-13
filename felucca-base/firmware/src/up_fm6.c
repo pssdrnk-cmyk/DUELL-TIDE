@@ -25,7 +25,7 @@ static int upf_get(uint32_t k, uint8_t *pk)
  * the record as it is; up_put's result */
 static int upf_put(uint32_t k, const uint8_t *pk)
 {
-    uint8_t v[FP_SIZE + 1u], c[FM6_PACKED];
+    uint8_t v[FP_SIZE + 1u], c[FM6_PACKED], bv[MBV_MAX];
     up_rec_t r;
     int rc;
     if (!upf_fm6(k))
@@ -34,10 +34,14 @@ static int upf_put(uint32_t k, const uint8_t *pk)
     fm6_unpack(pk, v);
     fm6_pack(v, c);
     up_pk_in = c;
+    up_bv_n = pt_mb_copy(k, bv);                       /* (End B stays) */
+    up_bv_in = up_bv_n ? bv : 0;
     up_ak_in = pt_ak_raw(k);                           /* (the arp / keys / pattern block stays) */
     rc = up_put(k, &r);
     up_pk_in = 0;
     up_ak_in = 0;
+    up_bv_in = 0;
+    up_bv_n = 0;
     return rc;
 }
 

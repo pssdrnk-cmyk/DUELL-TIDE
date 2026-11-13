@@ -1,12 +1,34 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
 # DUELL host tests that run on a Mac without the JieLi toolchain (subset of felucca-base/tests/run_tests.sh).
-# Usage: ./host_tests.sh [name ...]   names: midiout level benchsim benchrun benchaudio stereochorus chorusskip bassmono comp master bench shimmer locut duck dlymod regress chord strum mod mxstep modinert halltail perform performcap ui select step3 engine morph morphui mode dlymod stereochorus dlyev hang atgt patslot multi release patch patchraw dx7import dx7compat splash sounds mrender fmbass fm6 loadcost cpuscen uf wave hold guide guidesetup wtab wavetable sidechain
-#   mixsplit partindep duckpart twocore tcmeas tcstage1 bootguard tcbench poolrule budget modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb insert rollbrowser xvalues twin subcyc pages scope2 editb velo midimap midimapmut emu   (default: all; emu only when ~/emsdk exists)
+# Usage: ./host_tests.sh [name ...]   names: emu_smoke soundlab (not in the default list: builds tools/soundlab) rolllock cpusnap ease libcalls physcost glidecpu tidecost budgetcal guards answer take tidemeasure tideroles benchupdl midiout level benchsim benchrun benchaudio stereochorus chorusskip silentskip bassmono comp master bench shimmer locut duck dlymod regress chord chordkeep strum mod mxstep modinert halltail perform performcap ui select step3 engine morph morphui mode dlymod stereochorus dlyev hang atgt patslot multi release patch patchraw dx7import dx7compat splash knobjump sounds mrender fmbass fm6 physintune unisonlevel clockguard clockdrift arptiming arpdrift swing uartdma uarttimer uartflood fm6liveol tidekeep tidecrossings handskip movecost audiopolish ubsanrender tidecontrols liverec tideturns tidesteps uigaps notestrip stophang slopehandoff loadcost cpuscen uf wave hold guide guidesetup wtab wavetable sidechain otareuse uitruth
+#   mixsplit partindep scope wavelive duckpart twocore tcmeas tcstage1 bootguard tcbench poolrule hotreach budget modules uitest project fun10 motion persist backup tidestore editor editorjson midictl audio erase flashled usb insert rollbrowser xvalues twin subcyc pages scope2 editb velo midimap midimapmut emu   (default: all; emu only when ~/emsdk exists)
+# pitchmod: tests/pitchmod_test.c (audit P02): ENV PIT, a matrix ENV -> PITCH slot and LFO 1 PIT below the 1/16 semitone: 18.75 ct a depth step within 1.5 ct, the LFO's mean pitch centred within 1 ct (it was floored: 12.5 ct for depth 1, 3.5 ct flat)
+# acid: tests/acid_test.c (b8, work/b8/acid/DESIGN.md): ANALOG WAVE ACID / ACSQ: a plain note bit for bit SAW / SQR; an accent forces ENV 2's decay to ~30 ms half time, bursts the level, charges the push capacitor (stacks, more at high RES); a slid step does not retrigger, 90 % in 45 .. 60 ms; the WAVE list
+# glide: tests/glide_test.c (audit P01): GLIDE TIME takes the time GLD shows for 1 / 12 / 24 semitones up and down at GLD 40 / 64 / 127 (5 %); RATE moves 64 semitones in that time at GLD 100 / 110 / 127, slower as GLD rises; a fresh voice, GLD 0, LEGATO, POLY reuse, a step SLIDE; ARP TARGET at GLD's RATE
+# phasealias: tests/phasealias_test.c (audit P06): PHASE's RESONANT SAW (and a bent wave next to a RESONANCE one in WAVE2) is band-limited at the cycle's restart (eng_phase.c pd_edge): C3..C5 at DCW 40 / 100 under -44 dB off the harmonics (were -23 .. -36), the continuous RESONANT TRIANGLE / TRAPEZOID untouched, no overflow C0..C8
+# engleft: tests/engleft_test.c (audit P13, P14, ...): small fixes of lanes P, Q and S that need no group of their own: the velocity accent in UNISON
+# swing: tests/swing_test.c (audit S03 / S09): SWG (track, global, arp) is stored and shown as 50 .. 75 %; the offbeat of a pair lands at that percentage of the pair, the pair adds up to two straight steps, the track's and the global SWG add up to at most 75 %, step_samples at the extreme, the SWG display
+# arptiming: tests/arp_timing_test.c (audit S01 / S02 / S11, S06, S07: a key during PLAY starts the arp on the transport grid): 64 bars at 120 BPM, the internal-clock arp (1/16) keeps its grid within 1 sample and its distance from the sequencer's; ARP SWG 75 puts the offbeat after the middle of the pair (70 %); ARP PROB 0 never plays, 127 always
+# arpdrift: tests/arp_drift_test.c (b8 lane DRIFT): four ARP SEQ multis 400 bars at 117 / 120 / 128 / 93 BPM, internal and 24 ppq external clock: every arp step on the beat grid TIDE's bars run on, |drift| <= 1 sample
+# chordkeep: tests/chordkeep_test.c: the player's chord keys in the unit's real situations (owner: "I can't enable auto chord"): a sound load leaves CHRD / VOIC alone unless the sound sets a chord of its own (the pads, BEHIVE; a patch saved with one on) and the next load gives the lent one back;
+#   the first start (M04 DUB CHORD, TIDE on): K1 on the CHORD page turns TYPE at A, at B, half way and while a JRNY glide runs, a long JRNY leaves CHRD / VOIC / VOICE alone; the CHORD page's hints (NEEDS POLY, SET A SCALE), the last chord's note names, K4 VOICE
+# tidemotif: tests/tide_motif_test.c (lane M: M01-M04, M08; D1, D2, D4): a dub skank and house stabs under automatic WNDR, STYLE DUB's and PEAK's rows, 128 bars each: every bar but a drop's keeps max(2, 3/5) of the stored hits in place, no hit drifts past two 16ths, LEAD thins only a lead or pluck line (never a pad, a pluck's chords, a bass), and the dynamics (ARC peak louder than its breakdown, a LEAD follower softer)
+# tideroles: tests/tide_roles_test.c (roles spec T2, in the default list since b10: b10 brought the table to today's 16 multis and it passes: roles, bands, M09 ACID HYPNO, the drop flag, and per-part allowances AL[] for what TIDE does that the rules do not allow, ROADMAP Later 6; adding it to `want` is the build manager's call, about 100 s): the 16 factory multis, 64 bars each under their own STYLE and the neighbour's, PITCH OFF and ON, each run from the boot state in a forked child:
+#   4.1 every note started inside the Original's lane (and none under C2), 4.2 onsets a bar per 4-bar window inside the role's range and no added onset on a sustained role, 4.5 every loop of the Original keeps max(2, 3/5) of its hits in place and the mean Jaccard of the motif roles is 0.55 or more;
+#   a render per multi (10 s, 2 - 10 s): 4.3 the 30 - 120 Hz band measured and printed, no bound (b9: the low end is welcome), 4.4 K-weighted level within 3 dB of the median of the 16 (as `gen_factory_multis loud`), peak under -3 dBFS
+#   prints every part's numbers; TIDEROLES_V=1 lists every violation (slot, style, pitch, part, bar, step, note); TIDEROLES_ONLY=n, TIDEROLES_BARS=n, TIDEROLES_MUSIC=0, TIDEROLES_RENDER=0 narrow it. About 10 s plus the compile.
+# notestrip: tests/note_strip_test.c (b11, PR 79): the standard note strip's heights follow the pitch each step sounds (all rests, one distinct note, notes 0 and 127, an ARP SEQ chord by note[0], an AUTO TIDE added note)
+# uigaps: tests/ui_gaps_test.c (b10 ui-a, Phase A cost #2): a full redraw of a grid layout fills only the BG its strips leave (ui_draw.c grid_fill), not the whole body: every page of every engine and the QUICK layers redrawn on a poisoned screen leaves no pixel undrawn; prints the pre-fill's pixels per layout (was 46,320)
+# stophang: tests/stop_hang_test.c, PLAY STOP / STOP ALL under TIDE (STYLE DUB and PEAK, 1 and 16 bar trips, TIDE idle; M04, M16 and every factory multi): stopped at many moments, no note-on after the stop, no gated voice, the voices and the output gone within the patch's own release and FX tail (measured per multi); failures counted by cause (STOPHANG_V=1 lists them)
 # strum: tests/strum_test.c (DUELL 1.1 item 144): the CHORD page's STRUM (ext slot X27: the chord's tones low to high, STRUM ms apart; release cancels; pedal, HOLD ALL, ARP / MONO / CHRD OFF hide it,
 #   LAYER, panics) and the NOTE-START STAGGER (voice.c: at most VS_MAX = 2 (item 148; 3 before) new voices a POLY part starts in one block; 8 at once start 2 + 2 + 2 + 2), a random walk that must leave nothing sounding or waiting
 # chorusskip: tests/chorusskip_test.c (0.2.21), built twice (as it is, and -DCHO_NOSKIP = the firmware without fx_bus.c cho_zrun's skip): the plain bus leaves the chorus out of a block whose chorus input is 0 while the whole chorus
 #   line is 0 (a send of 0 or nothing playing: ~46 host instructions a sample saved in STEREO and LAYER); both runs hash every output sample and the chorus lines and states over silence, notes starting and stopping, DEPTH / RATE changes,
 #   the delay (plain, modulation, PING-PONG, RANDOM), the reverb alone and a random fuzz, in STEREO, LAYER and DUEL; the hash lists must be equal
+# silentskip: tests/silentskip_test.c (TIDE 1.0.0-b5, CPU audit K5), built twice (as it is, and -DSIL_NOSKIP = the firmware without fx.c sil_dly / sil_mst): the plain delay loop rests once its whole line reads 0, the master's
+#   DC blocker, limiter and knee once the mix is 0 and their states at rest; both runs write every output sample (the files must be equal byte for byte) and print the hashes of the outputs and states and each tail's last sample not 0
+#   (silence, chords into delay / HALL / chorus tails, a note right after the rest, the limiter's release, the DC tail, TIME changed in the rest, modulation, RANDOM, SENDS OFF, a MODE change, gaps, a fuzz; STEREO, LAYER, DUEL, PING-PONG): the lists must be equal
 # tune: tests/tune_test.c (0.2.22), MASTER TUNE in Hz (G_TUNE = A4 in 0.1 Hz, 415.3 .. 466.2, default 440.0; voice.c tune_get): 440.0 bit for bit the TUNE 0 of before (a value out of range is no tuning), the offset in cents of all 510 values against 1200 log2(f / 440)
 #   (within the 1/4096 grid's half step), the pitch of a rendered sine at 432.0 / 442.0 / 415.3 / 466.2 Hz, the texts ('440.0' Hz); the menu row, the editor, the project / autosave / ERASE DATA are in uitest, editor, persist, erase
 # stereochorus: tests/stereochorus_test.c (0.2.21), the chorus bus in STEREO / LAYER reads two taps (a quarter turn apart) and sends a side: left and right differ (correlation < 0.6) on every bus path, the left is the old mono
@@ -14,6 +36,13 @@
 # dlyev: tests/dlyev_test.c, the delay MODE (0.2.16 G_DMODE: DIGITAL / PING-PONG / RANDOM / OCT UP; fx_bus.c dly_ev): DIGITAL and PING-PONG bit for bit (hashes of 02f849e, a stored 7 and DUEL too), determinism, the clock (first edge one delay time after
 #   PLAY), no click switching modes (also with PING-PONG on), silence after the tails, loud input (FDBK 120), SENDS OFF / STOP ALL clear the state, the pages (MODE first, MIX last) and every mode's faded cards with their reasons (CHANCE, SPREAD / RATE, SPREAD in DUEL), the header's full names, DIGITAL <-> PING-PONG switching, cost;
 #   0.2.22 DUEL: every mode per bus, mono: PING = DIGI bit for bit, RAND / OCT+ determinism, each part in its own channel (the other exactly 0, both parts = each alone), events centred, no click, SENDS OFF / STOP ALL / output-mode change clear both buses, events that do not fit the half line, cost
+# dlyglide: tests/dlyglide_test.c, the plain DIGITAL / PING-PONG delay's TIME glide (fx_bus.c fx_buses_m, fx.c dly_slide): a TIME or BPM change and an external clock's jittering tempo leave no burst above 6 kHz in the repeats (a tone through the delay, the bus alone), and the glide ends exactly on the time
+# eqglide: tests/eqglide_test.c, the part EQ's band gain stepped 1 dB at a time under a loud 60 Hz tone (MORPH / TIDE move it so, fx.c track_eq): the new coefficients glide over the block, the step's click stays near the tone's own (audit R15)
+# dlyfb: tests/dlyfb_test.c, the delay loop's low cut (about 165 Hz: the repeats of a bass note thin out) and the dub runaway (FDBK 118 to 120 pass unity, the knee in the loop holds it), fx.c dly_wr (audit E2, D21)
+# tidestore: tests/tide_store_test.c, TIDE's settings in the settings record's reserved tail (D11): an earlier build's object 48 read once and never written, patch records in chunk 21 left alone, a newer build's extra fields kept, the backup's settings object carries them and a restore brings them back, a settings record made by 6fbd939 (tests/settings_6fbd939.bin) restores and keeps the unit's own
+# resotune: tests/resotune_test.c, RESO's combs ring at the scale's notes whatever DAMP is (fx_bus.c rev_reso, audit R04): C3 E3 G3 B3 within 2 cents at DAMP 0, 60, 90 and 120
+# dctail: tests/dctail_test.c, the reverb and delay loops end in exact silence (fx.c mulq15d / mulq15t / mulq15u / sh_tzl, audit R08): ROOM at DAMP 60 / 124 / 127, RESO at DAMP 60 / 127 and 72 delay cases (the four MODEs x FDBK x COLOR x sine / noise) fall to exact zeros 30 s after a burst
+# cull: tests/cull_test.c (CPU fix, wave 14): the FM6 release-tail cull (fm6_core.c FM6_CULL: a released note whose carriers together fell below -66 dB of a full carrier ends, fading over its last block, voice.c) on every factory FM6 sound x C2 / C4 / C6 x velocity 30 / 127, dry: the voice ends and stays ended, the last samples are under 64 LSB, the second-difference click detector sees no click at the end, and against the reference build (-DFM6_CULL=1120 = the threshold of before) no note ends later and the list ends 5 s or more earlier in all
 # project / step3 / insert / persist / multi / backup (0.2.14): the old stored formats (FUN1..FUN10, FUN11 revision 0, multi versions 1..2, patches without PTF_CB, PER1..PER3) are REFUSED, not converted
 # reverb: tests/reverb_test.c (ROOM / SPRING bit for bit, SPRING and HALL decay, stability, silence, stereo, model changes, cost; 0.2.14: its two stale references re-baselined)
 # halltail: tests/hall_tail_test.c (0.2.29), the HALL's tail without a gate (owner, T0226: M07 FINAL REEL "cut like a noise gate"; docs/TAIL_CUT_FINDINGS.md): above -72 dBFS no 100 ms window falls more than 8 dB
@@ -25,6 +54,7 @@
 # insert: tests/insert_test.c (1.5's INSERT, + 0.2.14's CRUSH BITS knob end to end, TAPE and VINYL: test_lofi); in the default list again (wip/prune2: its FUN11 byte-count check, stale since P_COUNT grew to 127, is rewritten for P_COUNT 127 / 1618 spare bytes; the CRUSH migration checks became refusal checks)
 # elfcheck: tests/elfcheck_test.py, tools/elfcheck.py (the start-up layout and RAM-code check build.py runs after every link) on tiny fake ELFs: the release's
 #   .noinit table passes, bench B's LTO split (bootguard.0), a shrunk magic word, a wrong .noinit size / entry / image size fail (ELFCHECK_ELF=<elf>: a real one too)
+# tideversion: tests/tide_version_test.py, build.py tide_id (the id ABOUT shows next to DUELL 1.1): TIDE_VERSION (1.0.0-b1), plus a trailing + unless the tree is clean and HEAD is at the tag tide-<version> (a throw-away repository: no tag, tag, changed file, later commit, a snapshot inside another repository, no git, DUELL_TIDE_ID, bad files)
 # shimmer: tests/shimmer_test.c (0.2.19), SHIM's PITCH (UP / DOWN / BOTH) and MOD (G_SHPITCH, G_SHMOD; fx_bus.c rev_shimx; REVERB page SHIMMER): UP + MOD 0 bit for bit the SHIM of 0.2.18 (the bus alone, A and B, and the whole mix in
 #   STEREO / LAYER / DUEL), the pitch of a sine through the return (octave down, up, both), MOD's drift in cents and its bounds, no click on a change, silence after the tails, bus A = B and DUEL isolation, STOP ALL / SENDS OFF
 #   clear the state, the SHIMMER page (in the page cycle only for TYPE SHIM), the cards, cost; an argument DEMODIR writes the listening set (WAV + index.html)
@@ -32,7 +62,7 @@
 #   ROOM SPRING HALL SHIM RESO: quiet after it, no click, the sends back (4 s window vs the lines cleared at once), a stopped unit's double press, single STOP leaves tails, user SENDS OFF stays OFF
 # editorjson: tests/editordump.c writes the web editor's layout from the firmware tables (PAGES[], every descriptor with its values formatted by param_format, the engines);
 #   the committed web/editor/layout.json must equal a fresh run, web/test_layout.mjs compares it with descdump.c's output (a second exporter), then web/test_editor.mjs (the editor against the
-#   simulated unit) and web/test_duellbackup.mjs run with the emsdk node. After a firmware table change: cp felucca-base/build/host/layout.json felucca-base/web/editor/layout.json
+#   simulated unit) and web/test_duellbackup.mjs run with the emsdk node, then the installer's web tests (test_backup, test_installer_state, test_ranges, test_ota, test_site_build.py). After a firmware table change: cp felucca-base/build/host/layout.json felucca-base/web/editor/layout.json
 # bassmono: tests/bassmono_test.c, 0.2.19's BASS MONO (fx.c bass_mono; the page FX > MASTER, core.h G_BM / song.bm; stored in multi byte 5 and project byte 65, no MENU row): OFF bit for bit (the sources-before hash; ON then OFF returns to it), L + R untouched,
 #   a 40 Hz out-of-phase tone made mono while 2 kHz passes, the -3 dB corner at all 11 settings, no click (settings walked, ON / OFF), exact silence, DUEL bypassed (and cleared at a mode change), the row (hidden in DUEL, SELECT passes it), the byte, cost
 # sidechain: tests/sidechain_test.c (0.2.22), GLO > SIDECHAIN's MIDI setup (P1 CH, P1 NOTE, P2 CH, P2 NOTE: fx.c sc_midi, the settings record's bytes 14..17), a DEVICE setting: the defaults (10, C2), saved ~2 s later, read back, an older record and every byte value read safely, ERASE DATA, a patch / multi / project load leaves it, a multi record and a project are bit for bit the same whatever it is, DUCK SRC PUMP / PART / MIDI (the old CH1..16 clamped), editable with every SRC
@@ -51,6 +81,11 @@
 #   TRIO INT2 INT3 DTN PW and LOFI DUTY end to end), and the list of removed matrix destinations
 # mixsplit: tests/mixsplit_test.c (MIXSPLIT, job 1 of the second-core work), fx.c's mix_block split into stages (mix_events, part_voice / part_rest / part_fx / part_mix / part_end, mix_sends, mix_master): five scenes (STEREO, DUEL, LAYER; SPREAD, EQ, SAT, DUCK SRC PART, MUTE,
 #   PART FX / SENDS OFF, SPACE, the master stages, a MODE change, a silent tail) rendered by the old combined path (tests/mixsplit_ref.h, verbatim), by mix_block and by the stages called in sequence: every output sample equal, bit for bit
+# scope: tests/scope_test.c (the MORPH page's wave, fx.c wv_tap and ui_scope.c on synthetic rings of 512 entries): a held wave drawn at 10 starting offsets within 1 px (a saw, a resonant saw, a resonant saw at 100.37 entries a cycle, a sine) and 10 pictures in a row with 0 changed points, two sines 3 Hz apart swing the height 4 : 1 over 60 pictures, a soft note small, silence (the flag, zeros, under a pixel) one flat ridge, WL_HN ridges at most, the counter past 2^32, a torn read retried once then abandoned, every point inside the box, the tap's entry and its clamp, a block not tapped (part 2 skipped, a shut gate) moves the gap and a late job does not, the gate (ANIM OFF leaves it shut, leaving the page restarts the pictures)
+# wavelive: tests/wave_live_test.c (1.0.0-b5): the MORPH page's wave from REAL sound, end to end (web/emu/felucca_web.c built natively: the synth, fx.c's tap in the audio interrupt, the reader,
+#   the screen): a fresh unit on the page, M01's stab struck every 450 ms, a held chord sequence on both parts, the same at MIXER LEVEL 60: the front ridge alive on the screen (the b5 WIP's 8-bit tap
+#   drew the quiet one flat); the part selection on the page (PART 1, BOTH, PART 2, stopping at the ends) and on an edit page (PART 1 / PART 2 only, BOTH kept for HOME)
+# partindep: its scenes also run with the scope tap on and the gate open: every hash unchanged (the tap changes no sample), and the tap's rings, counters and marks equal in all six schedules and in mix_block
 # partindep: tests/partindep_test.c (MIXSPLIT job 2, partstate): the two parts' stages are independent: six scenes (STEREO, DUEL, LAYER; SPREAD, EQ, SAT, PART FX crossfade, PAN step, MUTE, MODE change, silent parts, MORPH on both parts, the matrix's bus offsets of both parts;
 #   no DUCK SRC PART, no FORMANT: the job 3 blockers) each rendered with the parts' stages in six schedules (1 then 2, 2 then 1, and four stage-interleaved orders): all bit for bit equal to the old combined path (tests/mixsplit_ref.h), to mix_block and to the
 #   hashes of the commit before the work. Self-check (name partindep_mut, in the same run): the test is built against a copy of the firmware with ONE shared write put back (the parts' block scratch, morph window, matrix window made one) and must FAIL
@@ -79,6 +114,15 @@
 #   (item 137: margin 1.00 for the caps, item 142: limit 84 (was 81); the deadline keeps 1.15: the same hash; the posted deadline's true-cost take-over when the 1.15 one is past, checked at 16 post moments;
 #   core 1's block-0 job + 6 points before the wait limit at the caps in every setup)
 # polycalib: tests/poly_calib.c (report only, macOS): the measured cost of one more note per engine and filter (the budget table's source; writes nothing unless given a CSV path).
+# physcost: tests/phys_cost_probe.c (audit Q14, report only, not in the default list): the host ratios of PHYS per model (STRING about 0.5 x, MEMB 0.7 x, SYMP 0.9 x the dearest MODAL sound), the expected values of the unit's per-model rows
+#   (tools/bench_suites/PHYS-MODELS.txt); the NOTES budget charges every PHYS note as MODAL (406) until the unit has measured them
+# glidecpu: tests/glide_cpu_test.c (the GLIDE overrun): optimized WASH against the legacy reference over 108,000 blocks, three levels and six signal states, including floor changes, fading and restarts (samples and persistent audio state). EASE (K3, 1.0.0-b4): the ease ladder forced to levels 1, 2, 3 on real scenes (factory multis in forked runs: a GLIDE, hand faders, a GLIDE with note bursts across an FM6 crossing): level 1 blends every 4th block and retunes every other one, no click against level 0 (largest step within 5 %), no FM6 stand-in left on a note. Equivalence, not CPU: no margin is asserted (the timing report runs only with GLIDECPU_REPORT; the CPU is a unit measurement, jam/measure).
+#   The calibrated NOTES budget remains unchanged; its existing budget/polylimits groups cover capacity. `GLIDECPU_REPORT=1 build/host/glide_cpu_test` (Linux x86: the time stamp counter, fork) reports per-multi GLIDE/rebuild host cost;
+#   GLIDECPU_ONLY=n, _STYLE=n, _ABL=n, _ENDS=1 and _V=2 select scenes, ablations and detail. Host timings are estimates, not device deadline acceptance.
+# jrnyctx: tests/jrny_ctx.c, TIDE JOURNEY's level and colour table (audit 2026-11-09 J1): every factory sound rendered in its class's pattern (an off-beat stab, a held pad chord, a bass line); a fresh run must equal firmware/src/jrny_ctx.h byte for byte (after a sound is added or re-voiced, from felucca-base: cc -O2 -w -Ibuild/gen -Ifirmware/src -Itests -o build/host/jrny_ctx tests/jrny_ctx.c -lm, then build/host/jrny_ctx gen > firmware/src/jrny_ctx.h: the flags of $CCD). Needs fork.
+# jrnymu: tests/jrny_mu.c, TIDE TRAVEL's level match (b10 Later 26): both parts of every factory multi as the multi plays them, in their Original's class pattern (jrny_ctx.c's); a fresh run must equal firmware/src/jrny_mu.h byte for byte (after a factory multi or one of its sounds changes, from felucca-base: build/host/jrny_mu gen > firmware/src/jrny_mu.h, the flags of $CCD). Needs fork.
+# tidecost: tests/tide_cost_probe.c (audit A01, report only, not in the default list: it times code): TIDE's valley, wash, voice dip and FM6 bridge on the host as ratios to SAT and a three-band EQ (whose cost the budget has from the unit),
+#   the basis of budget.c's BD_TIDE_* estimates, until the unit measures them (tools/tide_measure.py, docs/TESTING.md); it fails only when a BD_TIDE_* item is below the host-derived figure
 # budget: tests/budget_test.c (job 4, branch cloud/notes), the NOTES budget (firmware/src/budget.c, docs/MIXSPLIT_NOTES.md section 8): how many notes each part may play, from the settings, one core, 84 % of the time with a margin of 1.00 (item 132: was 80 %, owner chose 88 over 90 at 1.15; item 137: margin 1.00, limit 81; item 142: limit 84).
 #   (a) the cost table reproduces tests/bench_baseline.txt (the bench's figures; no counter needed): every engine's voice, INSERT type, SAT, EQ, DUCK, bus effect in STEREO and DUEL, master stage within 5 %, the worst-case scene of each MODE (fixed part within 5 %,
 #   totals never below the bench and within 12 %); (b) the 16 factory multis: NOTES a part, what limits it, the VOICE CAP of 0.2.11 beside it (printed, as loaded and in cpuscen's MORPH state); (c) switching on an INSERT, 24 dB, SAT, an EQ band, the ducker, a matrix slot,
@@ -98,6 +142,12 @@
 # benchrun: tests/bench_run_test.py, the Mac's runner tools/bench_run.py (bench suite stage 1): the suite parser and the suite OWNER-1 (tools/bench_suites; every patch number and name
 #   against docs/PATCH_NUMBERS.md), the runner against the twin (a whole short suite: the result files, a wrong name SKIPPED, the CPU window, the flash test, the soak's checks, a unit that
 #   restarts mid-test is a FAIL with its crash record and the run goes on) and against a pseudo-terminal that speaks as the unit's console does (the serial path)
+# libcalls: tests/libcalls_test.py (audit R14): tools/libcalls.py on a made-up disassembly, and on build/felucca.dis when a device build exists: no compiler-rt call (__muldi3, __divdi3 ...) in the limiter, COMP, the master stage or the flash duck
+# tidemeasure: tests/tide_measure_test.py (audit A01 / Q14): the measurement kit, the suites TIDE-DSP and PHYS-MODELS (tools/gen_measure_suites.py), the bench words `tide ...` and the stage timers (src/bench.c) run on the host twin,
+#   bench_run.py's `report tide` columns and tools/tide_measure.py's analysis on made-up rows with known figures (jam_dev.py measure is the owner's command: jam/test_jam_dev.py); also the first unit run's
+#   failure (2026-11-05: the parts on MIDI channels 3 and 4, the tests on 1 and 2, nothing sounded): the twin started with those channels (BENCH_SIM_MIDI) still makes voices in a bench session, which gives them back
+# benchupdl: tests/bench_updl_test.c, the bench build's way back (firmware/src/bench_updl.c, bench.c `bench updl`): the update record it builds is ota.c's own byte for byte, the loader that ota_session staged on a simulated NOR is accepted
+#   against the package's loader CRC (also without the record sector, as the loader leaves it), and a wrong CRC, a flipped body or head bit, a bad length, a damaged loader header, the official loader and an erased area are refused
 # benchaudio: tests/bench_analyze_test.py, bench suite stage 2 (tools/bench_analyze.py, tools/bench_record.py): synthetic signals with planted faults (clean sine / sweep / naive saw and square / noise / a noise hit: nothing found; a spike, a step, 5 spikes,
 #   a burst: exactly the planted clicks; zero runs of 16..4410 frames and a repeated frame: exactly the planted gaps, their edges not counted as clicks; DC, clipping, silence, an abrupt end, a decaying tail), the
 #   same results for any chunk size, the self-check, the tone proof (FELUCCA_UAC_TONE: a lost / repeated / zeroed frame, chunk edges), the recorder's pieces (the 44.1 kHz refusal with the setup steps, sox's command and fault lines,
@@ -105,6 +155,10 @@
 #   the columns, planted faults in the twin's render found exactly, the same test twice bit for bit equal, --record refused at 48 kHz, --keep
 #   BENCHR1 join: the suite RECORD-1 (each scene's one-core reference = `tune slack 400000`, `onecore-of`), the comparison of clicks and gaps against the reference (excess = FAIL, equal = WARN, a clean scene stays
 #   strict, a reference that still got jobs is no reference, a capture fault = no comparison), the audio column beside the core 1 column of the summary, --prove-chain parsed by the merged runner
+# ease: tests/ease_test.c (CPU audit K3, TIDE 1.0.0-b4), the EASE LADDER (audio.c ease_step / ease_set): the real ISR with a simulated clock: the level half by half for 60 / 90 / 60 / 110 / 50 % (up after two halves over 85 %, 4 after a miss, down one level per ~1 s with no half over 80 %), a steady 75 % back to 0,
+#   the per-level counters and LIGHT FX at 3..5, no voice faded at levels 1..3, level 2's admission (a new note takes over a released voice), level 4 the tails only, level 5 a held note only after a miss, level 1's valley / wash within -30 dB of level 0
+# cpusnap: tests/cpusnap_test.c (CPU audit K2), the CPU meter's one owner (ui_menu.c cpu_snap_poll / cpu_win_take): two readers see the same peak for the same ISR peak, only the owner clears cpu_pk / cpu_el_pk, a peak published between a read and the owner's clear (or as the interrupts go off) is not lost,
+#   every reader's window is its own; TEST / ABOUT's PEAK is the elapsed one; TIDE's header readout (elapsed peak held 4 s, the missed periods since the last clear, the colours)
 # bench: tests/cpu_bench.c (0.2.23), the LOAD BENCH (report-only): host instructions per sample of every engine's voice, INSERT type, SAT, reverb type, delay mode (DUEL too), chorus, comp, width, shimmer and a
 #   worst-case scene per MODE with the estimated polyphony that fits 100 %; fails only when a figure grows more than 10 % over tests/bench_baseline.txt (BENCH_UPDATE=1 rewrites it). docs/TESTING.md "Load bench"
 # roll (0.2.19): web/test_roll.mjs, the piano roll's model (step / tie rules, edit functions, undo, live writes against the simulated unit) runs with editorjson; rollbrowser: web/test_rollbrowser.mjs, the roll in headless Chrome
@@ -130,6 +184,7 @@
 # converttwin: tests/convert_twin_test.py (cloud job J): the conversion tool's table test, idempotence guard and the committed sounds and multis == its output
 # ownerimport: tests/owner_import_test.py (0.2.24), tools/import_owner_edits.py on a synthetic PATCHES export made by the firmware's own code (tests/owner_export_gen.c): the 128 factory sounds saved and read back import as equal to the recipes; three turned knobs change exactly three sounds; twice = the same files; the unchanged export undoes it; a changed multi in a backup file is kept byte for byte; a changed engine and a taken name are refused; the editor's parser reads the file
 # fm6: tests/fm6_test.c (the 6-operator engine; 0.2.17: the SLOT list with F9..F11 behind the bank)
+# storexver: tests/store_xver_test.c (b9, B9-STORE): the records the firmware BEFORE b8 saved (tests/store_xver_fixture.h, made on fork/b7 by tests/store_xver_gen.c: one sound of every engine, ANALOG WAVE 0..6 with the values after it, an End B that moves WAVE) still load to the values b7 loaded (ANALOG WAVE is 4 bits since b8: a record says so, PTF_W4 / MBV_W4; none = 3 bits), stay the bytes they were beside new records in the same chunks, new records round-trip ACID / ACSQ, an old End B block reads the same through the project / multi path; b11 (Later 30): records written by b8 rc1 / rc2 (tests/store_xver8_fixture.h from fork/b8-acid-integ ebc63ca, tests/store_xver8_gen.c): the ones without ANALOG WAVE load as b8 loaded them, the ones with WAVE (4 bits, no flag) are the known ambiguity, pinned
 # patch: tests/patch_test.c (0.2.17: ONE list of 128 patch slots, a slot = its saved record or else the factory sound at that browse position): the store (sparse records, 16 chunks, a power cut in a write, the 128-slot limit with no 'full', RAM directory), a fresh unit shows the factory sounds in all 128 slots, SAVE then reload, RESTORE bit for bit, RESTORE ALL, MIDI program change = slot, FAV by slot, a power cut at every step of a SAVE / RESTORE / RESTORE ALL, the PATCHES page and its dialogs
 # bank: tests/bank_test.c (DUELL 1.0): the 128 factory patches are the owner's bank (tools/factory_bank.duell-patches.json via tools/import_bank.py, tests/factory_bank_records.txt): each factory slot loaded and saved through the firmware equals the file's record in every field (TRIM the balanced one), the arp OFF written; the arp recall (a patch restores its own arp and chord keys, OFF too; an old record without the block = OFF)
 # patchraw: tests/patchraw_test.c (0.2.19), PATCH_RAW (cmd 84, editor_patchraw.c): a slot's stored record read and written whole: the worst record round trip bit for bit into another slot (decodes and loads the same), only the chunk's sectors written, a rename through the bytes,
@@ -170,7 +225,7 @@
 # suggested LEVEL per sound (copy into felucca-base/tools/duell_sounds.py). Needs build/gen/duell_sounds.h (DUELL/gen_only.py)
 #   0.2.23: then the factory multis (tools/factory_multis.py check: the sixteen records against the list, version, names, sounds, MODE, split, LOW CUT, and the multi
 #   similarity check: no two multis with the same two sounds, or one sound in the same place with the same MODE and split; selftest: the check catches such pairs)
-# ldrscreen: tests/ldr_test.c (the update loader against a fake host and flash) built twice, plain and with -DLDR_SCREEN_TEST=1 (the loader's screen, firmware/loader/ldr_screen.c, drawing on a fake
+# ldrscreen: tests/ldr_test.c (the update loader against a fake host and flash) built twice (the TIDE look: firmware/loader/ldr_screen_tide.c), plain and with -DLDR_SCREEN_TEST=1 (the loader's screen, firmware/loader/ldr_screen.c, drawing on a fake
 #   ST7789): the same checks pass both ways, the flash after the whole test hashes the same (the write is bit for bit the same with the screen on and off), the percent goes 0 -> 100 without
 #   going back, the bar has the right segments at 0 / 45 / 100 percent (PPMs in build/host/ldr_screen_*.ppm), a failing or a very slow panel switches the screen off for good and the install
 #   is still the package's, bit for bit. Needs two packages: LDR_OLD and LDR_NEW (default: the newest two .fwsc under build/ or the bench site)
@@ -183,16 +238,30 @@
 #   without learned CCs): identical parameter writes; the shipped map writes the same for each of today's 24 targets on its NEW number; the morph's triggers follow the target; a taken number is refused / forced; learn
 #   writes a line (16 at most); the settings record at its exact size (cloud/base3's size is no record); the extension values, the effects block, map_target_info. Built twice: the tests' power-on map is the legacy list
 #   (tests/midimap_legacy.csv), and once with the shipped list as the firmware's own (the two must pass); midimapgen: the generator's failures (tests/midimap_gen_test.py)
+# tidephrase (audit E12): tests/tide_phrase_test.c, firmware/src/seq_phrase.c and seq_evolve.c with statistical bounds over many seeds: the 5-bit pitch offsets round-trip; a pitch move is one scale step on a hit, never the bass, within an octave,
+#   none on SCALE CHR; 400 moves stay in scale and range; gaps keep half the attacks, repeats stop at tarc_cap, an order swap keeps the attacks and every hit within two 16ths; the anchors never move; the mutate cycle changes the phrase in most turns
+# (tidejrnyfamily also walks JOURNEY from every sound and requires that each of #129..#160 comes up as a target: AUTO TIDE reaches the fork's own sounds)
+# tidebuild (audit E12): tests/tide_build_test.c, the bounds of a generation as statistics over many seeds: sqm_build (an end has at least one hit, at most two hits more or fewer than the Original, the anchors stay, every dial at 0 is the
+#   Original; no note changes pitch class, VOIC stays within an octave and 24..108) and sound_complement_pick (the second part's sound: the muted peer, WILD and musical off keep the first, it is one of the two with the higher contrast
+#   score and both get picked, ARC's peak picks the brighter and its breakdown the softer); a part of no hit or one hit builds to itself and tarc_cap(0..2) is the count in every ARC phase (C4, roles spec: a drone, a texture or a two-chord pad gains no onset); the register lane (C1, roles spec: whatever the dials and the PITCH moves do, no note of an end leaves [the Original's lowest, not above C3, to its highest + 12]; a bass scene at 36..43 never goes under 36, a skank at 60..70 never under 48; the scenes must move notes and reach the lane's edge); seven mutations of the firmware (DENS two hits become six, a VOIC octave becomes 13 semitones, the lane test of a VOIC chord note, of a VOIC single note and of the pitch move taken out, the pick takes the lower score, the two C4 guards put back) must each FAIL it
+# productcfg (audit U01): the tests build with DUELL_VELO off, but the product ships with KEY SENSE on (tools/build.py: DUELL_VELO 1). This group compiles mode, perform, chord, strum, select, step3, engine, hang and patch with
+#   -DDUELL_VELO=1 (sense.c force-included, as velo_hook_test does) and runs them: the key-on, sequencer and UI paths as the unit runs them. The other groups keep VELO off. regress, atgt, morph and multi do not build or
+#   pass with it yet (their stubs and expectations assume an immediate note-on); those are not in the group
+# inherited (audit U02): the tests of Felucca's runner (tests/run_tests.sh) that still build and pass here and were in no group: input_test (key / button debounce), midi_uart_test (TRS MIDI parser), step15_test (STEP LEN / VEL),
+#   stoptail_test, union_test (engine memory; without its 1.4 golden file, whose hashes are stale), size_fns_test.py (cold-code selection), install_test.py (the command-line installer)
+# orphans (audit U02): every tests/*_test.* is named in this file or listed in tests/orphans.txt (the ones that need a fixture, fork() or a repair, with the reason); a new test nobody runs fails here
 # perflevel: tests/perf_level_test.c (item 160): PERFORM's SELECT = BALANCE moves the MIXER's LEVEL 1 against LEVEL 2 (push-pull, 0.5 dB a step, never above 0 dB, never into OFF, no memory); the old balance stage
 #   (mix_bal, fx.c bal_lvl) gone: every mode's render bit for bit as the tree before with the old balance 0; the knob mid-render = the same levels written straight; the owner's worked example both ways
 # perflevelmut: its mutations, run once each (perflevel must FAIL): a boost allowed, the direction swapped, the total not kept, a memory of its own (the MIXER's writes between the steps ignored)
 # midimapmut: the safety rules' mutations, run once each (midimap_test must FAIL): the lock check removed, two parameters allowed on one CC, the morph's trigger back on the CC number
 cd "$(dirname "$0")/felucca-base" || exit 1
-OUT=build/host; mkdir -p "$OUT" build/mod_demo build/ui_new build/ui_slot
+OUT=build/host; mkdir -p "$OUT" build/mod_demo build/ui_new/ppm build/ui_slot build/chordkeep
 unset DUELL_TEST_MODE                                  # (the environment switch is for device / emulator builds; the tests set theirs below)
 CCR="cc -O2 -w -DHOST_MIX_FOLLOWS_MASTER=1 -Ibuild/gen -Ifirmware/src -Itests"      # the release configuration (switch off)
 CCD="cc -O2 -w -Ibuild/gen -Ifirmware/src -Itests"      # the device's own mix level (no HOST_MIX_FOLLOWS_MASTER): the browser build, web/emu, has none
-CC="cc -O2 -w -DHOST_MIX_FOLLOWS_MASTER=1 -DDUELL_TEST_MODE=1 -Ibuild/gen_test -Ibuild/gen -Ifirmware/src -Itests"   # test mode ON
+CC="cc -O2 -w -DTIDE_ROLL_LOCK=0 -DHOST_MIX_FOLLOWS_MASTER=1 -DDUELL_TEST_MODE=1 -Ibuild/gen_test -Ibuild/gen -Ifirmware/src -Itests"   # test mode ON
+# jam/fastcheck.py generates the headers once for all its parallel groups (HT_GEN_ONLY=1 stops here) and its groups skip this (HT_NOGEN=1)
+if [ -z "${HT_NOGEN:-}" ]; then
 mkdir -p build/gen_test build/gen
 python3 tools/gen_duell_multis.py build/gen/duell_multis.h >/dev/null || exit 1                 # release header: M01..M16
 python3 tools/gen_duell_multis.py build/gen_test/duell_multis.h --test-mode >/dev/null || exit 1   # test header: the same sixteen
@@ -201,9 +270,11 @@ python3 tools/gen_midi_map.py --csv tests/midimap_legacy.csv build/gen_test/midi
 python3 tools/gen_midi_map.py --csv tests/midimap_legacy.csv --sym MIDI_MAP_LEGACY build/gen_test/midi_map_legacy.h >/dev/null || exit 1   # (tests/midimap_test.c: both lists by name)
 python3 tools/gen_midi_map.py --sym MIDI_MAP_SHIPPED build/gen_test/midi_map_shipped.h >/dev/null || exit 1
 python3 tools/gen_version.py build/gen/duell_version.h || exit 1   # VERSION file -> build/gen/duell_version.h
+fi
+[ -n "${HT_GEN_ONLY:-}" ] && exit 0
 FV=$(sed -n 's/^#define DUELL_VERSION_STR "\(.*\)"/\1/p' build/gen/duell_version.h)
 [ -f "$HOME/emsdk/emsdk_env.sh" ] && EMU=emu || EMU=
-want="${*:-velaccent regress chord strum mod perform perflevel perflevelmut performcap ui select step3 engine morph morphui mode dlymod dlyev hang atgt patslot multi release menuproduct patch patchraw bank dx7import dx7compat splash sounds mrender fmbass fm6 loadcost cpuscen uf wave hold reset resetwalk pan mixsplit partindep duckpart twocore tcmeas tcstage1 bootguard tcbench poolrule budget polylimits deadline velomono sat mxstep modinert eqon eq32 ovlguard matrixpack engswitch level guide guidesetup wtab wavetable modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb elfcheck reverb halltail plate locut shimmer panic insert bassmono comp master stereochorus chorusskip sidechain tune bench benchsim benchrun benchaudio ownerimport rollbrowser sliders xb xbmut fuzz xvalues twin subcyc pages scope2 editb velo midimap midimapmut ldrscreen lcdboot $EMU converttwin}"
+want="${*:-emu_smoke rolllock patpack glidecpu acid ease midiout velaccent regress chord chordkeep strum mod perform perflevel perflevelmut performcap ui select step3 engine morph morphui knobs mode dlymod dlyev dlyglide dlyfb eqglide hang atgt patslot multi release menuproduct patch storexver patchraw bank dx7import dx7compat splash cpusnap knobjump sounds mrender fmbass fm6 fm6exp2 physintune unisonlevel clockguard clockdrift arptiming arpdrift uartdma uarttimer uartflood fm6liveol tidekeep tidecrossings handskip movecost audiopolish ubsanrender tidecontrols liverec livegraph tideturns tidesteps f36 stophang tidedialogue tidevoicelead tidemotif slopehandoff loadcost cpuscen uf wave hold reset resetwalk pan mixsplit partindep scope wavelive duckpart twocore tcmeas tcstage1 tcwrap bootguard bootpack tcbench poolrule hotreach budget polylimits deadline velomono sat mxstep modinert eqon eq32 ovlguard matrixpack engswitch level guide guidesetup wtab wavetable modules uitest project fun10 motion persist backup editor editorjson midictl audio erase flashled usb elfcheck tideversion reverb halltail plate locut shimmer panic insert bassmono comp master stereochorus chorusskip silentskip sidechain tune bench benchsim benchrun tidemeasure tideroles benchupdl libcalls benchaudio ownerimport rollbrowser sliders xb xbmut fuzz xvalues twin subcyc pages scope2 editb velo midimap midimapmut ldrscreen otareuse lcdboot tidejrnymemory tidejrnyfamily $EMU converttwin uitruth tidestore take answer guards resotune dctail cull glide pitchmod phasealias engleft tidephrase tidebuild productcfg inherited orphans swing duck jrnyctx jrnymu uigaps notestrip}"
 fail=0
 # mxstep's PHASE self-check (hunt4): tests/mx_step_test.c built against a COPY of firmware/ and tests/ in which eng_phase.c's bridge of a moved DCW is switched off (the bend steps at
 # every block seam again); the PHASE check must FAIL, a pass means it cannot see the seam
@@ -217,6 +288,19 @@ mxstep_mut() {
     echo "   FAIL (the mutated build does not compile)"; tail -5 $OUT/last.log; fail=1; return
   fi
   if $OUT/mx_step_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c 'FAIL' $OUT/last.log) checks failed)"; fi
+}
+# tidebuild's self-check: tests/tide_build_test.c against a COPY of firmware/ and tests/ with one rule broken (sed on the copy, name FILE SEDEXPR); the test must FAIL
+tidebuild_mut() {
+  name=$1; f=build/tidebuild_mut/$2
+  echo "== tidebuild_mut $name"
+  rm -rf build/tidebuild_mut; mkdir -p build/tidebuild_mut
+  cp -R firmware tests build/tidebuild_mut/ || { echo "   FAIL (copy)"; fail=1; return; }
+  sed "$3" "$f" > "$f.new" && mv "$f.new" "$f"
+  if cmp -s "$f" "$2"; then echo "   FAIL (the mutation changed nothing in $2)"; fail=1; return; fi
+  if ! $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_build_mut build/tidebuild_mut/tests/tide_build_test.c -lm > $OUT/last.log 2>&1; then
+    echo "   FAIL (the mutated build does not compile)"; tail -5 $OUT/last.log; fail=1; return
+  fi
+  if $OUT/tide_build_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c 'tidebuild: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'tidebuild: FAIL' $OUT/last.log | cut -c1-120))"; fi
 }
 # partindep's self-check: build tests/partindep_test.c against a COPY of firmware/ and tests/ in which one shared write has been put back (sed on the copy,
 # name FILE SEDEXPR [FILE SEDEXPR ..]); the test must FAIL, a pass means it cannot see that kind of dependency
@@ -252,55 +336,89 @@ twocore_mut() {
   # two runs: the ownership audit over ALL nine scenes (no race: core 1's job must change nothing of part 1's state; catches the shared-state mutants every time), then
   # scene 0 with every fault (the output compare; catches the runner mutants). The mutation must fail at least one of them.
   if $OUT/twocore_mut -audit > $OUT/last.log 2>&1; then
-    if $OUT/twocore_mut 0 -nomut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected by the scene-0 faults: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed)"; fi
-  else echo "   PASS (detected by the ownership audit: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed)"; fi
+    if $OUT/twocore_mut 0 -nomut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected by the scene-0 faults: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
+  else echo "   PASS (detected by the invariant audit: $(grep -c 'twocore: FAIL' $OUT/last.log) checks failed; first: $(grep -m1 'twocore: FAIL' $OUT/last.log | cut -c1-170))"; fi
 }
-run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1 && echo "   PASS" || { echo "   FAIL"; tail -15 "$OUT/last.log"; fail=1; }; }
+run() { echo "== $1"; shift; "$@" > "$OUT/last.log" 2>&1; rc=$?; [ $rc -eq 77 ] && grep -q "skipped" "$OUT/last.log" && { echo "   SKIP $(grep -m1 "skipped" "$OUT/last.log" | cut -c1-150)"; return 0; }; [ $rc -eq 0 ] && { if grep -q '^SKIP ' "$OUT/last.log"; then echo "   $(grep -m1 '^SKIP ' "$OUT/last.log")"; else echo "   PASS"; fi; } || { echo "   FAIL"; grep -E "FAIL|Assertion" "$OUT/last.log" | grep -vE "(^|[^0-9])0 FAIL" | head -60; tail -15 "$OUT/last.log"; fail=1; }; }   # (every failed check first: the tail alone hid most of them; the tests print "twocore: FAIL <text>", "FAIL: <text>", "xyz: FAIL <text>", almost never FAIL at the end of a line; a summary "0 FAIL" is not one; a test that could not run its checks prints a line "SKIP <why>": the group then reports "   SKIP <why>", never PASS; exit code 77 with the word "skipped" in the output is the Windows shim's "needs fork()" stop (jam/wincompat): "   SKIP", not FAIL)
 for t in $want; do case $t in
   regress) $CC -DNPART=4 -o $OUT/regress tests/regress.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run regress $OUT/regress tests/golden.txt tests/cpu_baseline.txt ;;
+  ubsanrender) U="-O1 -fsanitize=undefined -fno-sanitize-recover=all"  # the scene renders under UBSan: a signed shift or overflow in the audio code fails here (audit A07)
+    $CC $U -DNPART=4 -o $OUT/regress_ub tests/regress.c -lm && $CC $U "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/multi_render_ub tests/multi_render_test.c -lm && $CC $U -o $OUT/sound_audit_ub tests/sound_audit.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { run ubsan-regress $OUT/regress_ub tests/golden.txt tests/cpu_baseline.txt; run ubsan-mrender $OUT/multi_render_ub tests/multi_render_golden.txt; run ubsan-sounds $OUT/sound_audit_ub; } ;;
   midiout) $CC -o $OUT/midi_out_seq_test tests/midi_out_seq_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run midiout $OUT/midi_out_seq_test ;;
   chord)   $CC -o $OUT/chord_test tests/chord_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run chord $OUT/chord_test ;;
+  chordkeep) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/chordkeep_test tests/chordkeep_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run chordkeep $OUT/chordkeep_test build/chordkeep ;;
   strum)   $CC -o $OUT/strum_test tests/strum_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run strum $OUT/strum_test ;;
   mod)     $CC -o $OUT/mod_test tests/mod_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run mod $OUT/mod_test build/mod_demo ;;
   perform) $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perform_test tests/perform_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run perform $OUT/perform_test ;;
   performcap) $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perform_cap_test tests/perform_cap_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run performcap $OUT/perform_cap_test ;;
-  ui)      $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ui_render tests/ui_render.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run ui $OUT/ui_render build/ui_new build/ui_slot ;;
+  ui)      $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ui_render tests/ui_render.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run ui $OUT/ui_render build/ui_new build/ui_slot &&
+           { $CCR -O1 "-DFELUCCA_VERSION=\"$FV\"" '-DDUELL_TIDE_ID="1.0.0-b2+"' -o $OUT/ui_render_tideid tests/ui_render.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; }; } &&
+           run ui-about-tide $OUT/ui_render_tideid --about-tide build/ui_slot ;;
   select)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/select_test tests/select_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run select $OUT/select_test ;;
   step3)   $CC -o $OUT/step3_test tests/step3_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run step3 $OUT/step3_test ;;
   engine)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/engine_page_test tests/engine_page_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run engine $OUT/engine_page_test ;;
+  rolllock) # 1.0.0-b9 (K2): ROLL TYPE retired: tests/roll_lock_test.c built locked (-DTIDE_ROLL_LOCK=1) and free (=0); a saved SMART / WILD End B is the same in both
+           echo "== rolllock"; rl=0
+           for lk in 1 0; do $(echo "$CC" | sed "s/-DTIDE_ROLL_LOCK=0/-DTIDE_ROLL_LOCK=$lk/") -o $OUT/roll_lock_$lk tests/roll_lock_test.c -lm && $OUT/roll_lock_$lk > $OUT/roll_lock_$lk.log 2>&1 || { echo "   FAIL (lock $lk)"; grep -v " ok$" $OUT/roll_lock_$lk.log | tail; rl=1; }; done
+           [ "$(grep 'hash saved' $OUT/roll_lock_1.log)" = "$(grep 'hash saved' $OUT/roll_lock_0.log)" ] && [ -n "$(grep 'hash saved' $OUT/roll_lock_1.log)" ] || { echo "   FAIL (saved End B differs between locked and free)"; rl=1; }
+           [ $rl = 0 ] && echo "   PASS" || fail=1 ;;
   morph)   $CC -o $OUT/morph_test tests/morph_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run morph $OUT/morph_test ;;
+  knobs)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/knobs_test tests/knobs_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run knobs $OUT/knobs_test ;;
   morphui) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/morph_ui_test tests/morph_ui_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run morphui $OUT/morph_ui_test ;;
   duck)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/duck_test tests/duck_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run duck $OUT/duck_test ;;
   dlymod)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dlymod_test tests/dlymod_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run dlymod $OUT/dlymod_test ;;
+  silentskip) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/silentskip_test tests/silentskip_test.c -lm && $CC -O1 -DSIL_NOSKIP "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/silentskip_ref tests/silentskip_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
+           run silentskip sh -c "$OUT/silentskip_test $OUT/ss_skip.raw > $OUT/ss_skip.txt && $OUT/silentskip_ref $OUT/ss_ref.raw > $OUT/ss_ref.txt && cmp $OUT/ss_skip.raw $OUT/ss_ref.raw && grep -E '^(HASH|TAIL)' $OUT/ss_skip.txt > $OUT/ss_skip.h && grep -E '^(HASH|TAIL)' $OUT/ss_ref.txt > $OUT/ss_ref.h && cmp $OUT/ss_skip.h $OUT/ss_ref.h && grep -c '^TAIL' $OUT/ss_skip.h && tail -2 $OUT/ss_skip.txt; rc=\$?; rm -f $OUT/ss_skip.raw $OUT/ss_ref.raw; exit \$rc" ;;
   chorusskip) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/chorusskip_test tests/chorusskip_test.c -lm && $CC -O1 -DCHO_NOSKIP "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/chorusskip_ref tests/chorusskip_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            run chorusskip sh -c "$OUT/chorusskip_test > $OUT/cs_skip.txt && $OUT/chorusskip_ref > $OUT/cs_ref.txt && grep HASH $OUT/cs_skip.txt > $OUT/cs_skip.h && grep HASH $OUT/cs_ref.txt > $OUT/cs_ref.h && cmp $OUT/cs_skip.h $OUT/cs_ref.h && tail -3 $OUT/cs_skip.txt" ;;
   stereochorus)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/stereochorus_test tests/stereochorus_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run stereochorus $OUT/stereochorus_test ;;
   dlyev)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dlyev_test tests/dlyev_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run dlyev $OUT/dlyev_test ;;
+  resotune) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/resotune_test tests/resotune_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run resotune $OUT/resotune_test ;;
+  dctail) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dctail_test tests/dctail_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run dctail $OUT/dctail_test ;;
+  cull) $CC -O1 -DFM6_CULL=1120 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/cull_ref tests/cull_test.c -lm && $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/cull_test tests/cull_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { $OUT/cull_ref > $OUT/cull_ref.txt; run cull $OUT/cull_test $OUT/cull_ref.txt; } ;;
+  dlyglide) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dlyglide_test tests/dlyglide_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run dlyglide $OUT/dlyglide_test ;;
+  eqglide) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/eqglide_test tests/eqglide_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run eqglide $OUT/eqglide_test ;;
+  dlyfb) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dlyfb_test tests/dlyfb_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run dlyfb $OUT/dlyfb_test ;;
   perflevel) $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perf_level_test tests/perf_level_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run perflevel $OUT/perf_level_test ;;
   perflevelmut) plm() {                                # perflevel's self-check: a COPY of firmware/ and tests/ with the rule broken must make tests/perf_level_test.c FAIL
-             name=$1; f0=$2; ex=$3
+             name=$1; f0=$2; ex=$3                        # (built -DPL_RULE_ONLY: the mutants break the rule, the audio part needs fork(); the unmutated rule must pass first)
              echo "== perflevel_mut $name"
              rm -rf build/perflevel_mut; mkdir -p build/perflevel_mut
              cp -R firmware tests build/perflevel_mut/ || { echo "   FAIL (copy)"; fail=1; return; }
-             f=build/perflevel_mut/$f0; sed "$ex" "$f" > "$f.new" && mv "$f.new" "$f"
-             if cmp -s "$f" "$f0"; then echo "   FAIL (the mutation changed nothing in $f0)"; fail=1; return; fi
-             if ! $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perflevel_mut build/perflevel_mut/tests/perf_level_test.c -lm > $OUT/last.log 2>&1; then
+             f=build/perflevel_mut/$f0; [ -z "$ex" ] || { sed "$ex" "$f" > "$f.new" && mv "$f.new" "$f"; }
+             if [ -n "$ex" ] && cmp -s "$f" "$f0"; then echo "   FAIL (the mutation changed nothing in $f0)"; fail=1; return; fi
+             if ! $CC -DPL_RULE_ONLY "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/perflevel_mut build/perflevel_mut/tests/perf_level_test.c -lm > $OUT/last.log 2>&1; then
                echo "   FAIL (the mutated build does not compile)"; tail -5 $OUT/last.log; fail=1; return
              fi
-             if $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c ' FAIL$' $OUT/last.log) checks failed)"; fi
+             if [ -z "$ex" ]; then
+               if $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   PASS ($(tail -1 $OUT/last.log))"; else echo "   FAIL (the rule fails unmutated)"; grep ' FAIL$' $OUT/last.log | head; fail=1; fi
+             elif $OUT/perflevel_mut > $OUT/last.log 2>&1; then echo "   FAIL (the mutation was NOT detected)"; fail=1; else echo "   PASS (detected: $(grep -c ' FAIL$' $OUT/last.log) checks failed)"; fi
            }
-           plm "a boost allowed (the part that takes raised up to the table's top, +7.5 dB)" firmware/src/ui_input.c 's/if (up->p\[P_LEVEL\] < PERF_BAL_HOME) {/if (up->p[P_LEVEL] < 127) {/'
-           plm "the direction swapped (right toward part 1)" firmware/src/ui_input.c 's/track_t \*up = &trk\[s > 0 ? 1 : 0\], \*dn = &trk\[s > 0 ? 0 : 1\];/track_t *up = \&trk[s > 0 ? 0 : 1], *dn = \&trk[s > 0 ? 1 : 0];/'
-           plm "the total not kept (the other part never raised: item 160's first rule without its raise)" firmware/src/ui_input.c 's/if (up->p\[P_LEVEL\] < PERF_BAL_HOME) {/if (0 \&\& up->p[P_LEVEL] < PERF_BAL_HOME) {/'
-           plm "a memory of its own (steps from the knob's last levels, the MIXER's writes ignored)" firmware/src/ui_input.c 's/^static void perf_balance(int32_t s)$/static int16_t pb_mem[2] = {-1, -1}; static void perf_balance_(int32_t s); static void perf_balance(int32_t s) { if (pb_mem[0] >= 0) trk[0].p[P_LEVEL] = pb_mem[0], trk[1].p[P_LEVEL] = pb_mem[1]; perf_balance_(s); pb_mem[0] = trk[0].p[P_LEVEL], pb_mem[1] = trk[1].p[P_LEVEL]; } static void perf_balance_(int32_t s)/' ;;
+           plm "control: the rule unmutated" firmware/src/ui_input.c ''
+           plm "a boost allowed (the part that goes up raised toward the table's top, +7.5 dB, not 0 dB)" firmware/src/ui_input.c 's/g0 = (int32_t)LEVEL_Q12\[PERF_BAL_HOME\];/g0 = (int32_t)LEVEL_Q12[127];/'
+           plm "the direction swapped (right toward part 1)" firmware/src/ui_input.c 's/pos = perf_bal_pos - s;/pos = perf_bal_pos + s;/'
+           plm "the total not kept (the part that goes up never raised)" firmware/src/ui_input.c 's/^    if (up)$/    if (0 \&\& up)/'
+           plm "a memory of its own (the MIXER's writes between the steps ignored)" firmware/src/ui_input.c 's/if (perf_bal_pos != 0 && (trk\[0\]/if (0 \&\& perf_bal_pos != 0 \&\& (trk[0]/' ;;
   mode)    $CC "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/mode_test tests/mode_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run mode $OUT/mode_test ;;
   hang)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/hang_test tests/hang_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run hang $OUT/hang_test ;;
   atgt)    $CC -o $OUT/atgt_test tests/atgt_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run atgt $OUT/atgt_test ;;
+  pitchmod) $CC -o $OUT/pitchmod_test tests/pitchmod_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run pitchmod $OUT/pitchmod_test ;;
+  glide)   $CC -o $OUT/glide_test tests/glide_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run glide $OUT/glide_test ;;
+  acid)    $CC -o $OUT/acid_test tests/acid_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run acid $OUT/acid_test ;;
+  phasealias)   $CC -o $OUT/phasealias_test tests/phasealias_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run phasealias $OUT/phasealias_test ;;
+  engleft)   $CC -o $OUT/engleft_test tests/engleft_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run engleft $OUT/engleft_test ;;
   patslot) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/patslot_test tests/patslot_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run patslot $OUT/patslot_test ;;
-  sounds)  $CC -o $OUT/sound_audit tests/sound_audit.c -lm || { echo "== sounds"; echo "   FAIL (does not compile)"; fail=1; false; } && { echo "== sounds"; $OUT/sound_audit || fail=1; python3 tools/factory_multis.py check || fail=1; python3 tools/factory_multis.py selftest || fail=1; } ;;
+  patpack) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/patpack_test tests/patpack_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run patpack $OUT/patpack_test ;;
+  emu_smoke) echo "== emu_smoke"; if sh tests/emu_smoke.sh > "$OUT/emu_smoke.log" 2>&1; then echo "   PASS"; grep "^emu_smoke: screen" "$OUT/emu_smoke.log"; else grep FAIL "$OUT/emu_smoke.log" | head -10; tail -6 "$OUT/emu_smoke.log"; fail=1; fi ;;   # (web/emu/emu_run.c: a scripted session on the emulator device; screens equal to tests/emu_smoke_ref.txt; in the default list since b9, the CI prints each screen's CRC and checks it against the reference)
+  # not default: soundlab - builds tools/soundlab
+  soundlab) echo "== soundlab"; if sh tests/soundlab_test.sh > "$OUT/soundlab.log" 2>&1; then echo "   PASS"; else grep FAIL "$OUT/soundlab.log" | head -20; tail -8 "$OUT/soundlab.log"; fail=1; fi ;;   # (tools/soundlab: deterministic M02 render, stored numbers tests/soundlab_ref.txt, selftest; not in the default list: it builds the tool, about a minute)
+  sounds)  $CC -o $OUT/sound_audit tests/sound_audit.c -lm || { echo "== sounds"; echo "   FAIL (does not compile)"; fail=1; false; } && { echo "== sounds"; $OUT/sound_audit || fail=1; python3 tools/gen_duell_sounds.py --check > "$OUT/sndpin.log" 2>&1 || { tail -3 "$OUT/sndpin.log"; echo "   FAIL (sound numbering #1..#163 differs from tools/sound_numbering.pin)"; fail=1; }; python3 tools/factory_multis.py check || fail=1; python3 tools/factory_multis.py selftest || fail=1; python3 tools/factory_multis.py verify || fail=1; python3 tools/drone_pack.py verify || fail=1; } ;;   # (b10: verify = a rebuild from the lists equals the committed records byte for byte, M01..M24)
   release) $CCR -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/release_test tests/release_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run release $OUT/release_test ;;
   menuproduct) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/menu_product_test tests/menu_product_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run menuproduct $OUT/menu_product_test ;;
+  # Knob links preserve page history and swallow residual detents on the destination page.
+  knobjump) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/knob_jump_test tests/knob_jump_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run knobjump $OUT/knob_jump_test ;;
   bank)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bank_test tests/bank_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run bank $OUT/bank_test tests/factory_bank_records.txt ;;
+  storexver) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/store_xver_test tests/store_xver_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run storexver $OUT/store_xver_test ;;
   patchraw) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/patchraw_test tests/patchraw_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run patchraw $OUT/patchraw_test ;;
   dx7import) NODE=node; for n in "$HOME"/emsdk/node/*/bin/node; do [ -x "$n" ] && NODE=$n; done
            $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/dx7_import_test tests/dx7_import_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
@@ -308,9 +426,54 @@ for t in $want; do case $t in
   dx7compat) run dx7compat sh tests/dx7_compat.sh ;;   # optional: DX7_BANKS=<dir of .syx banks>, else 'skipped: no banks' and PASS
   patch)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/patch_test tests/patch_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run patch $OUT/patch_test ;;
   splash)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/splash_test tests/splash_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run splash $OUT/splash_test ;;
+  cpusnap) own=$(grep -nE '[^a-z_]cpu_(el_)?pk *=[^=]' firmware/src/*.c | grep -v '^firmware/src/audio.c' | grep -v '^firmware/src/ui_menu.c'); n=$(grep -cE '[^a-z_]cpu_(el_)?pk *=[^=]' firmware/src/ui_menu.c); a=$(grep -cE '^ *(if \(.*\) *)?cpu_(el_)?pk = (us|el);' firmware/src/audio.c)
+           echo "== cpusnap owner guard (only the ISR in audio.c and ui_menu.c cpu_snap_poll write cpu_pk / cpu_el_pk)"; if [ -z "$own" ] && [ "$n" = 2 ] && [ "$a" = 2 ]; then echo "   PASS"; else echo "   FAIL (writers: $own; ui_menu.c lines $n, audio.c lines $a)"; fail=1; fi
+           $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/cpusnap_test tests/cpusnap_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run cpusnap $OUT/cpusnap_test ;;
   loadcost) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/loadcost_test tests/loadcost_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run loadcost $OUT/loadcost_test ;;
   cpuscen) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/cpu_scenarios_test tests/cpu_scenarios_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run cpuscen $OUT/cpu_scenarios_test ;;
   fmbass)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/fm_bass_diff_test tests/fm_bass_diff_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run fmbass $OUT/fm_bass_diff_test ;;
+  # tidekeep: full strict arithmetic checking, including the shared DSP path.
+  tidekeep) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_keep_test tests/tide_keep_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidekeep $OUT/tide_keep_test ;;
+  # handskip: tests/morph_hand_test.c (Later 9, finding 12, D44): a hand-moved morph fader, built with the switch off (the default: a blend every block) and on (-DFELUCCA_HANDSKIP=1: every other block, the written values caught up within two blocks)
+  handskip) for hs in 0 1; do $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" "-DFELUCCA_HANDSKIP=$hs" -o $OUT/morph_hand_test_$hs tests/morph_hand_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; continue 2; }; run handskip_$hs $OUT/morph_hand_test_$hs; done ;;
+  # movecost: tests/move_cost_test.c (Later 10 + 13): a part's morph costs only while a transition moves, built with the switch off (the default: as before) and on (-DFELUCCA_MOVECOST=1)
+  movecost) for mc in 0 1; do $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" "-DFELUCCA_MOVECOST=$mc" -o $OUT/move_cost_test_$mc tests/move_cost_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; continue 2; }; run movecost_$mc $OUT/move_cost_test_$mc; done ;;
+  tidecrossings) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_crossings_test tests/tide_crossings_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidecrossings $OUT/tide_crossings_test ;;
+  audiopolish) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/audio_polish_test tests/audio_polish_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run audiopolish $OUT/audio_polish_test ;;
+  tidecontrols) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_controls_test tests/tide_controls_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidecontrols $OUT/tide_controls_test ;;
+  # answer: tests/answer_test.c (b10 round 8): the generators of tide_take.c on the design report's 5 takes x 5 multis, BASS LINE and DOUBLE, with SCL set and chromatic: in key, no rubs, bass bars on the root, deterministic, rolls differ
+  answer) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/answer_test tests/answer_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { run answer $OUT/answer_test; sed -n 's/^answer: /   /p' $OUT/last.log | grep -v "checks" | head -20; } ;;
+  # take: tests/take_test.c (b10 round 8, live performance assist phase 1, work/b10/specs/PERF_PHASE1.md): step 1 - keys against MIDI into the live recorder, then take undo / redo and the first take's loop length
+  take) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/take_test tests/take_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { run take $OUT/take_test; sed -n 's/^take: /   /p' $OUT/last.log | grep -v "checks"; } ;;
+  liverec) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/liverec_test tests/liverec_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run liverec $OUT/liverec_test ;;   # live recording on ARP SEQ parts, REC on HOME (audit 2026-11-08)
+  livegraph) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/live_graph_test tests/live_graph_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run livegraph $OUT/live_graph_test ;;   # TIDE LIVE GRAPHS (ui_live.c)
+  tideturns) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_turns_test tests/tide_turns_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tideturns $OUT/tide_turns_test ;;
+  f36) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/f36_probe_test tests/f36_probe_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run f36 $OUT/f36_probe_test ;;   # audit finding 36: POLY + ARP SEQ step phase after an arp restart mid-stretch
+  uigaps)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ui_gaps_test tests/ui_gaps_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run uigaps $OUT/ui_gaps_test ;;
+  notestrip)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/note_strip_test tests/note_strip_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run notestrip $OUT/note_strip_test ;;
+  tidesteps) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_steps_test tests/tide_steps_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidesteps $OUT/tide_steps_test ;;
+  uitruth) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ui_truth_test tests/ui_truth_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run uitruth $OUT/ui_truth_test ;;
+  stophang) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/stop_hang_test tests/stop_hang_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run stophang $OUT/stop_hang_test ;;   # PLAY STOP under TIDE: nothing keeps sounding
+  jrnyctx) $CCD "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/jrny_ctx tests/jrny_ctx.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run jrnyctx $OUT/jrny_ctx ;;
+  jrnymu) $CCD "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/jrny_mu tests/jrny_mu.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run jrnymu $OUT/jrny_mu ;;
+  tidejrnymemory) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_jrny_memory_test tests/tide_jrny_memory_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidejrnymemory $OUT/tide_jrny_memory_test ;;
+  tidejrnyfamily) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_jrny_family_test tests/tide_jrny_family_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidejrnyfamily $OUT/tide_jrny_family_test ;;
+  tidedialogue) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_dialogue_test tests/tide_dialogue_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidedialogue $OUT/tide_dialogue_test ;;
+  tidevoicelead) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_voicelead_test tests/tide_voicelead_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidevoicelead $OUT/tide_voicelead_test ;;
+  tidemotif) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_motif_test tests/tide_motif_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidemotif $OUT/tide_motif_test ;;
+  tideroles) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_roles_test tests/tide_roles_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tideroles $OUT/tide_roles_test ;;
+  fm6liveol) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/fm6_live_ol_test tests/fm6_live_ol_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run fm6liveol $OUT/fm6_live_ol_test ;;
+  slopehandoff) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/slope_handoff_test tests/slope_handoff_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run slopehandoff $OUT/slope_handoff_test ;;
+  physintune) $CC -O2 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/phys_tune_test tests/phys_tune_test.c -lm || { echo "FAIL (does not compile: phys_tune_test)"; fail=1; false; } && run physintune $OUT/phys_tune_test ;;
+  unisonlevel) $CC -O2 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/unison_level_test tests/unison_level_test.c -lm || { echo "FAIL (does not compile: unison_level_test)"; fail=1; false; } && run unisonlevel $OUT/unison_level_test && run unisonzero env ZERO_DETUNE=1 $OUT/unison_level_test ;;
+  clockguard) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/clock_safety_test tests/clock_safety_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run clockguard $OUT/clock_safety_test ;;
+  clockdrift) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/midi_drift_test tests/midi_drift_test.c -lm || { echo "   FAIL (does not compile)"; fail=1; continue; }; run clockdrift $OUT/midi_drift_test ;;
+  arptiming) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/arp_timing_test tests/arp_timing_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run arptiming $OUT/arp_timing_test ;;
+  arpdrift)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/arp_drift_test tests/arp_drift_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run arpdrift $OUT/arp_drift_test ;;
+  swing) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/swing_test tests/swing_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run swing $OUT/swing_test ;;
+  uartdma) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/uart_dma_test tests/uart_dma_test.c -lm || { echo "   FAIL (does not compile)"; fail=1; continue; }; run uartdma $OUT/uart_dma_test ;;
+  uarttimer) $CC -O1 -o $OUT/timer_clock_test tests/timer_clock_test.c || { echo "   FAIL (does not compile)"; fail=1; continue; }; run uarttimer $OUT/timer_clock_test; $CC -O1 -DFELUCCA_UART=0 -o $OUT/timer_clock_off tests/timer_clock_test.c || { echo "   FAIL (does not compile)"; fail=1; continue; }; run uarttimer-off $OUT/timer_clock_off ;;
+  uartflood) $CC -O2 -o $OUT/timer5_midi_test tests/timer5_midi_test.c || { echo "   FAIL (does not compile)"; fail=1; continue; }; run uartflood $OUT/timer5_midi_test; $CC -O2 -DFELUCCA_UART=0 -o $OUT/timer5_midi_nouart_test tests/timer5_midi_test.c || { echo "   FAIL (does not compile)"; fail=1; continue; }; run uartflood-off $OUT/timer5_midi_nouart_test ;;
   fm6)     $CC -O2 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/fm6_test tests/fm6_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { mkdir -p build/fm6_demo; run fm6 $OUT/fm6_test build/fm6_demo; } ;;
   ownerimport) run ownerimport python3 tests/owner_import_test.py ;;
   converttwin) run converttwin python3 -I tests/convert_twin_test.py ;;   # cloud job J: tools/convert_twin.py against the 43 rows of docs/design/TWIN_FILTER_DESIGN_2.md 1.5, the committed data == the tool's output, the guards
@@ -326,6 +489,8 @@ for t in $want; do case $t in
              partindep_mut "the parts share one block scratch (fx.c part_voice)" firmware/src/fx.c 's/int32_t \*b = pscr\[PART_OF(t)\]\.buf;/int32_t *b = pscr[0].buf;/' &&
              partindep_mut "the parts share one morph window (morph.c)" firmware/src/morph.c 's/t->mwon/trk[0].mwon/g; s/t->mwpi/trk[0].mwpi/g' &&
              partindep_mut "the parts share one matrix window (mod.c MODW)" firmware/src/core.h 's/#define MODW(t) ((t)->mdw)/#define MODW(t) (trk[0].mdw)/' ;;
+  scope)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/scope_test tests/scope_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run scope $OUT/scope_test ;;
+  wavelive) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/wave_live_test tests/wave_live_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run wavelive $OUT/wave_live_test ;;
   duckpart) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/duckpart_test tests/duckpart_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run duckpart $OUT/duckpart_test ;;
   twocore) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/twocore_sim tests/twocore_sim.c -lm -lpthread || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run twocore $OUT/twocore_sim &&
              twocore_mut "the parts share one block scratch (fx.c part_voice)" firmware/src/fx.c 's/int32_t \*b = pscr\[PART_OF(t)\]\.buf;/int32_t *b = pscr[0].buf;/' &&
@@ -339,12 +504,13 @@ for t in $want; do case $t in
              twocore_mut "BENCHT4: no real fault pauses the jobs (twocore_run.c tcr_pause)" firmware/src/twocore_run.c 's/    if (!tcr.paused) {/    if (!tcr.paused \&\& why != TCR_PW_FAULT) {/' &&
              twocore_mut "BENCHT4: a job not finished by its wait limit (a silent block) no longer pauses the jobs (twocore_run.c)" firmware/src/twocore_run.c 's|tcr_pause(TC_TICKS(), TCR_PW_FAULT); /\* \[silent\] \*/||' &&
              twocore_mut "BENCHT4: core 0 waits for core 1 to the end of the half, not to the wait limit (twocore_run.c tcr_part2)" firmware/src/twocore_run.c 's/a, lim = tcr.lim, t1;/a, lim = tcr.t0 + TCR_HALF_TICKS, t1;/' ;;
+  # not default: twocore_tsan - slow (ThreadSanitizer runs of the two-core runner)
   twocore_tsan) $CC -O1 -g -fsanitize=thread "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/twocore_tsan tests/twocore_sim.c -lm -lpthread || { echo "== compile"; echo "   FAIL (does not compile; ThreadSanitizer missing?)"; fail=1; false; } && run twocore_tsan sh -c "for s in \${TSAN_SCENES:-0 8}; do TSAN_OPTIONS=halt_on_error=1 $OUT/twocore_tsan \$s -tsan || exit 1; done" ;;
   tcmeas) $CC -O1 -DTC_MEAS=1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/twocore_meas tests/twocore_sim.c -lm -lpthread || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tcmeas $OUT/twocore_meas;
              MUTFLAGS=-DTC_MEAS=1
              twocore_mut "BENCHT2: core 1 stamps the end of a job before it ran it (twocore.h t_end)" firmware/src/twocore.h 's/te = TC_TICKS();/te = ts;/';
              twocore_mut "BENCHT2: the finish margin has the wrong sign (twocore_run.c tcm_collect)" firmware/src/twocore_run.c 's/mg = (int32_t)(tcr.dl - te);/mg = (int32_t)(te - tcr.dl);/';
-             twocore_mut "BENCHT2: a deadline already past is counted as paused (twocore_run.c own_why)" firmware/src/twocore_run.c 's/tcr.own_why = TCM_OWN_DL;/tcr.own_why = TCM_OWN_PAUSE;/';
+             twocore_mut "BENCHT2: a paused block is counted as a deadline already past (twocore_run.c own_why)" firmware/src/twocore_run.c 's/: TCM_OWN_PAUSE;/: TCM_OWN_DL;/';
              twocore_mut "BENCHT2: the block of a very late job is not counted (twocore_run.c vblk)" firmware/src/twocore_run.c 's/tcm.vblk\[tcj.blk % TCR_BLOCKS\]++;//';
              twocore_mut "BENCHT2: the clear request is ignored (twocore_run.c tcm.clr)" firmware/src/twocore_run.c 's/if (tcm.clr)/if (0)/';
              twocore_mut "BENCHT3: the deadline's floor removed (twocore_run.c tcr_deadline)" firmware/src/twocore_run.c 's/if (TCR_FLOOR_NOW) {/if (0) {/';
@@ -353,14 +519,31 @@ for t in $want; do case $t in
              twocore_mut "BENCHT3: the floor never says 'does not fit' (twocore_run.c nofit)" firmware/src/twocore_run.c 's/\*nofit = 1;/*nofit = 0;/';
              twocore_mut "BENCHT3: the floor ignores the cap (twocore_run.c: can be later than core 0's own latest moment)" firmware/src/twocore_run.c 's/dl = (int32_t)(tgt - cap) > 0 ? cap : tgt;/dl = tgt;/'; MUTFLAGS= ;;
   bootguard) $CC -O1 -DDUELL_TWOCORE=1 -o $OUT/bootguard_test tests/bootguard_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run bootguard $OUT/bootguard_test ;;
+  bootpack) python3 tests/bootpack_gen.py $OUT/bootpack > $OUT/bootpack.list && $CC -O1 -o $OUT/bootpack_test tests/bootpack_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run bootpack $OUT/bootpack_test $(cat $OUT/bootpack.list) ;;
   tcbench) $CC -O1 -o $OUT/twocore_bench_test tests/twocore_bench_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tcbench $OUT/twocore_bench_test ;;
   poolrule) run poolrule python3 tests/pool_rule_test.py ;;
+  hotreach) run hotreach python3 tools/test_hot_reach.py ;;
+  tcwrap) $CC -O1 -o $OUT/twocore_wrap_test tests/twocore_wrap_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tcwrap $OUT/twocore_wrap_test ;;
   tcstage1) $CC -O1 -o $OUT/twocore_stage1_test tests/twocore_stage1_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tcstage1 $OUT/twocore_stage1_test ;;
   velomono) $CC -O2 -o $OUT/velo_mono tests/velo_mono_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run velomono $OUT/velo_mono ;;
   polylimits) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/poly_limits tests/poly_limits_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run polylimits $OUT/poly_limits ;;
+  # not default: physcost - report only, it times code (PHYS models per note)
+  physcost) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/phys_cost_probe tests/phys_cost_probe.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { run physcost $OUT/phys_cost_probe; sed -n 's/^physcost: /   /p' $OUT/last.log; } ;;
+  glidecpu) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/glide_cpu_test tests/glide_cpu_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run glidecpu $OUT/glide_cpu_test ;;
+  # not default: tidecost - report only, it times code (TIDE valley, wash, dip, FM6 bridge)
+  tidecost) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_cost_probe tests/tide_cost_probe.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { run tidecost $OUT/tide_cost_probe; sed -n 's/^tidecost: /   /p' $OUT/last.log; } ;;
+  # budgetcal: tests/budget_cal_probe.c (b10 round 6, ROADMAP Later 22; audit findings 5, 6, 34; report only, not in the default list: it times code): what tcr_deadline's block 0 costs core 0 (part_dl x2 + global_cost_dl on the 24 factory multis), a hand-moved fader's blend as a part cost and the wash's meter at rest, on the host as ratios to SAT and a three-band EQ; docs/BUDGET_HONEST.md
+  # not default: budgetcal - report only, it times code (the NOTES budget against the code)
+  budgetcal) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 -DFELUCCA_MOVECOST=1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/budget_cal_probe tests/budget_cal_probe.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && { run budgetcal $OUT/budget_cal_probe; sed -n 's/^budgetcal: /   /p' $OUT/last.log; } ;;
+  # guards: tests/guards_test.c (b10 round 7, ROADMAP Later 14): FELUCCA_GUARDS - morph_xrest and vs_block run only when their inputs are live; built with the switch off and on, the two renders hashes must be equal, and the operation counts print
+  guards) gh=""; for g in 0 1; do $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" "-DFELUCCA_GUARDS=$g" -o $OUT/guards_test_$g tests/guards_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; continue 2; }; run guards_$g $OUT/guards_test_$g; sed -n 's/^guards: /   /p' $OUT/last.log | grep -E "hash|calls"; gh="$gh $(sed -n 's/^guards: GUARDS=. renders hash \([0-9a-f]*\) .*//p' $OUT/last.log)"; done
+          set -- $gh; if [ "$1" = "$2" ] && [ -n "$1" ]; then echo "   renders identical with the guards on and off"; else echo "   FAIL: the renders differ ($gh)"; fail=1; fi ;;
+  # not default: polycalib - report only, macOS (the measured cost of one more note per engine)
   polycalib) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/poly_calib tests/poly_calib.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run polycalib $OUT/poly_calib ;;
-  deadline) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/deadline_test tests/deadline_test.c -lm -lpthread || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run deadline $OUT/deadline_test ;;
-  budget)  $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/budget_test tests/budget_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run budget $OUT/budget_test ;;
+  # budget, deadline: built with -DFELUCCA_MOVECOST=1, the shipped configuration (tools/build.py default 1; b11 tests lane, ROADMAP Later 33). The OFF run is dropped: nothing ships it, the hash pins (budget LOADED_REF) are the ON values, and the movecost group still builds the switch both ways.
+  fm6exp2) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/fm6_exp2_test tests/fm6_exp2_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run fm6exp2 $OUT/fm6_exp2_test ;;
+  deadline) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -DFELUCCA_MOVECOST=1 -o $OUT/deadline_test tests/deadline_test.c -lm -lpthread || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run deadline $OUT/deadline_test ;;
+  budget)  $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -DFELUCCA_MOVECOST=1 -o $OUT/budget_test tests/budget_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run budget $OUT/budget_test ;;
   sat)     $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/sat_test tests/sat_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run sat $OUT/sat_test ;;
   mxstep)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/mx_step_test tests/mx_step_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run mxstep $OUT/mx_step_test &&
            mxstep_mut ;;
@@ -375,7 +558,7 @@ for t in $want; do case $t in
   modules) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/modules_test tests/modules_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run modules $OUT/modules_test ;;
   guide)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/guide_test tests/guide_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run guide $OUT/guide_test ;;
   guidesetup) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/guide_setup_test tests/guide_setup_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run guidesetup $OUT/guide_setup_test ;;
-  reverb)  mkdir -p build/fx_demo build/reverb_demo; $CC -O2 -o $OUT/reverb_test tests/reverb_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run reverb $OUT/reverb_test build/fx_demo build/reverb_demo ;;
+  reverb)  mkdir -p build/fx_demo build/reverb_demo; $CC -O2 -DREV_SKIP_STATS -o $OUT/reverb_test tests/reverb_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run reverb $OUT/reverb_test build/fx_demo build/reverb_demo ;;
   bassmono) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bassmono_test tests/bassmono_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run bassmono $OUT/bassmono_test ;;
   sidechain) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/sidechain_test tests/sidechain_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run sidechain $OUT/sidechain_test ;;
   tune)    $CC -O1 -o $OUT/tune_test tests/tune_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tune $OUT/tune_test ;;
@@ -383,9 +566,12 @@ for t in $want; do case $t in
            run benchsim sh -c "BENCH_SIM_LOG=$OUT/bench_sim.log $OUT/bench_sim && python3 tools/bench_log.py --from $OUT/bench_sim.log --out $OUT/bench_sim.csv" ;;
   benchrun) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bench_sim tests/bench_sim.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            run benchrun python3 tests/bench_run_test.py ;;
+  libcalls) run libcalls python3 tests/libcalls_test.py ;;
+  tidemeasure) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bench_sim tests/bench_sim.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
+           run tidemeasure python3 tests/tide_measure_test.py ;;
   benchaudio) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/bench_sim tests/bench_sim.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            PYN=$(for p in python3 /opt/homebrew/bin/python3 /usr/local/bin/python3 /Library/Frameworks/Python.framework/Versions/Current/bin/python3; do "$p" -c 'import numpy' 2>/dev/null && { command -v "$p" || echo "$p"; break; }; done)
-           if [ -n "$PYN" ]; then run benchaudio "$PYN" tests/bench_analyze_test.py; else run benchaudio echo "skipped: no python3 with numpy on this machine (the DUELL venv has none; tools/bench_analyze.py needs it)"; fi ;;
+           if [ -n "$PYN" ]; then run benchaudio "$PYN" tests/bench_analyze_test.py; else run benchaudio echo "SKIP no python3 with numpy on this machine (the DUELL venv has none; tools/bench_analyze.py needs it)"; fi ;;
   comp) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/comp_test tests/comp_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run comp $OUT/comp_test ;;
   bench) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/cpu_bench tests/cpu_bench.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
          { echo "== bench (report only: fails when a figure grows > 10 % over tests/bench_baseline.txt)"; $OUT/cpu_bench > $OUT/bench.log 2>&1 && { sed 's/^bench: /   /' $OUT/bench.log; echo "   PASS"; } || { echo "   FAIL"; grep -i 'fail' $OUT/bench.log; fail=1; }; } ;;
@@ -410,18 +596,49 @@ for t in $want; do case $t in
              NODE=node; for n in "$HOME"/emsdk/node/*/bin/node; do [ -x "$n" ] && NODE=$n; done
              run wavetable-js "$NODE" web/test_wavetable.mjs ;;
   backup)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/backup_test tests/backup_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run backup $OUT/backup_test ;;
+  tidestore) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_store_test tests/tide_store_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidestore $OUT/tide_store_test ;;
   editor)  $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/editor_test tests/editor_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run editor $OUT/editor_test ;;
   editorjson) NODE=node; for n in "$HOME"/emsdk/node/*/bin/node; do [ -x "$n" ] && NODE=$n; done
-           $CCR -o $OUT/editordump tests/editordump.c -lm && $CCR -o $OUT/descdump tests/descdump.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
+           $CCR -o $OUT/editordump tests/editordump.c -lm && $CCR -o $OUT/descdump tests/descdump.c -lm && $CCR -o $OUT/rangedump tests/rangedump.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            run editorjson sh -c "$OUT/editordump > $OUT/layout.json && { cmp -s $OUT/layout.json web/editor/layout.json || { echo 'web/editor/layout.json is stale: cp build/host/layout.json web/editor/layout.json'; exit 1; }; } &&
-             $OUT/descdump > $OUT/desc.json && FELUCCA_DESC=$OUT/desc.json $NODE web/test_layout.mjs && $NODE web/test_editor.mjs && $NODE web/test_editor_0225.mjs && $NODE web/test_duellbackup.mjs && $NODE web/test_librarian.mjs && $NODE web/test_roll.mjs" ;;
+             $OUT/rangedump > $OUT/patch_ranges.txt && { cmp -s $OUT/patch_ranges.txt web/fixtures/patch_ranges.txt || { echo 'web/fixtures/patch_ranges.txt is stale: cp build/host/patch_ranges.txt web/fixtures/patch_ranges.txt'; exit 1; }; } &&
+             $OUT/descdump > $OUT/desc.json && FELUCCA_DESC=$OUT/desc.json $NODE web/test_layout.mjs && $NODE web/test_editor.mjs && $NODE web/test_editor_0225.mjs && $NODE web/test_duellbackup.mjs && $NODE web/test_backup.mjs && $NODE web/test_installer_state.mjs && $NODE web/test_ranges.mjs && $NODE web/test_ota.mjs && python3 web/test_site_build.py && $NODE web/test_librarian.mjs && $NODE web/test_roll.mjs" ;;
   rollbrowser) NODE=node; for n in "$HOME"/emsdk/node/*/bin/node; do [ -x "$n" ] && NODE=$n; done
            run rollbrowser "$NODE" web/test_rollbrowser.mjs ;;   # (skips itself when no Chrome is installed)
   sliders) NODE=node; for n in "$HOME"/emsdk/node/*/bin/node; do [ -x "$n" ] && NODE=$n; done
            run sliders "$NODE" web/test_sliders.mjs ;;   # (0.2.24: every slider of the editor dragged in headless Chrome; skips itself when no Chrome is installed)
   midictl) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/midi_control_test tests/midi_control_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run midictl $OUT/midi_control_test ;;
+  ease)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ease_test tests/ease_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run ease $OUT/ease_test ;;
   audio)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/audio_test tests/audio_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run audio $OUT/audio_test ;;
+  benchupdl) $CC -O1 -o $OUT/bench_updl_test tests/bench_updl_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run benchupdl $OUT/bench_updl_test ;;
+  otareuse) $CC -O1 -o $OUT/ota_reuse_test tests/ota_reuse_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run otareuse $OUT/ota_reuse_test &&
+           echo "== otareuse: the same listing from ota.c as it was before the buffers were shared (OTA_BASE, default 1df6207)" &&
+           if git -C .. show "${OTA_BASE:-1df6207}:felucca-base/firmware/src/ota.c" > $OUT/ota_base.c 2>/dev/null; then
+             $CC -O1 -DOTA_SRC='"../'$OUT'/ota_base.c"' -o $OUT/ota_reuse_base tests/ota_reuse_test.c &&
+             { $OUT/ota_reuse_test > $OUT/ota_reuse_new.txt; $OUT/ota_reuse_base > $OUT/ota_reuse_old.txt; cmp -s $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt && echo "   PASS (identical: $(wc -l < $OUT/ota_reuse_new.txt) lines)" || { echo "   FAIL (differs from the separate-buffer ota.c)"; diff $OUT/ota_reuse_old.txt $OUT/ota_reuse_new.txt | head; fail=1; }; }
+           else echo "   SKIP OTA_BASE not in this clone"; fi ;;
+  tidephrase) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_phrase_test tests/tide_phrase_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidephrase $OUT/tide_phrase_test ;;
+  tidebuild) $CC -O1 -fsanitize=address,undefined -fno-sanitize-recover=all "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/tide_build_test tests/tide_build_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run tidebuild $OUT/tide_build_test &&
+           tidebuild_mut "DENS: two hits become six" firmware/src/seq_morph.c 's/n = sqm_cnt(d\[SD_DENS\], 2u);/n = sqm_cnt(d[SD_DENS], 6u);/' &&
+           tidebuild_mut "VOIC: an octave becomes 13 semitones (another pitch class)" firmware/src/seq_morph.c 's/v = (int32_t)s->note\[q\] + (d\[SD_VOIC\] > 0 ? 12 : -12);/v = (int32_t)s->note[q] + (d[SD_VOIC] > 0 ? 13 : -13);/' &&
+           tidebuild_mut "C1: VOIC moves a chord note out of the lane (the lane test removed)" firmware/src/seq_morph.c 's/if (sqm_in_lane(v, lane_lo, lane_hi))/if (1)/' &&
+           tidebuild_mut "C1: VOIC moves a single note out of the lane" firmware/src/seq_morph.c 's/ \&\& sqm_in_lane((int32_t)out\[i\].note\[0\] + (d\[SD_VOIC\] > 0 ? 12 : -12), lane_lo, lane_hi)//' &&
+           tidebuild_mut "C1: the pitch move is bound by 24..108 again" firmware/src/seq_evolve.c 's/!sqm_in_lane(n, lo, hi) ||/n < 24 || n > 108 ||/' &&
+           tidebuild_mut "the pick takes the lower contrast score" firmware/src/morph_complement.c 's/return sound_candidate_score(pi, engine, b) > sound_candidate_score(pi, engine, a) ? b : a;/return sound_candidate_score(pi, engine, b) < sound_candidate_score(pi, engine, a) ? b : a;/' &&
+           tidebuild_mut "C4: a one-hit Original is varied again (hits < 2u becomes !hits)" firmware/src/seq_morph.c 's/if (hits < 2u || len < 3u)/if (!hits || len < 3u)/' &&
+           tidebuild_mut "C4: the density cap of a two-chord part has room again (base <= 2u becomes base <= 0u)" firmware/src/seq_arc.c 's/if (base <= 2u)/if (base <= 0u)/' ;;
+  productcfg) CV="$CC -O1 -DDUELL_VELO=1 -include firmware/src/sense.c -Ifirmware/hal"; pcfg() { n=$1; s=$2; shift 2; $CV "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/pcfg_$n tests/$s.c -lm || { echo "== productcfg_$n"; echo "   FAIL (does not compile with DUELL_VELO=1)"; fail=1; return; }; run productcfg_$n $OUT/pcfg_$n "$@"; }
+           for t in mode:mode_test perform:perform_test chord:chord_test strum:strum_test select:select_test step3:step3_test engine:engine_page_test hang:hang_test patch:patch_test; do pcfg ${t%%:*} ${t#*:}; done ;;
+  inherited) for t in input:input_test.c midi_uart:midi_uart_test.c step15:step15_test.c stoptail:stoptail_test.c union:union_test.c; do n=${t%%:*}; s=${t#*:}
+               $CC -O1 -o $OUT/inh_$n tests/$s -lm || { echo "== inherited_$n"; echo "   FAIL (does not compile)"; fail=1; continue; }
+               run inherited_$n $OUT/inh_$n
+             done
+             run inherited_size_fns python3 -I tests/size_fns_test.py; run inherited_install python3 -I tests/install_test.py ;;
+  orphans) echo "== orphans"; ob=0
+           for f in tests/*_test.*; do b=${f#tests/}; grep -q "$b" ../host_tests.sh && continue; grep -v '^#' tests/orphans.txt | awk '{print $1}' | grep -qx "$b" || { echo "   FAIL $b is in no group of host_tests.sh and not in tests/orphans.txt"; ob=1; }; done
+           [ $ob = 0 ] && echo "   PASS" || fail=1 ;;
   elfcheck) run elfcheck python3 -I tests/elfcheck_test.py ;;
+  tideversion) run tideversion python3 -I tests/tide_version_test.py ;;
   flashled) $CC -o $OUT/flash_led_test tests/flash_led_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run flashled $OUT/flash_led_test ;;
   usb)     echo "== usb"; ub=0
            for v in 1.1.0.1.1.1 1.1.1.1.1.1 1.1.2.1.1.1 1.1.3.1.1.1 1.1.0.0.1.1 1.1.2.0.1.1 0.1.0.1.1.1 1.1.0.1.0.1 1.1.0.0.0.1 1.1.2.1.0.1 0.1.0.1.0.1 \
@@ -435,7 +652,7 @@ for t in $want; do case $t in
                    && $OUT/uac_test > "$OUT/last.log" 2>&1 || { echo "   FAIL (uac_test CDC $c)"; tail -15 "$OUT/last.log"; ub=1; }
            done
            [ $ub = 0 ] && echo "   PASS" || fail=1 ;;
-  emu)     { . "$HOME/emsdk/emsdk_env.sh" >/dev/null 2>&1; sh web/emu/build.sh >"$OUT/emu_build.log" 2>&1 && $CCD -ffp-contract=off -o build/emu/native_check web/emu/native_check.c -lm && build/emu/native_check build/emu/native.f32; } || { echo "== emu"; echo "   FAIL (build)"; tail -5 "$OUT/emu_build.log"; fail=1; false; } && run emu "$EMSDK_NODE" web/emu/emu_test.mjs build/emu/felucca.wasm build/emu/native.f32 ;;
+  emu)     { if [ -z "$EMSDK_NODE" ] || ! command -v emcc >/dev/null 2>&1; then if [ -f "$HOME/emsdk/emsdk_env.sh" ]; then . "$HOME/emsdk/emsdk_env.sh" >/dev/null 2>&1; fi; fi; sh web/emu/build.sh >"$OUT/emu_build.log" 2>&1 && $CCD -ffp-contract=off -o build/emu/native_check web/emu/native_check.c -lm && build/emu/native_check build/emu/native.f32; } || { echo "== emu"; echo "   FAIL (build)"; tail -5 "$OUT/emu_build.log"; fail=1; false; } && run emu "$EMSDK_NODE" web/emu/emu_test.mjs build/emu/felucca.wasm build/emu/native.f32 ;;
   # ---- the cloud plan's job A (the store): the extension block, the 22 chunks, the velocity store (tests/xb_test.c; patch, patchraw, backup, multi, project, persist, erase, fuzz_ed and fuzz_proj are extended in place)
   xb)      awk '/^#define FL_/{p=1} p{print} p&&!/\\$/{p=0}' firmware/hal/fm1_flash.h | grep -v 'FL_FAR\|FL_XIP' > $OUT/fl_macros.h     # (the real FL_* range macros of the device header)
            if cc -O1 -g -w -fsanitize=address,undefined -I$OUT -Ifirmware/src -Itests -o $OUT/xb_test tests/xb_test.c 2>/dev/null; then :; else echo "   (no AddressSanitizer here: the bounds checks run without it)"; $CC -O1 -I$OUT -o $OUT/xb_test tests/xb_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; }; fi && run xb $OUT/xb_test ;;
@@ -472,10 +689,10 @@ for t in $want; do case $t in
         if ((rc = st_prog(base + ST_PAYLOAD_OFF + off, st_buf + off, n)) != 0)'
            xb_mut "PT_K 7 records a chunk, the _Static_assert still in place (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u'
            xb_mut "PT_K 7 records a chunk with the _Static_assert taken out: the 128-slot guarantee must break at run time (upreset.c)" patch_test.c firmware/src/upreset.c '#define PT_K ((PT_CAP - PT_HDR) / PT_WORST)' '#define PT_K 7u' \
-              firmware/src/upreset.c '_Static_assert(PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX >= UP_SLOTS' '_Static_assert(PT_MAX >= UP_SLOTS'
-           xb_mut "the extension block's length check removed (upreset.c pt_rec_ok)" patch_test.c firmware/src/upreset.c '    if ((p[4] & PTF_XB) && xb_block_ok(p + a, rl - a) != 1u + p[a])' '    if (0)'
+              firmware/src/upreset.c '_Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS' '_Static_assert(PT_MAX + (22u - TIDE_PT_NCH) * PT_K >= UP_SLOTS'
+           xb_mut "End B's AMOUNT check removed (morph.c morph_bv_size, the block check pt_rec_ok's layout runs: PT_VER 4 has no extension block)" patchraw_test.c firmware/src/morph.c ' || b[1] > 101u || ' ' || '
            xb_mut "PATCH_RAW's length check removed (editor_patchraw.c BEGIN: PT_FIX .. PT_WORST)" patchraw_test.c firmware/src/editor_patchraw.c 'if (n != 9u || a[8] > 15u || len < PT_FIX || len > PT_WORST)' 'if (n != 9u || a[8] > 15u)' ;;
-  fuzz)    SAN=; cc -fsanitize=address,undefined -fno-sanitize=shift -w -x c -o /dev/null - 2>/dev/null <<'EOF2' && SAN="-fsanitize=address,undefined -fno-sanitize=shift"
+  fuzz)    SAN=; cc -fsanitize=address,undefined -fno-sanitize=shift -w -x c -o "$OUT/sanprobe" - 2>/dev/null <<'EOF2' && SAN="-fsanitize=address,undefined -fno-sanitize=shift"
 int main(void) { return 0; }
 EOF2
            [ -n "$SAN" ] || echo "   (no AddressSanitizer here: the fuzzers run without it)"
@@ -484,7 +701,7 @@ EOF2
            { ASAN_OPTIONS=detect_leaks=0 run "fuzz_ed: SysEx, raw packets, patch record sessions (60000, seed 7)" $OUT/fuzz_ed 60000 7
              ASAN_OPTIONS=detect_leaks=0 run "fuzz_ed: only patch record sessions through PATCH_RAW and the backup's object 40 (30000, seed 11)" $OUT/fuzz_ed 30000 11 1
              ASAN_OPTIONS=detect_leaks=0 run "fuzz_proj: project stores and multi records with the slots and the edit list (8000, seed 13)" $OUT/fuzz_proj 8000 13; } ;;
-  xvalues) # cloud job B (the values, the extension slots, the chain stub): tests/xvalues_test.c at the default XH and at XH 3; the loader: tools/gen_duell_sounds.py makes a header from the factory list plus one sound that names slots (build/gen_xv), the test reads it back
+  xvalues) # cloud job B (the values, the extension slots, the chain stub): tests/xvalues_test.c (XH 1 since 1.0.0-b5: no morph history); the loader: tools/gen_duell_sounds.py makes a header from the factory list plus one sound that names slots (build/gen_xv), the test reads it back
            echo "== xvalues"; xb=0
            mkdir -p build/gen_xv
            python3 -I - <<'PY' || { echo "   FAIL (loader: gen_duell_sounds)"; xb=1; }
@@ -505,8 +722,8 @@ for bad in ({"SUB LEVEL": 128}, {"SUB NOPE": 1}, {"CYCLE MODE": "SPIN"}):      #
         assert e.code not in (0, None) and "accepted" not in str(e.code), e.code
 print("xvalues: loader: the generator takes slot labels (SUB LEVEL, CYCLE RISE, TWIN LINK, CYCLE MODE) and refuses a bad one")
 PY
-           for xh in 3; do   # (XH 3 = MORPH_HIST; XH 1 compiles but the rebase check expects two ring entries: not run)
-               $CC -O1 -DXH=$xh "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/xvalues_test_$xh tests/xvalues_test.c -lm && $OUT/xvalues_test_$xh > "$OUT/last.log" 2>&1 || { echo "   FAIL (XH $xh)"; grep -v " ok$" "$OUT/last.log" | tail -25; xb=1; }
+           for xh in 1; do   # (1.0.0-b5: XH = MORPH_HIST = 1, fixed in morph.c; the name keeps the binary's suffix)
+               $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/xvalues_test_$xh tests/xvalues_test.c -lm && $OUT/xvalues_test_$xh > "$OUT/last.log" 2>&1 || { echo "   FAIL (XH $xh)"; grep -v " ok$" "$OUT/last.log" | tail -25; xb=1; }
            done
            cc -Ibuild/gen_xv ${CC#cc } -O1 -DXV_LOADER "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/xvalues_loader tests/xvalues_test.c -lm && $OUT/xvalues_loader > "$OUT/last.log" 2>&1 || { echo "   FAIL (loader)"; grep -v " ok$" "$OUT/last.log" | tail -25; xb=1; }
            [ $xb = 0 ] && echo "   PASS" || fail=1 ;;
@@ -521,7 +738,7 @@ PY
            for m in 1 2 3 4; do
              case $m in
                1) mn="DRIVE runs at 0 (chain_f2.c: the shaper is called whatever DRIVE is)"; mf=firmware/src/chain_f2.c; ms='s/if (q\.d0 | q\.d1)/if (1)/g' ;;
-               2) mn="LADDER's tanh removed (chain_f2.c f2_lad: the sum enters the cascade unsaturated)"; mf=firmware/src/chain_f2.c; ms='s/int32_t u = softclip((in\[i\] >> 1) - ((kf \* (y4 >> 6)) >> 12)) << 6,/int32_t u = ((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) << 6,/' ;;
+               2) mn="LADDER's tanh removed (chain_f2.c f2_lad: the sum enters the cascade unsaturated)"; mf=firmware/src/chain_f2.c; ms='s/int32_t u = softclip((in\[i\] >> 1) - ((kf \* (y4 >> 6)) >> 12)) \* 64,/int32_t u = ((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) * 64,/' ;;   # (1.1 writes the stage gain * 64)
                3) mn="the TYPE cross-fade removed (chain_f2.c: the new type at once)"; mf=firmware/src/chain_f2.c; ms='s/b\[i\] = a\[i\] + (((b\[i\] - a\[i\]) \* (int32_t)(base + i + 1u)) >> 8);/b[i] = b[i] + 0 * base;/' ;;
                4) mn="chain_on true at TYPE OFF (chain_f2.c chain_f2_on)"; mf=firmware/src/chain_f2.c; ms='s/return v->chn == VCH_RUN \&\& (s->ty || s->fade);/return 1;/' ;;
              esac
@@ -558,8 +775,8 @@ PY
            sc_mut "the SUB runs at LEVEL 0 (chain_sub.c chain_sub_on)" subcyc_test.c firmware/src/chain_sub.c 'return XV(t, X_SUBLVL) > 0 && (t->p[P_VOICE] != V_UNISON || v == t->v);' 'return t->p[P_VOICE] != V_UNISON || v == t->v;'
            sc_mut "the 4-block cross-fade of a WAVE / OCTAVE switch removed (chain_sub.c)" subcyc_test.c firmware/src/chain_sub.c 'c = g0 ? SUB_XFB : 0;' 'c = 0;'
            sc_mut "the CYCLE tick moved into mod_voice (hot RAM): ticked whenever the matrix is on, read or not (mod.c, voice.c)" subcyc_test.c \
-              firmware/src/mod.c 'static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)' 'static void cycle_tick(track_t *t, voice_t *v);
-static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m, int32_t fine)' \
+              firmware/src/mod.c 'static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m)' 'static void cycle_tick(track_t *t, voice_t *v);
+static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *m)' \
               firmware/src/mod.c 'int32_t pit = mod->pit, cut = mod->cut, shp = mod->shp, gain = mod->gain, env = m->envq15;' 'int32_t pit = mod->pit, cut = mod->cut, shp = mod->shp, gain = mod->gain, env = m->envq15;
     cycle_tick(t, v);' \
               firmware/src/voice.c '            if (t->cy)                                  /* CYCLE (cycle.c), read by an active matrix slot: ticked here, not in mod_voice (hot RAM) */
@@ -567,10 +784,10 @@ static __attribute__((noinline)) void mod_voice(track_t *t, voice_t *v, vmod_t *
 ' ''
            sc_mut "STEPS' hysteresis removed (eng_wave.c wave_steps: the nearest place every block)" wave_test.c firmware/src/eng_wave.c 'if (wv_stn[ti][vi] != n1 || 4 * (d < 0 ? -d : d) > 3 * (127 << 8)) {' 'if (1) {'
            [ $sc = 0 ] && echo "   PASS" || fail=1 ;;
-  # ---- cloud job H: the pages of the TWIN FILTER (TWIN FILTER, TWIN MOD, TWIN CHAIN), SUB OSC and CYCLE ENV 1/2, 2/2, the graphs of both filters, QUICK MULTI's four cards (docs/design/FILTER_PAGES_PROPOSAL.md Option B,
+  # ---- cloud job H: the pages of the TWIN FILTER (TWIN FILTER, TWIN MOD, TWIN CHAIN), SUB OSC and CYCLE ENV 1/2, 2/2, the graphs of both filters, QUICK EDIT's four cards (docs/design/FILTER_PAGES_PROPOSAL.md Option B,
   # SUB_AND_CYCLE_DESIGN.md A4 / B4 / C3; the owner's answers of 2026-10-19). tests/pages_test.c: (a) every label and value of every new card in every state against the unit's font table (labels 50 px, values 49 px) and the
   # titles in the header, (b) the pages: skipped while TYPE is OFF, the footer's count, the fall back when the page vanishes (a write, a multi load, INIT SOUND, the knob), COMB not offered on WAVE and PHYS, LINK and TYPE through
-  # twin_link_set / twin_type_set, (c) which cards show and where (hide-inert, moved left), the centre-filled gauges, DRIVE OFF, BLEND's ends, WAVE's STEPS card, (d) QUICK MULTI for filter 2 OFF / LINKED / UNLINKED / COMB, (e) the
+  # twin_link_set / twin_type_set, (c) which cards show and where (hide-inert, moved left), the centre-filled gauges, DRIVE OFF, BLEND's ends, WAVE's STEPS card, (d) QUICK EDIT for filter 2 OFF / LINKED / UNLINKED / COMB, (e) the
   # matrix names, (f) the pictures, (g) the SUB OSC and CYCLE ENV cards. (The layout lint over the new pages in both shapes of filter 2 is in `ui`: tests/ui_render.c twin_pass.) The existing UI renders: tests/pages_fp.c draws every
   # page of every family on every engine and the QUICK layers in four parts (header, cards, panel, footer) and hashes them; the base (git ref cloud/base3-wave3, or PAGES_BASE_REF) is built the same way from `git archive`, and
   # tests/pages_fp_diff.py lists what differs: by design only the footer's page counter on the EDIT and ENV pages and the new pages (never regenerated: it only prints; exit 1 on anything else)
@@ -629,7 +846,7 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
     }
     t->p[id] = (int16_t)v;
     (void)motion_capture(t, id, (int16_t)v);'
-           eb_mut "SAVE loses the hand-set values (upreset.c patch save writes no edit list)" morph_ui_test.c firmware/src/upreset.c 'up_xb_nin = morph_edits(pi, ed);' 'up_xb_nin = 0u * morph_edits(pi, ed);'
+           eb_mut "SAVE loses End B and its hand-set values (upreset.c patch save writes no End B block: PT_VER 4's MBV)" morph_ui_test.c firmware/src/upreset.c 'up_bv_n = morph_bv_make(pi, ref, bv);' 'up_bv_n = 0u * morph_bv_make(pi, ref, bv);'
            eb_mut "SAVE loses the hand-set values (morph.c morph_blk_make forgets the marks on its re-roll)" morph_test.c firmware/src/morph.c '                memcpy(morph_pins(mp), pn, PIN_BYTES);' '                memset(morph_pins(mp), 0, PIN_BYTES);'
            [ $eb = 0 ] && echo "   PASS" || fail=1 ;;
   velo)    # KEY SENSE (DUELL_VELO; docs/design/VELO_STUDY.md, docs/VELO_CSV.md): the sense core on a simulated hand (tests/velo_test.c, velo_pill.h), the converter stage of the scan tick against a
@@ -664,14 +881,14 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
            run "velo: the converter stage of the tick (flag on) and the digital scan of the tick as it was (flag off): the same edges" sh -c "$OUT/velo/vtick1 > $OUT/velo/vtick1.txt; r=\$?; cat $OUT/velo/vtick1.txt | tail -5; $OUT/velo/vtick0 > $OUT/velo/vtick0.txt || exit 1; [ \$r = 0 ] && grep HASH $OUT/velo/vtick1.txt > $OUT/velo/vtick1.h && grep HASH $OUT/velo/vtick0.txt > $OUT/velo/vtick0.h && cmp $OUT/velo/vtick1.h $OUT/velo/vtick0.h" &&
            run "velo: fm1_adc.h non-blocking read: the register sequence of the blocking one" $OUT/velo/vadc &&
            run "velo: the hooks (key_on / keyboard_block / aftertouch) with the real sound code; the setting OFF renders every sample as the flag-off build" sh -c "$OUT/velo/vhook1 > $OUT/velo/vhook1.txt; r=\$?; tail -22 $OUT/velo/vhook1.txt; $OUT/velo/vhook0 > $OUT/velo/vhook0.txt || exit 1; [ \$r = 0 ] && [ \$(grep -c HASH $OUT/velo/vhook0.txt) = 6 ] && grep HASH $OUT/velo/vhook1.txt > $OUT/velo/vhook1.h && grep HASH $OUT/velo/vhook0.txt > $OUT/velo/vhook0.h && cmp $OUT/velo/vhook1.h $OUT/velo/vhook0.h" &&
-           run "velo: the replay of a recording (tools/velo_replay.py) = the core's own run" sh -c "$OUT/velo/velo_test --csv $OUT/velo/hand.csv $OUT/velo/ref.csv && python3 -I tools/velo_replay.py $OUT/velo/hand.csv --landings $OUT/velo/out.csv > $OUT/velo/replay.txt && tail -n +2 $OUT/velo/out.csv | cmp - $OUT/velo/ref.csv && grep -q '^     all    600 ' $OUT/velo/replay.txt && tail -3 $OUT/velo/replay.txt" &&
-           run "velo: the firmware builds with DUELL_VELO=1 (syntax; the device's assembler is not here)" sh -c "cc -fsyntax-only -w \$([ \$(uname) = Darwin ] && echo '-target x86_64-unknown-linux-gnu') -Ifirmware/hal -Ifirmware/src -Ibuild/gen -DDUELL_VELO=1 '-DFELUCCA_ID=\"FM-1_900\"' firmware/src/felucca.c" &&
+           run "velo: the replay of a recording (tools/velo_replay.py) = the core's own run" sh -c "$OUT/velo/velo_test --csv $OUT/velo/hand.csv $OUT/velo/ref.csv && python3 -I tools/velo_replay.py $OUT/velo/hand.csv --landings $OUT/velo/out.csv > $OUT/velo/replay.txt && tail -n +2 $OUT/velo/out.csv | tr -d '\r' > $OUT/velo/out_lf.csv && tr -d '\r' < $OUT/velo/ref.csv | cmp - $OUT/velo/out_lf.csv && grep -q '^     all    600 ' $OUT/velo/replay.txt && tail -3 $OUT/velo/replay.txt" &&
+           run "velo: the firmware builds with DUELL_VELO=1 (syntax; the device's assembler is not here)" sh -c "cc -fsyntax-only -w \$([ \$(uname) = Darwin ] && echo '-target x86_64-unknown-linux-gnu') -D_INC_MEMORY -D_INC_STRING -Ifirmware/hal -Ifirmware/src -Ibuild/gen -DDUELL_VELO=1 '-DFELUCCA_ID=\"FM-1_900\"' firmware/src/felucca.c" &&
            velo_mut "the gap guard removed (sense.c sk: a gap is no gap)" firmware/src/sense.c 's#gap = (k->fl & K_SEEN) && (uint32_t)(t - k->t_last) > SC_GAP_US;#gap = 0;#' &&
            velo_mut "a release accepted on one open sample (SC_REL_N 1)" firmware/src/sense.c 's#if (++k->nopen >= SC_REL_N)#if (++k->nopen >= 1u)#' &&
            velo_mut "the calibration made one-way (the floor only down, the ceiling only up)" firmware/src/sense.c 's#: lo + eta \* SC_Q_LO / 1000u;#: lo;#' firmware/src/sense.c 's#: hi - eta \* SC_Q_HI / 1000u;#: hi;#'
            echo "== velo: flag-off preprocessor output of felucca.c equals the tree before KEY SENSE (VELO_BASE)"
            pb=; [ -n "$VELO_BASE" ] && pb=$(git rev-parse --verify -q "$VELO_BASE")
-           if [ -z "$pb" ]; then echo "   skipped: VELO_BASE not set (e.g. VELO_BASE=cloud/base3-wave4 on the merge commit of KEY SENSE)"; else
+           if [ -z "$pb" ]; then echo "   (optional part) skipped: VELO_BASE not set (e.g. VELO_BASE=cloud/base3-wave4 on the merge commit of KEY SENSE)"; else
              rm -rf build/velo_base; mkdir -p build/velo_base
              git -C .. archive $pb felucca-base/firmware | tar -x -C build/velo_base && vb=0
              for m in "" "-DDUELL_TEST_MODE=1"; do
@@ -682,8 +899,9 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
              [ "$vb" = 0 ] && echo "   PASS" || { echo "   FAIL"; fail=1; }
            fi ;;
   ldrscreen) P=$(ls -t build/duell-*.fwsc 2>/dev/null); O=${LDR_OLD:-$(echo "$P" | sed -n 2p)}; N=${LDR_NEW:-$(echo "$P" | sed -n 1p)}; [ -n "$O" ] || O=$N   # (LDR_OLD and LDR_NEW, else the newest two packages in build/; one package is used as both)
+           if [ -z "$N" ]; then run ldrscreen echo "SKIP no update package (build/duell-*.fwsc, or LDR_OLD / LDR_NEW): fm1pkg_make.py needs the JieLi SDK of a device build"; else
            $CC -O1 -DLDR_SCREEN_TEST=1 -o $OUT/ldr_test_screen tests/ldr_test.c -lm && $CC -O1 -o $OUT/ldr_test_plain tests/ldr_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
-           run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }" ;;
+           run ldrscreen sh -c "$OUT/ldr_test_screen $O $N > $OUT/ldr_s.log && $OUT/ldr_test_plain $O $N > $OUT/ldr_p.log && [ \"\$(grep FINAL $OUT/ldr_s.log)\" = \"\$(grep FINAL $OUT/ldr_p.log)\" ] && grep -q 'loader test passed' $OUT/ldr_s.log && grep -q 'loader test passed' $OUT/ldr_p.log || { grep -E 'FAIL|FINAL' $OUT/ldr_s.log $OUT/ldr_p.log; exit 1; }"; fi ;;
   lcdboot) cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_late -DFM1_LCD_BL_LATE=1 tests/lcd_boot_test.c && cc -O1 -w -Ifirmware/hal -Ifirmware/src -o $OUT/lcd_boot_ldr tests/lcd_boot_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } &&
            { run lcdboot_main $OUT/lcd_boot_late; run lcdboot_loader $OUT/lcd_boot_ldr
              run lcdboot_sources sh -c 'li() { awk "/^static void lcd_init\\(void\\)/,/^}/" | grep -c fm1_lcd_backlight; }
@@ -717,9 +935,11 @@ static void midi_cc_set(track_t *t, uint32_t id, uint32_t value)
            python3 tests/midimap_refgen.py build/gen_test >/dev/null
            mmm "the lock check removed (map_set and map_clear take a standard number)" firmware/src/midi_learn.c 's/if (MAP_LOCKED_CC(cc))$/if (0 \&\& MAP_LOCKED_CC(cc))/'
            mmm "two parameters allowed on one CC (a taken number is no conflict)" firmware/src/midi_learn.c 's/ \&\& !force) {/ \&\& 0) {/'
-           mmm "the morph trigger back on the CC number (bit cc - 21)" firmware/src/midi_control.c 's/uint32_t pi, uint32_t code, uint32_t value)$/uint32_t pi, uint32_t code, uint32_t value, uint32_t cc)/' \
+           mmm "the morph trigger back on the CC number (bit cc - 21)" firmware/src/midi_control.c 's/midi_morph(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)$/midi_morph(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value, uint32_t cc)/' \
                firmware/src/midi_control.c 's/midi_morph(ch, trk_index(t), code, value);/midi_morph(ch, trk_index(t), code, value, cc);/' \
                firmware/src/midi_control.c 's/b = 1u << (code - MAP_T_ROLL_A);/b = 1u << (cc - 21u);/'
            mmm "ROLL's halves moved (End B from 64 instead of 85: the middle rolls)" firmware/src/midi_control.c 's/if (value < 85u)$/if (value < 64u)/' ;;
 esac; done
+# the self-checks' copies of firmware/ and tests/ (build/*_mut, a few MB each) are kept only when something failed, to look at
+[ "$fail" -eq 0 ] && rm -rf build/*_mut
 exit $fail

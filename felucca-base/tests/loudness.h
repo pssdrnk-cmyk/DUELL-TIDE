@@ -15,7 +15,7 @@
 #define LZ_HOLD 4.0               /* the default hold (s); the variable lz_hold overrides it (the sound audit: 10 s, the tap: 1 s) */
 #define LZ_HOLD_MAX 10.0
 #define LZ_TAIL 1.0
-#define LZ_NBMAX ((uint32_t)((LZ_HOLD_MAX + LZ_TAIL) * FS) / CTL)
+#define LZ_NBMAX ((((uint32_t)LZ_HOLD_MAX + (uint32_t)LZ_TAIL) * FS) / CTL)   /* (integer arithmetic: a float expression is no constant array size to gcc) */
 static double lz_hold = LZ_HOLD;  /* set before lz_spawn (the child forks with it) */
 static void (*lz_pre_block)(void);   /* (tests/multi_loudness.c: run before every block, in the child; default none) */
 static const char *lz_dump_name;  /* cloud job J (the proof renders): when set before lz_spawn, the child also writes the render, int32 left / right pairs (mix before MASTER, as measured), to this file */
@@ -219,3 +219,87 @@ static lz_t lz_render(lz_setup_t setup, void *arg, const uint8_t *notes, uint32_
 {
     return lz_collect(lz_spawn(setup, arg, notes, nn));
 }
+
+/* ---- tests/tide_roles_test.c (roles spec, metrics 4.3 and 4.4): the low-band meter and the K-weighting ----
+ * The band meter: a render's mix before MASTER (mix_l / mix_r + wet), per channel, through a high-pass at hp_hz and a low-pass at lp_hz, against the raw
+ * energy of the same samples: the band's level under the full band (dB, a negative number). Two filter sets run side by side. 'steep' is the one the
+ * metric is held on: a 2nd-order Butterworth high-pass and a 4th-order low-pass (two RBJ sections), so a chord's 300 Hz .. 2 kHz is not counted as bass.
+ * 'one-pole' is the spec's literal text (one one-pole each way): its skirt is 6 dB an octave, so a chord at 300 Hz leaks into a 120 Hz band at about
+ * -8.6 dB and the figure says more about the filter than about the music; it is printed as a reference only.
+ * The K-weighting is tests/gen_factory_multis.c's (ITU-R BS.1770 pre-filter and RLB high-pass, no gate: -0.691 + 10 log10 of the channels' summed mean
+ * square, full scale 32767 = 0), so 4.4 reads the same figure as `gen_factory_multis loud`. */
+typedef struct { double b0, b1, b2, a1, a2, x1, x2, y1, y2; } lz_bq_t;
+static double lz_bq(lz_bq_t *f, double x)
+{
+    double y = f->b0 * x + f->b1 * f->x1 + f->b2 * f->x2 - f->a1 * f->y1 - f->a2 * f->y2;
+    f->x2 = f->x1, f->x1 = x, f->y2 = f->y1, f->y1 = y;
+    return y;
+}
+static void lz_bq_rbj(lz_bq_t *f, int high, double fc, double q)      /* RBJ cookbook low-pass / high-pass at fc Hz (FS) */
+{
+    double w = 2.0 * M_PI * fc / FS, c = cos(w), al = sin(w) / (2.0 * q), a0 = 1.0 + al;
+    memset(f, 0, sizeof *f);
+    f->b0 = ((high ? 1.0 + c : 1.0 - c) / 2.0) / a0;
+    f->b1 = (high ? -(1.0 + c) : 1.0 - c) / a0;
+    f->b2 = f->b0;
+    f->a1 = -2.0 * c / a0;
+    f->a2 = (1.0 - al) / a0;
+}
+typedef struct {
+    lz_bq_t hp[2], lp1[2], lp2[2];            /* steep: per channel a 2nd-order high-pass and the two sections of a 4th-order low-pass */
+    double ahp, alp, hx[2], hy[2], ly[2];     /* one-pole: the high-pass a, the low-pass a, the states */
+    double full, band, band1;                 /* energies: raw, steep band, one-pole band */
+} lz_band_t;
+static void lz_band_init(lz_band_t *b, double hp_hz, double lp_hz)
+{
+    uint32_t c;
+    memset(b, 0, sizeof *b);
+    for (c = 0; c < 2u; c++) {
+        lz_bq_rbj(&b->hp[c], 1, hp_hz, 0.70710678);
+        lz_bq_rbj(&b->lp1[c], 0, lp_hz, 0.54119610);
+        lz_bq_rbj(&b->lp2[c], 0, lp_hz, 1.30656296);
+    }
+    b->ahp = 1.0 / (1.0 + 2.0 * M_PI * hp_hz / FS);
+    b->alp = 1.0 - exp(-2.0 * M_PI * lp_hz / FS);
+}
+static void lz_band_push(lz_band_t *b, uint32_t c, double x)
+{
+    double h = lz_bq(&b->hp[c], x), s = lz_bq(&b->lp2[c], lz_bq(&b->lp1[c], h)), o;
+    o = b->ahp * (b->hy[c] + x - b->hx[c]);              /* (1-pole high-pass, then 1-pole low-pass) */
+    b->hx[c] = x;
+    b->hy[c] = o;
+    b->ly[c] += b->alp * (o - b->ly[c]);
+    b->full += x * x;
+    b->band += s * s;
+    b->band1 += b->ly[c] * b->ly[c];
+}
+static double lz_band_db(const lz_band_t *b) { return b->full > 0 ? 10.0 * log10((b->band + 1e-30) / b->full) : 0.0; }     /* the steep band under the full band */
+static double lz_band_db1(const lz_band_t *b) { return b->full > 0 ? 10.0 * log10((b->band1 + 1e-30) / b->full) : 0.0; }  /* the one-pole band (reference) */
+
+typedef struct { lz_bq_t sh[2], hp[2]; double e, pk; uint32_t n; } lz_kw_t;
+static void lz_kw_init(lz_kw_t *k)
+{
+    double f0 = 1681.974450955533, G = 3.999843853973347, Q = 0.7071752369554196, K = tan(M_PI * f0 / FS), Vh = pow(10.0, G / 20.0), Vb = pow(Vh, 0.4996667741545416), a0 = 1.0 + K / Q + K * K;
+    uint32_t c;
+    memset(k, 0, sizeof *k);
+    k->sh[0].b0 = (Vh + Vb * K / Q + K * K) / a0;
+    k->sh[0].b1 = 2.0 * (K * K - Vh) / a0;
+    k->sh[0].b2 = (Vh - Vb * K / Q + K * K) / a0;
+    k->sh[0].a1 = 2.0 * (K * K - 1.0) / a0;
+    k->sh[0].a2 = (1.0 - K / Q + K * K) / a0;
+    f0 = 38.13547087602444, Q = 0.5003270373238773, K = tan(M_PI * f0 / FS);
+    k->hp[0].b0 = 1.0, k->hp[0].b1 = -2.0, k->hp[0].b2 = 1.0;
+    k->hp[0].a1 = 2.0 * (K * K - 1.0) / (1.0 + K / Q + K * K);
+    k->hp[0].a2 = (1.0 - K / Q + K * K) / (1.0 + K / Q + K * K);
+    for (c = 1; c < 2u; c++)
+        k->sh[c] = k->sh[0], k->hp[c] = k->hp[0];
+}
+static void lz_kw_push(lz_kw_t *k, uint32_t c, double x)    /* x: full scale 1.0 */
+{
+    double y = lz_bq(&k->hp[c], lz_bq(&k->sh[c], x));
+    k->e += y * y;
+    k->pk = fabs(x) > k->pk ? fabs(x) : k->pk;
+    k->n += c;                                               /* (one count a stereo frame: the channels' summed mean square) */
+}
+static double lz_kw_db(const lz_kw_t *k) { return -0.691 + 10.0 * log10(k->e / (k->n ? k->n : 1u) + 1e-30); }
+static double lz_kw_peak_db(const lz_kw_t *k) { return 20.0 * log10(k->pk + 1e-12); }

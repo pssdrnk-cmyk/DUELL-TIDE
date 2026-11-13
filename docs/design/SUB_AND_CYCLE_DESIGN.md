@@ -1,5 +1,7 @@
 # SUB LAYER, CYCLING ENVELOPE and WAVE STEPS: design study (2026-10-19)
 
+> Design record. The feature is built; what ships is described in [SPEC.md](../../SPEC.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 Private. Research and design only: no code was changed, no branch was made, INDEX.md was not touched. I wrote and retuned no sounds. Every page, label and knob below is a proposal for you to approve, not a decision.
 
 Marks (as in the TWIN FILTER studies):
@@ -28,7 +30,7 @@ New words (not yet in GLOSSARY.md or the TWIN FILTER studies):
 **A. SUB LAYER.** A plain sub oscillator on every note of every engine. It is mixed into the note before filter 1, so the TWIN chain (filter 1, DRIVE, filter 2) shapes it the classic way. Four controls: WAVE (SINE, TRI, SQUARE, PULSE), OCTAVE (-2, -1, 0), HARMONICS (adds the sub's own octave overtones so it is heard on small speakers) and LEVEL. It follows everything the note does (glide, bend, vibrato, the PITCH routes, master tune), because it reads the same pitch the engine gets once per block.
 - **What you get:** a solid low end under FM6, WAVE, VOICE, PHASE and NOISE sounds, Juno/SH-101-style square subs under ANALOG, without giving up an engine oscillator.
 - **Cost:** about 0.7 points a note for a SINE sub. That number is calibrated on WAVE's own SINE sub, measured at +22 host instructions a sample. A SQUARE sub costs about 1 point, and full HARMONICS on a SQUARE about 1.8 (est.). A part that plays 8 notes then plays about 7. **Your worry is the other way round:** the sub costs the same on every engine, so it hurts the lightest engine (LOFI) most and PHYS least (+4 %). No engine needs to be excluded, and the NOTES counter shows the cost honestly. In UNISON there is one sub per key, not one per detuned voice.
-- **Main risk:** core 1's code RAM. The sub should ride on TWIN's new voice chain instead of adding its own branch to the hot block, so it is best built right after TWIN step 1. FM6 needs a small extra piece: its notes follow their own operator envelopes, not the AMP ENV.
+- **Main risk:** core 1's code RAM. The sub should ride on TWIN's new voice chain instead of adding its own branch to the hot code, so it is best built right after TWIN step 1. FM6 needs a small extra piece: its notes follow their own operator envelopes, not the AMP ENV.
 
 **B. CYCLING ENVELOPE ("CYCLE").** A new, separate per-note generator: it rises, falls and starts again while the note sounds, as on a Eurorack function generator. Four controls: MODE (LOOP or ONCE), RISE, FALL and CURVE. With ENV SYNC on, RISE and FALL become note values. It is a new matrix source, CYCLE.
 - **What you get beyond the LFOs:** every note of a chord pulses from its own key-down (the LFOs are per part, CONFIRMED). Rise and fall are independent (lopsided shapes). CURVE gives percussive, bouncing decays. ONCE gives you a third AD envelope.
@@ -174,7 +176,7 @@ Device factor: code in RAM x 0.85 (CPU_PLAN). The NOTES table adds its own 1.15 
 **Code (est.):**
 - About 0.4 to 0.7 KB of core-1 code: the oscillator with four waves, the octave copies, the unison rule, the FM6 hook, and the switch cross-fade.
 - About 0.8 to 1.2 KB in flash: the page, morph rules, the matrix destination, the format and the NOTES row.
-- **Where it must live (CONFIRMED, MERGE_JOIN1 and design 1 section 4.4):** core 1 runs only from RAM. The hot block is at its 228 B limit, and range Z is at its temporary rule.
+- **Where it must live (CONFIRMED, MERGE_JOIN1 and design 1 section 4.4):** core 1 runs only from RAM. The hot code is at its 228 B limit, and range Z is at its temporary rule.
 - The cheapest placement is inside TWIN's new chain function. That function already has its own branch out of `track_render`: the branch fires when TWIN is on or LEVEL is above 0, so the sub adds **0 hot bytes**. It can also use the range-X room that design 2 frees when the engine filters go (1.0 to 1.4 KB, est.).
 - Without TWIN, the sub needs its own branch in `track_render` (16 to 24 hot bytes, est.), which needs the RAM shrink first.
 - Removing WAVE's own SUB gives back about 60 to 100 B.
@@ -315,8 +317,8 @@ Effort: about 1 round, plus your listening session.
 
 **Zero cost when unused, zero hot bytes:**
 - Like ENV 2, CYCLE ticks only while an active slot reads it.
-- Best of all, it ticks **inside `mod_voice`**, which already runs once per note and block whenever the matrix is on, and which lives outside the hot block (CONFIRMED: `noinline`, called from `track_render` line 1158). The hot block (at its 228 B limit) is not touched.
-- The new note's start (setting the rise) goes in `voice_start` next to `v->stage2 = 1`, a few bytes (HYPOTHESIS that `voice_start` is not in the hot block; the hot list in `tools/hot_fns.py` decides).
+- Best of all, it ticks **inside `mod_voice`**, which already runs once per note and block whenever the matrix is on, and which lives outside the hot code (CONFIRMED: `noinline`, called from `track_render` line 1158). The hot code (at its 228 B limit) is not touched.
+- The new note's start (setting the rise) goes in `voice_start` next to `v->stage2 = 1`, a few bytes (HYPOTHESIS that `voice_start` is not in the hot code; the hot list in `tools/hot_fns.py` decides).
 
 **Stored values:** MODE, RISE, FALL, CURVE: 4 values in the extension block (no free ids).
 
@@ -436,7 +438,7 @@ Effort: about 1 round, plus your listening session.
 | Item | Rounds (est.) | Depends on | Cloud (simulation-testable) | Local (needs the unit or you) |
 |---|---|---|---|---|
 | A. SUB proof (A5) | 1 + your listening | nothing | the renders, cost rows, aliasing, step tests | your listening |
-| A. SUB LAYER | 2 to 3 | the extension block (stage A); best after TWIN step 1 (its chain and branch); the FM6 hook | the oscillator, octave and unison rules, the FM6 hook on the host, morph switching, the NOTES row, the matrix destination, the format | RAM placement (range X / Z, hot block), timing on the unit, the SUB OSC page after your layout approval, ears |
+| A. SUB LAYER | 2 to 3 | the extension block (stage A); best after TWIN step 1 (its chain and branch); the FM6 hook | the oscillator, octave and unison rules, the FM6 hook on the host, morph switching, the NOTES row, the matrix destination, the format | RAM placement (range X / Z, hot code), timing on the unit, the SUB OSC page after your layout approval, ears |
 | B. CYCLE | 1 to 2 | the extension block | the generator, curves, sync, the matrix source plumbing, morph, NOTES row | the page and graph on the device, ears |
 | C. WAVE STEPS | 0.5 prototype + 1 | nothing | the rounding, hysteresis, cross-fade click tests, morph | the card on the device, ears |
 
@@ -490,7 +492,7 @@ Effort: about 1 round, plus your listening session.
 | Page list, ENV 2 DEST / MULTI FILTER 2/2 cards, 11-character titles | `params.c` `PAGES` | CONFIRMED |
 | Free ids all used by TWIN (25, 26, 42, 106, 113); 6 TWIN values in the extension block | TWIN_FILTER_DESIGN_2.md 3.2 | CONFIRMED there |
 | Extension block, 13 B of room today, stage A | HEADLINE_FEATURES.md | CONFIRMED there |
-| Hot block at its 228 B limit; range Z rule; RAM headroom | MERGE_JOIN1 via TWIN_FILTER_DESIGN.md 4.4 | CONFIRMED (build numbers) |
+| Hot code at its 228 B limit; range Z rule; RAM headroom | MERGE_JOIN1 via TWIN_FILTER_DESIGN.md 4.4 | CONFIRMED (build numbers) |
 | BASS MONO default on at 200 Hz | `core.h` `BM_DEF`, `BM_HZ` | CONFIRMED |
 | WAVE: 19 frames, sine phase, POS moved by SHP routes, block ramp `fp0` → `fp1` in `v->s[0]`, E7/E8 unused, table 24 STEPS | `eng_wave.c`, SPEC 2.6 | CONFIRMED |
 | Clipper ENV2 LOOP: `P_E2LOOP`, restart near SUS, per voice, ends at release; HYBRID ENV2 has no loop and no sub; README "SUB a sine an octave down" (a WAVE feature) | github.com/isod89/clipper-fm1: README, `firmware/src/voice.c`, `firmware/src/eng_hybrid.c` (read through the web fetch tool's summary) | CONFIRMED in those files (through the fetch summary) |
@@ -503,7 +505,7 @@ Effort: about 1 round, plus your listening session.
 **Not verified:**
 - every cost figure except WAVE's measured SUB row;
 - that FM6's `gain_out` gives a usable loudness for the sub;
-- whether `voice_start` is in the hot block;
+- whether `voice_start` is in the hot code;
 - how much room range X really frees when the engine filters go;
 - whether the Microwave has its own step switch;
 - the loudness curve LEVEL needs.

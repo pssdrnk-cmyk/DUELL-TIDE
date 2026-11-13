@@ -1,0 +1,86 @@
+[
+ {
+  "tag_name": "beta-2026-11-04",
+  "name": "Beta 2026-11-04 (under test)",
+  "draft": false,
+  "prerelease": true,
+  "created_at": "2026-11-04T08:00:00Z",
+  "published_at": "2026-11-04T08:05:00Z",
+  "html_url": "https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/beta-2026-11-04",
+  "target_commitish": "jam11",
+  "body": "**Beta: under test.** Build `77a6df2`, flashed to the fork owner's FM-1 on 2026-11-04. For the validated build, use **stable-2026-11-03**.\n\n**New since stable**\n- TIDE SETTINGS: **STYLE** (DUB, DEEP, MINIMAL, AMBIENT, PEAK: one move sets the tide for a genre), **TURNS** (TOGETHER, TAKE TURNS, LEAD, ECHO), **POLY**, **SYNC**, **ARC** (a 36 to 64 bar rise, peak and breakdown; a drop by hand). They're explained [on the front page](https://github.com/pssdrnk-cmyk/DUELL-TIDE#new-tide-settings-in-homes-round).\n- JRNY picks within the sound's role family on the part's own engine and skips its last four destinations.\n- USER slots (U1 to U4, P29 to P32), 32 more factory sounds (#129 to #160), new chord and pad patterns, sequences for the multis that had none (M16 is CELLAR TAPE), previews in the MULTIS and PATTERNS lists.\n- Live ENV / LFO / CYCLE graphs; CHORD and GLO / MIXER fixes.\n\n**Known open issues (fixes in progress)**\n- The SAVE > MULTIS page layout is hard to read.\n- The TIDE page step bars don't always match what plays.\n- Some sound can continue after STOP (STOP ALL, a double press or a 0.6 s hold, silences everything).\n\n**Install**\n- `duell-tide-beta-2026-11-04.fwsc`, SHA-256 `d94ac77c368417a889728e57db64f4b0853eaa0a2152e37ad4c97df9014e5d7c`. Install it with `jam/jam_dev.py flash` (it backs the unit up first), or with the web installer's beta option.\n- **Use at your own risk.** A failed write can leave the unit dark; see [RECOVERY](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/RECOVERY.md). Back up first. GPL-3.0-only, no warranty.\n",
+  "assets": [
+   {
+    "name": "duell-tide-beta-2026-11-04.fwsc",
+    "size": 614666,
+    "content_type": "application/octet-stream",
+    "digest": "sha256:d94ac77c368417a889728e57db64f4b0853eaa0a2152e37ad4c97df9014e5d7c"
+   },
+   {
+    "name": "duell-tide-beta-2026-11-04.fwsc.sha256",
+    "size": 98,
+    "content_type": "application/octet-stream"
+   }
+  ]
+ },
+ {
+  "tag_name": "beta-2026-11-05-draft",
+  "name": "unpublished draft",
+  "draft": true,
+  "prerelease": true,
+  "created_at": "2026-11-05T08:00:00Z",
+  "published_at": null,
+  "html_url": "https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/beta-2026-11-05-draft",
+  "target_commitish": "jam11",
+  "body": "draft",
+  "assets": [
+   {
+    "name": "duell-tide-beta-2026-11-05.fwsc",
+    "size": 1,
+    "content_type": "application/octet-stream"
+   }
+  ]
+ },
+ {
+  "tag_name": "stable-2026-11-03",
+  "name": "Stable 2026-11-03",
+  "draft": false,
+  "prerelease": false,
+  "created_at": "2026-11-04T07:50:00Z",
+  "published_at": "2026-11-04T07:55:00Z",
+  "html_url": "https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/stable-2026-11-03",
+  "target_commitish": "jam11",
+  "body": "**Stable: tested and validated on the fork owner's FM-1.** Build `187e9d0`, flashed 2026-11-03.\n\nDUELL 1.1 by OSCILL/R plus **TIDE**, a morph that plays and evolves by itself. This is pssdrnk's fork, not an OSCILL/R release; please report problems in this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues), not to the DUELL author.\n\n**In this build**\n- AUTO TIDE in HOME's round: ONCE, LOOP, DRIFT, WNDR and JRNY, with TIME and WAIT; one part or both.\n- TIDE SETTINGS: TARGET (SOUND / SEQ / BOTH), VARY BARS, ROLL (MUSIC, SMART, WILD), ARP, PITCH, WASH LEVEL.\n- SEQ MORPH (a pattern has an End A and an End B), ARP SEQ on PLAY, KEEP.\n- Fixes over DUELL 1.1 (MODE / SPLIT, MIDI clock phase, FM6 live level, UNISON spread, PHYS tuning) and a smaller flash footprint (boot pack).\n\n**Install**\n- `duell-tide-stable-2026-11-03.fwsc` is the exact package flashed to the owner's unit. SHA-256: `7795e77798d053177a4d0b099f0754701e16e308c92fbe22fd54913abac41b30`.\n- Flash it with the [web installer](https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/) or `jam/jam_dev.py flash` (it backs the unit up first). To build it yourself, use branch `stable`.\n- **Use at your own risk.** TIDE has run on one FM-1. A failed write can leave the unit dark; see [RECOVERY](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/RECOVERY.md). Back up first. GPL-3.0-only, no warranty.\n",
+  "assets": [
+   {
+    "name": "duell-tide-stable-2026-11-03.fwsc",
+    "size": 614666,
+    "content_type": "application/octet-stream",
+    "digest": "sha256:7795e77798d053177a4d0b099f0754701e16e308c92fbe22fd54913abac41b30"
+   },
+   {
+    "name": "duell-tide-stable-2026-11-03.fwsc.sha256",
+    "size": 100,
+    "content_type": "application/octet-stream"
+   }
+  ]
+ },
+ {
+  "tag_name": "beta-2026-11-01",
+  "name": "older beta",
+  "draft": false,
+  "prerelease": true,
+  "created_at": "2026-11-01T08:00:00Z",
+  "published_at": "2026-11-01T08:05:00Z",
+  "html_url": "https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/beta-2026-11-01",
+  "target_commitish": "jam11",
+  "body": "an older beta, superseded by the stable build",
+  "assets": [
+   {
+    "name": "duell-tide-beta-2026-11-01.fwsc",
+    "size": 600000,
+    "content_type": "application/octet-stream"
+   }
+  ]
+ }
+]

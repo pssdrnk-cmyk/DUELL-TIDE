@@ -21,6 +21,7 @@ static int32_t cv_trk_r(int32_t x, int32_t y, uint32_t size, uint32_t k, uint16_
     const aafont_t *f = size > 16u ? &AF_M : &AF_S;
     char s[2] = {(char)('1' + k), 0};
     const aag_t *g = &f->g[glyph(f, (uint8_t)s[0])];
+    const aagm_t *m = &f->metrics[glyph(f, (uint8_t)s[0]) >> f->psh];
     int32_t in = size > 16u ? 2 : 0, w = (int32_t)size - 2 * in;
     int32_t nud = k == 0u ? 1 : 0;   /* the 1's ink centred looks right of centre (its flag): nudged left 1 px (2 looked left) */
     cv_rrect(x + in, y + in, w, w, -(w / 4), fill, under);
@@ -28,9 +29,9 @@ static int32_t cv_trk_r(int32_t x, int32_t y, uint32_t size, uint32_t k, uint16_
         cv_rrect(x + in + 2, y + in + 2, w - 4, w - 4, -((w - 4) / 4), under, fill);
     GFX_HOOK_ALIGN(x + in - nud, y + in, x + in + w - nud, y + in + w, AL_HV, "track cushion digit");   /* (the 1: measured against its nudge) */
     if (ring)
-        cv_text_on(x + in + (w - g->bw) / 2 - g->bx - nud, y + in + (w - g->bh) / 2 - g->by, f, s, fill, under);
+        cv_text_on(x + in + (w - (int32_t)glyph_bw(g)) / 2 - glyph_bx(g) - nud, y + in + (w - m->bh) / 2 - m->by, f, s, fill, under);
     else
-        cv_text_on(x + in + (w - g->bw) / 2 - g->bx - nud, y + in + (w - g->bh) / 2 - g->by, f, s, under, fill);   /* its ink centred */
+        cv_text_on(x + in + (w - (int32_t)glyph_bw(g)) / 2 - glyph_bx(g) - nud, y + in + (w - m->bh) / 2 - m->by, f, s, under, fill);   /* its ink centred */
     GFX_HOOK_ITEM(x + in, y + in, x + in + w, y + in + w);
     return (int32_t)size;
 }
@@ -92,7 +93,7 @@ static int32_t cv_icon_on(int32_t x, int32_t y, uint32_t size, uint32_t id, uint
     cv_alpha_hc(x, y, size, size, size == 24u ? AI24_DATA + AI24_OFF[k] : size == 16u ? AI16_DATA + AI16_OFF[k] :
                 AI12_DATA + AI12_OFF[k], AI_HC, ramp(fg, bg));
     GFX_HOOK_ICON(x, y, size, id);
-    GFX_HOOK_TEXT(x, y + cv_oy, x + (int32_t)size, y + cv_oy + (int32_t)size, "icon", 4u);
+    GFX_HOOK_TEXT(x, y + CV_Y, x + (int32_t)size, y + CV_Y + (int32_t)size, "icon", 4u);
     return (int32_t)size;
 }
 /* the same, its ink centred across x .. x + w (w 0: the cell at x) and up and down in y .. y + h (h 0: the cell at y);
@@ -149,7 +150,7 @@ static const icon_map_t ICON_MAP[] = {
     {"FDBK", ICON_FEEDBACK}, {"COLR", ICON_TONE}, {"MIX", ICON_MIX}, {"SIZE", ICON_SIZE},
     {"DAMP", ICON_DAMP}, {"TYPE", ICON_REVERB}, {"CRT", ICON_RATE}, {"CDP", ICON_MOD}, {"MIDI", ICON_MIDI},
     {"SYNC", ICON_TEMPO}, {"ROUT", ICON_MIX}, {"CPU", ICON_CHIP}, {"SLOT", ICON_SAVE},
-    {"LOAD", ICON_LOAD}, {"SAVE", ICON_SAVE}, {"ENG", ICON_WAVE}, {"CLRSQ", ICON_CLEAR},
+    {"LOAD", ICON_LOAD}, {"SAVE", ICON_SAVE}, {"ENG", ICON_WAVE}, {"CLFO", ICON_TONE},
     {"INIT", ICON_CLEAR}, {"ERASE", ICON_CLEAR}, {"CH", ICON_MIDI}, {"LEVEL", ICON_LEVEL},
     /* engines (eng_*.c edit[] labels) */
     {"DTN", ICON_DETUNE}, {"NOIS", ICON_NOISE}, {"CUT", ICON_CUTOFF}, {"RES", ICON_RESO},

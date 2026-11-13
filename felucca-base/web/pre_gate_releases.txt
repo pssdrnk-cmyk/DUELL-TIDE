@@ -1,0 +1,12 @@
+# The releases published before the CI gate (releases.py --require-green). Each is offered as it was, without a green Host tests run on its commit;
+# the log says "published before the CI gate". A line matches only while the tag still points at that commit. Do NOT add a new release here:
+# a new release is gated, run Host tests on its commit (Actions > Host tests > Run workflow, pick the tag) instead.
+# tag                  commit (full SHA)
+tide-1.0.0-b9          78876258ba54f393a3408906b8516d53c74788e6
+tide-1.0.0-b6          a860f3ee92eed4c72ff50e00c9be44ef996a1fdb
+tide-1.0.0-b4          d519548a462c8a0de608bac5760fbd26088719c3
+tide-1.0.0-b3          c1249351f13b3d6bb0e6f765d81e3fb2016cdbe8
+tide-1.0.0-b2          0d2fcb940d05ae67500eabfbde9d00b747914032
+tide-1.0.0-b1          817658dc27a75a16ba5c5cfae13e9cc42a7f9a90
+stable-2026-11-03      187e9d07e5cf7d4718822e44acf21047881bc367
+beta-2026-11-04        77a6df22cd3d457a1a1eacf3440366af7370c403

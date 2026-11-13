@@ -168,22 +168,6 @@ static void wt_changed(uint32_t u)
         wvj.on = 0;
 }
 
-static uint64_t wv_isqrt(uint64_t v)
-{
-    uint64_t r = 0, b = (uint64_t)1 << 62;
-    while (b > v)
-        b >>= 2;
-    while (b) {
-        if (v >= r + b) {
-            v -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return r;
-}
 /* the levels of the drawbars 0..8 (Q16): -3 dB a step, 8 = 1 */
 static const uint16_t WV_DB[9] = {0, 5843, 8250, 11654, 16462, 23253, 32846, 46395, 65535};
 /* ORGAN: the drawbars 8' 4' 2 2/3' 2' 1 3/5' 1 1/3' 1' (the harmonics 1 2 3 4 5 6 8; the 16' is the SUB LAYER's, SINE OCTAVE -1, chain_sub.c),
@@ -333,7 +317,7 @@ static void wv_recipe(uint32_t tb, int32_t x, int32_t *a)
         case 8: {                                            /* RESO: a saw through a resonant low-pass (Q 6) swept from */
             int64_t c = wv_exp2(65536 + x * 5), r = ((int64_t)k << 32) / c, om = 65536 - ((r * r) >> 16);   /* harmonic 2 to 64 */
             int64_t den = om * om + (r / 6) * (r / 6);
-            uint64_t sq = wv_isqrt((uint64_t)den);
+            uint64_t sq = isqrt64((uint64_t)den);
             v = (int32_t)((((int64_t)1 << 32) / (int64_t)(sq ? sq : 1)) / (int32_t)k);
             break;
         }
@@ -345,7 +329,7 @@ static void wv_recipe(uint32_t tb, int32_t x, int32_t *a)
         }
         case 13: {                                           /* ROUGH: saw -> random levels and signs, k^-1/2 (a fixed draw: */
             uint32_t h = k * 2654435761u, r = 13107u + (((h >> 16) * 52429u) >> 16);   /* the same on every build) */
-            int64_t is = ((int64_t)1 << 32) / (int64_t)wv_isqrt((uint64_t)k << 32);
+            int64_t is = ((int64_t)1 << 32) / (int64_t)isqrt64((uint64_t)k << 32);
             int32_t rnd = (int32_t)((((int64_t)x * r >> 16) * is) >> 16);
             v = (int32_t)(((int64_t)v * (65536 - x)) >> 16) + ((h >> 15) & 1u ? -rnd : rnd);
             break;
@@ -408,7 +392,7 @@ static void wv_recipe(uint32_t tb, int32_t x, int32_t *a)
         }
         default: {                                           /* AIR: a soft flute (harmonics 1 2 3) and a breath growing in: */
             uint32_t h = (k * 2654435761u) ^ (k * 2246822507u >> 13), r;   /* the harmonics from 4 up at random levels */
-            int64_t is = ((int64_t)1 << 33) / (int64_t)wv_isqrt((uint64_t)k << 32);    /* and signs (a fixed draw), (4 / k)^1/2, */
+            int64_t is = ((int64_t)1 << 33) / (int64_t)isqrt64((uint64_t)k << 32);    /* and signs (a fixed draw), (4 / k)^1/2, */
             int32_t g = 3277 + (int32_t)(((int64_t)x * 36045) >> 16), rnd;   /* 0.05 -> 0.6 */
             h *= 2246822507u;
             r = 19661u + (((h >> 16) * 45875u) >> 16);
@@ -480,7 +464,7 @@ static void wv_frame(uint32_t tb, uint32_t f, int8_t *out)
     }
     /* the gain (Q32): RMS to WV_RMS / 100 (the level-0 RMS: 32767 x sqrt(sum a^2 / 2) in the sums' units), the peak at most 127 */
     {
-        uint64_t rms = wv_isqrt(ss * 32767ull * 32767ull / 2u);
+        uint64_t rms = isqrt64(ss * 32767ull * 32767ull / 2u);
         g = rms ? ((uint64_t)WV_RMS << 32) / (rms * 100u) : 0;
         if (pk && (uint64_t)127 << 32 < g * pk)
             g = ((uint64_t)127 << 32) / pk;
@@ -628,7 +612,7 @@ static void wv_read(const int8_t *tab, uint32_t lo, uint32_t sh, const uint32_t 
         const int8_t *a = tab + ((uint32_t)fp >> 16) * WV_FS + lo + (ph >> sh);
         int32_t fr = (int32_t)((ph >> (sh - 12u)) & 0xFFFu);
         int32_t x0 = a[0], x1 = a[1], y0 = a[WV_FS], y1 = a[WV_FS + 1u];
-        int32_t l = (x0 << 12) + (x1 - x0) * fr, h = (y0 << 12) + (y1 - y0) * fr;
+        int32_t l = x0 * 4096 + (x1 - x0) * fr, h = y0 * 4096 + (y1 - y0) * fr;
         dst[i] = (l + ((((h - l) >> 6) * (int32_t)wq) >> 6)) >> 4;   /* 127 -> 32512 */
         fp += dfp;
     }
@@ -639,7 +623,7 @@ static void wv_read_sine(const int8_t *tab, const uint32_t *rp, int32_t fp, int3
     uint32_t i;
     for (i = 0; i < n; i++) {
         const int8_t *a = tab + ((uint32_t)fp >> 16) * WV_FS + WV_FUND;
-        int32_t f0 = a[0], fa = (f0 << 12) + (a[WV_FS] - f0) * (int32_t)(((uint32_t)fp >> 4) & 0xFFFu);   /* Q12 */
+        int32_t f0 = a[0], fa = f0 * 4096 + (a[WV_FS] - f0) * (int32_t)(((uint32_t)fp >> 4) & 0xFFFu);   /* Q12 */
         dst[i] = (sine_i(rp[i]) * (fa >> 6)) >> 12;     /* x 2 (it is halved) x 256 (8 bits -> Q15) */
         fp += dfp;
     }
@@ -818,7 +802,7 @@ static __attribute__((noinline)) void wv_dmix(int32_t *s1, const int32_t *s2, in
 {
     uint32_t i;
     for (i = 0; i < n; i++) {
-        int32_t wq = (d0 << 12) + (((d1 - d0) * (int32_t)i << 12) / (int32_t)CTL);   /* Q15 (WV_DF x 4096 = 32768) */
+        int32_t wq = d0 * 4096 + ((d1 - d0) * (int32_t)i * 4096 / (int32_t)CTL);   /* Q15 (WV_DF x 4096 = 32768) */
         s1[i] += (((s2[i] - s1[i]) >> 1) * wq) >> 15;
     }
 }
@@ -871,7 +855,7 @@ static void wave_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     if (bend > 0 || sync > 0 || v->s[6]) {               /* the DC tracker: the cycle's mean (~7 Hz) taken off */
         int32_t dc = v->s[6];
         for (i = 0; i < n; i++) {
-            dc += ((s1[i] << 8) - dc) >> 10;
+            dc += (s1[i] * 256 - dc) >> 10;
             s1[i] -= dc >> 8;
         }
         v->s[6] = !bend && !sync && dc > -1024 && dc < 1024 ? 0 : dc;   /* (off again once it has settled near 0) */
@@ -909,6 +893,7 @@ static __attribute__((noinline)) void wave_steps(track_t *t, voice_t *v, vmod_t 
     m->shape = (64 << 8) + k * (127 << 8) / n1 - base;
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t WAVE_PRESETS[] = {
     /* name, {TABLE, POS, BEND, SYNC, -, DTN, STEPS, -}, {A D S R}, fenv, mono: the host tests' renders and costs (tests/regress.c);
      * DUELL's factory sounds are tools/duell_sounds.py's. The last one is the costliest voice: SYNC, BEND and DTN at once (E5 was the engine's own SUB until cloud job J) */
@@ -922,6 +907,7 @@ static const preset_t WAVE_PRESETS[] = {
     {"BENT DIGI", {10, 60, 60, 0, 0, 0, 0, 0}, {0, 90, 60, 50}, 0, 0, FX(0, 20, 30, 40), PAT(7)},
     {"ALL ON", {11, 80, 50, 60, 0, 12, 0, 0}, {10, 90, 100, 60}, 0, 0, FX(0, 30, 20, 40), PAT(5)},
 };
+#endif
 
 static const uint8_t WAVE_UIORD[8] = {0, 1, 6, 3, 5, 2, 4, 7};   /* card position -> E index (DUELL 1.1, owner): ENGINE TABLE POS STEPS (K4: it sits with POSITION under the picture); EDIT 1 SYNC DTN BEND and the unused SUB slot (hidden); the stored ids never move */
 
@@ -929,17 +915,19 @@ static const engine_t ENG_WAVE = {
     .name = "WAVE",
     .page_title = {"TABLE", "OSC"},
     .edit = {
-        {"TABLE", F_ENUM, 0, WV_NT - 1, 0, N_WV_TABLE, 0},
-        {"POS", F_PCT, 0, 127, 0, 0, 0},
-        {"BEND", F_PCT, 0, 127, 0, 0, 0},
-        {"SYNC", F_PCT, 0, 127, 0, 0, 0},
+        {"TABLE", F_ENUM, 0, 0, WV_NT - 1, 0, N_WV_TABLE},
+        {"POS", F_PCT, 0, 0, 127, 0, 0},
+        {"BEND", F_PCT, 0, 0, 127, 0, 0},
+        {"SYNC", F_PCT, 0, 0, 127, 0, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the global SUB LAYER (chain_sub.c) replaces it */
-        {"DTN", F_INT, 0, 127, 0, 0, "ct"},
-        {"STEPS", F_ENUM, 0, 18, 0, N_WV_STEPS, 0},
+        {"DTN", F_INT, U_CT, 0, 127, 0, 0},
+        {"STEPS", F_ENUM, 0, 0, 18, 0, N_WV_STEPS},
         {"-", F_INT, 0, 0, 0, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = WAVE_PRESETS,
     .npresets = NELEM(WAVE_PRESETS),
+#endif
     .note_on = wave_note_on,
     .render = wave_render,
     .block = wave_block,

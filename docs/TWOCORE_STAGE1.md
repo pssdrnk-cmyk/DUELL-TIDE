@@ -1,5 +1,7 @@
 # TWO-CORE stage 1: the second core's device code, the unit protocol, and the work list
 
+> Developer reference, historical. Notes of the two-core work (stage 1) on DUELL 1.0. The second core now ships in every build; the flags and bench steps named here are developer-build settings. Kept at this path because source and test comments cite it.
+
 Branch `cloud/stage1` (from `cloud/base`). Everything here is behind the build flag `DUELL_TWOCORE` (default 0). With the flag off, the preprocessor removes every new line: the normal firmware and every host test are unchanged (checked when the branch was made: the preprocessed `felucca.c` is identical, and `./host_tests.sh` gives the same results as on `cloud/base`).
 
 Stage 1 goal: core 1 plays part 2 (its voices, part effects and part mix into its own sums) while core 0 plays part 1, then gathers, runs the shared effects and the master. The sound must be the one-core sound sample for sample. Stage 1 is a developer build: core 1 runs only at a power-on that was armed once (as the earlier bench did).
@@ -118,7 +120,7 @@ Rules: bit-exact audio, goldens unchanged, nothing added to the hot set (`tools/
 - Linker scripts: `KEEP(*(.c1_text*))` inside the PC limit's RAM window (the bench put it at the end of `app_hot.ld`'s `.ram_text`, after the hot functions); `.pool.ztwocore` and `.noinit.ztwocore` placed after the existing objects (the patterns `*(.pool*)` and `*(.noinit*)` already take them; check that the existing objects keep their addresses). `tools/elfcheck.py` knows `tc_nv`; check the `.noinit` size of a real `DUELL_TWOCORE=1` link.
 - Part 2's code in RAM: the engines in range X (old program RAM, 31.75 KB; code there cannot call the flash), the voice loop, filter, matrix, morph and the rest of the engines in range Z (end of the memory pool, about 28 KB, can call everything); the start-up copy; the PC limit's RAM window widened to cover them.
 - The developer page: arm a start (`tc_arm`, then a restart), and the rows: core 1's load, late and very late blocks, re-reads, stack peak (`tc_stack_peak`), flash parks.
-- The device build and the hot RAM check.
+- The device build and the hot code check.
 
 ## 7. Tests
 
@@ -154,7 +156,7 @@ Everything is under `DUELL_TWOCORE`; with the flag off the preprocessed `felucca
 2. done (and `bad` still 0): "in time";
 3. not done: `tc_take`, then waits up to `TCR_ANSWER_US` for core 1's answer:
    - `yld`: core 0 plays part 2 itself, no click: "late"; `TCR_LATE_RUN` late blocks in a row pause the jobs;
-   - `claim`: waits for `done` until the wait limit `tcr.lim` (BENCHT4; up to BENCHT3 the end of the half): the latest moment at which core 1's done word still leaves core 0 the globals of this block and every later block of the half at the whole one-core cost (the deadline's `cap` plus part 2's own cost; see docs/TWOCORE_DIAG.md). Done: fine, "very late" (BENCHT4: it never pauses by itself). Not done: part 2 silent for the block (`tcr.skip2`, `mix_gather` does not read it), "very late" and "silent", and the jobs pause (a fault). The job stays open: while it is, no new job and part 2 stays silent (`wait`) until `tcr_settle` finds it closed; then core 0 plays part 2 (the late job's sums are thrown away);
+   - `claim`: waits for `done` until the wait limit `tcr.lim` (BENCHT4; up to BENCHT3 the end of the half): the latest moment at which core 1's done word still leaves core 0 the globals of this block and every later block of the half at the whole one-core cost (the deadline's `cap` plus part 2's own cost; see docs/history/TWOCORE_DIAG.md). Done: fine, "very late" (BENCHT4: it never pauses by itself). Not done: part 2 silent for the block (`tcr.skip2`, `mix_gather` does not read it), "very late" and "silent", and the jobs pause (a fault). The job stays open: while it is, no new job and part 2 stays silent (`wait`) until `tcr_settle` finds it closed; then core 0 plays part 2 (the late job's sums are thrown away);
    - no answer: "no answer", the same as the claim that does not finish (core 1 is stuck; `tc_watch` stops it after 100 ms);
    - a late `yld` after the wait: core 0 plays part 2;
    - refused (a check value, the snapshot) or a word ahead: `tc_fail` (a strike), core 0 plays part 2 from then on. If core 1 had claimed the open job, part 2's voices fade out first (`voice_kill`) and it starts cleanly; if not, it continues untouched.
@@ -174,7 +176,7 @@ Lateness is never a strike. A pause lasts `TCR_CALM_MS`; core 1 stays alive in i
 | `TCR_SLACK_TICKS` | 3,481 (145 us, 5 % of a half) | kept back from the deadline for what the table does not hold (events, note starts, the interrupt's entry) |
 | `TCR_ANSWER_US` | 100 | after the take, core 1 answers within this (an idle core 1 in microseconds), else it is stuck |
 | `TCR_LATE_RUN` | 4 | late blocks in a row that pause the jobs |
-| `TCR_VLATE_RUN`, `TCR_VWIN_K` | 0, 0 (off; BENCHT3: 4 and 8 within `TCR_VWIN_MS` 2,000; BENCHT2: 1) | very late blocks (job finished by the wait limit) in a row / within the window that pause the jobs; BENCHT4: never by default, switchable by `bench vrun` / `bench vwin` for a diagnosis (docs/TWOCORE_DIAG.md); a real fault, a job not finished by the wait limit, or 4 late blocks in a row still pause |
+| `TCR_VLATE_RUN`, `TCR_VWIN_K` | 0, 0 (off; BENCHT3: 4 and 8 within `TCR_VWIN_MS` 2,000; BENCHT2: 1) | very late blocks (job finished by the wait limit) in a row / within the window that pause the jobs; BENCHT4: never by default, switchable by `bench vrun` / `bench vwin` for a diagnosis (docs/history/TWOCORE_DIAG.md); a real fault, a job not finished by the wait limit, or 4 late blocks in a row still pause |
 | `TCR_CALM_MS` | 10,000 (240 million ticks) | how long a pause lasts |
 | `TCR_NEED_MAX` | 200,000 | the cost sums are clamped (a tick count of it fits 32 bits) |
 | (stage 1, unchanged) `TC_HANG_MS` 100, `TC_PARK_US` 20,000, `TC_REREAD` 2 | | the heartbeat, the flash park, the re-reads |
@@ -227,7 +229,7 @@ RAM with the flag on, added by job 5: `tcs` 48 B, `tcr` 52 B (both `.bss`), `tc_
 
 ### 8.10 What the local stage-1 build needs
 
-- Part 2's code and tables core 1 reaches from `tc_job_run`: `docs/TWOCORE_JOB5_REACH.txt` (found from the compiled calls and the address-taken functions and tables: a superset; 283 functions, about 52 KB on the device, 25 of them already in the hot RAM set; the tables with pointers (the engine descriptors) and the read-only tables). They go into the RAM ranges X and Z (section 6) or stay reachable for core 1; the engines X cannot call the flash.
+- Part 2's code and tables core 1 reaches from `tc_job_run`: `docs/history/TWOCORE_JOB5_REACH.txt` (found from the compiled calls and the address-taken functions and tables: a superset; 283 functions, about 52 KB on the device, 25 of them already in the hot code set; the tables with pointers (the engine descriptors) and the read-only tables). They go into the RAM ranges X and Z (section 6) or stay reachable for core 1; the engines X cannot call the flash.
 - Core 1's stack: the deepest chain found is `tc_job_run` > `part_voice` > `track_render` > `wave_render` > `wv_line` > `wv_osc` > `wv_lvl` > `wv_read_sine` > `sine_i`, 1,680 B on the host (x86-64 frames); about 1.1 to 1.3 KB on the device, in the 4 KB user stack of `fm1_c1_stack`. Read `tc_stack_peak` on the unit.
 - New objects: `tc_ctx` (64 B, `TC_CTX_SECT`) in `.pool.ztwocore` after `tc_mb` (the pool's tail needs 64 B more), `tcs` and `tcr` in `.bss` (100 B); no new `.noinit` object (`tc_nv` as before); no new section (`.c1_text` as in section 6).
 - The developer page's rows: the counters `tcs` (blocks, in time, late, very late, silent, refused, pauses, resumes) and `tc.parks`.

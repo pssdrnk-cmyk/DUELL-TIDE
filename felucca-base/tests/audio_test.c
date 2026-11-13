@@ -12,6 +12,7 @@ static uint32_t host_clock, host_us, host_half_reads, host_dma_advanced, host_ac
 static uint8_t host_pending;
 static volatile uint32_t t5_nested_ticks;              /* audio.c's: TIMER5 nested in the render (main.c) */
 static uint32_t fm1_ticks(void) { t5_nested_ticks = host_nest; host_clock += host_us; return host_clock; }
+#define AUDIO_BLK_TICKS() (host_clock)                 /* (b11: the guard's block clock reads without a step: this test's half is one step at its end) */
 static uint8_t fm1_audio_pending(void) { return host_pending; }
 static void fm1_audio_ack_aux(uint8_t p) { (void)p; }
 static uint32_t host_alt, host_alt_half;               /* (the flash duck test: the DMA alternates the halves) */
@@ -33,6 +34,7 @@ static int32_t host_pot = 1023;                        /* the MASTER pot as the 
 static int32_t fm1_adc_read(uint32_t ch) { return ch == FM1_ADC_MASTER ? host_pot : 620; }
 #include "../firmware/src/master.c"
 
+#define EASE_OR0 ease
 static int bad;
 static void check(const char *what, int ok)
 {
@@ -49,6 +51,7 @@ static void fresh(void)
     memset(&felucca_dbg, 0, sizeof felucca_dbg);
     audio_cpu_rem = audio_halves = audio_max_us = 0;
     shed_req = 0; shed_count = 0; shed_over = 0;
+    ease = 0; ease_calm = 0; ovl_lite = 0;              /* (K3: the ease ladder, tests/ease_test.c) */
     host_clock = host_us = host_half_reads = host_dma_advanced = host_acks = host_nest = 0;
     host_pending = FM1_AUDIO_HALF;
     transport_req = panic_req = 0;
@@ -104,6 +107,25 @@ static void overload(void)
     lead->env = 10000; extra->env = 10;
     shed_voice();
     check("released voices shed the quieter tail first", extra->stage == 4u && lead->stage != 4u);
+
+    {   /* FM6 (audit Q09): its voices' env is forced to full, the shed ranks them by the loudest carrier: the later-scanned voice has the quieter tail */
+        voice_t *loud, *quiet;
+        uint32_t k;
+        fresh();
+        host_preset(&trk[0], ENGI_FM6, 0);
+        trk[0].p[P_VOICE] = V_POLY;
+        trk[0].p[P_CHOR] = trk[0].p[P_DLY] = trk[0].p[P_REV] = 0;
+        trk_note_on(&trk[0], 60, 100); vs_block(); trk_note_on(&trk[0], 64, 100);
+        for (k = 0; k < 20u; k++) mix_block(out, CTL);
+        loud = held(&trk[0], 60); quiet = held(&trk[0], 64);
+        trk_note_off(&trk[0], 64);
+        for (k = 0; k < 150u; k++) mix_block(out, CTL);        /* 64's tail falls */
+        trk_note_off(&trk[0], 60);                             /* 60 has just been released: loud */
+        for (k = 0; k < 2u; k++) mix_block(out, CTL);
+        printf("audio: FM6 tails: voice %u (note 60, just released) %d, voice %u (note 64, 150 blocks ago) %d\n", (unsigned)(loud - trk[0].v), (int)fm6_sub_follow(&trk[0], loud), (unsigned)(quiet - trk[0].v), (int)fm6_sub_follow(&trk[0], quiet));
+        shed_voice();
+        check("FM6 released voices shed the quieter tail first (not the first scanned)", loud->active && loud->stage != 4u && quiet->stage == 4u);
+    }
 }
 static void dma(void)
 {
@@ -117,7 +139,7 @@ static void dma(void)
     fm1_alnk0_irq();
     check("one slow half (93 %) records elapsed load but does not shed yet", host_acks == 1u && !shed_req && felucca_dbg.last_us == 2700u && !felucca_dbg.late);
     fm1_alnk0_irq();
-    check("a second slow half in a row requests shedding", host_acks == 2u && shed_req == SHED_HELD);
+    check("K3: a second slow half in a row eases one level (1), sheds nothing", host_acks == 2u && ease == 1u && !shed_req);
     shed_req = 0;
     host_half_reads = 0; host_dma_advanced = 1; host_us = 100;
     fm1_alnk0_irq();
@@ -126,11 +148,11 @@ static void dma(void)
     expected = HALF_FRAMES * 1000000u / FS;            /* the half's deadline in us */
     host_us = expected * 90u / 100u; host_nest = expected * 30u / 100u;   /* the render 60 %, TIMER5 nested 30 % */
     fm1_alnk0_irq(); fm1_alnk0_irq();
-    check("TIMER5 nested in the render counts toward the deadline", shed_req && felucca_dbg.last_us == host_us - host_nest);
+    check("TIMER5 nested in the render counts toward the deadline (K3: the ladder eases)", ease == 1u && felucca_dbg.last_us == host_us - host_nest);
     fresh();
     host_us = 2700;
     fm1_alnk0_irq(); host_us = 100; fm1_alnk0_irq(); host_us = 2700; fm1_alnk0_irq();
-    check("slow halves (93 %) that are not consecutive do not shed", !shed_req);
+    check("slow halves (93 %) that are not consecutive do not shed", !shed_req && EASE_OR0 == 0u);
     fresh();                                           /* DUELL 0.2.11: one half over 100 % sheds at once (released voices only) */
     host_us = 5000;
     fm1_alnk0_irq();
@@ -184,6 +206,35 @@ static void dma(void)
     host_us = 100; host_half_reads = 0; host_dma_advanced = 1;
     fm1_alnk0_irq();
     check("meter: a half the DMA overtook is a miss too", cpu_miss == 2u && cpu_pk > 100u);
+    /* K2: misses count DMA periods (the half's ELAPSED time over 1, 2, 3 periods), the elapsed peak is kept beside the render's */
+    cpu_miss = 0; cpu_pk = cpu_el_pk = 0;
+    host_us = 2u * (HALF_FRAMES * 1000000u / FS) + 10u; host_half_reads = 0; host_dma_advanced = 0;
+    fm1_alnk0_irq();
+    check("meter K2: a half over two periods is 2 misses", cpu_miss == 2u && cpu_el_pk == host_us);
+    host_us = 3u * (HALF_FRAMES * 1000000u / FS) + 10u;
+    fm1_alnk0_irq();
+    check("meter K2: a half over three periods is 3 misses (5 in all)", cpu_miss == 5u);
+    cpu_miss = 0;
+    host_us = 5u * (HALF_FRAMES * 1000000u / FS) + 10u;
+    fm1_alnk0_irq();
+    check("meter K2: a half over five periods counts 3 (the cap)", cpu_miss == 3u);
+    cpu_miss = 0; host_us = (HALF_FRAMES * 1000000u / FS) + 10u; host_half_reads = 0; host_dma_advanced = 1;
+    fm1_alnk0_irq();
+    check("meter K2: a half over one period that the DMA also overtook counts 1, not 2", cpu_miss == 1u);
+    host_dma_advanced = 0;
+    host_us = 2u * (HALF_FRAMES * 1000000u / FS) + 10u; host_half_reads = 0; host_dma_advanced = 1; cpu_miss = 0;
+    fm1_alnk0_irq();
+    check("meter K2: a half over two periods that the DMA overtook counts 2 (the late flag adds nothing)", cpu_miss == 2u);
+    host_dma_advanced = 0;
+    cpu_miss = 0; cpu_pk = cpu_el_pk = 0;
+    host_us = HALF_FRAMES * 1000000u / FS - 100u; host_nest = 0;
+    fm1_alnk0_irq();
+    check("meter K2: a half within its period is no miss; the elapsed peak = the render peak with nothing nested", cpu_miss == 0u && cpu_el_pk == host_us && cpu_pk == host_us);
+    cpu_pk = cpu_el_pk = 0;
+    host_us = HALF_FRAMES * 1000000u / FS + 200u; host_nest = 400u;   /* (TIMER5 nested 400 us: the render alone is inside its period, the deadline's elapsed time is not) */
+    fm1_alnk0_irq();
+    check("meter K2: TIMER5 nested in the half makes the elapsed time miss while the render does not (cpu_pk < cpu_el_pk)", cpu_miss == 1u && cpu_pk == host_us - 400u && cpu_el_pk == host_us);
+    host_nest = 0;
 }
 /* MASTER and USB (DUELL 0.2.25: MENU > USB LEVEL is removed, USB is always at the fixed level): mix_block makes the mix at master_q12 = MASTER_USB_REF (2048) whatever
  * the knob says; USB (uac_tap) takes that; audio.c master_dac gives the DAC out * master_q12 / 2048 with OUT_SHIFT fractional bits, saturated, the gain gliding

@@ -1,0 +1,44 @@
+# Demo 4 (K1, KNOBS row): TIDE SETTINGS > KNOBS (K1 picks the row, OCT+ steps AUTO STD DUB HSE TECH ACID ELEC AMB); for each set the HOME page 1 with its K2-K4 labels. There is no ROLL TYPE row any more.
+boot
+button HOME
+button HOME
+enc K1 4
+shot knobs_AUTO_row
+enc SELECT 2
+shot knobs_AUTO_home
+enc SELECT 1
+button OCTUP
+shot knobs_STD_row
+enc SELECT 2
+shot knobs_STD_home
+enc SELECT 1
+button OCTUP
+shot knobs_DUB_row
+enc SELECT 2
+shot knobs_DUB_home
+enc SELECT 1
+button OCTUP
+shot knobs_HSE_row
+enc SELECT 2
+shot knobs_HSE_home
+enc SELECT 1
+button OCTUP
+shot knobs_TECH_row
+enc SELECT 2
+shot knobs_TECH_home
+enc SELECT 1
+button OCTUP
+shot knobs_ACID_row
+enc SELECT 2
+shot knobs_ACID_home
+enc SELECT 1
+button OCTUP
+shot knobs_ELEC_row
+enc SELECT 2
+shot knobs_ELEC_home
+enc SELECT 1
+button OCTUP
+shot knobs_AMB_row
+enc SELECT 2
+shot knobs_AMB_home
+enc SELECT 1

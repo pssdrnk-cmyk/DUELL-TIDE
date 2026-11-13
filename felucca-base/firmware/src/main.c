@@ -25,56 +25,7 @@ static void c0_stack_paint(void)
 #endif
 
 
-/* TIMER5 outranks ALNK0, so the scan keeps its 100 us pace while a half buffer renders: before,
- * the ticks stopped for the whole render (0.7 ms idle, several ms loaded), the column lit when it
- * began stayed lit that long (a ~16 Hz flicker over all LEDs, beating with the scan) and the
- * encoders lost frames. Nested in ALNK0 it only scans (GPIO + fm1_in, nothing the audio ISR touches)
- * and counts ms; USB and UART polls wait for the first tick after the render, as they always did,
- * and the time spent nested is handed to the audio ISR so its load figures stay render-only.
- * The USB audio stream cannot wait for the render (one packet per 1 ms frame, a render takes up to
- * ~5 ms): uac_service also runs nested. It touches only EP4 (INDEX is set on every access) and the
- * consumer side of the audio ring, and usb_poll never runs nested, so the two never interleave. */
-void fm1_timer5_irq(void)
-{
-    static uint32_t sub, owed;
-    uint32_t t0 = fm1_ticks(), usb_due = sub % 5u == 0u;
-    fm1_timer5_ack();
-    felucca_dbg.timer_irqs++;
-    fm1_input_tick();
-    {   /* milliseconds from the 24 MHz TIMER4 (robust to a late tick) */
-        static uint32_t last, acc;
-        acc += t0 - last;
-        last = t0;
-        while (acc >= 1000u * FM1_TICKS_PER_US) {
-            acc -= 1000u * FM1_TICKS_PER_US;
-            fm1_ms++;
-        }
-    }
-    if (usb_due)
-        owed |= 1u;                             /* 2 kHz: all USB SIE traffic lives here */
-#if FELUCCA_UART
-    if (sub % 5u == 2u)
-        owed |= 2u;                             /* 2 kHz: <= ~7 bytes per call at 31250 baud */
-#endif
-    if (++sub == 10u)
-        sub = 0;
-    if (felucca_dbg.in_audio) {
-        felucca_dbg.nested++;
-#if FELUCCA_UAC
-        if (usb_due)
-            uac_service();
-#endif
-        t5_nested_ticks += fm1_ticks() - t0;
-        return;
-    }
-    if (owed & 1u)
-        usb_poll();
-#if FELUCCA_UART
-    if (owed & 2u)
-        uart_midi_poll();
-#endif
-    owed = 0;
-}
+#include "timer5.c"            /* the TIMER5 interrupt: key scan, ms, USB / UART polls (fix A: UART also while nested) */
 extern void isr_timer5(void);
 
 static void timer5_start(void)                 /* OSC /4 = 6 MHz, PRD 600 -> 10 kHz */
@@ -317,8 +268,10 @@ static void fm1_main(void)
         felucca_dbg.stage = 1;
         ui_input();
         wave_service();                               /* DUELL WAVE: a frame of a table build, if one waits (eng_wave.c) */
-        vcap_poll();                                  /* DUELL 0.2.11: the parts' VOICE CAP (voice.c) */
-        budget_poll();                                /* DUELL: the parts' NOTES budget (budget.c; the stricter of it and the VOICE CAP holds) */
+#if DUELL_VCAP
+        vcap_poll();                                  /* DUELL 0.2.11: the parts' VOICE CAP (voice.c; bench builds: it holds while the budget is held open) */
+#endif
+        budget_poll();                                /* DUELL: the parts' NOTES budget (budget.c) */
 #if DUELL_TWOCORE
         tc_watch(fm1_ms);                             /* the second core's safety net (twocore.c) */
         tc_trim_poll();                               /* (the jobs paused or core 1 stopped: notes above a part's number fade at once: twocore_run.c) */
@@ -329,7 +282,7 @@ static void fm1_main(void)
         ui_leds();
         ui_draw();
         felucca_dbg.stage = 9;
-        while (fm1_ms - m < 15u) {                               /* ~60 UI frames/s at most */
+        while (fm1_ms - m < 15u && !mv_due()) {                  /* ~60 UI frames/s at most; a MORPH picture due starts its pass now (ui_graph.c mv_clock) */
             ui_input();
 #if DUELL_VELO_CAPTURE
             velocap_drain();
@@ -344,8 +297,13 @@ static void fm1_main(void)
 
 void fm1_cstart(void)
 {
-    uint32_t *s, *d, p3, src, wdt;
+    uint32_t *d, p3, src, wdt;
     int bg_enter;
+#if DUELL_RAMPLACE
+    uint32_t unpacked;
+#else
+    uint32_t *s;
+#endif
 #if DUELL_TWOCORE
     fm1_cpu1_halt();                           /* (after Felucca 1.6.1: a second core still running from before this reset would read the
                                                 * RAM cleared below; hal/fm1_sys.h) */
@@ -363,20 +321,22 @@ void fm1_cstart(void)
     if (bg_enter)
         fm1_enter_uboot();
 #if DUELL_RAMPLACE
-    ramplace_copy();                            /* the RAM ranges X and Z before anything can call them (memset, memcpy are in Z; ramplace.c);
-                                                 * after the boot guard: a start that dies here counts as a failed one (2: the update mode) */
+    unpacked = ramplace_copy();                 /* the RAM ranges X and Z (and .data, .ram_text: the boot pack, ramplace.c) before anything can
+                                                 * call them (memset, memcpy are in Z); after the boot guard: a start that dies here counts as
+                                                 * a failed one (2: the update mode) */
 #endif
     fm1_irq_init();
     for (d = _bss_start; d < _bss_end; d++)
         *d = 0;
     for (d = _pool_start; d < _pool_end; d++)
         *d = 0;
+#if DUELL_RAMPLACE
+    ramplace_boot(unpacked);                    /* X and Z compared with their hashes (the update mode if they stay wrong) */
+#else
     for (s = _data_load, d = _data_start; d < _data_end; s++, d++)
         *d = *s;
     for (s = _rt_load, d = _rt_start; d < _rt_end; s++, d++)
         *d = *s;                                /* flash driver code that must run from RAM */
-#if DUELL_RAMPLACE
-    ramplace_boot();                            /* X and Z compared with their load images (the update mode if they stay wrong) */
 #endif
     fm1_mailbox_clear();
     fm1_guard_enable(FM1_GUARD_STACK | FM1_GUARD_WRITE | FM1_GUARD_BUS | FM1_GUARD_PC);

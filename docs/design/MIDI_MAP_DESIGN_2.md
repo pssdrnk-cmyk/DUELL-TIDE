@@ -1,5 +1,7 @@
 # MIDI MAP, version 2: a complete proposed CC table that keeps the industry-standard names and follows the Access Virus' layout (design proposal, 2026-10-20)
 
+> Design record. The feature is built; what ships is described in [MIDI_MAP_DEFAULTS.csv](../MIDI_MAP_DEFAULTS.csv) and [the README](../../README.md); superseded by [MIDI_MAP_FINAL.md](MIDI_MAP_FINAL.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 > **Note:** the numbers in this study are a proposal that was replaced. The CC numbers that ship are in [MIDI_MAP_DEFAULTS.csv](../MIDI_MAP_DEFAULTS.csv) and in the README; where they differ, those are right. CC 1, 2, 4, 11 and 64 are inputs (mod wheel, breath, foot, expression, sustain pedal) that you can use as sources in the mod matrix; they cannot be assigned to parameters.
 
 Private. Research and writing only: no code changed, no branch made, no picture drawn (plain text tables). INDEX.md and the other documents were not touched. Every number, name and default below is a proposal for you to approve; nothing is decided except what is under "Decided by the owner".
@@ -472,7 +474,7 @@ A standard-defined number used for something the standard does not say, or a sta
 | Standard names on the unit | none | names of the 61 numbers that have a standard meaning, 5 to 12 characters each | about +0.8 to 1 KB flash, est. |
 | Standard names in the editor | none | all 128 names, a constant list | about 3 KB of editor code, no firmware cost |
 | RAM | about 260 B | about 260 B | 0 |
-| Hot RAM | 0 | 0 | 0 |
+| Hot code | 0 | 0 | 0 |
 | Code (firmware) | 2 to 3 KB | 3 to 4 KB | +1 KB: more target kinds (global effects, engine values scaled by the engine's own range, stepped values), the exceptions view |
 | CPU | one table read per CC | same | 0 |
 | Rounds | 5 to 7 | 7 to 9 | +2: (1) building the shipped image and a host test that walks all 88 lines (every number unique, every target exists, every standard-numbered row equals section 2.1 of this document, every row in range), (2) editor: STANDARD NAME column, BY NUMBER table, exceptions filter, CSV and printable list |
@@ -513,4 +515,4 @@ New risks added by v2:
 | The 20 new values, their slots X0 to X14, the ids 25, 26, 42, 106, 113, WAVE STEPS on engine slot E7 | EXTENSION_BLOCK_PLAN.md section 2A; TWIN_FILTER_DESIGN_2.md; FILTER_PAGES_PROPOSAL.md; SUB_AND_CYCLE_DESIGN.md; FEATURE_LIST.md |
 | Today's CC list, learn, the 45 taken numbers, the table and unit page design | MIDI_MAP_DESIGN.md |
 | Counts in 4.9 | worked out by me from the tables of section 4 |
-| UI rules used: propose and ask; a control does only what its label says; hide inert controls; no sticky knobs; scope marked | memory files feedback-ask-before-ui-changes, feedback-ui-label-law, feedback-hide-inert-controls, feedback-no-sticky-knobs, feedback-ui-clarity-principle |
+| UI rules used: propose and ask; a control does only what its label says; hide inert controls; no sticky knobs; scope marked | the owner's working rules |

@@ -8,12 +8,13 @@
  *             coefficients (double, z = e^jw) at every point of the axis, every gain, frequency step and Q: within 0.25 dB
  * Built and run by DUELL/host_tests.sh (name: eqon) */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                              /* (DUELL-TIDE T0: 1.1's grid cards are read from the texts drawn in them, ui_test.c card_match, as select_test.c) */
 #include "ui_test.c"
 #include "mode_scn.h"
 #include <math.h>
 
 static int bad, ncheck;
-static int card_is(uint32_t c, const char *s) { return !strncmp(ui.col[c], s, strlen(s)); }   /* the card c as drawn last (ui_draw.c draw_column's cache key) */
+static int card_is(uint32_t c, const char *s) { return card_match(c, s); }   /* the card c as drawn: its label, value and unit among its texts (1.1: the cache key is a hash on the grid pages) */
 static int expect(const char *what, int ok)
 {
     ncheck++;
@@ -115,8 +116,8 @@ int main(void)
         init_engine_of(TSEL, 0u);
         go_title("EQ 1/2");
         frames(48);
-        ok = card_is(0, "LOW\nFREQ|") && card_is(1, "LOW\nGAIN|") && card_is(2, "MID\nFREQ|") && card_is(3, "MID\nGAIN|");
-        expect("EQ 1/2's cards: LOW / FREQ, LOW / GAIN, MID / FREQ, MID / GAIN (two lines each)", ok);
+        ok = card_is(0, "LOW FREQ|") && card_is(1, "LOW\nGAIN|") && card_is(2, "MID FREQ|") && card_is(3, "MID\nGAIN|");
+        expect("EQ 1/2's cards: LOW FREQ, LOW / GAIN, MID FREQ, MID / GAIN (b10 ui-b I13, owner 2026-11-12: the frequencies on one line, the gains on two)", ok);
         TSEL->p[P_CUT2] = 1;
         frames(48);
         ok = !card_hidden_vp(&TSEL->p[P_EQLG]) && !card_hidden_vp(&TSEL->p[P_EQHF]) && !str_eq(ui.col[1], "\x7f");
@@ -126,11 +127,11 @@ int main(void)
         expect("  .. K2 turns LOW GAIN (+3)", TSEL->p[P_EQLG] == 3);
         go_title("EQ 2/2");
         frames(48);
-        expect("EQ 2/2's cards: MID Q, HIGH / FREQ, HIGH / GAIN, none", card_is(0, "MID Q|") && card_is(1, "HIGH\nFREQ|") && card_is(2, "HIGH\nGAIN|"));
+        expect("EQ 2/2's cards: MID Q, HIGH FREQ, HIGH / GAIN, none (b10 ui-b I13)", card_is(0, "MID Q|") && card_is(1, "HIGH FREQ|") && card_is(2, "HIGH\nGAIN|"));
         TSEL->p[P_DKSRC] = 2;
         go_title("DUCK 1/2");
         frames(48);
-        expect("DUCK 1/2 with SRC MIDI: no RATE / THRESH card, DEPTH and SETUP move left (T0227), K4 empty", card_is(1, "DEPTH|") && card_is(2, "SETUP|") && str_eq(ui.col[3], "\x7f") && duck_ctx_id(TSEL) == 0xFFu);
+        expect("DUCK 1/2 with SRC MIDI: no RATE / THRESH card, DEPTH and SETUP move left (T0227), K4 empty", card_is(1, "DEPTH|") && card_is(2, "SETUP|") && card_hidden(3) && duck_ctx_id(TSEL) == 0xFFu);
         TSEL->p[P_DKSRC] = 3;
         frames(48);
         expect("  .. SRC OFF: the same", str_eq(ui.col[1], "\x7f"));

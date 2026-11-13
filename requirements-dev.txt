@@ -1,0 +1,5 @@
+# Python packages of the generators and the host tests (the CI uses this file; see docs/DEVELOPING.md).
+# Pillow's text layout needs libraqm and fribidi on the system (Linux: libraqm0 libfribidi0): without them the fonts are drawn differently.
+pillow==12.3.0
+fonttools==4.65.0
+numpy==2.5.4

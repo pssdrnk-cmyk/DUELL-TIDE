@@ -554,7 +554,7 @@ function buildGlobalTab(wrap) {
     wrap.append(h("div", { class: "tabbody" },
       gcard("CLOCK", [2, 0, 1], { tip: "Where the tempo comes from, the tempo and the swing of the whole instrument." }),   // (the clock source first, as the unit's TEMPO page)
       gcard("CHORUS", pgs("CHORUS"), { bypass: "bus:chorus", tip: "Shared by both parts: each part's SENDS feed it." }),
-      gcard("DELAY", [...pgs("DELAY 1/2"), ...pgs("DELAY 2/2")], { bypass: "bus:delay", tip: "Shared by both parts. In RANDOM and OCTAVE UP the MOD depth is the CHANCE of an event and MOD RATE is not used." }),
+      gcard("DELAY", [...pgs("DELAY 1/2"), ...pgs("DELAY 2/2"), ...pgs("COLR LFO")], { bypass: "bus:delay", tip: "Shared by both parts. In RANDOM and OCTAVE UP the MOD depth is the CHANCE of an event and MOD RATE is not used." }),
       gcard("REVERB", [...pgs("REVERB"), ...pgs("SHIMMER")], { bypass: "bus:reverb", tip: "Shared by both parts. PITCH and DRIFT belong to TYPE SHIMMER." }),
       stereo, comp));
   } else if (tab === "midi") buildMidi(app, wrap, globalCell, card, sidechainCard());
@@ -776,7 +776,7 @@ function fill(i) {
   app.cells.slice(before).forEach((x) => { x.partBody = i; });
   c.body.scrollTop = 0;
   c.body.dataset.tab = tabKey(i);
-  const t = tabsOf(i).find((x) => x.key === tabKey(i)); document.title = `DUELL editor: ${i === 2 ? "GLOBAL " : "PART " + (i + 1) + " "}${TAB[t?.key] ?? t?.label ?? ""}`;
+  const t = tabsOf(i).find((x) => x.key === tabKey(i)); document.title = `TIDE for FM-1 editor: ${i === 2 ? "GLOBAL " : "PART " + (i + 1) + " "}${TAB[t?.key] ?? t?.label ?? ""}`;
 }
 
 function renderMain() {
@@ -903,13 +903,13 @@ function applyTheme(i) {
   const root = document.documentElement.style;
   const known = ["--bg", "--fg", "--dim", "--line", "--panel", "--acc", "--accfg", "--page", "--warn", "--ok"];
   const set = (el, vars) => { for (const k of known) el.setProperty(k, vars[k]); };
-  const act = activePart(), cols = DEMO ? ["#de38ff", "#ff1c8b"] : null, tv = (part) => look11Vars(i, part, act, cols);
+  const act = activePart(), cols = null   /* b11: the demo shows the default palette (TIDE) too */, tv = (part) => look11Vars(i, part, act, cols);
   const unset = (el) => { for (const k of known) el.removeProperty(k); };
   if (i == null) { unset(root); root.removeProperty("color-scheme"); document.documentElement.dataset.scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; $("unit").title = ""; return; }
   set(root, tv(2)); root.setProperty("color-scheme", isDark(i) ? "dark" : "light"); document.documentElement.dataset.scheme = isDark(i) ? "dark" : "light";
   for (let k = 0; k < 3; k++) if (app.cols[k]) set(app.cols[k].col.style, tv(k));
   const pc = cols ?? [L.PALETTES.LIST[i]?.r?.[0], L.PALETTES.LIST[i]?.r?.[2]];
-  root.setProperty("--p1", pc[0] ?? "#de38ff"); root.setProperty("--p2", pc[1] ?? "#ff1c8b");
+  root.setProperty("--p1", pc[0] ?? "#3BE8D6"); root.setProperty("--p2", pc[1] ?? "#FF8A5E");
   renderMarkers();
   $("unit").title = `The unit's colour: ${paletteName(i)}`;
 }
@@ -954,13 +954,13 @@ async function connect() {
     let link;
     if (MOCK) {
       const { MockUnit, MockLink } = await import("./mockunit.js");
-      app.mock = new MockUnit({ pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
+      app.mock = new MockUnit({ pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : MOCK === "u4" ? 127 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
       link = new MockLink(app.mock, 2);
       if (DEMO) seedDemo(app.mock);
     } else {
       let midi;
       try { midi = await navigator.requestMIDIAccess({ sysex: true }); } catch { setStatus("MIDI access with SysEx was refused. Allow it and press Connect again.", "warn"); return; }
-      const named = (p) => /felucca|duell/i.test(p.name || "") && p.state !== "disconnected";
+      const named = (p) => /felucca|duell|tide/i.test(p.name || "") && p.state !== "disconnected";
       const input = [...midi.inputs.values()].find(named), output = [...midi.outputs.values()].find(named);
       if (app.midi !== midi) {   // (the unit may come later: watched from here on)
         app.midi = midi;
@@ -981,7 +981,7 @@ async function connect() {
       app.octave = 0; app.active = 0;
     }
     app.unit = u;
-    setStatus(DEMO ? "DEMO: a simulated DUELL, no unit connected" : `Connected: ${u.info.version.replace(/^FELUCCA /, "")}${MOCK ? " (simulated)" : ""}`, "good");
+    setStatus(DEMO ? "DEMO: a simulated TIDE unit, no unit connected" : `Connected: ${u.info.tide ? "TIDE (built on " + u.info.version.replace(/^FELUCCA /, "") + ")" : u.info.version.replace(/^FELUCCA /, "")}${MOCK ? " (simulated)" : ""}`, "good");
     $("connect").hidden = true; $("disconnect").hidden = DEMO;
     startTheme(u);
     renderMain();

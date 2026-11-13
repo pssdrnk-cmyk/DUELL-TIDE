@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Cloud job F: the SUB LAYER (chain_sub.c), the CYCLE envelope (cycle.c) and WAVE STEPS (eng_wave.c wave_steps): what wave_test, mx_step_test and xvalues_test cannot show.
  * docs/design/SUB_AND_CYCLE_DESIGN.md. Every section runs in a child process (fork): a scene starts from the process's own power-on state, and the counters and render buffers are shared memory.
- *   REF     bit for bit the render of cloud/base3-wave2 (the hashes of subcyc_ref.h, made by building this file with -DSUBCYC_BASE against it): SUB LEVEL 0 (with the other sub values set),
+ *   REF     bit for bit the same render with the sub's and CYCLE's values at their defaults (DUELL 1.1; was the render of cloud/base3-wave2, the hashes of subcyc_ref.h, made by building this file with -DSUBCYC_BASE against it): SUB LEVEL 0 (with the other sub values set),
  *           CYCLE set but read by no slot (a matrix on, another source), STEPS OFF: five scenes in STEREO, DUEL and LAYER on WAVE, FM6, ANALOG, PHASE, VOICE
  *   SUB     the wave, the octave and the level of the sub alone (the render with the sub less the render without it, the chain forced on in both: the difference is the sub): frequency per
  *           OCTAVE, the spectrum per WAVE and HARMONICS, the level curve, HARMONICS 0 bit for bit the plain wave, phase kept at a retrigger and 0 at a new note, no click (note start, steal,
@@ -114,6 +114,7 @@ static void ev_cb(uint32_t blk, void (*cb)(int), int a) { EV[nev].blk = blk; EV[
 static void ev_apply(uint32_t b)
 {
     uint32_t i;
+    vs_block();                                            /* (as events_block's head: DUELL 1.1 item 144, the voices' start limit counts a block) */
     for (i = 0; i < nev; i++)
         if (EV[i].blk == b)
             switch (EV[i].kind) {
@@ -254,6 +255,7 @@ static void fft(double *re, double *im, uint32_t n)
 /* ============================================================================================================ REF === */
 /* five scenes whose hash is the one cloud/base3-wave2 gives: the sub's values set with LEVEL 0, CYCLE's values set and read by no slot, STEPS at OFF */
 static uint64_t ref_h;
+static int ref_set = 1;                                     /* 1: the sub's and CYCLE's values set (LEVEL 0, unread); 0: left at their defaults */
 static void ref_feed(uint32_t v) { ref_h ^= v; ref_h *= 0x100000001B3ull; }
 static uint64_t ref_scene(uint32_t id)
 {
@@ -280,14 +282,16 @@ static uint64_t ref_scene(uint32_t id)
         t->p[P_REL] = 60;
         t->p[P_VOICE] = V_POLY;
         /* the sub's values set, LEVEL 0 (the default): it is not run; CYCLE's values set, no slot reads it; the matrix on, with another source */
-        XV(t, X_SUBWAVE) = 2;
-        XV(t, X_SUBOCT) = 2;
-        XV(t, X_SUBHARM) = 90;
-        XV(t, X_CYMODE) = 1;
-        XV(t, X_CYRISE) = 20;
-        XV(t, X_CYFALL) = 30;
-        XV(t, X_CYCURVE) = -20;
-        XV(t, X_CYSYNC) = 1;
+        if (ref_set) {
+            XV(t, X_SUBWAVE) = 2;
+            XV(t, X_SUBOCT) = 2;
+            XV(t, X_SUBHARM) = 90;
+            XV(t, X_CYMODE) = 1;
+            XV(t, X_CYRISE) = 20;
+            XV(t, X_CYFALL) = 30;
+            XV(t, X_CYCURVE) = -20;
+            XV(t, X_CYSYNC) = 1;
+        }
         t->p[P_M1SRC] = MS_LFO;
         t->p[P_M1DST] = id == 3 ? MD_SHP : MD_PAN;
         t->p[P_M1AMT] = id == 3 ? 40 : 50;
@@ -332,10 +336,11 @@ static uint64_t ref_scene(uint32_t id)
     }
     return ref_h;
 }
-static uint64_t ref_got[5];
-static void t_ref_one(void)
+static uint64_t ref_got[5], ref_got0[5];
+static void t_ref_one_set(int set, uint64_t *got)
 {
     uint32_t id;
+    ref_set = set;
     for (id = 0; id < 5u; id++) {
         int fd[2], st = 0;
         pid_t p;
@@ -355,8 +360,15 @@ static void t_ref_one(void)
             h = 0;
         close(fd[0]);
         waitpid(p, &st, 0);
-        ref_got[id] = h;
+        got[id] = h;
     }
+}
+static void t_ref_one(void)
+{
+    t_ref_one_set(1, ref_got);
+#ifndef SUBCYC_REFGEN
+    t_ref_one_set(0, ref_got0);
+#endif
 }
 static void t_ref(void)
 {
@@ -369,8 +381,8 @@ static void t_ref(void)
 #else
     for (id = 0; id < 5u; id++) {
         char m[200];
-        snprintf(m, sizeof m, "REF %u (%s): bit for bit cloud/base3-wave2 (SUB LEVEL 0, CYCLE unread, STEPS OFF)", id, NAME[id]);
-        ck(m, ref_got[id] && ref_got[id] == SUBCYC_REF[id]);
+        snprintf(m, sizeof m, "REF %u (%s): bit for bit the same with the sub's and CYCLE's values at their defaults (SUB LEVEL 0, CYCLE unread, STEPS OFF)", id, NAME[id]);
+        ck(m, ref_got[id] && ref_got[id] == ref_got0[id]);   /* (1.1: was bit for bit the hashes of cloud/base3-wave2, subcyc_ref.h, which 1.1's stagger, BIT DEPTH and reverb moved) */
     }
 #endif
 }
@@ -502,7 +514,7 @@ static void sub_exact(void)
         cfg = w | 1u << 2;
         for (i = 0; i < CTL; i++)
             tmp[i] = (int32_t)i * 7;
-        sub_pass(tmp, cfg, ph, st, g0, g1, 0, 0, CTL);
+        sub_pass(tmp, cfg, ph, st, g0, g1, CTL);
         gq = g0 << 8;
         for (i = 0; i < CTL; i++) {
             uint32_t p = (ph << 1) + (st << 1) * i;
@@ -512,7 +524,7 @@ static void sub_exact(void)
         }
         ok &= !memcmp(tmp, ref, sizeof tmp);
     }
-    ck("HARMONICS 0: the wave times the gain's ramp, sample for sample (SINE, TRI, SQUARE at -1; sub_pass with no harmonics runs none)", ok);
+    ck("HARMONICS 0: the wave times the gain's ramp, sample for sample (SINE, TRI, SQUARE at -1)", ok);
 }
 static void sub_levels(void)
 {

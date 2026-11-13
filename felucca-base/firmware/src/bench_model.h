@@ -4,9 +4,9 @@
  * (instruction counts, -O1 -fno-builtin, 420 k instructions = one half = 100 %: tests/cpu_bench.c's scale), and the dearest factory
  * sound of each engine (one held note, measured the same way). The automatic rows; STRESS 10M has its scene's figure. */
 #define BENCH_MODEL_N 89u
-#define BENCH_MODEL_SIG 0x43864B7Du
+#define BENCH_MODEL_SIG 0x27BB9FC4u
 #define BENCH_MODEL_NA 88u
-#define BENCH_MODEL_SIGA 0x43D5691Bu
+#define BENCH_MODEL_SIGA 0xFE449C54u
 static const uint8_t BENCH_DEAR[NENGINES] BENCH_RO = {15, 0, 3, 2, 0, 2, 2, 5, 0, 0, 0, 2, 1, 0, 0};
 static const uint16_t BENCH_MODEL_AVG[89] BENCH_RO = {
     139, /* IDLE ST */
@@ -37,7 +37,7 @@ static const uint16_t BENCH_MODEL_AVG[89] BENCH_RO = {
     233, /* INS HARD CLIP */
     234, /* INS FOLD */
     235, /* INS FUZZ */
-    226, /* INS BIT CRUSHER */
+    226, /* INS BIT CRUSH */
     241, /* INS PHASER */
     234, /* INS FLANGER */
     235, /* INS CHORUS */

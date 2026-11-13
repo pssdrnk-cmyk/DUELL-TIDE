@@ -6,9 +6,19 @@
  * buses, as always (B idle: no cost). SPLIT: A takes part 1's sends and returns to the left only, B part 2's to the
  * right only (mix_block, split_buses): nothing of one part reaches the other side. The two delays share dly_buf (each half
  * of it); the chorus and reverb lines of B are its own (pool) */
-#define DLY_LEN 65536u           /* 1.49 s: 1/4 at 40 BPM fits */
+#define DLY_LEN 65536u           /* 1.49 s: 1/4 at 40 BPM does not fit (1.5 s); it halves to 1/8 (delay_samples) */
 #define DLY_HALF (DLY_LEN / 2u)  /* SPLIT: each part's delay (0.74 s; a longer time halves until it fits: delay_split) */
 #define CHO_LEN 2048u
+/* TIDE 1.0.0-b5 (CPU audit K5): a silent bus and a silent master are not run. The plain delay loop (fx_bus.c fx_buses_m) is left out of a block whose delay
+ * input is 0 while the whole line has been written with zeros (dz) and its loop states are 0 (the chorus skipping too: cho_zs); the master's DC blocker, limiter
+ * and knee (mix_master) are left out of a block whose mix is 0 while the DC blocker is at 0 and the limiter's envelope is back at its threshold. Each gives
+ * then exactly the zeros the loop would have given and leaves its state as the loop would have left it (tests/silentskip_test.c, built with -DSIL_NOSKIP for the
+ * firmware without the skip). */
+#if !defined(SIL_NOSKIP)
+#define SIL_SKIP 1
+#else
+#define SIL_SKIP 0
+#endif
 static int16_t dly_buf[DLY_LEN] __attribute__((section(".pool")));
 static int16_t cho_buf[CHO_LEN] __attribute__((section(".pool")));
 static const uint16_t REV_COMB[4] = {1116, 1188, 1277, 1356};
@@ -24,6 +34,7 @@ static revu_t rev_u __attribute__((section(".pool")));
 typedef struct {
     uint32_t dly_w, cho_w, cho_ph;
     int32_t dly_lp;
+    int32_t dly_h[2];                    /* the delay loop's low cut (dly_wr): its low-pass (Q6) and the remainder of its step */
     uint32_t dm_pl, dm_pr;               /* the delay's modulation (fx_bus.c dly_mod): the two LFOs' phases (left, right tap) */
     int32_t dm_xl, dm_xr, dm_dev;        /* .. the two taps' offsets now (Q16 samples) and the depth reached (Q8 samples; glides, 0 = at rest) */
     int32_t cho_dq;                      /* the chorus's depth reached (Q8; fx_bus.c: it glides over a block, no jump of the read point) */
@@ -39,8 +50,8 @@ typedef struct {
     int32_t sh_hp, sh_he;                /* .. its output's low cut (~14 Hz) and that step's remainder */
     uint32_t sh_pu, sh_pd;               /* .. 0.2.19 PITCH / MOD (fx_bus.c rev_shimx): the up and the down grains' phase (Q16 of SH_LEN), */
     uint32_t sh_l1, sh_l2;               /* .. the MOD's two sines, */
-    int32_t sh_z1, sh_z2, sh_z3, sh_z4;  /* DUELL 1.1 REVERB_FIX: SHIM's input low-pass (fx_bus.c sh_lp): the two samples before of each of its two stages */
-    int32_t sh_q1, sh_q2, sh_q3, sh_q4;  /* .. DUELL 1.1 (owner 2026-10-25, SHIM whistle): the return's low-pass (fx_bus.c sh_rlp), the same two stages */
+    int32_t sh_z[4];                     /* DUELL 1.1 REVERB_FIX: SHIM's input low-pass (fx_bus.c sh_lp2): the two samples before of each of its two stages */
+    int32_t sh_q[4];                     /* .. DUELL 1.1 (owner 2026-10-25, SHIM whistle): the return's low-pass (fx_bus.c sh_lp2), the same two stages */
     int32_t sh_g;                        /* .. the return's gain (Q15: it fades out and in over a change of PITCH), */
     uint8_t sh_x, sh_cfg;                /* .. sh_x 1: rev_shimx runs (0: the plain loop, the state above is from rest), sh_cfg the PITCH it plays (SHP_*) */
     int32_t rs_lp[4];                    /* RESO (ported from JIANT): the combs' loop low-passes */
@@ -50,8 +61,11 @@ typedef struct {
                                              * length (Q8, glides) */
     uint32_t sp_ph;                      /* .. the output tap's wobble */
     uint16_t cho_z;                      /* 0.2.21 (fx_bus.c cho_zrun): the chorus line's run of zero samples written (saturates at CHO_LEN: the whole line is 0) */
+    uint32_t rq;                         /* the reverb has given exact silence for this many samples with no input (fx_bus.c rev_tail: past REV_IDLE it is not run; audit E4) */
     uint8_t byp;                         /* DUELL 1.1 BYPASS of the REVERB: 1 = skipped, its buffers cleared (fx_bus.c rev_byp) */
     uint8_t cho_zs;                      /* .. 1: this block's chorus input is all 0 and the whole line was 0 before it: fx_buses_m leaves the chorus out (its output is 0) */
+    uint32_t dly_g;                      /* the plain delay's read offset now (Q15 samples; fx_bus.c fx_buses_m: a TIME or tempo change slides to it; 0 = not running, the next block takes the time at once) */
+    uint32_t dz, dz_w;                   /* TIDE K5 (fx.c sil_dly): the samples behind the delay's write head read back as 0 in a row (past the line's length: all of it is 0), and the write index at sil_dly's last call */
 } fxs_t;
 static fxs_t fx;
 static int32_t lo_buf[CTL];             /* the reverb low cut's output block (fx_bus.c rev_locut; bus A and B run one after the other) */
@@ -59,7 +73,7 @@ static int32_t lo_buf[CTL];             /* the reverb low cut's output block (fx
  * the patch's and the multi's, is never written). While SPACE is off its middle (or gliding back to it: sv.on) the buses read these
  * instead of song.g's (fx_bus.c SV_*); in the middle (sv.on 0) every bus reads song.g as ever: bit for bit. space_step (below, after
  * perform.c) makes them a block at a time; s = SPACE / 100 (-1 .. 1), each value from the stored one:
- *   the sends into the chorus, the delay and the reverb (every part's, both buses in DUEL)   x (1 - 0.85 |s|) left .. x (1 + 0.6 s) right
+ *   the sends into the chorus, the delay and the reverb (every part's, both buses in DUEL)   x (1 - 0.85 |s|) left .. x (1 + 0.13 s) right
  *   the reverb's SIZE (its decay; ROOM, SPRING, HALL, SHIM, RESO each read it as ever)       r - 0.75 r |s| left .. r + (150 - r) s right
  *   the delay's FDBK                                                                        x (1 - 0.75 |s|) left .. up to 0.92 right
  *   the chorus's DEPTH                                                                      x (1 - 0.8 |s|) left .. up to the knob's largest right
@@ -72,15 +86,15 @@ static struct {
     int32_t spc;                         /* SPACE now, Q8 (-25600 .. 25600: -100 .. 100), gliding to K2's (0.29 s over the range) */
     int32_t spc0;                        /* .. the last block's (the stereo width's ramp: space_width) */
     int32_t rsize;                       /* the reverb's SIZE as the models read it (past 127 to the right: the models cap their gains) */
-    int32_t dfb;                         /* the delay's feedback (Q15: FDBK x 230 as stored) */
+    int32_t dfb;                         /* the delay's feedback (Q15: DLY_FBQ of FDBK) */
     int32_t cdep;                        /* the chorus's depth (CDEPTH x 6 as stored) */
     int32_t sg, sg0;                     /* the sends' gain (Q15), this block's and the last one's (a ramp between them) */
     int32_t ac, ad, ar;                  /* the send floors to the right (0.2.9): every part's chorus, delay and reverb send at least this
                                           * (Q15 of a send's range, 32766 = send 127; space_tap) */
 } sv;
-#define SV_ADD_C 7864                            /* SPACE +100's send floor (every send at least this): chorus 24 % of a send's range (send 30 of 127) */
-#define SV_ADD_D 11796                           /* .. delay 36 % (send 46) */
-#define SV_ADD_R 19661                           /* .. reverb 60 % (send 76) */
+#define SV_ADD_C 5568                            /* SPACE +100's send floor (every send at least this): chorus 17 % of a send's range (send 22 of 127; 3 dB under the first values, audit R06 / D22) */
+#define SV_ADD_D 8352                            /* .. delay 25.5 % (send 32) */
+#define SV_ADD_R 13922                           /* .. reverb 42.5 % (send 54) */
 #define SV_RESO_ADD 43                           /* .. RESO's reverb floor: 43 / 256 of it (10 %, send 13): its tuned combs rang into their int16 limit */
 #define SV_SHIM_ADD 128                          /* .. SHIM's: 128 / 256 (30 %, send 38): with the part's own send on top its ROOM combs did */
 static int32_t sp_fc[CTL], sp_fd[CTL], sp_fr[CTL];   /* SPACE to the right: what the parts' send floors add to the chorus, delay, reverb */
@@ -91,7 +105,14 @@ static uint8_t sp_tap;                           /* this block the parts add the
 static uint8_t byp_blk;                          /* DUELL 1.1 BYPASS of the shared effects as this block saw them (mix_sends copies byp_sh once; BYS_*) */
 static int32_t byp_cg = 32768;                   /* .. the CHORUS's input gain (Q15), the same ramp */
 static int32_t byp_dg = 32768;                   /* .. the DELAY's return and feedback gain (Q15): ramps down to 0 and back over 8 blocks (mix_sends) */
-#define SV_DFB (sv.on ? sv.dfb : song.g[G_DFDBK] * 230)
+/* FDBK (0 .. 120) as the loop's gain (Q15): 230 a step as ever up to 100 (0.70), above it 570 a step to 34,400 at 120 (1.05: audit E2, owner D21, a controlled
+ * dub runaway; dly_wr's soft clip holds the loop; FDBK 118 and up pass unity). SPACE's own largest, 0.92, is below unity */
+static inline int32_t DLY_FBQ(int32_t v)               /* (a stored value above the knob's 120 plays as 120) */
+{
+    v = v > 120 ? 120 : v;
+    return v * 230 + (v > 100 ? (v - 100) * 340 : 0);
+}
+#define SV_DFB (sv.on ? sv.dfb : DLY_FBQ(song.g[G_DFDBK]))
 #define SV_CDEP (sv.on ? sv.cdep : song.g[G_CDEPTH] * 6)
 #define SV_CDEP_TOP (127 * 6)                    /* SPACE: the chorus's largest DEPTH to the right, the knob's own (0.2.9; 2x it, 0.2.5 .. 0.2.8, made
                                                   * a +-0.8 semitone wobble on ACID ETHER's chorus, M06 since 0.2.13); a stored depth above it is kept */
@@ -158,14 +179,16 @@ static uint32_t scale_mask(const track_t *t);           /* seq.c */
  * samples, between samples; 0.37 or 0.74 Hz, each in its own phase): the resonances drift instead of ringing.
  * Lines 0, 3, 5, 6, read at their ends, go through a one-pole low-pass (DAMP: the mixing takes every echo
  * through them); every
- * line through its gain (from its length: all decay alike; RT60 below the damping 0.5 s at SIZE 0, 4 s at
- * 90, 9 s at 127; ~2.4 s heard at 90 with DAMP 60); then the 8 x 8 mixing: a conference matrix (Paley,
+ * line through its gain (from its length: all decay alike; RT60 measured at DAMP 60: 0.5 s at SIZE 0, 1.8 s at 64,
+ * 3.2 s at 90, 5.6 s at 127; 6.4 s at DAMP 0, audit R11); then the 8 x 8 mixing: a conference matrix (Paley,
  * order 8: every line feeds the 7 others, +-1 each, none itself: no flutter at a line's own length), with
  * the send added. Stereo: left lines 0 3 4 -7, right 1 2 5 6 (sums spread over the matrix's rows); the wet
  * bus (mono) gets left + right, rev_side left - right, which mix_block adds to the left and takes from the
  * right (rev_side_mix). Back to 44.1 kHz between samples. Rounding: the lines' gains round to the nearest (0.2.29: the
  * quiet lines too, hall_end: the tail decays as it should down to the lines' last LSB and then ends in exact silence),
- * and the low-passes keep their steps' remainders (no offset). */
+ * and the low-passes keep their steps' remainders (no offset).
+ * ROOM (G_RTYPE 0; audit R09, owner D24) runs this same code with a short decay (fx_bus.c hall_gains, room: RT60 0.25 s at SIZE 0, 0.6 s at 64, 1.6 s at 127): a short, diffuse, stereo room.
+ * The 4-comb mono model (fx_bus.c rev_room) is SHIM's base now. */
 #define HL_NL 8u                         /* lines */
 #define HL_NAP 2u                        /* diffusers */
 #define HL_NC (CTL / 2u)                 /* a block at half the rate */
@@ -179,6 +202,7 @@ static const int16_t HL_APG[HL_NAP] = {11469, 10240};               /* Q14: 0.7,
 _Static_assert(467 + 509 + 547 + 593 + 631 + 673 + 709 + 743 + HL_NL <= sizeof rev_comb / 2u &&
                131 + 307 <= sizeof rev_u.ap / 2u, "HALL in ROOM's buffers");
 _Static_assert(CTL % 2u == 0u && HL_NC + 2u * HL_MOD + 2u < 467u && HL_NC <= 131u, "HALL: one wrap a block at most");
+#define PD_N 1024u                       /* HALL / PLATE pre-delay: up to 890 samples at half the rate (40 ms) in a power of two */
 typedef struct {                         /* HALL's state (in the pool: no .bss) */
     uint16_t i[HL_NL], d[HL_NAP];        /* the lines' write indices, the diffusers' */
     int32_t lp[HL_NL], le[HL_NL];        /* the low-passes and their steps' remainders */
@@ -190,6 +214,9 @@ typedef struct {                         /* HALL's state (in the pool: no .bss) 
     int32_t sd[CTL];                     /* the block's left minus right (mix_block: rev_side_mix) */
     int32_t bx[HL_NC], l[HL_NC], r[HL_NC];   /* the block at half the rate: the diffused send, left, right */
     int16_t y[HL_NL][HL_NC];             /* the lines' ends, then what goes back into them */
+    int32_t pd[PD_N];                    /* HALL / PLATE's pre-delay ring buffer, at half the rate */
+    uint32_t pw;                         /* .. its write count, */
+    int32_t pdq;                         /* .. and the delay it reads now (samples; moves a sample a block towards SIZE's) */
 } hall_t;
 static hall_t hl __attribute__((section(".pool")));
 static hall_t hl_b __attribute__((section(".pool")));   /* bus B's (SPLIT); its side is never mixed (folded: the mid only) */
@@ -233,10 +260,27 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n)
     }
 }
 
-/* master: peak limiter in front of the soft clipper. Fast attack (~0.1 ms),
- * ~150 ms release, threshold where tanh is still nearly linear, so chords
+/* master: peak limiter in front of the soft knee. Fast attack (~0.1 ms),
+ * ~150 ms release, threshold well inside the knee's linear part, so chords
  * get quieter instead of crushed. */
 #define LIM_T 18000
+/* the master's soft knee (audit R05, owner D22): linear (exact) up to the limiter's threshold LIM_T (-5.2 dBFS), above it (only the limiter's attack overshoot gets there) a tanh into the 16-bit
+ * ceiling with the slope 1 at the knee; a tanh over the whole range, as before, bent a loud chord at 1 .. 3 % THD even below the limiter's threshold. 2272 / 1024 = 32768 / (32767 - LIM_T):
+ * the tanh's scale; the input is held to 2^16 past the knee (the table is flat there) so the product fits 32 bits */
+#define MK_K LIM_T
+static __attribute__((noinline)) int32_t master_knee(int32_t x)
+{
+    int32_t a = x < 0 ? -x : x;
+    if (a > MK_K) {
+        a -= MK_K;
+        if (a > 65535)
+            a = 65535;
+        a = MK_K + ((softclip((a * 2272) >> 10) * (32767 - MK_K)) >> 15);
+    }
+    return x < 0 ? -a : a;
+}
+/* the limiter's gain g (Q15, < 32768) on x, which may be far above Q15, in two halves: every bit of x is kept (the old (x >> 4) * g >> 11 rounded to 16 LSB while it limited) */
+static inline int32_t lim_mul(int32_t x, int32_t g) { return (x >> 15) * g + (((x & 32767) * g) >> 15); }
 static int32_t lim_env = LIM_T;
 /* The mix is always made at the reference level MASTER_USB_REF (the default knob position, song.master_q12 = 2048, gain 0.5), whatever the MASTER
  * knob says: the limiter and the soft clip see the same signal, and USB audio takes it (audio.c uac_tap) at that fixed level. MASTER is a volume on what
@@ -289,31 +333,37 @@ static int32_t dc_l, dc_r, dce_l, dce_r;
  * to +-31 at the output after silence.) */
 static inline int32_t dc_block(int32_t x, int32_t *dc, int32_t *err)
 {
-    int32_t e = (x << 6) - *dc + *err, d = e >> 12;
-    *err = e - (d << 12);
+    int32_t e = x * 64 - *dc + *err, d = e >> 12;
+    *err = e - d * 4096;
     *dc += d;
     return x - ((*dc + 32) >> 6);
 }
 
+/* the limiter's envelope follower for a peak a (attack a quarter of the way, release 1 / 4096 of the way to LIM_T, at least 1): the gain (Q15, < 32768) the envelope asks, or 0
+ * for none (audit R13: master_out and the SPLIT limiter each had this) */
+static inline int32_t lim_gain(int32_t a, int32_t *env)
+{
+    if (a > *env)
+        *env += (a - *env) >> 2;
+    else if (*env > LIM_T)
+        *env -= ((*env - LIM_T) >> 12) + 1;
+    return *env > LIM_T ? (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)*env) : 0;
+}
+
 static inline void master_out(int32_t *l, int32_t *r)
 {
-    int32_t al, ar, a;
+    int32_t al, ar, g;
     *l = dc_block(*l, &dc_l, &dce_l);
     *r = dc_block(*r, &dc_r, &dce_r);
     al = *l < 0 ? -*l : *l;
     ar = *r < 0 ? -*r : *r;
-    a = al > ar ? al : ar;
-    if (a > lim_env)
-        lim_env += (a - lim_env) >> 2;
-    else if (lim_env > LIM_T)
-        lim_env -= ((lim_env - LIM_T) >> 12) + 1;
-    if (lim_env > LIM_T) {
-        int32_t g = (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)lim_env);   /* < 32768 */
-        *l = ((*l >> 4) * g) >> 11;                      /* >> 4 first: |l| may be far above Q15 */
-        *r = ((*r >> 4) * g) >> 11;
+    g = lim_gain(al > ar ? al : ar, &lim_env);
+    if (g) {
+        *l = lim_mul(*l, g);
+        *r = lim_mul(*r, g);
     }
-    *l = softclip(*l);
-    *r = softclip(*r);
+    *l = master_knee(*l);
+    *r = master_knee(*r);
 }
 
 /* SPLIT (DUELL step 5): master_out with each channel its own limiter (a linked one would duck part 2 on part 1's peaks: part 1's
@@ -321,23 +371,15 @@ static inline void master_out(int32_t *l, int32_t *r)
 static int32_t lim_env_r = LIM_T;
 static inline int32_t lim_one(int32_t x, int32_t *env)
 {
-    int32_t a = x < 0 ? -x : x;
-    if (a > *env)
-        *env += (a - *env) >> 2;
-    else if (*env > LIM_T)
-        *env -= ((*env - LIM_T) >> 12) + 1;
-    if (*env > LIM_T) {
-        int32_t g = (int32_t)(((uint32_t)LIM_T << 15) / (uint32_t)*env);
-        x = ((x >> 4) * g) >> 11;
-    }
-    return x;
+    int32_t g = lim_gain(x < 0 ? -x : x, env);
+    return g ? lim_mul(x, g) : x;
 }
 static inline void master_out_split(int32_t *l, int32_t *r)
 {
     *l = dc_block(*l, &dc_l, &dce_l);
     *r = dc_block(*r, &dc_r, &dce_r);
-    *l = softclip(lim_one(*l, &lim_env));
-    *r = softclip(lim_one(*r, &lim_env_r));
+    *l = master_knee(lim_one(*l, &lim_env));
+    *r = master_knee(lim_one(*r, &lim_env_r));
 }
 
 /* length of one division (N_DIV order) in samples at the song tempo */
@@ -346,7 +388,8 @@ static const uint8_t DIV48[7] = {32, 64, 4, 144, 72, 36, 18};   /* 4T 2T 32T 2D 
 static uint32_t midi_beat_samples;                    /* zero until an external clock has a measured tempo */
 static uint32_t beat_samples(void)
 {
-    return clock_src() && midi_beat_samples ? midi_beat_samples : (uint32_t)FS * 60u / (uint32_t)song.g[G_BPM];
+    uint32_t bpm = song.g[G_BPM] >= 40 ? (uint32_t)song.g[G_BPM] : 120u;   /* (Felucca #282: a transient uninitialized tempo must not divide by zero) */
+    return clock_src() && midi_beat_samples ? midi_beat_samples : (uint32_t)FS * 60u / bpm;
 }
 static uint32_t div_samples(uint32_t div)
 {
@@ -376,15 +419,50 @@ static inline int32_t pf_mix(int32_t x, int32_t y, int32_t w)
 }
 #include "click.c"                                   /* the metronome's click (after the master: audio.c) */
 
+/* the TIME in samples; one that does not fit the line halves until it does (a note value of the tempo stays one, as delay_split) */
 static uint32_t delay_samples(void)
 {
     uint32_t s = div_samples((uint32_t)song.g[G_DTIME]);
-    return s < 16u ? 16u : s >= DLY_LEN ? DLY_LEN - 1u : s;
+    while (s >= DLY_LEN)
+        s >>= 1;
+    return s < 16u ? 16u : s;
 }
 
 /* HALL's helpers: m / 2^sh rounded towards zero (a product that feeds back must not floor: a loop of floors
  * holds an offset and a little noise for ever) */
 static inline int32_t sh_tz(int32_t m, uint32_t sh) { return (m + ((m >> 31) & ((1 << sh) - 1))) >> sh; }
+/* a * b (Q15) rounded to the nearest as mulq15r, but never a itself: where the rounding would give a back (|a| under 0.5 / (1 - b)) it takes one LSB off. The comb low-passes of ROOM and RESO
+ * (a one-pole, o + mulq15d(lp - o, k)) then fall to exact zero (audit R08: DAMP 124 up held 38 .. 64 LSB for ever); anywhere else it is mulq15r bit for bit, so the tunings do not move */
+static inline int32_t mulq15d(int32_t a, int32_t b)
+{
+    int32_t r = mulq15r(a, b);
+    return r == a && a ? r - (a > 0 ? 1 : -1) : r;
+}
+/* a * b (Q15) rounded towards zero (as HALL's sh_tz), for the delay loop's gain: rounded to the nearest, a loop gain of 0.84 holds 3 LSB for ever (audit R08), towards zero it falls to exact zero.
+ * mulq15u: the low-pass step towards a higher value, d x col floors to 0 for a small d; it moves at least one LSB */
+static inline int32_t mulq15t(int32_t a, int32_t b) { return sh_tz(a * b, 15); }
+static inline int32_t mulq15u(int32_t d, int32_t b)
+{
+    int32_t r = mulq15(d, b);
+    return r == 0 && d > 0 ? 1 : r;
+}
+/* The delay loop's write (audit E2, owner D21): the feedback fbk (the low-passed repeat times FDBK) through a low cut of about 219 Hz (b9 G2: 165 Hz, 3/128, until b8; a one-pole high-pass, 4/128 of the gap a sample
+ * to its low-pass h[0] (Q6), the product's remainder h[1] carried: the repeats thin out instead of piling up bass, and the tail still ends in exact silence), added to the input in,
+ * then a soft knee at 16384 (the line is 16 bit; with FDBK above unity the loop settles where the knee's loss is the surplus gain, about -3 dBFS). Below the knee and below 219 Hz
+ * the loop is as it was. Returns the sample for the line */
+static __attribute__((noinline)) int32_t dly_wr(int32_t *h, int32_t in, int32_t fbk)
+{
+    int32_t e = 4 * (fbk * 64 - h[0]) + h[1], d = e >> 7;
+    h[1] = e - d * 128;
+    h[0] += d;
+    return soft_knee(clamp(in + fbk - ((h[0] + 32) >> 6), -65536, 65535), 16384);
+}
+/* the event modes' loop low-pass step, towards zero as before, but at least one LSB towards the tap */
+static inline int32_t sh_tzl(int32_t d, int32_t col)
+{
+    int32_t r = sh_tz(d * col, 15);
+    return r ? r : (d > 0) - (d < 0);
+}
 /* 2^-x, x Q16 (0 .. 16): Q15 (32768 at x = 0). 2^-x = 2^u / 2^(i + 1), u = 1 - frac(x); 2^u by a cubic (1e-4) */
 static uint32_t exp2_neg(uint32_t x)
 {
@@ -518,6 +596,19 @@ static inline int32_t dly_tap(const int16_t *b, uint32_t m, uint32_t p)
     int32_t c0 = b[i & m], c1 = b[(i + 1u) & m];
     return c0 + (((c1 - c0) * (int32_t)((p >> 8) & 255u)) >> 8);
 }
+/* Plain TIME glide: move g (Q15 samples) 1/4096 of the remaining distance per sample, capped at half a sample,
+ * then interpolate at w - g and (PING-PONG) w - 2g. This bends the repeats without jumping or reversing the read head.
+ * At least one Q15 step reaches the exact target. Q15 keeps the full line below INT32_MAX, so the difference is signed-safe.
+ * Both bus instances share this helper; steady times keep the original integer read. */
+static __attribute__((noinline)) uint32_t dly_slide(const int16_t *b, uint32_t m, uint32_t w, uint32_t g, uint32_t t, uint32_t pp, int32_t *x)
+{
+    int32_t d = (int32_t)t - (int32_t)g, st = (d >> 12) + (d > 0);
+    uint32_t k;
+    g += (uint32_t)clamp(st, -16384, 16384);
+    for (k = 0; k <= pp; k++)
+        x[k] = dly_tap(b, m, (w << 16) - (g * (k + 1u) << 1));
+    return g;
+}
 /* The delay's EVENT modes (DUELL 0.2.14, core.h G_DMODE RAND / OCT+; fx_bus.c dly_ev): the state of bus A (STEREO and LAYER; SPLIT keeps the plain delay). Two
  * voices read the delay line (dly_buf: no buffer of its own) at a read head each; one plays the plain delay (NONE), the other starts an event on a random
  * share of the clock edges (RETRIG, REVERSE, UP an octave, DOWN an octave), the two crossfading. 76 bytes. "on" 0: not running (the next block starts it from
@@ -533,6 +624,7 @@ typedef struct {
 typedef struct {
     uint32_t rng, dl16, ecnt;            /* the xorshift32, the delay time smoothed (Q16 samples), samples since the clock edge */
     int32_t lp, x;                       /* the events' feedback low-pass, the events' share (Q15) */
+    int32_t h[2];                        /* .. their loop's low cut (dly_wr) */
     uint8_t on, sync, cur, nxt, ev0, ev1, md, pend;   /* md: the event mode running (1 RAND, 2 OCT+; kept while the crossfade runs down); pend: a voice is yet to start for the last edge */
     dlyev_v_t v[2];
 } dlyev_t;
@@ -541,12 +633,11 @@ static dlyev_t dlyev_b __attribute__((section(".pool")));                  /* 0.
 /* DUELL 0.2.25 OVERLOAD GUARD (SPEC 6.3; automatic, always on, nothing stored). When the audio is near its limit, by the voice shedding's own
  * measure (audio.c shed_check: two halves in a row over 85 % of their time), the delay's RANDOM / OCT UP runs as the plain delay it
  * cross-fades from (fx_buses, split_buses: the events' ~11.6 ms crossfade; the delay's modulation is not run in their place). (The other
- * dear effect it was built for, SHIM's PITCH BOTH, was removed in 0.2.25 by the owner.) Back after the meter's load (song.cpu_q8, the CPU bar's figure) has stayed under 70 % for ~3 s,
+ * dear effect it was built for, SHIM's PITCH BOTH, was removed in 0.2.25 by the owner.) Back after the meter's load (song.cpu_q8, the meter's average) has stayed under 70 % for ~3 s,
  * the same way. Nothing changes while it is not engaged: the stored values are never touched, ovl_lite only steers the delay's switches below
  * (tests/ovl_test.c renders bit for bit with it compiled out, -DOVL_NOGUARD). Shown on ABOUT (LIGHT FX); flash code only */
 static uint8_t ovl_lite;                 /* 1: the guard is engaged */
-static uint16_t ovl_calm;                /* halves in a row with the meter's load under 70 % while engaged */
-static uint32_t ovl_count;               /* times it engaged since power-on (the console) */
+#define ovl_count ease_n[2]              /* (TIDE 1.0.0-b4, K3: the guard is the ease ladder's level 3, audio.c ease_set; it counts the entries into that level) */
 #ifdef OVL_NOGUARD
 #define OVL_LITE 0u                      /* (the test's reference build: the guard compiled out) */
 #else
@@ -554,27 +645,56 @@ static uint32_t ovl_count;               /* times it engaged since power-on (the
 #endif
 #define OVL_CALM_Q8 179u                 /* 70 % in the meter's Q8 (256 = the whole half): the bar's amber */
 #define OVL_CALM_HALVES ((3u * FS + HALF_FRAMES / 2u) / HALF_FRAMES)   /* ~3 s of halves (1034) */
-/* once a half (audio.c shed_check): over = the 85 % rule held (two halves in a row), q8 = the meter's load */
-static __attribute__((noinline)) void ovl_step(uint32_t over, uint32_t q8)
-{
-    if (over) {
-        ovl_count += !ovl_lite;
-        ovl_lite = 1;
-        ovl_calm = 0;
-        return;
-    }
-    if (!ovl_lite)
-        return;
-    ovl_calm = q8 < OVL_CALM_Q8 ? (uint16_t)(ovl_calm + 1u) : 0u;
-    if (ovl_calm >= OVL_CALM_HALVES)
-        ovl_lite = 0, ovl_calm = 0;
-}
-static void dlyev_clear(void) { memset(&dlyev, 0, sizeof dlyev); memset(&dlyev_b, 0, sizeof dlyev_b); }   /* the lines are cleared (SENDS OFF, STOP ALL, a mode change of the mix): from rest, both buses */
+static void dlyev_clear(void) { memset(&dlyev, 0, sizeof dlyev); memset(&dlyev_b, 0, sizeof dlyev_b); fx.dly_g = fx_b.dly_g = 0; }   /* the lines are cleared (SENDS OFF, STOP ALL, a mode change of the mix): from rest, both buses */
 static void dlyev_start(void) { dlyev.sync = 1; dlyev_b.sync = 1; }  /* PLAY: the clock edges count from the top (seq.c seq_start, as the DUCK's PUMP) */
 static struct { int32_t r[CTL], l[CTL]; } mixlr HOTG_BSS;   /* the pair in one pinned object (core.h HOTG_BSS): the hot PERFORM / delay code reaches the left as the right + 128 */
 #define mix_r (mixlr.r)
 #define mix_l (mixlr.l)   /* (the dry mix: defined here for the delay's modulation, which adds its side to it) */
 
+#if SIL_SKIP
+/* TIDE K5: the plain delay loop's rest (fx_bus.c fx_buses_m, both buses; range Z; see also fx_bus.c cho_zrun, the chorus's own rest, which this one waits for: cho_zs).
+ * The run of zeros dz grows by the block while the loop's low-pass and low cut are at 0, the block's input is 0 and the samples written into the line since the last
+ * call (the window behind the write head, whoever wrote them: every writer writes at the head) read back 0; anything else (a state, an input, a sample not 0, a window
+ * that is not one block long: another path ran, or none) sets it to 0. Cheap while it sounds: the states first (a ringing loop: two loads), then each scan stops at its
+ * first sample not 0. Past the line's length the whole line is 0: every read and every write of the loop is then 0 (h[1], the low cut's remainder, is not moved by an
+ * input of 0 while h[0] is 0), and 1 is returned. Called every block the plain loop runs; line: bus A dly_buf (STEREO / LAYER all of it, SPLIT its first half), bus B
+ * the second half */
+static __attribute__((noinline)) uint32_t sil_dly(fxs_t *f, const int16_t *line, const int32_t *in, uint32_t n, uint32_t dmask)
+{
+    uint32_t i, w = f->dly_w, j = f->dz_w;
+    f->dz_w = w;
+    if (w - j != n || (f->dly_lp | f->dly_h[0]))      /* (the window not one block: another path ran, none, or a block of another size; the loop rings) */
+        goto busy;
+    for (i = 0; i < n; i++)
+        if (in[i] >> 1)                                 /* (what the loop writes in: 0 for an input of 0 or 1) */
+            goto busy;
+    for (; j != w; j++)
+        if (line[j & dmask])
+            goto busy;
+    f->dz += n;
+    return f->dz > dmask;                               /* (full: the whole line) */
+busy:
+    f->dz = 0;
+    return 0;
+}
+#endif
+/* The delay loop's colour filter coefficient (COLR): 2000 + COLR x 240. b9 CLFO (G_DCLFO, page COLR LFO): a slow triangle on it, +-(8 x CLFO) COLR units around the set value at 0.25 Hz
+ * (the period 4 s counted in the samples the delay stages have run, dly_lfo_s: both buses and every mode see the same phase; the bench's per-test reset puts it back to 0, bench.c), kept inside COLR 0..127. CLFO 0 (every older store, a new unit): the plain colour, one load and a compare */
+static int32_t dly_cv = 2000 + 70 * 240;     /* the colour this block runs at, set by mix_sends (the hot dly_mod reads it: a call into the flash grew the hot block past its reserve) */
+static uint32_t dly_lfo_s;                   /* samples into the 4 s triangle (only counts while CLFO is on) */
+static int32_t dly_col(uint32_t n)
+{
+    int32_t col = 2000 + song.g[G_DCOLOR] * 240, d = song.g[G_DCLFO];
+    if (d > 0) {
+        uint32_t t = dly_lfo_s * 1000u / 44100u;                     /* ms into the period */
+        dly_lfo_s += n;
+        if (dly_lfo_s >= 4u * 44100u)
+            dly_lfo_s -= 4u * 44100u;
+        int32_t tri = (int32_t)(t < 2000u ? t : 4000u - t) - 1000;   /* -1000 .. 1000 */
+        col = clamp(col + ((tri * (d > 15 ? 15 : d) * 8 * 61) >> 8), 2000, 2000 + 127 * 240);   /* (240 / 1000 x 256 = 61: 8 COLR units a step at the triangle's ends) */
+    }
+    return col;
+}
 /* the buses (fx_bus.c): bus A on the globals they always had, bus B (SPLIT, part 2) on its own */
 static uint8_t dm_split;                /* (below: the mix runs SPLIT; RESO reads the part its bus carries) */
 #define BUS_FX fx
@@ -627,6 +747,7 @@ static uint8_t dly_side;                /* dly_sd holds this block's (PING-PONG,
 static uint8_t dly_plain_pp;            /* 1: the plain delay that ran last was the PING-PONG (the events' crossfade starts from it, and goes back to the mode's own) */
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
+    dly_cv = dly_col(n);                                /* (b10 CLFO: once a block, the delay stages read it) */
     uint32_t dm = (uint32_t)song.g[G_DMODE];            /* (0.2.16: the delay's mode; DIGITAL, PING-PONG and a value past OCT UP: the paths below, bit for bit as 0.2.15's PING off / on) */
     uint32_t evm = dm == DMD_RAND || dm == DMD_OCTUP;   /* (the mode is an event mode) */
     uint32_t ev = evm && !OVL_LITE;                     /* (0.2.25: the overload guard runs it as the plain delay it cross-fades from) */
@@ -730,11 +851,11 @@ typedef struct {
 } ins_t;
 static ins_t ins[NLIVE] __attribute__((section(".pool")));
 
-static inline int32_t ins_mixq(int32_t m) { return m >= 127 ? 32768 : m <= 0 ? 0 : m * 258; }   /* MIX -> Q15 */
+static inline int32_t ins_mixq(int32_t m) { return m >= 127 ? 32768 : m <= 0 ? 0 : Q15_FROM_127(m); }   /* MIX -> Q15 */
 /* the one-pole low-pass (topology-preserving) coefficient of cutoff index c, Q16: G = g / (1 + g), g = tan(pi fc / FS) */
 static int32_t ins_lpk(int32_t c)
 {
-    uint32_t g = SVF_G[clamp(c, 0, 127)];
+    uint32_t g = SVF_G[clamp(c, 0, 127)] >> 2;   /* (Q12) */
     return (int32_t)((g << 16) / (4096u + g));
 }
 /* the drives' and CRUSH's shape of v (a voice's full scale 32768; v already through DRIVE): the curve the INSERT
@@ -778,7 +899,7 @@ static __attribute__((noinline)) void ins_drive(ins_t *s, const track_t *t, int3
     int32_t a = t->p[P_IA], g1 = 4096 + a * a * 3;      /* DRIVE, Q12: 1x .. 12.8x, gentle at first */
     int32_t k = ins_lpk(crush ? t->p[P_IC] : t->p[P_IB]), l1 = crush ? 4096 : LEVEL_Q12[t->p[P_IC] & 127];
     int32_t g0 = s->u.lo.wa ? s->u.lo.wa : g1, l0 = s->u.lo.wa ? s->u.lo.wb : l1;   /* hunt3: DRIVE and LEVEL go from the block before's value to this block's in a line (a morph or a route that moved */
-    int32_t gq = g0 << 11, lq = l0 << 11, dg = (g1 - g0) << 6, dl = (l1 - l0) << 6;   /* A or C by a step was a click: #23 KICK BASS, #7 FM BASS 2); Q11, CTL = 32 samples; still: the old code bit for bit */
+    int32_t gq = g0 * 2048, lq = l0 * 2048, dg = (g1 - g0) * 64, dl = (l1 - l0) * 64;   /* A or C by a step was a click: #23 KICK BASS, #7 FM BASS 2); Q11, CTL = 32 samples; still: the old code bit for bit */
     s->u.lo.wa = g1;
     s->u.lo.wb = l1;
     for (i = 0; i < n; i++) {
@@ -796,11 +917,11 @@ static __attribute__((noinline)) void ins_drive(ins_t *s, const track_t *t, int3
             s->cnt--;
             y = s->hold;
         } else {
-            s->hp += ((x << 8) - s->hp) >> 8;            /* ~27 Hz low cut (Q8: no offset left by the rounding) */
+            s->hp += ((x * 256) - s->hp) >> 8;            /* ~27 Hz low cut (Q8: no offset left by the rounding) */
             v = clamp(x - (s->hp >> 8), -230000, 230000);
             y = ins_shape(ty, ((v >> 3) * g) >> 9, 0);    /* (>> 3 first: 32 bits) */
         }
-        y <<= 4;                                        /* (x16: the low cutoffs' rounding leaves no offset) */
+        y *= 16;                                        /* (x16: the low cutoffs' rounding leaves no offset) */
         v = mulq16(y - s->lp1, (uint32_t)k);             /* TONE / LPF: two one-pole low-passes */
         y = v + s->lp1;
         s->lp1 = y + v;
@@ -810,7 +931,7 @@ static __attribute__((noinline)) void ins_drive(ins_t *s, const track_t *t, int3
         y = (y + 8) >> 4;
         if (!crush) {
             y = (y * lvl) >> 12;                        /* LEVEL */
-            s->dc += ((y << 8) - s->dc) >> 9;           /* DC blocker, ~14 Hz (FUZZ's lopsided halves) */
+            s->dc += ((y * 256) - s->dc) >> 9;           /* DC blocker, ~14 Hz (FUZZ's lopsided halves) */
             y -= s->dc >> 8;
         }
         b[i] = pf_mix(x, y, s->w);
@@ -837,8 +958,8 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
                 u = y;
             }
             s->u.ph.fb = clamp(y, -32767, 32767);
-            y <<= 2;                                    /* (y: at an eighth) */
-            s->dc += ((y << 8) - s->dc) >> 9;           /* DC blocker, ~14 Hz (a clipped loud input is lopsided) */
+            y *= 4;                                     /* (y: at an eighth) */
+            s->dc += ((y * 256) - s->dc) >> 9;           /* DC blocker, ~14 Hz (a clipped loud input is lopsided) */
             b[i] = pf_mix(x, (x >> 1) + y - (s->dc >> 8), s->w);   /* (dry + all-passed) / 2 */
         }
         s->ph += n * inc;
@@ -863,8 +984,8 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
             v = s->line[r0] + (((s->line[r1] - s->line[r0]) * fr) >> 15);
             s->line[s->wp] = (int16_t)clamp((x >> 2) + softclip(mulq15(v, fbk)), -32767, 32767);
             s->wp = (uint16_t)((s->wp + 1u) & (IL_LEN - 1u));
-            v <<= 1;                                    /* (v: at a quarter) */
-            s->dc += ((v << 8) - s->dc) >> 9;           /* DC blocker (the line's clip on a loud lopsided wave) */
+            v *= 2;                                     /* (v: at a quarter) */
+            s->dc += ((v * 256) - s->dc) >> 9;           /* DC blocker (the line's clip on a loud lopsided wave) */
             b[i] = pf_mix(x, (x >> 1) + v - (s->dc >> 8), s->w);   /* (dry + delayed) / 2 */
         }
     }
@@ -876,26 +997,10 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
  * VINYL: warp (a sine at 0.556 Hz) -> band (high-pass 110 Hz, low-pass 6 kHz) -> + clicks (Poisson, random size / sign / decay, high-passed
  * so each has no area) + dust (white noise through a ~880 Hz high-pass) -> DC blocker. The wet is the effect alone (the delay is 2 .. 6 samples when still).
  * The noise generator is the track's own and does not depend on MIX or the input. */
-static uint32_t ins_isqrt(uint32_t v)
-{
-    uint32_t r = 0, bit = 1u << 30;
-    while (bit > v)
-        bit >>= 2;
-    while (bit) {
-        if (v >= r + bit) {
-            v -= r + bit;
-            r = (r >> 1) + bit;
-        } else {
-            r >>= 1;
-        }
-        bit >>= 2;
-    }
-    return r;
-}
 /* TAPE's saturation (also the INSERT graph's curve): v8 an eighth of the voice-sum, g = SAT's gain (Q12), comp = 1 / sqrt(gain) (Q12) */
 static inline int32_t ins_tape_comp(int32_t g)   /* 4096 x gain^-0.75 (g = 4096 x gain): sqrt, then its root, a division in 32 bits */
 {
-    uint32_t q = ins_isqrt((uint32_t)g << 16), q4 = ins_isqrt(q << 8);   /* 256 x sqrt(g), 256 x g^0.25 */
+    uint32_t q = isqrt32((uint32_t)g << 16), q4 = isqrt32(q << 8);   /* 256 x sqrt(g), 256 x g^0.25 */
     return (int32_t)(0x80000000u / ((q * q4) >> 6));
 }
 static inline int32_t ins_tape_sat(int32_t v8, int32_t g, int32_t comp) { return (softclip((v8 * g) >> 10) * 2 * comp) >> 12; }
@@ -923,7 +1028,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
             s->u.lo.tgt = (int32_t)(r >> 16) - 32768;
             s->u.lo.nxt = 11025 + (int32_t)((r >> 1) & 0x7FFFu);
         }
-        s->u.lo.wa += (((s->u.lo.tgt << 8) - s->u.lo.wa) * ni) >> 12;   /* two one-poles of ~1.7 Hz (1 / 4096 a sample) */
+        s->u.lo.wa += ((s->u.lo.tgt * 256 - s->u.lo.wa) * ni) >> 12;   /* two one-poles of ~1.7 Hz (1 / 4096 a sample) */
         s->u.lo.wb += ((s->u.lo.wa - s->u.lo.wb) * ni) >> 12;
         walk = clamp(s->u.lo.wb >> 7, -32767, 32767);   /* Q15, x2 (the smoothing leaves ~half the target's range) */
         s->ph += (uint32_t)ni * (730454u + (uint32_t)((walk >> 5) * 146));   /* flutter 7.5 Hz +-20 % */
@@ -950,7 +1055,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
         if (tape) {
             y = ins_tape_sat(v, g, comp);               /* SAT: tanh of (voice-sum / 65536) x gain */
             y += (((int32_t)noise32(&s->u.lo.rng) >> 24) * 3) >> 3;   /* the hiss: +-48, flat */
-            y <<= 4;
+            y *= 16;
             v = mulq16(y - s->lp1, (uint32_t)k);        /* TONE: one one-pole high-cut */
             y = v + s->lp1;
             s->lp1 = y + v;
@@ -958,10 +1063,10 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
         } else {
             uint32_t r = (uint32_t)noise32(&s->u.lo.rng);   /* (the top bits: a click; the low 16: the dust) */
             int32_t nz;
-            y = v << 3;
-            s->hp += ((y << 8) - s->hp) >> 6;           /* the band: ~110 Hz high-pass .. */
+            y = v * 8;
+            s->hp += ((y * 256) - s->hp) >> 6;           /* the band: ~110 Hz high-pass .. */
             y -= s->hp >> 8;
-            y <<= 4;
+            y *= 16;
             v = mulq16(y - s->lp1, (uint32_t)k);        /* .. ~6 kHz low-pass */
             y = v + s->lp1;
             s->lp1 = y + v;
@@ -973,7 +1078,7 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
                 s->cnt = (uint8_t)(2u + ((r2 >> 9) & 3u));
             }
             if (s->u.lo.env | s->u.lo.ep) {
-                s->u.lo.ep += ((s->u.lo.env << 4) - s->u.lo.ep) >> 3;
+                s->u.lo.ep += ((s->u.lo.env * 16) - s->u.lo.ep) >> 3;
                 y += s->u.lo.env - (s->u.lo.ep >> 4);   /* (the click less its own low-pass: no area) */
                 if (s->u.lo.env) {                      /* its tail: the level falls by 1 / 2^cnt, always to 0 */
                     int32_t m = s->u.lo.env < 0 ? -s->u.lo.env : s->u.lo.env;
@@ -982,10 +1087,10 @@ static __attribute__((noinline)) void ins_lofi(ins_t *s, const track_t *t, int32
                 }
             }
             nz = (((int32_t)(int16_t)r) * namp) >> 15;
-            s->lp2 += ((nz << 4) - s->lp2) >> 3;
+            s->lp2 += ((nz * 16) - s->lp2) >> 3;
             y += nz - (s->lp2 >> 4);                    /* dust: the noise through a ~880 Hz high-pass */
         }
-        s->dc += ((y << 8) - s->dc) >> 9;               /* DC blocker, ~14 Hz */
+        s->dc += ((y * 256) - s->dc) >> 9;               /* DC blocker, ~14 Hz */
         y -= s->dc >> 8;
         b[i] = pf_mix(x, y, s->w);
     }
@@ -1039,8 +1144,8 @@ static __attribute__((noinline)) void track_insert(track_t *t, int32_t *b, uint3
  * with 8 more bits into the feedback. 0.2.25: the loop multiplies in 32 bit only (eq_run: the chip has a 32 x 32 -> 64
  * multiply-accumulate, no 64 x 64 multiply) and carries the output's rounding remainder into the next sample, so a quiet tail
  * comes back to exactly 0 (no stuck DC, no limit cycle). A band switched on starts from rest; all switched off, or the part silent and its
- * tail run out (eq_rest), the states are cleared. Changing a value moves the coefficients at once (no glide: a click is possible
- * on a loud, low band). */
+ * tail run out (eq_rest), the states are cleared. Changing a value of a running band glides the coefficients from the old to the new over
+ * the block (eq_band, audit R15: at once, a loud low tone clicked). */
 typedef struct {
     int32_t b0, b1, b2, a1, a2;          /* Q28, divided by a0 (0.2.25: 32 bit; every setting fits, the largest is |b1| 5.94: tests/eq32_test.c) */
 } eqc_t;
@@ -1049,6 +1154,8 @@ typedef struct {
     uint8_t on;                          /* bit k: band k runs (gain not 0) */
     uint8_t dr[3];                       /* 0.2.25, per band: blocks run flat since its gain read 0 (the switch OFF, or the gain turned to 0) while its states held a signal: they ring out through the band's own poles, then the band rests (0.2.24: all three at once, when the last gain read 0) */
     eqc_t c[3];
+    eqc_t pc[3];                         /* R15: the coefficients before the last redesign, the glide's start */
+    uint8_t gl[3];                       /* .. bit 0: the part's signal (side 0), bit 1: SPREAD's side still glides from pc (a redesign of a running band) */
     int64_t s[2][3][2];                  /* the states (Q36): [0] the part's signal, [1] SPREAD's side; band; s1 s2 */
 } eq_t;
 static eq_t eqs[NLIVE];
@@ -1072,7 +1179,7 @@ static const uint32_t EQ_K[25] = {      /* 2^(-r / 6), r -12 .. 12: 1 / Q */
 /* a coefficient b / a0 in Q28, saturated to 32 bit (never reached: every setting's fits, tests/eq32_test.c) */
 static __attribute__((noinline)) int32_t eq_q28(int64_t b, int64_t a0)
 {
-    int64_t v = (b << 28) / a0;
+    int64_t v = (b * ((int64_t)1 << 28)) / a0;
     return v > 2147483647ll ? 2147483647 : v < -2147483648ll ? (int32_t)-2147483648ll : (int32_t)v;
 }
 /* sin h / h and cos h by the Taylor sum to h^9, Horner's way: t = 1 - h2 t / d for the divisors d (sin: 72 42 20 6, cos: 56 30 12 2), the first step on t = 1
@@ -1142,6 +1249,27 @@ static __attribute__((noinline)) void eq_run(const eqc_t *c, int64_t *s, int32_t
     s[0] = s1, s[1] = s2;
 }
 
+/* band k of part e over a block: eq_run, or after a redesign of a running band (R15: MORPH and TIDE step a gain in whole dB; the new coefficients at once
+ * put a step into the filter, MID -43 dB under a loud 60 Hz tone) the coefficients move a sample's share of the way, from the old to the new over the block (a block of CTL samples; any other length takes them at once) */
+static void eq_band(eq_t *e, uint32_t k, uint32_t side, int32_t *b, uint32_t n)
+{
+    if (n != CTL || !((e->gl[k] >> side) & 1u)) {
+        eq_run(&e->c[k], e->s[side][k], b, n);
+        return;
+    }
+    e->gl[k] &= (uint8_t)~(1u << side);
+    {
+        uint32_t j, i;
+        const int32_t *o = (const int32_t *)&e->pc[k], *c = (const int32_t *)&e->c[k];
+        for (j = 1; j <= CTL; j++) {
+            eqc_t m;
+            for (i = 0; i < 5u; i++)
+                ((int32_t *)&m)[i] = o[i] + (int32_t)(((int64_t)c[i] - o[i]) * (int32_t)j >> CTL_LOG2);
+            eq_run(&m, e->s[side][k], b + (j - 1u), 1u);
+        }
+    }
+}
+
 /* part t's EQ on its block b (side 0: the part's signal; 1: SPREAD's side signal); not called while all three gains are 0
  * and no state is live. 0.2.25: each band on its own: a band whose gain is 0 is not run (it costs nothing; one band set: that band only),
  * a band turned to 0 rings out flat (EQ_DRAIN blocks) and then rests, a band whose values moved is designed again (the others are not).
@@ -1165,6 +1293,7 @@ static __attribute__((noinline)) void track_eq(track_t *t, int32_t *b, uint32_t 
             if (!was)                                   /* (newly on: from rest) */
                 memset(e->s[0][k], 0, sizeof e->s[0][k]), memset(e->s[1][k], 0, sizeof e->s[1][k]);
             if (!was || e->dr[k] || memcmp(key + gk, e->key + gk, EQ_KN[k])) {
+                e->pc[k] = e->c[k], e->gl[k] = was ? 3u : 0u;   /* (R15: a running band glides from the old coefficients over this block, each side once) */
                 eq_design(&e->c[k], k, key[gk], key[gk + 1u], k == 1u ? key[4] : 0);
                 memcpy(e->key + gk, key + gk, EQ_KN[k]);
             }
@@ -1192,7 +1321,7 @@ static __attribute__((noinline)) void track_eq(track_t *t, int32_t *b, uint32_t 
     t->eqlv = 1;
     for (k = 0; k < 3u; k++)
         if ((on >> k) & 1u)
-            eq_run(&e->c[k], e->s[side][k], b, n);
+            eq_band(e, k, side, b, n);
 }
 
 /* the part is silent and its tail has run out: the states to rest (nothing sounds; a note after starts clean) */
@@ -1226,13 +1355,14 @@ typedef struct {
     uint8_t dm_cur, dm_split, dm_hold, dm_clr;
     int8_t dm_dir, perf_space, perf_filt, perf_depth;
     uint8_t snd_st, mods_off, sp_tap, pf_mute;
+    uint32_t wv_blk, wv_on;      /* the MORPH card's scope tap (wv_tap below): this block's number and the tap's gate, stamped in mix_block and carried to core 1 with the rest, so a late job taps the block it was made for */
 } blockstate_t;
 #include "perform.c"                                 /* DUELL 0.2.5 PERFORM: the white keys' master effects and mutes */
 
 /* K2 SPACE a block (sv above): SPACE glides, its values from the stored ones; in the middle and at rest: off (the buses read song.g) */
 static __attribute__((noinline)) void space_vals(void)   /* SPACE's values from song.g's (space_step; DUEL's bus B again, split_buses) */
 {
-    int32_t s = sv.spc, a = s < 0 ? -s : s, r0 = song.g[G_RSIZE], f0 = song.g[G_DFDBK] * 230, c0 = song.g[G_CDEPTH] * 6;
+    int32_t s = sv.spc, a = s < 0 ? -s : s, r0 = song.g[G_RSIZE], f0 = DLY_FBQ(song.g[G_DFDBK]), c0 = song.g[G_CDEPTH] * 6;
     if (s < 0) {                                        /* shrink */
         sv.rsize = r0 - (r0 * 3 * a) / (4 * 25600);
         sv.dfb = f0 - (int32_t)(((int64_t)f0 * 3 * a) / (4 * 25600));
@@ -1244,7 +1374,7 @@ static __attribute__((noinline)) void space_vals(void)   /* SPACE's values from 
         sv.rsize = r0 + ((top - r0) * a) / 25600;
         sv.dfb = f0 + (int32_t)(((int64_t)(f0 > 30150 ? 0 : 30150 - f0) * a) / 25600);
         sv.cdep = c0 + (((c0 > SV_CDEP_TOP ? c0 : SV_CDEP_TOP) - c0) * a) / 25600;   /* (the knob's largest: SV_CDEP_TOP) */
-        sv.sg = 32768 + (int32_t)((19661LL * a) / 25600);   /* x 1.6 at the end */
+        sv.sg = 32768 + (int32_t)((4260LL * a) / 25600);    /* x 1.13 at the end (was x 1.6: 3 dB less push, audit R06 / D22) */
         sv.ac = SV_ADD_C * a / 25600;                   /* the send floor: 0 in the middle .. SV_ADD_* at +100 */
         sv.ad = SV_ADD_D * a / 25600;
         sv.ar = SV_ADD_R * a / 25600;
@@ -1320,6 +1450,21 @@ _Static_assert(sizeof(part_acc_t) == 8u * CTL * sizeof(int32_t), "part_acc_t is 
 static part_acc_t pacc[NLIVE];
 static uint8_t pacc_on[NLIVE];                          /* the part wrote its accumulators this block: bit 0 l / r, bits 1..3 the sends sc / sd / sr that are not 0, bit 4 the floors fc / fd / fr (a silent part writes none: mix_gather skips it) */
 
+/* The MORPH card's scope tap (docs/design/WAVE_DISPLAY_PLAN.md 3.1, reduced to the RAM there is: 512 entries, mono). Each part's finished block, as the meters see it (after PATCH LEVEL, DIST, INSERT, EQ, DUCK and PAN; before the sends
+ * and the master), as ONE mono entry per two frames: the average of the pair of L and the pair of R, at half scale (a loud chord passes full scale before the master). In 8 bits, companded (wvr_code, 1.0.0-b5):
+ * 12 bits of that half scale (4,096 steps, -72 dB) in a sign and 7 bits, 8 segments of 16 as A-law, so a quiet note or a decay keeps its shape (the plain 1/128 steps up to b5's first try
+ * turned a held chord into a flat line within half a second; the steps are 16 x finer at the bottom, 4 x coarser at the very top, under a pixel of the picture): 512 bytes a part, 23 ms at 22.05 kHz.
+ * One writer a word: the core that plays the part. The UI (core 0, main loop; ui_scope.c) only reads the rings and writes wv_want, "wanted until block N": off the card (or with ANIM OFF) the gate is shut and the tap is one load and one test.
+ * A block the part did not tap (silent, the gate shut, part 2 skipped by tcr_part2) leaves a hole: the next tap sees that wv_last[pp] + 1 is not its block number (bs->wv_blk) and moves wv_gap[pp] up; the reader draws only what lies after it */
+#define WVR_N 512u
+static int8_t wv_m[NLIVE][WVR_N];                       /* wvr_code's 8 bits (ui_scope.c wl_dec reads them back) */
+static volatile uint32_t wv_cnt[NLIVE];                 /* free-running entries written (the ring index is wv_cnt & (WVR_N - 1)), published after the block's entries */
+static volatile uint32_t wv_gap[NLIVE];                 /* wv_cnt where the part's entries last became continuous: older entries are no part of this sound */
+static volatile uint8_t wv_sil[NLIVE];                  /* 1: the part was silent in its last block with the gate open (it wrote no zeros) */
+static uint32_t wv_last[NLIVE];                         /* the number of the part's last tapped block (written by the part's own writer, like wv_cnt) */
+static volatile uint32_t wv_blk;                        /* blocks since power-on (mix_block, core 0) */
+static volatile uint32_t wv_want;                       /* the UI: "wanted until block N" (signed difference with wv_blk); the only word the UI writes */
+
 /* SPACE's STEREO WIDTH (0.2.9, the owner: "SPACE should decrease the stereo space to completely mono, and widen it on the plus side"), STEREO and
  * LAYER only, on the mix before the master (mix_l / mix_r with the buses' return, wet folded in): mid M = (L + R) / 2, side S = (L - R) / 2,
  * out L = g (M + gs S), R = g (M - gs S). gs = 1 + s to the left (0 at -100: L = R, mono), 1 + SW_SIDE s to the right (x 1.9 at +100). The
@@ -1333,22 +1478,6 @@ static int32_t sw_a = 4096, sw_b;                /* the gains reached (Q12) */
 static int32_t sw_em, sw_es;                     /* the mid's and the side's energy, smoothed */
 static int32_t sw_g = 4096;                      /* the guard (Q12), worked out every 4th block (sw_n) */
 static uint8_t sw_n;
-static uint32_t sw_isqrt(uint32_t x)            /* floor(sqrt(x)) */
-{
-    uint32_t r = 0, b = 1u << 30;
-    while (b > x)
-        b >>= 2;
-    while (b) {
-        if (x >= r + b) {
-            x -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return r;
-}
 static __attribute__((noinline)) void space_width(uint32_t n)
 {
     uint32_t i;
@@ -1360,7 +1489,7 @@ static __attribute__((noinline)) void space_width(uint32_t n)
     else if (!(sw_n++ & 3u)) {                          /* the guard (the energies of the blocks before: ~23 ms), every 4th block */
         int64_t num = (int64_t)sw_em + sw_es, den = (int64_t)sw_em + (((int64_t)sw_es * gs * gs) >> 24);
         uint32_t r = den > 0 ? (uint32_t)(num * 16777216 / den) : 16777216u;   /* (Q24, at most 1) */
-        sw_g = (int32_t)sw_isqrt(r > 16777216u ? 16777216u : r);   /* (Q12) */
+        sw_g = (int32_t)isqrt32(r > 16777216u ? 16777216u : r);   /* (Q12) */
     }
     g = sw_g;
     a1 = sp ? (g * (4096 + gs)) >> 13 : 4096;
@@ -1445,7 +1574,7 @@ static __attribute__((noinline)) void bass_mono(uint32_t n)
     if (a == 32768 && at == 32768 && !(d1 | d2 | d3)) {  /* steady: the one loop */
         for (i = 0; i < n; i++) {
             x = mix_l[i] - mix_r[i];
-            x = clamp(x, -BM_XMAX, BM_XMAX) << BM_SH;
+            x = clamp(x, -BM_XMAX, BM_XMAX) * (1 << BM_SH);
             BM_STEP;
             low >>= 1;
             mix_l[i] -= low;
@@ -1456,7 +1585,7 @@ static __attribute__((noinline)) void bass_mono(uint32_t n)
             a1 += d1, a2 += d2, a3 += d3;
             a += clamp(at - a, -BM_FADE, BM_FADE);
             x = mix_l[i] - mix_r[i];
-            x = clamp(x, -BM_XMAX, BM_XMAX) << BM_SH;
+            x = clamp(x, -BM_XMAX, BM_XMAX) * (1 << BM_SH);
             BM_STEP;
             low = mulq16(low, (uint32_t)a);              /* (half of low x a / 32768) */
             mix_l[i] -= low;
@@ -1524,14 +1653,14 @@ static __attribute__((noinline)) void width_stage(uint32_t n)
  * the DC blocker, the limiter and the soft clip. It works on the mix as it is before MASTER, and its dB are those of the OUTPUT at the default MASTER (gain 0.5: 0 dB = a pre-MASTER amplitude of 65536); turning MASTER is a volume after it and never changes what is compressed; the wet bus's mono return is folded
  * into the mix when the stage runs.
  *   detector   every 8th sample (a hop, 0.18 ms): the peak of the hop's L and R (max(|L|, |R|): the link, both channels get one gain), held: the peak of the last 8 blocks of 64 samples and the one running
- *              (the hold, 11.6 .. 13 ms: a bass does not ripple the gain). pk (Q12 of the amplitude) moves toward the hold with the ATTACK's coefficient up and the RELEASE's down: pk += d x m >> sh, a product of the
+ *              (the hold, 11.6 .. 13 ms: a bass does not ripple the gain). pk (Q12 of the level in Q8 octaves, i.e. in dB: since the release is in the log domain, audit R12) moves toward the hold's level with the ATTACK's coefficient up and the RELEASE's down: pk += d x m >> sh, a product of the
  *              step and a coefficient of 8 bits shifted down (m / 2^sh, nearest to the printed time: core.h CMP_ATK_US / CMP_REL_MS; tools/comp_tables.py), a state with 12 fractional bits, so it does not
- *              stall short of its target (a Q16 coefficient on a small state does: about 2 dB). RELEASE is the time to cover 63 % of a fall, the hold included (so the 20 ms setting is a 12 ms hold and a pole of 8).
- *   gain       at each hop: the level in Q8 octaves of amplitude (256 = 6.02 dB; a leading-zero count and a 128-entry table); over = level - threshold;
+ *              stall short of its target (a Q16 coefficient on a small state does: about 2 dB). RELEASE is the time to cover 63 % of a fall, the hold included (so the 20 ms setting is a 12 ms hold and a pole of 8), and ATTACK 63 % of a rise: both of the dB step, as printed (smoothed in amplitude, the printed 200 ms took 370 ms to cover 63 % of a 20 dB recovery).
+ *   gain       at each hop: the level in Q8 octaves of amplitude (256 = 6.02 dB; the detector's own state pk >> 12; cmp_lg, a leading-zero count and a 128-entry table, makes it from the hold); over = level - threshold;
  *              gain reduction gr = slope x over above the knee, slope x (over + knee / 2)^2 / (2 knee) inside it (the knee fixed at 6.02 dB), slope = 1 - 1 / ratio; the gain 2^((makeup - gr) / 256)
  *              (a table, a half step of interpolation), a straight line over the hop's 8 samples. An upward branch for an OTT mode would go in cmp_gr (a second, lower threshold): not built.
- *   makeup     fixed, from the threshold and the ratio: the gain reduction the same curve gives a level of -8 dB (CMP_REF), at most +12 dB. A level of -8 dB leaves the stage as loud as it came in,
- *              quieter signals are raised by the makeup, louder ones are brought down by what the curve takes less the makeup.
+ *   makeup     fixed, from the threshold and the ratio: half the gain reduction the same curve gives a level of -8 dB (CMP_REF, owner D25: the whole of it lifted every tail and noise under the threshold by up to +12 dB), at most +6 dB.
+ *              A level of -8 dB comes out a little quieter than it came in, quieter signals are raised by the makeup, louder ones are brought down by what the curve takes less the makeup.
  *   knobs      threshold and slope glide to a new setting (8 and 1024 a hop: a 40 dB threshold sweep in 38 ms; the makeup is made from the gliding pair, so it is always one setting's curve); the effect's share `a`
  *              (Q15) fades in or out over 15 ms (CMP_A_STEP a hop): RATIO 1:1 is no code at all (cmp_cfg's ratio 0 with the share at 0 is mix_block's whole gate: the mix is bit for bit what it was)
  *              and 1:1 <-> a ratio is no click.
@@ -1540,7 +1669,7 @@ static __attribute__((noinline)) void width_stage(uint32_t n)
 #define CMP_KNEE 256                                    /* the knee, Q8 octaves (6.02 dB) */
 #define CMP_AMAX 262144                                 /* the detector's ceiling (8 x full scale: pk <= 2^30) */
 #define CMP_REF 3756                                    /* -8 dB in Q8 octaves (4096 - 8 x 42.52): the level the makeup keeps at unity */
-#define CMP_MKMAX 510                                   /* the makeup's ceiling: +12 dB */
+#define CMP_MKMAX 510                                   /* the curve's reduction at CMP_REF is held to this (+12 dB) before it is halved: the makeup's ceiling is +6 dB */
 #define CMP_A_STEP 384                                  /* the share's step a hop: 85 hops, 15.5 ms */
 static const uint32_t CMP_SLOPE[CMP_RATIOS] = {0, 21845, 32768, 43691, 49152, 54613, 57344, 60075, 65536};   /* 1 - 1 / ratio, Q16 */
 static const uint8_t CMP_LG[128] = {   /* 256 log2(1 + (i + 1/2) / 128): the fraction of an octave of an amplitude, i = the top 7 bits after the leading 1 */
@@ -1594,7 +1723,7 @@ static uint32_t cmp_rel_coef(uint32_t i)
 }
 static volatile uint32_t cmp_cfg;                       /* the setting (ui_input copies it every frame): threshold index 0..40 | ratio << 8 | attack << 16 | release << 24 */
 static struct {
-    int32_t pk;                                         /* the smoothed level, Q12 of the amplitude */
+    int32_t pk;                                         /* the smoothed level: Q8 octaves of amplitude (6.02 dB = 256) with 12 more fraction bits */
     int32_t sm, hr, ring[8];                            /* the peak of this block of 64 samples so far, of the last 8 whole ones, and each of those */
     int32_t g, st;                                      /* the gain now and its step a sample, Q16 */
     int32_t a;                                          /* the effect's share, Q15 (0: at rest, the stage is not run) */
@@ -1628,11 +1757,11 @@ static inline int32_t cmp_gr(int32_t over, int32_t slope)
     over += CMP_KNEE / 2;
     return (((over * over) >> 9) * slope) >> 16;
 }
-/* the makeup of a threshold and a slope: the reduction at CMP_REF, at most CMP_MKMAX */
+/* the makeup of a threshold and a slope: half the reduction at CMP_REF (D25), that held to CMP_MKMAX first */
 static inline int32_t cmp_mk(int32_t thr, int32_t slope)
 {
     int32_t m = cmp_gr(CMP_REF - thr, slope);
-    return m > CMP_MKMAX ? CMP_MKMAX : m;
+    return (m > CMP_MKMAX ? CMP_MKMAX : m) >> 1;
 }
 /* the threshold index 0..40 = -40 .. 0 dB in Q8 octaves (10886 / 256 = 42.52 per dB; 4096 = 0 dB: a pre-MASTER amplitude of 65536, the output's full scale at the default MASTER) */
 static inline int32_t cmp_thr_q8(uint32_t ti) { return 4096 - (int32_t)((40u - (ti > 40u ? 40u : ti)) * 10886u >> 8); }
@@ -1671,14 +1800,14 @@ static __attribute__((noinline)) void comp_stage(uint32_t n, int32_t poff)
         }
         m = m > CMP_AMAX ? CMP_AMAX : m;
         cmp.thr = tthr, cmp.slope = tslope, cmp.mk = cmp_mk(tthr, tslope);
-        pk = m << 12, sm = 0, hr = m, g = 65536;
+        pk = cmp_lg((uint32_t)m + 1u) << 12, sm = 0, hr = m, g = 65536;
         for (j = 0; j < 8u; j++)
             cmp.ring[j] = m;
     }
     thr = cmp.thr, slope = cmp.slope, mk = cmp.mk, hc = cmp.hc;
     am = cmp.am, as = cmp.as, rm = cmp.rm, rs = cmp.rs;
     for (hop = 0; hop < n; hop += 8u) {
-        int32_t gt = cmp_exp2(cmp_gr(cmp_lg((uint32_t)(pk >> 12) + 1u) + poff - thr, slope) - mk), hm = 0, d;   /* the gain computer */
+        int32_t gt = cmp_exp2(cmp_gr((pk >> 12) + poff - thr, slope) - mk), hm = 0, d;   /* the gain computer */
         a += clamp(at - a, -CMP_A_STEP, CMP_A_STEP);
         if (a != 32768)
             gt = 65536 + ((((gt - 65536) >> 3) * a) >> 12);
@@ -1709,7 +1838,7 @@ static __attribute__((noinline)) void comp_stage(uint32_t n, int32_t poff)
             for (j = 1; j < 8u; j++)
                 hr = cmp.ring[j] > hr ? cmp.ring[j] : hr;
         }
-        d = ((sm > hr ? sm : hr) << 12) - pk;
+        d = (cmp_lg((uint32_t)(sm > hr ? sm : hr) + 1u) << 12) - pk;   /* (the hold's level in Q8 octaves, Q12 again: the one-pole runs in dB) */
         if (d > 0)
             pk += (int32_t)(((int64_t)d * am) >> as);
         else
@@ -1755,7 +1884,7 @@ static __attribute__((noinline)) void dm_lines_clear(void)
     memset(cho_buf_b, 0, sizeof cho_buf_b);
     rev_clear();
     rev_clear_b();
-    fx.dly_lp = fx_b.dly_lp = 0;
+    fx.dly_lp = fx_b.dly_lp = fx.dly_h[0] = fx.dly_h[1] = fx_b.dly_h[0] = fx_b.dly_h[1] = 0;
     dlyev_clear();                                      /* (the delay's event modes from rest) */
     fx.lo_lp = fx.lo_k = fx.lo_g = fx_b.lo_lp = fx_b.lo_k = fx_b.lo_g = 0;   /* (the low cut from rest: no stale low-pass) */
     fx_b.rtype = fx.rtype;                              /* (B's lines are clear: no model fade to run) */
@@ -1779,6 +1908,10 @@ static void duell_mode_force(uint32_t m)
         dm_lines_clear();
     }
     duell_mode_req = duell_mode = dm_cur = (uint8_t)m;
+#if TIDE_PLAYSEL
+    if (m == DM_LAYER)                                  /* (1.0.0-b7: LAYER plays in ALGORITHM's middle only, both parts selected; seq.c MODE_WANT) */
+        song.both = 1;
+#endif
     dm_split = m == DM_SPLIT;
     dm_g = DM_ONE;
     dm_dir = 0;
@@ -1849,6 +1982,23 @@ static uint32_t delay_split(void)
     return s;
 }
 
+/* the TIME the delay plays as a division (the DELAY card): the stored one when it fits, else the one nearest the halved time */
+static uint32_t delay_div_shown(void)
+{
+    uint32_t d, t = (uint32_t)song.g[G_DTIME], best = t, bd = 0xFFFFFFFFu;
+    uint32_t s = dm_split || song.g[G_DMODE] == DMD_PING ? delay_split() : delay_samples();
+    if (div_samples(t) == s)
+        return t;
+    for (d = 0; d < sizeof N_DIV / sizeof *N_DIV; d++) {
+        uint32_t e = div_samples(d), x = e > s ? e - s : s - e;
+        if (x < bd) {
+            bd = x;
+            best = d;
+        }
+    }
+    return best;
+}
+
 /* DUELL 0.2.14 MODULES (SENDS: snd_* above; PART FX: pfx_* below): the fades' step a sample, Q15: 993 samples, 22.5 ms (as DM_STEP) */
 #define MF_STEP 33
 /* STOP ALL's flush (0.2.14): the same machinery as SENDS OFF, asked once by seq.c stop_all: the returns fade out (22.5 ms), the delay line (dly_buf),
@@ -1862,7 +2012,7 @@ static __attribute__((noinline)) void snd_lines_clear(void)
     memset(cho_buf_b, 0, sizeof cho_buf_b);
     rev_clear();
     rev_clear_b();
-    fx.dly_lp = fx_b.dly_lp = 0;
+    fx.dly_lp = fx_b.dly_lp = fx.dly_h[0] = fx.dly_h[1] = fx_b.dly_h[0] = fx_b.dly_h[1] = 0;
     dlyev_clear();                                      /* (the delay's event modes from rest: voices, generator, clock, crossfade) */
     fx.lo_lp = fx.lo_k = fx.lo_g = fx_b.lo_lp = fx_b.lo_k = fx_b.lo_g = 0;   /* (SENDS ON again: the low cut from rest) */
     fx_b.rtype = fx.rtype;                              /* (B's lines are clear: no model fade to run) */
@@ -1926,6 +2076,7 @@ static __attribute__((noinline)) void snd_fade(uint32_t n)
 /* SPLIT: bus A on part 1's sends, its return (the mid) to the left; bus B on part 2's, to the right; wet stays 0 */
 static __attribute__((noinline)) void split_buses(uint32_t n)
 {
+    dly_cv = dly_col(n);
     uint32_t i, dl = delay_split();
     uint32_t dm = (uint32_t)song.g[G_DMODE];            /* (0.2.22: the delay's mode in DUEL, all mono per part: DIGI and PING the plain delay (a ping-pong needs two sides), RAND and OCT+ the events, centred) */
     uint32_t evm = dm == DMD_RAND || dm == DMD_OCTUP, ev = evm && !OVL_LITE;   /* (0.2.25: the overload guard, as in fx_buses) */
@@ -1983,7 +2134,7 @@ static void duck_run(track_t *t, int32_t *b, int32_t *d, uint32_t n);
 /* SPACE to the right (sp_tap; 0.2.9, the owner: SPACE adds space also when the sends are 0): each send of the part at least its floor. The
  * effective send is a soft max of the part's own (x SPACE's gain) and the floor (sv.ac / ad / ar, SV_ADD_*: SHIM's reverb SV_SHIM_ADD of it,
  * RESO's SV_RESO_ADD): the floor adds max(0, floor - send) with a quadratic knee of SV_KNEE either side (no kink); a send above floor + knee
- * gets nothing added (SPACE's x 1.6 as before), a send of 0 gets the floor. Its dry signal at its level x that, into the part's accumulators fc / fd / fr (pacc). The
+ * gets nothing added (SPACE's x 1.13, was 1.6), a send of 0 gets the floor. Its dry signal at its level x that, into the part's accumulators fc / fd / fr (pacc). The
  * values are the last block's (SPACE glides 0.25 % a block: a step under -50 dB), as a send's knob */
 static int32_t sp_knee(int32_t dd)
 {
@@ -2109,7 +2260,7 @@ static int32_t pan_g[NLIVE][2];                         /* the plain mix's gains
 static uint8_t pan_gv[NLIVE];                           /* .. valid (the block before was a plain sounding block) */
 static __attribute__((noinline)) int32_t pan_follow(uint32_t p, int32_t stored, int silent, int fine)
 {
-    int32_t tg = stored << 8, d = tg - pan_x[p];
+    int32_t tg = stored * 256, d = tg - pan_x[p];
     if (silent || (d > -16 && d < 16)) {
         pan_x[p] = tg;
         return 0;
@@ -2160,7 +2311,7 @@ static __attribute__((noinline)) void track_dist_ramp(track_t *t, int32_t *b, ui
     }
     q0 = w0 >= 12 * 256 ? 32768 : (w0 < 0 ? 0 : w0 * 32 / 3);   /* the blend in Q15: SAT / 12 (w Q8: w * 32768 / 3072) */
     q1 = w1 >= 12 * 256 ? 32768 : (w1 < 0 ? 0 : w1 * 32 / 3);
-    st = ((q1 - q0) << 10) / (int32_t)n;
+    st = ((q1 - q0) * 1024) / (int32_t)n;
     /* DUELL 1.1 (SATURATION under modulation, owner): the drive terms (g, k, mk) follow the FRACTIONAL followed SAT too. They were the integer SAT's for the whole block, a step of up to 1.5 drive
      * steps at every block boundary while the SAT moves through the blend zone (the wet is the part that is mixed in by q, so the step was small but audible as a 1.4 kHz buzz under a fast LFO).
      * Now g, k and mk go in a straight line from their value at the block before's followed SAT (w0, Q8) to this block's (w1) inside the block, the same way as the blend q: the integer SAT
@@ -2173,9 +2324,9 @@ static __attribute__((noinline)) void track_dist_ramp(track_t *t, int32_t *b, ui
     k1 = 32000 - ((d1q * 95) >> 8);
     mk = 30000 - ((d0q * 120) >> 8);
     mk1 = 30000 - ((d1q * 120) >> 8);
-    gs = ((g1 - g) << 10) / (int32_t)n;
-    ks = ((k1 - k) << 10) / (int32_t)n;
-    mks = ((mk1 - mk) << 10) / (int32_t)n;
+    gs = ((g1 - g) * 1024) / (int32_t)n;
+    ks = ((k1 - k) * 1024) / (int32_t)n;
+    mks = ((mk1 - mk) * 1024) / (int32_t)n;
     b0 = softclip(bias);
     xl = (g > g1 ? g : g1) > 9000 ? 57500 : 230000;     /* the largest input whose product with the drive of the block stays in 32 bits (as track_dist) */
     for (i = 0; i < (int32_t)n; i++) {
@@ -2241,7 +2392,7 @@ static __attribute__((noinline)) void fxb_done(uint32_t pp, int32_t *b, int32_t 
     if (d)
         fxb_mix(d, byp_dry[pp][1], n, by);
 }
-/* fxb_pre decides for the stage (bit) of part pp: 1 = held bypassed, skip it; 0 = run it as ever; 2 / 3 = the switch just went on / off: the dry block is kept (fxb_save) and fxb_post crossfades after the call.
+/* fxb_pre decides for the stage (bit) of part pp: 1 = held bypassed, skip it; 0 = run it as ever; 2 / 3 = the switch just went on / off: the dry block is kept (fxb_save) and fxb_done crossfades after the call.
  * It also notes the bit for the next block. In the flash: the stages' calls in part_fx (hot RAM of the second core) stay one call and one test each */
 static __attribute__((noinline)) uint32_t fxb_pre(uint32_t pp, uint32_t bit, const int32_t *b, const int32_t *d, uint32_t n)
 {
@@ -2297,10 +2448,10 @@ static __attribute__((noinline)) int32_t mix_ramp(const mixpart_t *m, int32_t pk
     uint32_t n = m->n, pp = m->pp;
     uint32_t on = pacc_on[pp];
     int32_t gl0 = pan_gv[pp] ? pan_g[pp][0] : gl, gr0 = pan_gv[pp] ? pan_g[pp][1] : gr, ni = (int32_t)n, i, xmax = 1;
-    int32_t glq = gl0 << 16, grq = gr0 << 16, dgl = ((gl - gl0) << 16) / ni, dgr = ((gr - gr0) << 16) / ni;
-    int32_t lq = mx_lv[pp] << 8, dl = ((lvl - mx_lv[pp]) << 8) / ni;
+    int32_t glq = gl0 << 16, grq = gr0 << 16, dgl = ((gl - gl0) * 65536) / ni, dgr = ((gr - gr0) * 65536) / ni;
+    int32_t lq = mx_lv[pp] << 8, dl = ((lvl - mx_lv[pp]) * 256) / ni;
     int32_t cq = mx_sd[pp][0] << 8, dq = mx_sd[pp][1] << 8, rq = mx_sd[pp][2] << 8;
-    int32_t dc = ((c - mx_sd[pp][0]) << 8) / ni, dd = ((d - mx_sd[pp][1]) << 8) / ni, dr = ((r - mx_sd[pp][2]) << 8) / ni;
+    int32_t dc = ((c - mx_sd[pp][0]) * 256) / ni, dd = ((d - mx_sd[pp][1]) * 256) / ni, dr = ((r - mx_sd[pp][2]) * 256) / ni;
     for (i = 0; i < 3; i++)                             /* (sends: the largest of either end, as the plain loop's guard) */
         xmax = mx_sd[pp][i] > xmax ? mx_sd[pp][i] : xmax;
     xmax = c > xmax ? c : xmax;
@@ -2363,14 +2514,14 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     int32_t gla = 4096 - (pa > 0 ? pa >> 2 : 0), gra = 4096 + (pa < 0 ? pa >> 2 : 0);
     int32_t glb = 4096 - (pb > 0 ? pb >> 2 : 0), grb = 4096 + (pb < 0 ? pb >> 2 : 0);
     int32_t glm = (gla + glb) >> 1, grm = (gra + grb) >> 1, gld = (gla - glb) >> 1, grd = (gra - grb) >> 1;
-    int32_t c = t->p[P_CHOR] * 258, dl = t->p[P_DLY] * 258, r = t->p[P_REV] * 258, pk = t->peak;
+    int32_t c = Q15_FROM_127(t->p[P_CHOR]), dl = Q15_FROM_127(t->p[P_DLY]), r = Q15_FROM_127(t->p[P_REV]), pk = t->peak;
     int32_t xmax;
     if (bs->snd_st == SND_OFF || (byp_m[m->pp] & BY_SEND))
         c = dl = r = 0;                                 /* (0.2.14 MODULES SENDS OFF: nothing sent; DUELL 1.1 BYPASS of the part's SENDS likewise) */
     xmax = c > dl ? c : dl;
     xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);
     for (i = 0; i < n; i++)
-        d[i] = (d[i] << 1) - b[i];                      /* left - right */
+        d[i] = (d[i] * 2) - b[i];                      /* left - right */
     if (fxm == PFX_FADE) {                              /* (0.2.14 MODULES PART FX: the dry block kept for the crossfade) */
         memcpy(sc->dry, b, n * sizeof b[0]);
         memcpy(sc->dryd, d, n * sizeof d[0]);
@@ -2457,7 +2608,7 @@ static void spread_gains(uint32_t pp, const int32_t *q, int32_t *g)
     int32_t glb = 4096 - (pb > 0 ? pb >> 2 : 0), grb = 4096 + (pb < 0 ? pb >> 2 : 0);
     (void)pp;                                           /* (item 160: the part no longer matters here: BALANCE's cut is gone) */
     g[0] = lvl_of(q[0], q[1]);
-    g[1] = q[7] ? 0 : q[2] * 258, g[2] = q[7] ? 0 : q[3] * 258, g[3] = q[7] ? 0 : q[4] * 258;
+    g[1] = q[7] ? 0 : Q15_FROM_127(q[2]), g[2] = q[7] ? 0 : Q15_FROM_127(q[3]), g[3] = q[7] ? 0 : Q15_FROM_127(q[4]);
     g[4] = (gla + glb) >> 1, g[5] = (gra + grb) >> 1, g[6] = (gla - glb) >> 1, g[7] = (gra - grb) >> 1;
 }
 /* core 0, flash (mix_gather): see the comment above. At rest (the notes equal the block before's, or no route and no morph window) this is a comparison of nine words and a copy */
@@ -2483,10 +2634,10 @@ static __attribute__((noinline)) void spread_post(uint32_t pp, uint32_t n, const
             part_acc_t *ac = &pacc[pp];
             const int32_t *b = pscr[pp].buf, *d = pscr[pp].sbuf;
             int32_t ni = (int32_t)n, xmax = 1, i, pm;
-            int32_t lq = prv[0] << 8, dlq = ((cur[0] - prv[0]) << 8) / ni;   /* the level, the three sends (Q8), the four pan gains (Q16): each a line from the block before's to this block's */
-            int32_t cq = prv[1] << 8, dcq = ((cur[1] - prv[1]) << 8) / ni, eq = prv[2] << 8, deq = ((cur[2] - prv[2]) << 8) / ni, rq = prv[3] << 8, drq = ((cur[3] - prv[3]) << 8) / ni;
-            int32_t aq = prv[4] << 16, daq = ((cur[4] - prv[4]) << 16) / ni, bq = prv[5] << 16, dbq = ((cur[5] - prv[5]) << 16) / ni;
-            int32_t gq = prv[6] << 16, dgq = ((cur[6] - prv[6]) << 16) / ni, hq = prv[7] << 16, dhq = ((cur[7] - prv[7]) << 16) / ni;
+            int32_t lq = prv[0] * 256, dlq = ((cur[0] - prv[0]) * 256) / ni;   /* the level, the three sends (Q8), the four pan gains (Q16): each a line from the block before's to this block's */
+            int32_t cq = prv[1] * 256, dcq = ((cur[1] - prv[1]) * 256) / ni, eq = prv[2] * 256, deq = ((cur[2] - prv[2]) * 256) / ni, rq = prv[3] * 256, drq = ((cur[3] - prv[3]) * 256) / ni;
+            int32_t aq = prv[4] * 65536, daq = ((cur[4] - prv[4]) * 65536) / ni, bq = prv[5] * 65536, dbq = ((cur[5] - prv[5]) * 65536) / ni;
+            int32_t gq = prv[6] * 65536, dgq = ((cur[6] - prv[6]) * 65536) / ni, hq = prv[7] * 65536, dhq = ((cur[7] - prv[7]) * 65536) / ni;
             uint32_t on = pacc_on[pp] | (prv[1] ? 2u : 0u) | (prv[2] ? 4u : 0u) | (prv[3] ? 8u : 0u);   /* (a send ramping down to 0 still has samples to write) */
             for (k = 1; k < 4u; k++) {
                 xmax = prv[k] > xmax ? prv[k] : xmax;
@@ -2505,7 +2656,7 @@ static __attribute__((noinline)) void spread_post(uint32_t pp, uint32_t n, const
                         ga = aq >> 16, gb = bq >> 16, gc = gq >> 16, gd = hq >> 16;
                     }
                 } else {
-                    cq = cur[1] << 8, eq = cur[2] << 8, rq = cur[3] << 8;
+                    cq = cur[1] * 256, eq = cur[2] * 256, rq = cur[3] * 256;
                 }
                 x = (b[i] * (l >> 2)) >> 10;
                 y = (d[i] * LV4(l)) >> 10;
@@ -2733,7 +2884,12 @@ static __attribute__((noinline)) int part_voice(mixpart_t *m, track_t *t, uint32
     mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
     m->spread = pscr[m->pp].spread_on = t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON) && !bs->dm_split;   /* (SPREAD,
                                                          * mix_spread; SPLIT: none, the part is mono on its side) */
-    if (track_render(t, b, n))
+    uint32_t sounding = track_render(t, b, n);
+    if (m->pp < NSHOWN) {                               /* (the valley and the wash keep the shown parts' state: mxs[NSHOWN]; the host rig's NPART=4 has more) */
+        if (sounding) morph_valley(m->pp, b, m->spread ? pscr[m->pp].sbuf : 0, n);
+        else morph_vrest(m->pp);
+    }
+    if (sounding)
         t->tail = t->p[P_ITYPE] ? 64 : 16;              /* blocks of DIST / INSERT state to run out after the last
                                                          * voice (the INSERT's: 46 ms, a flanger's feedback) */
     else if (!(t->p[P_DIST] | t->p[P_ITYPE] | t->p[P_EQLG] | t->p[P_EQMG] | t->p[P_EQHG]) ||
@@ -2774,6 +2930,8 @@ static __attribute__((noinline)) void part_rest(mixpart_t *m)
     mx_ok[pp] = 0;                                      /* (0.2.25: the matrix's mix ramp starts again from this block's values) */
     sp_go[pp] = 0;
     mx_was[pp] = mod_mixmv[pp];
+    if (m->bs->wv_on)                                   /* (the scope tap: a flag, no zeros) */
+        wv_sil[pp] = 1;
     if (MODW(t).on)
         mod_end(t);
 }
@@ -2813,7 +2971,7 @@ static __attribute__((noinline)) void part_fx(mixpart_t *m)
     uint32_t n = m->n, pp = m->pp, fxm;
     int32_t pan_mv, pq;
     pan_mv = pan_follow(pp, m->pan_st, 0, m->spread);
-    pq = pan_x[pp] + ((t->p[P_PAN] - m->pan_st) << 8);  /* the pan this block mixes at, Q8: the smoothed stored pan plus the matrix's offset as it was */
+    pq = pan_x[pp] + ((t->p[P_PAN] - m->pan_st) * 256);  /* the pan this block mixes at, Q8: the smoothed stored pan plus the matrix's offset as it was */
     {
         int32_t dw0 = dist_x[pp], dlv = dist_live[pp];  /* (0.2.25: the followed SAT before and after this block's step, for the blend ramp) */
         t->p[P_DIST] = (int16_t)dist_follow(pp, t->p[P_DIST], 0);   /* the SAT this block runs at (put back below; mod_end puts the stored back too) */
@@ -2866,7 +3024,7 @@ static __attribute__((noinline)) void part_mix(const mixpart_t *m)
                                                          * them, no spill in the loop: the ISR's cost as before 1.5) */
         int32_t lvl = part_lvl(t);
         int32_t gl = 4096 - (pq > 0 ? pq >> 2 : 0), gr = 4096 + (pq < 0 ? pq >> 2 : 0);   /* (pq Q8: pq >> 2 = pan x 64, the gains of before) */
-        int32_t c = t->p[P_CHOR] * 258, d = t->p[P_DLY] * 258, r = t->p[P_REV] * 258, pk = t->peak;
+        int32_t c = Q15_FROM_127(t->p[P_CHOR]), d = Q15_FROM_127(t->p[P_DLY]), r = Q15_FROM_127(t->p[P_REV]), pk = t->peak;
         int ramp = 0;
         if (bs->snd_st == SND_OFF || (byp_m[pp] & BY_SEND))
             c = d = r = 0;                              /* (0.2.14 MODULES SENDS OFF: nothing sent; DUELL 1.1 BYPASS of the part's SENDS likewise) */
@@ -2884,7 +3042,7 @@ static __attribute__((noinline)) void part_mix(const mixpart_t *m)
             pacc_on[pp] |= (uint8_t)((mx_sd[pp][0] ? 2u : 0u) | (mx_sd[pp][1] ? 4u : 0u) | (mx_sd[pp][2] ? 8u : 0u));   /* (a send ramping down to 0 still has samples to write) */
             pk = mix_ramp(m, pk, gl, gr, lvl, c, d, r);
         } else if (ramp) {
-            int32_t glq = pan_g[pp][0] << 16, grq = pan_g[pp][1] << 16, dgl = ((gl - pan_g[pp][0]) << 16) / (int32_t)n, dgr = ((gr - pan_g[pp][1]) << 16) / (int32_t)n;
+            int32_t glq = pan_g[pp][0] << 16, grq = pan_g[pp][1] << 16, dgl = ((gl - pan_g[pp][0]) * 65536) / (int32_t)n, dgr = ((gr - pan_g[pp][1]) * 65536) / (int32_t)n;
             for (i = 0; i < n; i++) {
                 int32_t x = (b[i] * LV4(lvl)) >> 10, a = x < 0 ? -x : x;
                 int32_t xs = clamp(x, -xmax, xmax);
@@ -2929,9 +3087,47 @@ static __attribute__((noinline)) void part_mix(const mixpart_t *m)
     }
 }
 
-/* the end of a sounding part's window: the stored SAT back (mod_end below also does), then the matrix's stored values */
-static inline void part_end(const mixpart_t *m)
+/* an entry's code: v in 1/4,096 of the half scale (clamped at it), as a sign and 7 bits: segment e 0..7 (from 2 x 16 << e up, e 0 the 32 below linear), 4 bits in it (a step 2 << (e - 1), e 0: 2).
+ * A short loop, a shift and a mask, small enough that part_end stays inlined; no library call (the audio interrupt's code, inlined into wv_tap) */
+static inline __attribute__((always_inline)) int8_t wvr_code(int32_t v)
 {
+    uint32_t m = (uint32_t)(v < 0 ? -v : v), e = 0, c;
+    m = m > 4095u ? 4095u : m;
+    for (c = m >> 5; c; c >>= 1)                        /* (the segment: the bits above the lowest 5, at most 7 turns) */
+        e++;
+    c = e ? e << 4 | ((m >> e) & 15u) : m >> 1;
+    return (int8_t)(v < 0 ? -(int32_t)c : (int32_t)c);
+}
+/* The scope tap (see wv_m above), inlined into part_end, so into both callers (mix_part on core 0, tc_job_run on core 1): no function of its own. 16 entries a block */
+static inline __attribute__((always_inline)) void wv_tap(const mixpart_t *m)
+{
+    uint32_t pp = m->pp, w, i;
+    const part_acc_t *ac = m->acc;
+    if (!m->bs->wv_on)
+        return;
+    w = wv_cnt[pp];
+    if (!(pacc_on[pp] & 1u)) {                          /* (a sounding part that wrote no mix: counted silent) */
+        wv_sil[pp] = 1;
+        return;
+    }
+    wv_sil[pp] = 0;
+    if (wv_last[pp] + 1u != m->bs->wv_blk)              /* a block missing since the last tap (silence, a shut gate, a skipped job) */
+        wv_gap[pp] = w;
+    wv_last[pp] = m->bs->wv_blk;
+    for (i = 0; i + 3u < m->n; i += 4u) {             /* (one entry per four frames: 11.025 kHz, 46 ms of ring, two cycles of a 43 Hz bass) */
+        wv_m[pp][w & (WVR_N - 1u)] = wvr_code((ac->l[i] + ac->l[i + 1u] + ac->l[i + 2u] + ac->l[i + 3u] + ac->r[i] + ac->r[i + 1u] + ac->r[i + 2u] + ac->r[i + 3u]) >> 6);   /* (the mean of eight values, at half scale, in 1/4,096 steps) */
+        w++;
+    }
+#if DUELL_TWOCORE
+    TC_SYNC();                                          /* (the entries before the counter that says they are there) */
+#endif
+    wv_cnt[pp] = w;
+}
+
+/* the end of a sounding part's window: the stored SAT back (mod_end below also does), then the matrix's stored values */
+static inline __attribute__((always_inline)) void part_end(const mixpart_t *m)   /* (always inlined: core 1 calls it from RAM, fm1_c1_main, which cannot reach a flash copy) */
+{
+    wv_tap(m);                                          /* the MORPH card's scope tap */
     m->t->p[P_DIST] = (int16_t)m->dist_st;              /* (the stored SAT back; mod_end below also does) */
     if (MODW(m->t).on)
         mod_end(m->t);                                  /* the stored values back */
@@ -2939,13 +3135,22 @@ static inline void part_end(const mixpart_t *m)
 
 /* one synth part into the dry mix and the sends: its stages in order (a part with no voice sounding costs the LFO tick and a cleared buffer only).
  * The callers' morph_begin / morph_end bracket it (mix_block); this function is the one place that fixes the order of a part's stages */
+#if DUELL_PROBE_STAGES
+volatile uint32_t prb_stage_pk[6];                  /* (probe) the longest block's morph_begin, part 1, part 2 wait, fm6_xblock, part 1 voices; [5]: the deadline's budget figures at a half's block 0 (twocore_run.c tcr_deadline: part_dl x2 + global_cost_dl; TIMER4 ticks) */
+#endif
 static void mix_part(track_t *t, uint32_t n, const blockstate_t *bs)
 {
     mixpart_t m;
+#if DUELL_PROBE_STAGES
+    uint32_t v0 = fm1_ticks();
+#endif
     if (!part_voice(&m, t, n, bs)) {
         part_rest(&m);
         return;
     }
+#if DUELL_PROBE_STAGES
+    if (t == &trk[0] && fm1_ticks() - v0 > prb_stage_pk[4]) prb_stage_pk[4] = fm1_ticks() - v0;
+#endif
     part_fx(&m);
     part_mix(&m);
     part_end(&m);
@@ -3120,10 +3325,9 @@ static __attribute__((noinline)) void mix_gather(uint32_t n, const blockstate_t 
     }
 }
 
-/* the HOME oscilloscope (ui_graph.c graph_scope): every other sample of the left channel. MENU > DISPLAY > SCOPE (1.2,
- * Discussion #165): OUT (0, the default) what goes out, after MASTER (audio.c audio_block, before the click); MIX the
- * mix before MASTER (and before SPEAKER EQ and the limiter), at the level MASTER at its top gives, so its
- * size does not follow the volume. The click is in neither */
+/* Host-only capture for the metronome routing regression. No hardware page
+ * reads the retired HOME scope, so its buffer and ISR work are not built. */
+#if defined(FELUCCA_HOST_SCOPE) && FELUCCA_HOST_SCOPE
 #define SCOPE_N 512u
 static int16_t scope_buf[SCOPE_N];
 static uint32_t scope_w;
@@ -3134,6 +3338,8 @@ static __attribute__((noinline)) void scope_take_mix(uint32_t n)
     for (i = 1; i < n; i += 2u)                         /* (((x >> 2) * MASTER_FULL) >> 10 is x) */
         scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)clamp(mix_l[i] + wet[i], -32767, 32767);
 }
+
+#endif
 
 /* DUELL GLO's level meters (ui_layer.c glo_meters). STEREO and LAYER read each part's own peak, t->peak (mix_part, kept anyway).
  * SPLIT also scans the two buses after their effect returns (mix_l: part 1's side, mix_r: part 2's) while the page shows: the UI
@@ -3179,15 +3385,15 @@ static __attribute__((noinline)) void perf_master(uint32_t n)
         wet[i] = 0;
     }
     perf_block(mix_l, mix_r, n);
-    for (i = 0; i < n; i++) {                           /* (for mix_block's level at PERF_MG) */
-        mix_l[i] <<= 2;
-        mix_r[i] <<= 2;
+    for (i = 0; i < n; i++) {                           /* (for mix_block's level at PERF_MG; times 4, not << 2: a negative sample shifted left is undefined in C, the same bits) */
+        mix_l[i] *= 4;
+        mix_r[i] *= 4;
     }
 }
 
 /* EVENT stage: everything that is not audio and runs at the head of a block. events_block (seq.c: MIDI in, notes, the sequencer, the arp, the
  * clocks, the PUMP DUCK's beat count), then the MODE's step (the dip, dm_step) and MODULES SENDS' (snd_step). Reads: the MIDI / USB queues,
- * the transport, song.*. Writes: the voices' note state (t->v, envelopes, midi_bend), the parts' parameters (t->p, via the sequencer, CCs
+ * the transport, song.*. Writes: the voices' note state (t->v, envelopes, midi_bend_target), the parts' parameters (t->p, via the sequencer, CCs
  * and the morph's queue), duck_st[].ph / run / pos, dm_*, snd_st, mod_dk. It touches NO audio buffer (mix_l, send_*, pscr[].buf, ...), so it
  * can run on the core that owns the events while the other core renders: its outputs are the parts' and the buses' controls the
  * render stages then read (see MIXSPLIT_NOTES.md). Takes and gives no audio data */
@@ -3275,6 +3481,24 @@ static __attribute__((noinline)) void mix_sends(uint32_t n)
  * perf: PERFORM at work this block. Reads: song.* (master, WIDTH, BASS MONO, COMP settings), the pf.* / sv.* / dm_* state. Writes: mix_l, mix_r,
  * wet (PERFORM's stage), the stages' own states (bm, wdn, cmp, the limiter's envelope and DC states: only these stages touch them) and out.
  * Nothing of the parts' states is touched, so this is the one stage that must see the sum of both parts */
+#ifdef SIL_SKIP_STATS
+static uint32_t mst_skipped;                            /* (tests/silentskip_test.c: the blocks mix_master left the DC blocker, limiter and knee out of) */
+#endif
+#if SIL_SKIP
+/* TIDE K5 (mix_master; range Z): the mix is 0 (after every master stage), the DC blockers at 0 (their remainders stay: with the state 0 an input of 0 does not move them) and
+ * the limiters' envelopes back at LIM_T (no gain): the DC blocker, the limiter and the knee would give exactly 0 and leave their states as they are. Returns 1 then (mix_master
+ * sets out to 0 and does not run its loop). Stops at the first state or sample not 0 */
+static __attribute__((noinline)) uint32_t sil_mst(uint32_t n)
+{
+    uint32_t i;
+    if (dc_l | dc_r | (lim_env + lim_env_r - 2 * LIM_T))   /* (an envelope is never under LIM_T: the sum is 2 LIM_T only with both at LIM_T; lim_env_r: SPLIT's right, LIM_T outside SPLIT, dm_lines_clear) */
+        return 0;
+    for (i = 0; i < n; i++)
+        if (mix_l[i] | mix_r[i] | wet[i])
+            return 0;
+    return 1;
+}
+#endif
 static __attribute__((noinline)) void mix_master(int32_t *out, uint32_t n, int perf, int32_t mg)
 {
     uint32_t i;
@@ -3303,6 +3527,15 @@ static __attribute__((noinline)) void mix_master(int32_t *out, uint32_t n, int p
     wd_sel = (uint8_t)wds;                              /* (BYPASS: the settings back) */
     bm_sel = (uint8_t)bms;
     cmp_cfg = ccf;
+#if SIL_SKIP
+    if (sil_mst(n)) {                                   /* (TIDE K5: the mix and the master's states at rest: out is 0, the loop not run) */
+        memset(out, 0, 2u * n * sizeof out[0]);
+#ifdef SIL_SKIP_STATS
+        mst_skipped++;
+#endif
+        return;
+    }
+#endif
     if (dm_split) {
         split_master(out, n, mg);
         return;
@@ -3360,15 +3593,35 @@ static void mix_block(int32_t *out, uint32_t n)
         perf = perf_begin(n);
     }
     blk_snap(&bs, sp_tap);                              /* the shared control state, once: the parts only read it */
+    wv_blk++;                                           /* the scope tap: the block count, and the gate (the card wants the tap until block wv_want), read once and stamped into the block's state for both parts */
+    bs.wv_blk = wv_blk;
+    bs.wv_on = (uint32_t)((int32_t)(wv_want - wv_blk) > 0);
 #if DUELL_TWOCORE
     tcr_begin(&bs, n);                                  /* DUELL TWO-CORE stage 1: part 2 goes to core 1 (twocore_run.c), part 1 stays here */
     {
+#if DUELL_PROBE_STAGES
+        uint32_t s0 = fm1_ticks(), s1, s2;              /* (probe: console `cpu` prints each stage's longest block, ticks; cleared there) */
+#endif
         int mo = morph_begin(&trk[0], 1);
+#if DUELL_PROBE_STAGES
+        s1 = fm1_ticks();
+#endif
         mix_part(&trk[0], n, &bs);
         if (mo)
             morph_end(&trk[0]);
+#if DUELL_PROBE_STAGES
+        s2 = fm1_ticks();
+        tcr_part2(&bs, n);
+        {
+            uint32_t s3 = fm1_ticks(), d[3] = {s1 - s0, s2 - s1, s3 - s2}, k;
+            for (k = 0; k < 3u; k++)
+                if (d[k] > prb_stage_pk[k]) prb_stage_pk[k] = d[k];
+        }
+#endif
     }
+#if !DUELL_PROBE_STAGES
     tcr_part2(&bs, n);                                  /* (core 1's part 2 awaited, or core 0 plays it, or it is silent) */
+#endif
 #else
     for (i = 0; i < NLIVE; i++) {                      /* (DUELL: tracks 3..4 do not render) */
         int mo = morph_begin(&trk[i], 1);               /* DUELL MORPH: the fader's values into t->p (morph.c) */
@@ -3384,7 +3637,9 @@ static void mix_block(int32_t *out, uint32_t n)
         if (dm_split)
             meter_scan(n);                              /* (GLO's page shows: SPLIT's two buses) */
     }
+#if defined(FELUCCA_HOST_SCOPE) && FELUCCA_HOST_SCOPE
     if (scope_mix)
         scope_take_mix(n);
+#endif
     mix_master(out, n, perf, mg);
 }

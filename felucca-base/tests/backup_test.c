@@ -6,6 +6,7 @@
  * records (object id 40 plus a slot byte, LIST pages), the same bytes PATCH_RAW moves: 128 patches (a part of them with the extension slots and the hand-set B
  * edit list) read, the store erased, every record written back through PUT: the same patches, the same bytes; refusals leave the store as it was. */
 #define main hostsim_main
+#include "multi_names.h"      /* (MIDX: a test names a multi by its record number) */
 #include "hostsim.c"
 #undef main
 
@@ -38,6 +39,8 @@ static void fl_plain_window_init(void) {}
 #include "../firmware/src/upreset.c"
 #include "../firmware/src/project.c"
 #include "old_pack.h"
+#include "endb_store.h"
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store takes: 126 with TIDE (its settings use chunk 21, plan 4.5), else 128 */
 
 enum { ED_BACKUP_LIST = 65, ED_BACKUP_GET, ED_BACKUP_PUT };
 static uint8_t rep[4096];
@@ -205,7 +208,10 @@ static uint32_t pt_bytes_total(void)
     return n;
 }
 
-int main(void)
+#ifndef BACKUP_TEST_MAIN
+#define BACKUP_TEST_MAIN main                     /* (tests/tide_store_test.c includes this file and has its own main) */
+#endif
+int BACKUP_TEST_MAIN(void)
 {
     int bad = 0;
     uint32_t len = 0, crc = 0, before;
@@ -214,8 +220,8 @@ int main(void)
 
     reset();
     trk[0].step[0] = (step_t){{60}, 1, ST_NOTE, 0, 96, 0, 0};
-    bad += check("LIST captures the runtime: the 24 other objects (ED_BK_N: ids 0..5 8 empty ones, 13..20 the multis, 21..23 the pattern slots, 24..26 the user wavetables, 32..34; the patches are paged), runtime 3840 B (FUN11)",
-                 list(0, &len, &crc) == 0 && rep[2] == ED_BK_N && ED_BK_N == 24u && len == sizeof(project_store_t) && len == 3840u &&
+    bad += check("LIST captures the runtime: the 29 other objects (ED_BK_N: ids 0..5 8 empty ones, 13..20 and 42..46 the multis (b10 U4), 21..23 the pattern slots, 24..26 the user wavetables, 32..34; the patches are paged), runtime 3840 B (FUN11)",
+                 list(0, &len, &crc) == 0 && rep[2] == ED_BK_N && ED_BK_N == 29u && len == sizeof(project_store_t) && len == 3840u &&
                  crc == st_crc32(ED_BK_RAW, len));
     bad += check("an empty project slot lists as length 0", list(2, &len, &crc) == 0 && len == 0);
     bad += check("GET of the runtime copy", get(0, 0, 64) == 0);
@@ -231,13 +237,13 @@ int main(void)
     memset(&ps, 0, sizeof ps);
     settings_export(&ps);
     ps.rsv = 2;                                          /* (the retired OUTPUT EQ field: whatever it holds is accepted and ignored since 0.2.19) */
-    ps.palette = palette_to_stored(6);
+    ps.palette = palette_to_stored(2);
     bad += check("settings with a retired OUTPUT EQ value restore", put_all(1, &ps, sizeof ps, st_crc32(&ps, sizeof ps)) == 0 &&
-                 settings.rsv == 0u && settings.palette == 6u);
+                 settings.rsv == 0u && settings.palette == 2u);
     ps.palette = 13;                                     /* an older backup: its PAPER (old id 13, Felucca's palettes; no longer read) */
     bad += check("settings of an older backup (an untagged palette id) are refused (rc 2, 0.2.14), the theme stays",
-                 put_all(1, &ps, sizeof ps, st_crc32(&ps, sizeof ps)) == 2u && settings.palette == 6u);
-    ps.palette = palette_to_stored(6);
+                 put_all(1, &ps, sizeof ps, st_crc32(&ps, sizeof ps)) == 2u && settings.palette == 2u);
+    ps.palette = palette_to_stored(2);
     before = erases;
     ps.rsv = 0;
     ps.bold = hold_to_stored(0, 3);                      /* HOLD 0.6 s */
@@ -353,8 +359,8 @@ int main(void)
         project_save_as(3, "TESTTWO");                      /* M04: object 1, record 1 */
         project_save_as(9, "OTHERNINE");                    /* M10: object 4 */
         ps_save_trk(&trk[0], 2, "PAT THREE");               /* P3: object 0, still a pending write (ps_dirty) */
-        bad += check("a saved multi lists in its object (id 14), a pattern in id 21 (the RAM mirror: still dirty)",
-                     list(14, &ml, &mc) == 0 && ml > 8u && ml < 3840u && list(21, &pl, &pc) == 0 && pl == ps_used_len(0) && pl > 400u && pl < 3584u && (ps_dirty & 1u) &&
+        bad += check("a saved multi lists in its object (id 14), a pattern in id 21 (S0a: one pattern object in RAM, so the LIST, reading the others, writes P3's waiting save first)",
+                     list(14, &ml, &mc) == 0 && ml > 8u && ml < 3840u && list(21, &pl, &pc) == 0 && pl == ps_used_len(0) && pl > 400u && pl < 3584u && !ps_pending(0) &&
                      list(22, &len, &crc) == 0 && len == ps_used_len(1) && len > 400u);
         for (off = 0; off < ml; off += 256u) {
             uint32_t n = ml - off > 256u ? 256u : ml - off;
@@ -368,7 +374,7 @@ int main(void)
                      st_crc32(m_a, ml) == mc && !memcmp(m_a, "MUL1", 4));
         bad += check("GET of the runtime id 0 still works after multis were read (no staging clash)", list(0, &len, &crc) == 0 && get(0, 0, 64) == 0 &&
                      get(14, 0, 64) == 0 && get(0, 0, 64) == 0);
-        memcpy(p_a, &ps_bank[0], pl);
+        memcpy(p_a, ps_obj(0), pl);
         at2 = ps_at[2];
         bad += check("a pattern object GET is the RAM mirror (CRC as listed)", st_crc32(p_a, pl) == pc && !memcmp(p_a, "PTS3", 4));
         bad += check("only the objects with a stored multi list a length (M10 = object 4, id 17; object 3, id 16: none)",
@@ -391,7 +397,7 @@ int main(void)
         {
             int n = st_load(OBJ_PATSLOT0, got, sizeof got);
             bad += check("restore: ps_poll writes nothing over it; flash and mirror are the restored object, P3 is back by name, P6 is its default again",
-                         n == (int)pl && st_crc32(got, pl) == pc && !memcmp(&ps_bank[0], p_a, pl) && ps_changed(2) && !ps_changed(5));
+                         n == (int)pl && st_crc32(got, pl) == pc && !memcmp(ps_obj(0), p_a, pl) && ps_changed(2) && !ps_changed(5));
         }
         {
             char nm[13];
@@ -453,6 +459,34 @@ int main(void)
         ps_save_trk(&trk[0], 0, "X");
         bad += check("restore: length 0 for id 21 gives its slots their defaults again (object listed, written at the next quiet pass)",
                      put_all(21, "", 0, 0) == 0 && !ps_changed(0) && (ps_dirty & 1u) && list(21, &len, &crc) == 0 && len == ps_used_len(0) && len > 400u);
+        {   /* b10 U4: M17 .. M26 are the multi objects 8..12, backup ids 42..46 (41 is the FM6 voice bank): a saved M17 / M24 lists in 42 / 45, 46 (M25, M26: no slot yet) is listed empty and restores */
+            uint32_t l42 = 0, c42 = 0, l45 = 0, c45 = 0, off2;
+            static uint8_t o42[3840];
+            reset();
+            multi_boot(); ps_boot();
+            project_save_as(16, "SEVENTEEN");
+            project_save_as(23, "TWENTYFOUR");
+            project_save_as(25, "TWENTYSIX");
+            bad += check("U4: a saved M17 lists in id 42, M24 in id 45, M26 in id 46; ids 43, 44 are empty; 41 is not a multi object here",
+                         list(42, &l42, &c42) == 0 && l42 > 8u && list(45, &l45, &c45) == 0 && l45 > 8u && list(43, &len, &crc) == 0 && len == 0 &&
+                         list(44, &len, &crc) == 0 && len == 0 && list(46, &len, &crc) == 0 && len > 8u && put_begin(41, 0, 0) == 1u && put_begin(47, 0, 0) == 1u);
+            for (off2 = 0; off2 < l42; off2 += 256u) {
+                uint32_t n = l42 - off2 > 256u ? 256u : l42 - off2;
+                uint8_t a[8] = {42};
+                put32(a + 1, off2);
+                a[6] = (uint8_t)(n & 127u); a[7] = (uint8_t)(n >> 7);
+                call(ED_BACKUP_GET, a, sizeof a);
+                ed_unpack7(rep + 9, rep_n - 9u, o42 + off2, n);
+            }
+            bad += check("U4: GET of id 42 is the flash object (MUL1, CRC as listed)", st_crc32(o42, l42) == c42 && !memcmp(o42, "MUL1", 4));
+            reset();
+            multi_boot(); ps_boot();
+            bad += check("U4: restore of id 42 commits; M17 is back by name, stored (not the factory multi); M24 is not", put_all(42, o42, l42, c42) == 0 &&
+                         project_used(16) && !project_factory(16) && !strcmp(mu_names[16], "SEVENTEEN") && !project_factory(16) && list(42, &len, &crc) == 0 && len == l42 && crc == c42 &&
+                         list(45, &len, &crc) == 0 && len == 0);
+            bad += check("U4: length 0 for id 42 gives M17 back its factory multi; length 0 for id 46 empties M25 / M26",
+                         put_all(42, "", 0, 0) == 0 && list(42, &len, &crc) == 0 && len == 0 && put_all(46, "", 0, 0) == 0 && list(46, &len, &crc) == 0 && len == 0);
+        }
     }
 
     /* the runtime */
@@ -478,37 +512,33 @@ int main(void)
         reset();
         set_engine_of(&trk[0], 0u);
         apply_preset_to(&trk[0], 2u);
-        for (k = 0; k < UP_SLOTS; k++) {
+        for (k = 0; k < NSAVE; k++) {
             char nmx[8] = {'B', (char)('0' + k / 10u % 10u), (char)('0' + k % 10u), 0};
             for (i = 0; i < NX; i++)
                 XV(&trk[0], i) = (int16_t)(k % 5u == 0u ? (int)(k + 3u * i) % 120 - 50 : (int)xb_def(i) - 64);   /* every 5th slot: slots off their defaults */
             for (xbn = 0; k % 7u == 0u && xbn < (k % 14u == 0u ? XB_MAX : 4u); xbn++)
                 ed[xbn] = (xb_edit_t){(uint8_t)(xbn < 31u ? xbn * 3u : 140u), (int16_t)(xbn * 2 - 40 + (int)(k % 9u))};
-            up_xb_in = xbn ? ed : 0;
-            up_xb_nin = xbn;
-            ok &= up_store_trk(&trk[0], k, nmx, 0) == 0;
-            up_xb_in = 0;
-            up_xb_nin = 0;
+            ok &= store_with_b(&trk[0], k, nmx, ed, xbn) == 0;
             was[k] = *up_rec(k);
             rlen[k] = up_raw_get(k, rec[k]);
             rcrc[k] = st_crc32(rec[k], rlen[k]);
             bytes += rlen[k];
         }
-        bad += check("128 patches saved (one per slot, every 5th with the 16 slots off default, every 7th with a hand-set B list, every 14th with 32 edits)", ok && up_count() == UP_SLOTS);
+        bad += check("126 (TIDE) or 128 patches saved (one per slot, every 5th with the 16 slots off default, every 7th with End B values set by hand, every 14th with 32 of them)", ok && up_count() == NSAVE);
         bad += check("LIST pages: before the capture LIST a page is stale (5); page 0 and 5 are invalid (1)",
                      (ed_bk_valid = 0, list_page(1) == 5u) && (call(ED_BACKUP_LIST, 0, 0), list_page(0) == 1u && list_page(5) == 1u));
         for (pg = 1; pg <= 4u; pg++) {
-            ok = list_page(pg) == 0 && rep[2] == ED_BK_PPAGE;
+            ok = list_page(pg) == 0 && rep[2] == (pg * ED_BK_PPAGE <= NSAVE ? ED_BK_PPAGE : NSAVE - (pg - 1u) * ED_BK_PPAGE);   /* (TIDE: the last page 30) */
             for (i = 0; ok && i < rep[2]; i++) {
                 const uint8_t *o = rep + 3 + i * 11u;
                 k = o[0];
                 ok &= k >= (pg - 1u) * ED_BK_PPAGE && k < pg * ED_BK_PPAGE && ed_bk_r32(o + 1) == rlen[k] && ed_bk_r32(o + 6) == rcrc[k];
                 listed++;
             }
-            bad += check("  a LIST page: its 32 slots with the length and CRC of each record", ok);
+            bad += check("  a LIST page: its saved slots (32, the last with TIDE 30) with the length and CRC of each record", ok);
         }
-        bad += check("  4 pages = 128 records listed", listed == UP_SLOTS);
-        for (k = 0, ok = 1; k < UP_SLOTS; k++) {
+        bad += check("  4 pages = every saved record listed (126 with TIDE, else 128)", listed == NSAVE);
+        for (k = 0, ok = 1; k < NSAVE; k++) {
             uint32_t off;
             for (off = 0; ok && off < rlen[k]; off += 256u) {
                 uint32_t n = rlen[k] - off > 256u ? 256u : rlen[k] - off;
@@ -517,7 +547,7 @@ int main(void)
             ok &= !memcmp(got, rec[k], rlen[k]) && st_crc32(got, rlen[k]) == rcrc[k];
         }
         bad += check("GET: every record read in pieces equals the stored record (slot and revision bytes zero), CRC as listed", ok);
-        printf("backup: 128 patches: %u bytes of logical records (the physical chunks held %u)\n", bytes, pt_bytes_total());
+        printf("backup: %u patches: %u bytes of logical records (the physical chunks held %u)\n", bytes, pt_bytes_total());
         bad += check("GET of a slot with no record, a slot past 127, a bad count, a missing slot byte: refused (1)",
                      (up_put(9, 0), get_patch(9, 0, 16)) == 1u && get_patch(128, 0, 16) == 1u && get_patch(3, 0, 0) == 1u && get_patch(3, rlen[3] - 1u, 2) == 1u && get_patch(3, 0, 16) == 0u);
         up_store_trk(&trk[0], 9, "B09", 0);
@@ -527,32 +557,35 @@ int main(void)
             ok = list_page(1) == 0 && rep[2] == ED_BK_PPAGE - 1u;
             bad += check("a slot with no record (its factory sound) is not listed", ok);
         }
-        for (k = 0; k < UP_SLOTS; k++)
+        for (k = 0; k < NSAVE; k++)
             up_put(k, 0);
         bad += check("  the store erased: no saved patch, every slot its factory sound again", up_count() == 0u && !up_used(5u));
-        for (k = 0, ok = 1; k < UP_SLOTS; k++)
+        for (k = 0, ok = 1; k < NSAVE; k++)
             ok &= k == 9u || put_patch(k, rec[k], rlen[k], rcrc[k]) == 0;
         same = 0;
-        for (k = 0; k < UP_SLOTS; k++) {
+        for (k = 0; k < NSAVE; k++) {
             want[0] = 'B'; want[1] = (char)('0' + k / 10u % 10u); want[2] = (char)('0' + k % 10u); want[3] = 0;
             up_name(k, nm);
             same += up_used(k) && !strcmp(nm, want) && up_raw_get(k, got) == rlen[k] && !memcmp(got, rec[k], rlen[k]);
         }
-        bad += check("  every record restored by PUT (slot 9 left out): the same patches, names, slots and bytes", ok && same == UP_SLOTS - 1u && up_count() == UP_SLOTS - 1u && !up_used(9));
-        for (k = 0, ok = 1; k < UP_SLOTS; k++)
+        bad += check("  every record restored by PUT (slot 9 left out): the same patches, names, slots and bytes", ok && same == NSAVE - 1u && up_count() == NSAVE - 1u && !up_used(9));
+        for (k = 0, ok = 1; k < NSAVE; k++)
             if (k != 9u) {
                 const up_rec_t *r = up_rec(k);
                 ok &= !memcmp(r->xz, was[k].xz, sizeof r->xz) && r->xb_n == was[k].xb_n && !memcmp(r->xb, was[k].xb, was[k].xb_n * sizeof r->xb[0]);
             }
         bad += check("  the extension slots and the hand-set B lists of every record are back (up_rec)", ok);
-        for (k = 0, ok = 1; k < UP_SLOTS; k++)
+        for (k = 0, ok = 1; k < NSAVE; k++)
             if (k != 9u) {
                 uint8_t ex[PT_WORST + 8];
                 ok &= put_patch(k, rec[k], rlen[k], rcrc[k]) == 0 && up_raw_get(k, ex) == rlen[k] && !memcmp(ex, rec[k], rlen[k]);
             }
-        bad += check("  and a second restore over the first (a newer revision each) leaves the same bytes", ok && up_count() == UP_SLOTS - 1u);
+        bad += check("  and a second restore over the first (a newer revision each) leaves the same bytes", ok && up_count() == NSAVE - 1u);
         /* the records go where the store puts them: into slots other than their own too (the bytes carry no slot) */
         bad += check("  a record into another slot than it came from: the same bytes there", put_patch(9, rec[40], rlen[40], rcrc[40]) == 0 && up_raw_get(9, got) == rlen[40] && !memcmp(got, rec[40], rlen[40]));
+        if (NSAVE < UP_SLOTS)                                         /* TIDE: the store holds 126; the 127th NEW record is STORE FULL (rc 6, not "flash write failed"), nothing written */
+            bad += check("  one more NEW record: rc 6 (STORE FULL), nothing written, the others untouched", put_patch(UP_SLOTS - 1u, rec[1], rlen[1], rcrc[1]) == 6u &&
+                         !up_used(UP_SLOTS - 1u) && up_count() == NSAVE && up_raw_get(1, got) == rlen[1] && !memcmp(got, rec[1], rlen[1]));
         up_put(9, 0);
         /* refusals */
         e0 = erases;
@@ -560,12 +593,12 @@ int main(void)
             uint8_t bad_rec[PT_WORST + 8];
             uint32_t xbo, mb, pr, pat, fm, kx = 70u;                 /* slot 70: 70 % 14 == 0, 32 edits */
             pt_layout(rec[kx], &xbo, &mb, &pr, &pat, &fm);
-            ok = (rec[kx][4] & PTF_XB) != 0;
+            ok = (rec[kx][4] & PTF_MB) != 0;
             memcpy(bad_rec, rec[kx], rlen[kx]);
-            bad_rec[xbo] += 1u;                                        /* the block's length no longer adds up */
+            bad_rec[mb + 1u] = 102u;                                   /* End B's AMOUNT past 101 */
             ok &= put_patch(kx, bad_rec, rlen[kx], st_crc32(bad_rec, rlen[kx])) == 2u;
             memcpy(bad_rec, rec[kx], rlen[kx]);
-            bad_rec[xbo + 1u] = 2u;                                    /* an XV version this firmware does not read */
+            bad_rec[mb] |= 128u;                                       /* an End B flag this firmware does not know */
             ok &= put_patch(kx, bad_rec, rlen[kx], st_crc32(bad_rec, rlen[kx])) == 2u;
             memcpy(bad_rec, rec[kx], rlen[kx]);
             bad_rec[4] &= (uint8_t)~PTF_CB;                            /* a record of before 0.2.14 */
@@ -575,42 +608,73 @@ int main(void)
             ok &= put_begin_patch(kx, PT_WORST + 1u, 0) == 1u && put_begin_patch(kx, PT_FIX - 1u, 0) == 1u && put_begin_patch(128, 100u, 0) == 1u;
             ok &= (transport_req = 1, put_begin_patch(kx, rlen[kx], rcrc[kx]) == 3u);
             transport_req = 0;
-            bad += check("bad patch records (block length, XV version, a record of before 0.2.14, CRC, cut short, too long or short, a slot past 127, PLAY starting) are refused; the store is as it was",
-                         ok && up_count() == UP_SLOTS - 1u && erases == e0 && up_raw_get(kx, got) == rlen[kx] && !memcmp(got, rec[kx], rlen[kx]));
+            bad += check("bad patch records (End B AMOUNT, an unknown End B flag, a record of before 0.2.14, CRC, cut short, too long or short, a slot past 127, PLAY starting) are refused; the store is as it was",
+                         ok && up_count() == NSAVE - 1u && erases == e0 && up_raw_get(kx, got) == rlen[kx] && !memcmp(got, rec[kx], rlen[kx]));
         }
         /* length 0: the slot's record removed, its factory sound is back */
         bad += check("PUT of length 0 for a slot: its record is removed, the factory sound is back (as RESTORE)",
-                     put_patch(5, rec[5], 0, 0) == 0 && !up_used(5u) && up_count() == UP_SLOTS - 2u);
+                     put_patch(5, rec[5], 0, 0) == 0 && !up_used(5u) && up_count() == NSAVE - 2u);
         put_patch(5, rec[5], rlen[5], rcrc[5]);
         /* the worst record into all 128 slots through PUT */
         {
-            for (k = 0, ok = 1; k < UP_SLOTS; k++) {
+            for (k = 0, ok = 1; k < NSAVE; k++) {
                 for (i = 0; i < NX; i++)
                     XV(&trk[0], i) = (int16_t)((i & 1u) ? -64 + (int)k % 40 : 127 - (int)k % 40);
                 for (xbn = 0; xbn < XB_MAX; xbn++)
                     ed[xbn] = (xb_edit_t){(uint8_t)(xbn < 30u ? xbn * 4u : 128u + xbn), (int16_t)(127 - (int)xbn * 3)};
-                up_xb_in = ed;
-                up_xb_nin = XB_MAX;
                 trk[0].p[P_AMODE] = AM_SEQ;
-                ok &= up_store_trk(&trk[0], k, "W", 0) == 0;
-                up_xb_in = 0;
-                up_xb_nin = 0;
+                ok &= store_with_b(&trk[0], k, "W", ed, XB_MAX) == 0;
                 rlen[k] = up_raw_get(k, rec[k]);
                 rcrc[k] = st_crc32(rec[k], rlen[k]);
             }
-            for (k = 0; k < UP_SLOTS; k++)
+            for (k = 0; k < NSAVE; k++)
                 up_put(k, 0);
-            for (k = 0; k < UP_SLOTS; k++)
+            for (k = 0; k < NSAVE; k++)
                 ok &= put_patch(k, rec[k], rlen[k], rcrc[k]) == 0;
-            for (k = 0, same = 0; k < UP_SLOTS; k++)
+            for (k = 0, same = 0; k < NSAVE; k++)
                 same += up_raw_get(k, got) == rlen[k] && !memcmp(got, rec[k], rlen[k]);
-            bad += check("128 records with the 16 slots off default and 32 edits, written back through PUT into an empty store: all 128 take, the same bytes", ok && same == UP_SLOTS);
+            bad += check("126 (TIDE) or 128 records with the 16 slots off default and 32 edits, written back through PUT into an empty store: all take, the same bytes", ok && same == NSAVE);
         }
         for (k = 0; k < UP_SLOTS; k++)
             up_put(k, 0);
         reset();
     }
 
+    {   /* FM6's voice bank is object 41 (INFO 44 01 bit 1): read only, not in the plain LIST, the stored payload and its CRC */
+        static uint8_t pk[FM6_PACKED], whole[FVB_LEN + 8u], one[FM6_PACKED];
+        uint32_t k, c = 0xFFFFFFFFu, i, off, ok = 1, ids41 = 0;
+        reset();
+        list(0, &len, &crc);
+        for (i = 0; i < rep[2]; i++)
+            ids41 += rep[3 + i * 11u] == ED_BK_FVB;
+        bad += check("voice bank: the plain LIST does not list id 41; GET 41 with no bank on the unit is rc 1 (the editor's probe)", ids41 == 0 && get(41, 0, 1) == 1u);
+        ok = fvb_begin() == 0;
+        for (k = 0; k < 2u; k++) {
+            for (i = 0; i < FM6_PACKED; i++)
+                pk[i] = (uint8_t)((i * 3u + k * 41u) & 127u);
+            ok &= fvb_write(k * 7u, pk) == 0;
+            c = st_crc32_add(c, pk, FM6_PACKED);
+        }
+        ok &= fvb_end((const uint8_t *)"TESTBANK  ", ~c) == 0;
+        list(0, &len, &crc);
+        bad += check("voice bank: a bank written as the editor writes it (voices 0 and 7)", ok && fm6_bank_used == (1u | 1u << 7));
+        bad += check("voice bank: GET 41 probe with one byte is rc 0 now; the last byte is rc 0, one past the end is rc 1", get(41, 0, 1) == 0u && get(41, FVB_LEN + 3u, 1) == 0u && get(41, FVB_LEN + 3u, 2) == 1u);
+        for (off = 0, ok = 1; off < FVB_LEN + 4u; off += 256u) {
+            uint32_t n = FVB_LEN + 4u - off > 256u ? 256u : FVB_LEN + 4u - off;
+            ok &= get(41, off, n) == 0u && rep[0] == 41u && ed_bk_r32(rep + 2) == off && ed_unpack7(rep + 9, rep_n - 9u, whole + off, 256u) == n;
+        }
+        {
+            uint32_t tail = (uint32_t)whole[FVB_LEN] | (uint32_t)whole[FVB_LEN + 1u] << 8 | (uint32_t)whole[FVB_LEN + 2u] << 16 | (uint32_t)whole[FVB_LEN + 3u] << 24;
+            bad += check("voice bank: GET 41 gives the payload as stored (header and 32 voices, FVB_LEN) and its CRC-32 after it",
+                         ok && !memcmp(whole, nor + FVB_HOME + FVB_INFO, FVB_LEN) && tail == st_crc32(whole, FVB_LEN) && !memcmp(whole, "FM6V", 4) && !memcmp(whole + 12, "TESTBANK  ", 10));
+            upf_pk_get(whole + (FVB_VOICES - FVB_INFO) + 7u * UPF_PK, one);
+            for (i = 0; i < FM6_PACKED; i++)
+                pk[i] = (uint8_t)((i * 3u + 1u * 41u) & 127u);
+            bad += check("voice bank: voice 7 of the object unpacks to the record that was written", !memcmp(one, pk, FM6_PACKED));
+        }
+        bad += check("voice bank: it is read only here (PUT begin of id 41 answers rc 1: the restore is FM6B_BEGIN / WRITE / END)", put_begin(41, FVB_LEN + 4u, 0) == 1u);
+        reset();
+    }
     printf("backup test %s\n", bad ? "FAILED" : "passed");
     return bad != 0;
 }

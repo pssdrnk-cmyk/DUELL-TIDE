@@ -73,8 +73,8 @@ def main(path):
     lo = [0.0] + [20.0 * (100 ** ((v - 1) / 126)) for v in range(1, 128)]
     L += arr("LOCUT_HZ", "uint16_t", [int(round(f)) for f in lo])
     L += arr("LOCUT_K", "uint16_t", [locut_k(f) for f in lo])
-    # trapezoidal (Simper) SVF: g = tan(pi fc / FS), Q12; stable at any cutoff/resonance
-    L += arr("SVF_G", "uint16_t", [int(4096 * math.tan(math.pi * min(f, 0.45 * FS) / FS)) for f in fc])
+    # trapezoidal (Simper) SVF: g = tan(pi fc / FS), Q14 (Q12 left 8 at 30 Hz); stable at any cutoff/resonance
+    L += arr("SVF_G", "uint16_t", [int(16384 * math.tan(math.pi * min(f, 0.45 * FS) / FS)) for f in fc])
     # level: 0 = off, else dB = (v - 112) / 2  (112 = 0 dB, 127 = +7.5 dB)
     db = [None] + [(v - 112) / 2 for v in range(1, 128)]
     L += arr("LEVEL_Q12", "uint16_t", [0] + [int(round(4096 * 10 ** (d / 20))) for d in db[1:]])
@@ -110,9 +110,9 @@ def fm6_tables():
          f"#define FM6_FREQ_R {int(round(2 ** 40 / FS))}u   /* 2^40 / FS: the Q30 mantissa -> a Q24 phase increment (fm6_freq) */",
          f"#define FM6_AMS_C0 {int(round(12.2 * math.log2(math.e) * 2 ** 24))}   /* log2(e^12.2), Q24 (the AMS curve) */",
          f"#define FM6_AMS_K {int(round(0.07 / 262144 * math.log2(math.e) * 2 ** 24 * 1024))}      /* d/dsensamp of it, Q24 / 1024 */"]
-    # 2^(i / 1024) - 1, Q30: the mantissa of Exp2::lookup and Freqlut::lookup (linear between the points, as
-    # msfa's: within 6e-8 of 2^x; a Q16 table drifted the partials of a ratio against each other)
-    L += arr("FM6_EXP2", "uint32_t", [int(round((1 << 30) * (2 ** (i / 1024) - 1))) for i in range(1025)], 8)
+    # 2^(i / 512) - 1, Q30 (513 points, a step of 2^15 in the Q24 fraction; was 1025 points): the mantissa of Exp2::lookup and Freqlut::lookup (linear between the points, as
+    # msfa's: worst relative error 2.3e-7 against 2^x, tests/fm6_exp2_test.c; a Q16 table drifted the partials of a ratio against each other)
+    L += arr("FM6_EXP2", "uint32_t", [int(round((1 << 30) * (2 ** (i / 512) - 1))) for i in range(513)], 8)
     lforatio = int(4437500000.0 * CTL / FS)                                  # msfa Lfo::lforatio_ (uint32)
     L += arr("FM6_LFO_DELTA", "uint32_t", [int(s * lforatio) for s in FM6_LFO_SOURCE], 8)
     # msfa note osc_freq: the DETUNE step of note mn, Q24 log2 (0.0209 * exp(-0.396 * lf) / 7 * lf, lf in octaves)

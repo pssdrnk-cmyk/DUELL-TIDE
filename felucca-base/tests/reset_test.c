@@ -125,14 +125,6 @@ int main(void)
     duell_mode_req = DM_STEREO;
     perf_space = 0;
 
-    /* MODE: K2 (item 157: no BALANCE card; nothing to reset; item 160: the balance is the two MIXER LEVELs, PERFORM's SELECT, not touched here) */
-    page("MODE");
-    trk[0].p[P_LEVEL] = 100, trk[1].p[P_LEVEL] = 112;
-    btn_down(B_OCTDN); frame(); turn(EN_K2, -1); btn_up(B_OCTDN); frame();
-    printf("reset: MODE OCT- + K2: octave after %d\n", (int)song.octave);
-    expect("MODE K2 (no card): OCT- + the knob resets nothing, the LEVELs stay", trk[0].p[P_LEVEL] == 100 && trk[1].p[P_LEVEL] == 112 && !said_reset());
-    trk[0].p[P_LEVEL] = trk[1].p[P_LEVEL] = 112;
-    song.octave = 0;
 
     /* the REVERB page's LOCUT (0.2.14): K4, to its default 75 (299 Hz; 61 = 88 Hz up to 0.2.21); and a turn is a turn, 1 step */
     page("REVERB");

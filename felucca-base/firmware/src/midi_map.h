@@ -29,7 +29,7 @@
 enum {
     MAP_T_MORPH = 256,                  /* the MORPH fader 0..127 */
     MAP_T_ROLL_A, MAP_T_ROLL_B,         /* a roll of End A / End B: 64 and up fires once, below 64 re-arms (no shipped line: the shipped map has the one ROLL below; kept for typed lines and the reference tests) */
-    MAP_T_UNDO,                         /* UNDO: 1..63 End A, 64..127 End B, 0 re-arms */
+    MAP_T_SPARE_UNDO,                   /* 1.0.0-b5: MORPH UNDO's code until the morph lost its history, kept so no later code moves (stored maps, EDITOR_PROTOCOL); no target: map_code_ok refuses it */
     MAP_T_ROLL,                         /* ROLL, one CC centred like the knob (MIDI_MAP_FINAL): 0..42 rolls End A, 43..84 nothing, 85..127 rolls End B; a roll fires when the value ENTERS its zone */
     MAP_T_AMOUNT,                       /* the morph AMOUNT 0..127 -> 0..100 % */
     MAP_T_TARGET,                       /* the morph TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH */
@@ -40,6 +40,8 @@ enum {
     MAP_T_SPLIT,                        /* 0 OFF, 1..127 the note (global) */
     MAP_T_CUTOFF_SMART,                 /* CC74: the engine's own cutoff, or the multimode filter's (MIDI_CC_ENG) */
     MAP_T_RES_SMART,                    /* CC71: the same for the resonance */
+    MAP_T_GLIDE,                        /* zone entry: 0..42 A, 43..84 neutral, 85..127 B */
+    MAP_T_SEQ,                          /* sequence morph fader, 0..127 */
     MAP_T_ACT_END,
     MAP_T_G0 = 320,                     /* 320 + G_* id: a global value (the effects block); up to 351 */
     MAP_T_G_END = 352,

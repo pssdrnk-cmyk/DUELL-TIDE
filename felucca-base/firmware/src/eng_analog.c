@@ -11,10 +11,10 @@
  *         every pair (OSC 2 alone at 127)
  *   SUB   OSC 1 a saw, OSC 2 a square an octave below it (detuned by DTN in cents as before): MIX (shown SUB) is the
  *         sub oscillator's level */
-static const char *const N_ANALOG_WAVE[] = {"SAW", "SQR", "TRI", "SIN", "PWM", "SYNC", "SUB"};
-enum { AW_SYNC = 5, AW_SUB = 6 };
-static const param_desc_t ANALOG_SYNC = {"SYNC", F_INT, 0, 127, 10, 0, 0};   /* DTN's range and default */
-static const param_desc_t ANALOG_SUB = {"SUB", F_PCT, 0, 127, 64, 0, 0};      /* MIX's */
+static const char *const N_ANALOG_WAVE[] = {"SAW", "SQR", "TRI", "SIN", "PWM", "SYNC", "SUB", "ACID", "ACSQ"};
+enum { AW_SYNC = 5, AW_SUB = 6, AW_ACSQ = 8 };   /* WAVE 7 ACID / 8 ACSQ (b8): a saw / a square that play as a 303 (voice.c acid_on); the oscillator is OSC 1 as SAW / SQR */
+static const param_desc_t ANALOG_SYNC = {"SYNC", F_INT, 0, 0, 127, 10, 0};   /* DTN's range and default */
+static const param_desc_t ANALOG_SUB = {"SUB", F_PCT, 0, 0, 127, 64, 0};      /* MIX's */
 
 static const param_desc_t *analog_desc(const track_t *t, uint32_t k)
 {
@@ -52,6 +52,14 @@ static __attribute__((noinline)) void atg_analog(const vmod_t *m, int32_t det, u
         *m2 = mulq15(*m2, m->again);
 }
 
+/* DRV (E6): the saturation fades in over DRV 1..8 (audit P14). DRV 1 used to switch the full tanh on: the signal lost about 0.9 dB at once, a step in the knob's first notch.
+ * (drive is 32768 + DRV x 512, up to 3x; the pre-shifts keep the product inside 32 bits; w - s is under 2^17 and the weight 4096 a step: no overflow) */
+static __attribute__((noinline)) int32_t an_drive(int32_t s, int32_t drive, int32_t drv)
+{
+    int32_t w = softclip(((s >> 2) * (drive >> 2)) >> 11);
+    return drv >= 8 ? w : s + (((w - s) * (drv * 4096)) >> 15);
+}
+
 /* WAVE SYNC / SUB: OSC 1 a saw, OSC 2 the synced saw / the sub square; then noise and drive as
  * analog_render. Its own function: analog_render's loop stays what it was */
 static __attribute__((noinline)) void analog_render_x(track_t *t, voice_t *v, int32_t *out, uint32_t n,
@@ -61,7 +69,7 @@ static __attribute__((noinline)) void analog_render_x(track_t *t, voice_t *v, in
     uint32_t sub = p[P_E0] == AW_SUB, i;
     int32_t det = p[P_E1], mix = p[P_E2], noise = p[P_E3];
     int32_t drive = 32768 + p[P_E6] * 512;
-    int32_t m2 = mix * 258, m1 = 32767 - m2;
+    int32_t m2 = Q15_FROM_127(mix), m1 = 32767 - m2;
     int32_t nz = noise * 200, drv = p[P_E6];
     uint32_t ph0 = v->ph[0], ph1 = v->ph[1], inc1 = m->inc, inc2;
     int32_t nst = v->s[2];
@@ -104,8 +112,8 @@ static __attribute__((noinline)) void analog_render_x(track_t *t, voice_t *v, in
         if (nz)
             s += mulq15((int32_t)(noise32(&nst) >> 17) - 16384, nz);
         if (drv)
-            s = softclip(((s >> 2) * (drive >> 2)) >> 11);
-        out[i] += voice_amp(s, m, i) << 1;
+            s = an_drive(s, drive, drv);
+        out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
     v->ph[1] = ph1;
@@ -119,14 +127,16 @@ static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t
 {
     const int16_t *p = t->p;
     uint32_t wave = (uint32_t)p[P_E0], i;
+    if (wave == AW_ACSQ)
+        wave = 1;                                                /* (ACID: the default case, the saw) */
     int32_t det = p[P_E1], mix = p[P_E2], noise = p[P_E3];
     int32_t drive = 32768 + p[P_E6] * 512;                       /* 1x .. 3x */
     uint32_t inc1 = m->inc;
     /* DTN in cents. OSC B carries the voice's fine factor (unison detune, TUNE, bend) as OSC A does (SPEC 2.3: it
      * dropped it before DUELL) */
     uint32_t inc2 = det ? cents_inc(m->pitch16, det, m->fine) : inc1;
-    uint32_t pw = 0x80000000u + (uint32_t)((m->shape - (64 << 8)) << 15);
-    int32_t m2 = mix * 258, m1 = 32767 - m2;                    /* osc mix Q15 */
+    uint32_t pw = pulse_pw(m->shape, p[P_E4]);
+    int32_t m2 = Q15_FROM_127(mix), m1 = 32767 - m2;                    /* osc mix Q15 */
     if (m->amask)                                               /* ARP TARGET: the units on the arp (SPEC 2.3) */
         atg_analog(m, det, &inc1, &inc2, &m1, &m2);
     int32_t nz = noise * 200, drv = p[P_E6];
@@ -162,8 +172,8 @@ static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t
         if (nz)
             s += mulq15((int32_t)(noise32(&nst) >> 17) - 16384, nz);
         if (drv)
-            s = softclip(((s >> 2) * (drive >> 2)) >> 11);   /* pre-shifts: drive is up to 3x, no overflow */
-        out[i] += voice_amp(s, m, i) << 1;
+            s = an_drive(s, drive, drv);
+        out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
     v->ph[1] = ph1;
@@ -196,8 +206,8 @@ static __attribute__((noinline)) void analog_render_m(track_t *t, voice_t *v, in
     int32_t drive = 32768 + p[P_E6] * 512;
     uint32_t inc1 = m->inc;
     uint32_t inc2 = det ? cents_inc(m->pitch16, det, m->fine) : inc1;
-    uint32_t pw = 0x80000000u + (uint32_t)((m->shape - (64 << 8)) << 15);
-    int32_t m2 = mix * 258, m1 = 32767 - m2;
+    uint32_t pw = pulse_pw(m->shape, p[P_E4]);
+    int32_t m2 = Q15_FROM_127(mix), m1 = 32767 - m2;
     if (m->amask)
         atg_analog(m, det, &inc1, &inc2, &m1, &m2);
     int32_t nz = noise * 200, drv = p[P_E6];
@@ -215,8 +225,8 @@ static __attribute__((noinline)) void analog_render_m(track_t *t, voice_t *v, in
         if (nz)
             s += mulq15((int32_t)(noise32(&nst) >> 17) - 16384, nz);
         if (drv)
-            s = softclip(((s >> 2) * (drive >> 2)) >> 11);
-        out[i] += voice_amp(s, m, i) << 1;
+            s = an_drive(s, drive, drv);
+        out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
     v->ph[1] = ph1;
@@ -227,13 +237,14 @@ static void analog_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 {
     if (MXF(t).on && MXF(t).w[MX_E0] && t->p[P_E0] < AW_SYNC)
         analog_render_m(t, v, out, n, m);               /* DUELL MORPH: a WAVE cross-fade */
-    else if (t->p[P_E0] >= AW_SYNC)
+    else if (t->p[P_E0] == AW_SYNC || t->p[P_E0] == AW_SUB)
         analog_render_x(t, v, out, n, m);
     else
         analog_osc(t, v, out, n, m);
 }
 
-/* {WAVE, DTN, MIX, NOIS, -, -, DRV, -}: the filter's three slots are unused (CUT RES KTR were filter 1's since cloud job J) */
+/* {WAVE, DTN, MIX, NOIS, PW, -, DRV, -}: the filter's three slots are unused (CUT RES KTR were filter 1's since cloud job J) */
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t ANALOG_PRESETS[] = {
     {"SAW LEAD", {0, 12, 64, 0, 0, 0, 10, 0}, {4, 70, 100, 50}, 20, 1, FX(0, 10, 45, 30), PAT(4)},
     {"SOFT PAD", {0, 20, 64, 4, 0, 0, 0, 0}, {80, 90, 110, 95}, 10, 0, FX(0, 60, 20, 70), PAT(5)},
@@ -248,6 +259,7 @@ static const preset_t ANALOG_PRESETS[] = {
     {"WIND", {0, 0, 0, 90, 0, 0, 0, 0}, {60, 90, 60, 80}, 50, 0, FX(0, 30, 30, 70), PAT(5)},
     {"STRINGS", {0, 25, 64, 0, 0, 0, 0, 0}, {70, 90, 115, 90}, 5, 0, FX(0, 60, 20, 70), PAT(5)},
 };
+#endif
 
 static const uint8_t ANALOG_UIORD[8] = {0, 1, 2, 3, 6, 4, 5, 7};   /* card position -> E index: ENGINE WAVE DTN MIX; EDIT 1 NOIS DRV (the three unused slots after them, hidden); the stored ids never move */
 
@@ -255,17 +267,19 @@ static const engine_t ENG_ANALOG = {
     .name = "ANALOG",
     .page_title = {"OSC", "FLT"},
     .edit = {
-        {"WAVE", F_ENUM, 0, 6, 0, N_ANALOG_WAVE, 0},
-        {"DTN", F_INT, 0, 127, 10, 0, "ct"},
-        {"MIX", F_PCT, 0, 127, 64, 0, 0},
-        {"NOIS", F_PCT, 0, 127, 0, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was CUT: filter 1 (voice.c uf_run) */
+        {"WAVE", F_ENUM, 0, 0, 8, 0, N_ANALOG_WAVE},
+        {"DTN", F_INT, U_CT, 0, 127, 10, 0},
+        {"MIX", F_PCT, 0, 0, 127, 64, 0},
+        {"NOIS", F_PCT, 0, 0, 127, 0, 0},
+        {"PW", F_PCT, 0, 0, 127, 0, 0},              /* was CUT: filter 1 (voice.c uf_run). PWM's static width (P09): 0 = 50 %, 127 = 90 % duty (dsp.c pulse_pw); every stored sound has 0 */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES */
-        {"DRV", F_PCT, 0, 127, 0, 0, 0},
+        {"DRV", F_PCT, 0, 0, 127, 0, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was KTR (filter 1's KEY TRK) */
     },
+#if DUELL_PRESETS
     .presets = ANALOG_PRESETS,
     .npresets = NELEM(ANALOG_PRESETS),
+#endif
     .note_on = analog_note_on,
     .render = analog_render,
     .desc = analog_desc,

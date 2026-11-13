@@ -13,8 +13,8 @@
  *              The footer has no hint rows on grid_on 16, only the engine and the patch name as on every page (perf_foot stays for the old
  *              layout's footer and the host tests).
  *   PRESETS    the sound of the part(s) ALGORITHM chose, as on every page (BOTH: each part one step on from its own sound); perf_presets.
- *   ALGORITHM  PART 1 / BOTH / PART 2: the part(s) K1 MORPH and ROLL A / B act on. 0.2.9: the same state as the MORPH page's
- *              (ui_input.c algo_step; leaving PERFORM keeps it; other pages pick PART 1 / PART 2 only).
+ *   ALGORITHM  PART 1 / BOTH / PART 2: the part(s) K1 MORPH and ROLL A / B act on. The same selection as HOME's
+ *              (1.0.0-b5: the one part selection, ui_input.c part_select; leaving PERFORM keeps it; the edit pages pick PART 1 / PART 2 only).
  *   SELECT     BALANCE (item 160: LEVEL 1 against LEVEL 2 of the MIXER, push-pull, 0.5 dB a step, never above 0 dB: ui_input.c perf_balance; page_select does nothing here: PERFORM is one page). MASTER as ever.
  *   LEDS       the white keys their map: an effect that can run at the mid level, a held key lit, one that cannot run dark; the black
  *              keys (notes) lit while held or playing. */
@@ -23,7 +23,9 @@ static const char *const PF_NAME[PF_KEYS] = {
     "1/8", "1/16", "1/32", "REV",
     "TAPE", "FREEZE", "OCT+", "OCT-",
     "FLG", "PHS", "DRV", "PUMP",
-    "RND A", "RND B", "MUTE 1", "MUTE 2",
+
+    "GLIDE A", "GLIDE B",
+    "MUTE 1", "MUTE 2",
 };
 #define PF_SMALL ((1u << 5) | (1u << 14) | (1u << 15))  /* FREEZE, MUTE 1, MUTE 2: the smaller size in the picture */
 
@@ -107,8 +109,10 @@ static void perf_input(uint32_t pressed, uint32_t now, uint32_t lay)
     for (k = 0; k < 2u; k++)                            /* ROLL A / B: the MORPH page's roll, once a press */
         while (ui.perf_rolls[k] != perf_roll_n[k]) {
             ui.perf_rolls[k]++;
-            if (ok)
-                morph_act(MQ_ROLL, morph_mask(song.sel), k, song.sel);
+            if (ok) {
+                glide_launch(k, morph_mask(song.sel), song.sel);   /* (a panel launch: PLAY starts with it) */
+                ui_message(k ? "GLIDE TO B" : "GLIDE TO A");
+            }
         }
     held = perf_places();
     fresh = held & ~ui.perf_seen;
@@ -169,7 +173,7 @@ static void perf_knob(uint32_t slot, int32_t s)
 static void perf_presets(int32_t s)
 {
     uint32_t was = song.sel;
-    if (morph.target != MT_BOTH) {
+    if (!PART_BOTH()) {
         presets_turn(s);
         return;
     }
@@ -212,7 +216,11 @@ static int perf_foot(char *l, char *r)
         return 0;
     str_cpy(l, "SELECT = BALANCE", 24);                /* (item 160: the old balance number is gone with its value; SELECT moves LEVEL 1 / LEVEL 2, shown on the MIXER page) */
     str_cpy(r, "ALGORITHM = ", 24);
-    str_cpy(r + str_len(r), morph.target == MT_BOTH ? "BOTH" : song.sel ? "PART 2" : "PART 1", 24 - str_len(r));
+#if TIDE_PLAYSEL
+    str_cpy(r + str_len(r), PLS_NAME[play_pos()], 24 - str_len(r));   /* (1.0.0-b7) */
+#else
+    str_cpy(r + str_len(r), PART_BOTH() ? "BOTH" : song.sel ? "PART 2" : "PART 1", 24 - str_len(r));
+#endif
     return 1;
 }
 static uint32_t perf_sig(void)

@@ -95,7 +95,23 @@ static int theory(void)
                  chord_is(64, (const uint8_t[]){64, 68, 71, 74}) && name_is(64, "E7") && name_is(68, "G#dim7") &&
                  name_is(69, "AmM7"));
     scale_g = 1; root_g = 3;                           /* Eb major */
-    bad += check("Eb major DIA7 on Bb: Bb D F Ab (A#7)", chord_is(58, (const uint8_t[]){58, 62, 65, 68}) && name_is(58, "A#7"));
+    bad += check("Eb major DIA7 on Bb: Bb D F Ab (A#7)", chord_is(58, (const uint8_t[]){58, 62, 65, 68}) && name_is(58, "Bb7"));
+    /* audit S13: flats in a flat key, sharps in a sharp one, a quartal stack named, a 6-note scale's DIA7 a triad */
+    scale_g = 2; root_g = 0; t->p[P_CHRD] = CH_DIA7;                       /* C minor */
+    bad += check("C minor DIA7: Ebmaj7 Abmaj7 Bb7 (not D#maj7 G#maj7 A#7)", name_is(63, "Ebmaj7") && name_is(68, "Abmaj7") && name_is(70, "Bb7"));
+    scale_g = 2; root_g = 4;                                               /* E minor: G major's F# */
+    bad += check("E minor DIA7 on F#: F#m7b5 (sharps in a sharp key)", name_is(66, "F#m7b5"));
+    scale_g = 1; root_g = 2;                                               /* D major */
+    bad += check("D major DIA7 on F#: F#m7", name_is(66, "F#m7"));
+    scale_g = 3; root_g = 0;                                               /* C dorian: Bb major's modes */
+    bad += check("C dorian DIA7 on Eb: Ebmaj7", name_is(63, "Ebmaj7"));
+    scale_g = 0; root_g = 10;                                              /* CHROMATIC, ROOT Bb */
+    bad += check("CHROMATIC with ROOT Bb: the plain MAJ7 on Db is Dbmaj7", name_is(61, "Dbmaj7"));
+    scale_g = 6; root_g = 9;                                               /* A minor pentatonic: A D G C, a stack of 4ths */
+    bad += check("A minor pentatonic DIA7 on A: A D G C, named Am7sus", chord_is(69, (const uint8_t[]){69, 74, 79, 84}) && name_is(69, "Am7sus"));
+    scale_g = 12; root_g = 0;                                              /* BLUES (6 notes) */
+    bad += check("BLUES DIA7 on C: a triad C F G, not 0-5-7-12", chord_is(60, (const uint8_t[]){60, 65, 67, 0}));
+    root_g = 0;
     scale_g = 3; root_g = 2; t->p[P_CHRD] = CH_DIA3;   /* D dorian */
     bad += check("D dorian DIA3 on D: Dm, on G: G (the major IV)", name_is(62, "Dm") && name_is(67, "G") &&
                  chord_is(67, (const uint8_t[]){67, 71, 74, 0}));
@@ -127,7 +143,7 @@ static int theory(void)
                     scale_g = (int16_t)s; root_g = (int16_t)r;
                     t->p[P_CHRD] = (int16_t)(note & 1u ? CH_DIA3 : CH_DIA7);
                     n = chord_build(t, note, out);
-                    ok &= n == (note & 1u ? 3u : 4u);
+                    ok &= n == (note & 1u || __builtin_popcount(scale_mask(t)) == 6 ? 3u : 4u);   /* (a 6-note scale: DIA7 stops at the triad) */
                     ok &= out[0] == note;                      /* the root is never moved */
                     if ((scale_mask(t) >> ((note + 120u - r) % 12u)) & 1u) {
                         for (k = 0; k < n; k++)
@@ -159,6 +175,23 @@ static int shapes_voicings(void)
     t->p[P_CHRD] = CH_MIN7; bad += check("MIN7: C Eb G Bb (Cm7)", chord_is(60, (const uint8_t[]){60, 63, 67, 70}) && name_is(60, "Cm7"));
     t->p[P_CHRD] = CH_SUS4; bad += check("SUS4: C F G (Csus4)", chord_is(60, (const uint8_t[]){60, 65, 67, 0}) && name_is(60, "Csus4"));
     t->p[P_CHRD] = CH_POW; bad += check("POW: C G C (C5)", chord_is(60, (const uint8_t[]){60, 67, 72, 0}) && name_is(60, "C5"));
+    /* the house / dub shapes (lane S extend): appended to the list, so a stored CHRD keeps its meaning */
+    bad += check("the old CHRD numbers stay (POW 9) and the new ones follow (MIN9 10 .. DIA9 15)", CH_POW == 9 && CH_MIN9 == 10 && CH_DIA9 == 15 && TP[P_CHRD].max == 15);
+    t->p[P_CHRD] = CH_MIN9; bad += check("MIN9: C Eb Bb D (Cm9)", chord_is(60, (const uint8_t[]){60, 63, 70, 74}) && name_is(60, "Cm9"));
+    t->p[P_CHRD] = CH_MAJ9; bad += check("MAJ9: C E B D (Cmaj9)", chord_is(60, (const uint8_t[]){60, 64, 71, 74}) && name_is(60, "Cmaj9"));
+    t->p[P_CHRD] = CH_SUS2; bad += check("SUS2: C D G (Csus2)", chord_is(60, (const uint8_t[]){60, 62, 67, 0}) && name_is(60, "Csus2"));
+    t->p[P_CHRD] = CH_ADD9; bad += check("ADD9: C E G D (Cadd9)", chord_is(60, (const uint8_t[]){60, 64, 67, 74}) && name_is(60, "Cadd9"));
+    t->p[P_CHRD] = CH_MIN11; bad += check("MIN11: the quartal C F Bb Eb (no fifth)", chord_is(60, (const uint8_t[]){60, 65, 70, 75}) && name_is(60, "Cm7sus"));
+    t->p[P_CHRD] = CH_MIN9; t->p[P_VOIC] = VC_BASS;
+    bad += check("+OCT of a ninth: C3 C Eb Bb (the 9th goes, the third and seventh stay)", chord_is(60, (const uint8_t[]){48, 60, 63, 70}));
+    t->p[P_VOIC] = VC_CLOSE;
+    scale_g = 2; root_g = 0; t->p[P_CHRD] = CH_DIA9;                         /* C minor: 1-3-7-9 of the scale */
+    bad += check("DIA9 in C minor on C: C Eb Bb D (Cm9)", chord_is(60, (const uint8_t[]){60, 63, 70, 74}) && name_is(60, "Cm9"));
+    bad += check("  on Eb: Eb G D F (Ebmaj9, every tone in the scale)", chord_is(63, (const uint8_t[]){63, 67, 74, 77}) && name_is(63, "Ebmaj9"));
+    bad += check("  on F: F Ab Eb G (Fm9)", chord_is(65, (const uint8_t[]){65, 68, 75, 79}) && name_is(65, "Fm9"));
+    scale_g = 4; bad += check("  Mixolydian on C: C E Bb D (C9)", chord_is(60, (const uint8_t[]){60, 64, 70, 74}) && name_is(60, "C9"));
+    scale_g = 0; bad += check("  CHROMATIC: the plain MAJ9 (no scale to stack)", chord_is(60, (const uint8_t[]){60, 64, 71, 74}));
+    scale_g = 13; bad += check("  WHOLE TONE (6 notes): a triad, the 9th would double the root", chord_is(60, (const uint8_t[]){60, 64, 68, 0}));
     t->p[P_CHRD] = CH_MIN; scale_g = 1;
     bad += check("a fixed shape ignores the scale (MIN on D# in C major: D# F# A#)", chord_is(63, (const uint8_t[]){63, 66, 70, 0}));
     t->p[P_CHRD] = CH_MAJ;
@@ -361,6 +394,29 @@ static uint32_t sq_vel(track_t *t)
             return t->v[i].vel;
     return 0;
 }
+/* an arp on MIDI note 0 (C-1): its gate ends it like any other (arp_note 0 also reads as none: arp_nz marks it sounding) */
+static int arp_note0(void)
+{
+    int bad = 0;
+    uint32_t n, per, tries;
+    track_t *t = &trk[0];
+    for (n = 0; n < 2u; n++) {
+        reset();
+        t->p[P_AMODE] = 1; t->p[P_AOCT] = 1; t->p[P_APROB] = 127; t->p[P_AGATE] = 64; t->p[P_ARATE] = 2; scale_g = 0;
+        per = div_samples(2);
+        t->nheld = 1; t->held[0] = (uint8_t)n; memset(held_key[0], 0, sizeof held_key[0]);
+        t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
+        arp_tick(t, per);
+        vs_block();
+        bad += check(n ? "ARP on note 1: sounds" : "ARP on note 0: sounds", gate_note(t, n) && ngated(t) == 1u);
+        for (tries = 0; tries < 2u; tries++)
+            arp_tick(t, per / 4u);
+        bad += check(n ? "  note 1: the gate ends it" : "  note 0: the gate ends it, like note 1", !gate_note(t, n) && !ngated(t) && !t->arp_nz && !t->arp_note);
+        t->nheld = 0; trk_all_off(t);
+    }
+    return bad;
+}
+
 static int arp_seq_mode(void)
 {
     int bad = 0;
@@ -375,10 +431,10 @@ static int arp_seq_mode(void)
     t->p[P_SLEN] = 4; scale_g = 0; t->p[P_AOCT] = 1; t->p[P_APROB] = 127; t->p[P_AGATE] = 64;
     t->p[P_ARATE] = 2; t->p[P_AMODE] = AM_SEQ;
     per = div_samples(2);
-    t->nheld = 1; t->held[0] = 48; memset(held_key[0], 0, sizeof held_key[0]);
+    t->nheld = 1; t->arp_phys = 1; t->held[0] = 48;  /* (a key down: a SEQ arp on a latched chord only waits for PLAY, tide.h H2c) */ memset(held_key[0], 0, sizeof held_key[0]);
     t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
     for (i = 0; i < 8; i++) {
-        arp_tick(t, per);
+        arp_tick(t, per + 1u);                              /* (b8 DRIFT: the step is the exact 5512.5 samples, a sample longer than div_samples every other step: per + 1 reaches each one, as midi_out_seq_test) */
         vs_block();                                         /* (item 144/148: a step is a block of its own; the start limit counts a block) */
         got[i] = t->arp_note; vel[i] = got[i] ? sq_vel(t) : 0;
     }
@@ -622,7 +678,7 @@ static int snap_follow(void)
 
 int main(void)
 {
-    int bad = global_scale() + theory() + shapes_voicings() + keys() + arp_rec() + arp_seq_mode() + midi_in() + kits() + snap_follow();
+    int bad = global_scale() + theory() + shapes_voicings() + keys() + arp_rec() + arp_seq_mode() + arp_note0() + midi_in() + kits() + snap_follow();
     printf("%s\n", bad ? "CHORD TEST FAILED" : "chord keys test passed");
     return bad != 0;
 }

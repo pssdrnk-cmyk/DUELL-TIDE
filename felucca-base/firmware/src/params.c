@@ -43,27 +43,27 @@ static const char *const ESYNC_NAMES[ESYNC_N + 1u] = {
 static const uint16_t ESYNC_UNITS[ESYNC_N] = {0, 4, 6, 8, 9, 12, 16, 18, 24, 32, 36, 48, 64, 72,
                                               96, 128, 144, 192, 256, 288, 384, 576, 768, 1152, 1536};
 static const param_desc_t ESYNC_DESC[6] = {   /* ATK DEC REL with ENV SYNC on: the range and defaults as ever */
-    {"ATK", F_INT, 0, 127, 10, ESYNC_NAMES, 0},
-    {"DEC", F_INT, 0, 127, 70, ESYNC_NAMES, 0},
-    {"REL", F_INT, 0, 127, 60, ESYNC_NAMES, 0},
-    {"ATK2", F_INT, 0, 127, 10, ESYNC_NAMES, 0},  /* DUELL: ENV 2's (ENV SYNC is both envelopes') */
-    {"DEC2", F_INT, 0, 127, 70, ESYNC_NAMES, 0},
-    {"REL2", F_INT, 0, 127, 60, ESYNC_NAMES, 0},
+    {"ATK", F_INT, 0, 0, 127, 10, ESYNC_NAMES},
+    {"DEC", F_INT, 0, 0, 127, 70, ESYNC_NAMES},
+    {"REL", F_INT, 0, 0, 127, 60, ESYNC_NAMES},
+    {"ATK2", F_INT, 0, 0, 127, 10, ESYNC_NAMES},  /* DUELL: ENV 2's (ENV SYNC is both envelopes') */
+    {"DEC2", F_INT, 0, 0, 127, 70, ESYNC_NAMES},
+    {"REL2", F_INT, 0, 0, 127, 60, ESYNC_NAMES},
 };
 /* FM6's AMP ENV knobs (DUELL 1.1, owner 2026-10-25): ATTACK DECAY SUSTAIN RELEASE show the DX7 numbers 0..99 of the loudest carrier operator (eng_fm6.c); the same range 0..127 and the
  * same direction as on every engine (a higher number is longer). Not times: no milliseconds, no ENV SYNC note values. The default is only for the descriptor: a reset puts the knob on the
  * number the patch gives (ui_input.c reset_desc) */
 static const param_desc_t FM6_ENV_DESC[4] = {
-    {"ATK", F_N99, 0, 127, 10, 0, 0},
-    {"DEC", F_N99, 0, 127, 70, 0, 0},
-    {"SUS", F_N99, 0, 127, 90, 0, 0},
-    {"REL", F_N99, 0, 127, 60, 0, 0},
+    {"ATK", F_N99, 0, 0, 127, 10, 0},
+    {"DEC", F_N99, 0, 0, 127, 70, 0},
+    {"SUS", F_N99, 0, 0, 127, 90, 0},
+    {"REL", F_N99, 0, 0, 127, 60, 0},
 };
 static uint32_t esync_idx(int32_t v) { return (uint32_t)(v & 127) * ESYNC_N >> 7; }   /* (param_format's split) */
 /* P_KTRK (id 27, DUELL 0.2.21) took the id of the retired QNT (OFF / SNAP / WHITE / SEQ; owner 2026-10-12: the OFF-SCALE KEYS setting is global, core.h
  * offscale_g). Every store writes QNT 0 (up_def, project.c) and 0 is KEY TRK off, so no stored sound changes. Its labels are gone */
 /* chord keys (chord.c): OFF, the diatonic triad / seventh of the track's ROOT and SCALE on the key, fixed shapes */
-static const char *const N_CHRD[] = {"OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"};
+static const char *const N_CHRD[] = {"OFF", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW", "MIN9", "MAJ9", "SUS2", "ADD9", "MIN11", "DIA9"};
 static const char *const N_OFFSCALE[] = {"SNAP", "PLAY"};   /* core.h offscale_g: OS_SNAP, OS_PLAY (SCALE page K3) */
 static const char *const N_VOIC[] = {"CLOSE", "OPEN", "INV1", "INV2", "+OCT"};   /* VC_CLOSE .. VC_BASS */
 static const char *const N_VOICE[] = {"POLY", "MONO", "LEG", "UNI"};   /* V_POLY .. V_UNISON */
@@ -121,9 +121,9 @@ static const char *const N_ATG_ANALOG[] = {"ALL", "A", "B", "ALL", "ALL", "ALL",
 static const char *const N_ATG_TRIO[] = {"ALL", "OSC1", "OSC2", "OSC3", "1+2", "2+3", "1+3", "ALL", "ALL"};
 static const char *const N_ATG_FM6[] = {"ALL", "OP1", "OP2", "OP3", "OP4", "OP5", "OP6", "ODD", "EVEN"};
 
-#define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
+#define PD(l, f, mn, mx, df) {l, f, 0, mn, mx, df, 0}
 #define PFREE {"-", F_INT, 0, 0, 0, 0, 0}   /* a free id (core.h P_FREE*) */
-#define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n, 0}
+#define PE(l, n, df) {l, F_ENUM, 0, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n}
 
 static const param_desc_t TP[P_COUNT] = {
     [P_LEVEL] = PD("LVL", F_DB, 0, 127, 112),      /* 0.2.19: the MIXER level, unity (112 = 0 dB) by default; the sound's loudness is P_TRIM */
@@ -137,7 +137,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_EQLG] = PD("LOW", F_EQDB, -12, 12, 0),      /* DUELL EQ (fx.c track_eq): all 0 = off, bit for bit as before */
     [P_LRATE] = PD("RATE", F_LFOHZ, 0, 127, 60),
     [P_LWAVE] = PE("WAVE", N_LWAVE, 0),
-    [P_LPHASE] = PD("PHS", F_INT, 0, 127, 0),
+    [P_LPHASE] = PD("PHS", F_DEG, 0, 127, 0),
     [P_LFADE] = PD("FADE", F_TIME, 0, 127, 0),
     [P_LD_PIT] = PD("PIT", F_BIPCT, -64, 63, 0),
     [P_LD_FLT] = PD("FLT", F_BIPCT, -64, 63, 0),
@@ -147,7 +147,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_ARATE] = PE("RATE", N_DIV, 2),
     [P_AOCT] = PD("OCT", F_INT, 1, 4, 1),
     [P_AGATE] = PD("GATE", F_PCT, 1, 127, 64),
-    [P_ASWING] = PD("SWG", F_PCT, 50, 75, 50),   /* owner 2026-10-28: 50 .. 75 %, 50 = straight; stored and shown as that percentage (seq.c sw_old turns it into the old 0..100 timing scale) */
+    [P_ASWING] = PD("SWG", F_PCT, 50, 75, 50),   /* owner 2026-10-28: 50 .. 75 %, 50 = straight; stored and shown as that percentage (the offbeat lands at that percentage of the pair: seq.c sw_ex / sw_len) */
     [P_APROB] = PD("PROB", F_PCT, 0, 127, 127),
     [P_AHOLD] = PE("HOLD", N_HOLD, 0),
     [P_AORDER] = PE("ORD", N_ORDER, 0),
@@ -177,7 +177,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_FREEA] = PD("CUT", F_FILT, 0, UF_STEPS, UF_STEPS),
     [P_FREEB] = PD("RES", F_PCT, 0, 127, 0),
     [P_FREEC] = PD("MODE", F_FMODE, 0, UF_HP, 0),
-    [P_FREED] = {"SLOPE", F_ENUM, 1, 2, 1, N_SLOPE, 0},
+    [P_FREED] = {"SLOPE", F_ENUM, 0, 1, 2, 1, N_SLOPE},
 #define MSLOT(k) [P_M##k##SRC] = PE("SRC" #k, N_MSRC, 0), [P_M##k##DST] = PE("DST" #k, N_MDST, 0), \
                  [P_M##k##AMT] = PD("AMT" #k, F_BIPCT, -64, 63, 0)
     MSLOT(1), MSLOT(2), MSLOT(3), MSLOT(4), MSLOT(5), MSLOT(6), MSLOT(7), MSLOT(8),
@@ -193,14 +193,14 @@ static const param_desc_t TP[P_COUNT] = {
     /* DUELL: LFO 2 (voice.c lfo_tick, LFO 1's code), its ranges and defaults; routed only through the matrix (MS_LFO2) */
     [P_L2RATE] = PD("RATE2", F_LFOHZ, 0, 127, 60),
     [P_L2WAVE] = PE("WAVE2", N_LWAVE, 0),
-    [P_L2PHASE] = PD("PHS2", F_INT, 0, 127, 0),
+    [P_L2PHASE] = PD("PHS2", F_DEG, 0, 127, 0),
     [P_L2FADE] = PD("FADE2", F_TIME, 0, 127, 0),
     [P_CHRD] = PE("CHRD", N_CHRD, 0),
     [P_VOIC] = PE("VOIC", N_VOIC, 0),
     [P_L2SYNC] = PE("SYNC2", N_LSYNC, 0),
     [P_L2TRIG] = PE("TRIG2", N_LTRIG, 1),   /* DUELL 0.2.2: FREE (free-running) is the default, NOTE the option */
     [P_L2POL] = PE("POL2", N_LPOL, 0),
-    [P_ATGT] = PE("TRGT", N_ATG_FM6, 0),         /* ARP TARGET (SPEC 2.3): the device shows the engine's (atgt_desc) */
+    [P_ATGT] = PE("TRGT", N_ATG_FM6, 0),         /* ARP TARGET (SPEC 2.3): the device shows the engine's (atgt_bits) */
     [P_EQLF] = PD("LO HZ", F_EQLO, -24, 24, 0),   /* LOW shelf's corner, 120 Hz at 0 (30 .. 480 Hz) */
     [P_EQMG] = PD("MID", F_EQDB, -12, 12, 0),
     [P_EQMF] = PD("MD HZ", F_EQMID, -24, 24, 0),  /* MID's centre, 1 kHz at 0 (250 Hz .. 4 kHz) */
@@ -223,9 +223,9 @@ static const param_desc_t TP[P_COUNT] = {
     [P_EQHF] = PD("HI HZ", F_EQHI, -24, 12, 0),   /* HIGH shelf's corner, 8 kHz at 0 (2 .. 16 kHz) */
     /* DUELL DUCK (SPEC 5c.4, fx.c duck_*): a note-on on CH (and NOTE) ducks the part's level; CH 0 (OFF) or DEPTH 0 = nothing */
     [P_DKCRV] = PE("CURVE", N_DKCRV, 1),           /* the RELEASE's shape: LIN (a straight line, the earlier curve), EXP (a share of what is left: a pump's release, the default since 0.2.5; the sparse patch store keeps LIN as its own default: upreset.c up_def) */
-    [P_CUT2] = {"CUTOFF", F_INT, -63, 82, 0, 0, 0}, /* TWIN FILTER CUTOFF 2 (id 106, was the retired DUCK NOTE, 0.2.24 / 0.2.25's EQ switch): ONE stored value with two meanings (tw_desc): LINK on = OFFSET -63..+63 dial steps from filter 1's cutoff, LINK off = CUTOFF 0..82, on COMB TUNE -24..+24 semitones; the stored range is all of them */
+    [P_CUT2] = {"CUTOFF", F_INT, 0, -63, 82, 0, 0}, /* TWIN FILTER CUTOFF 2 (id 106, was the retired DUCK NOTE, 0.2.24 / 0.2.25's EQ switch): ONE stored value with two meanings (tw_desc): LINK on = OFFSET -63..+63 dial steps from filter 1's cutoff, LINK off = CUTOFF 0..82, on COMB TUNE -24..+24 semitones; the stored range is all of them */
     [P_DKDEP] = PD("DEPTH", F_PCT, 0, 100, 0),
-    [P_DKATK] = {"ATK", F_INT, 1, 100, 5, 0, "ms"},
+    [P_DKATK] = {"ATK", F_INT, U_MS, 1, 100, 5, 0},
     [P_TRIM] = PD("TRIM", F_DB, 0, 127, 104),      /* 0.2.19: the PATCH TRIM (core.h), on the id of the legacy DUCK HOLD (0.2.5, never read); the old default level */
     [P_DKRLS] = PD("RLS", F_DKRLS, 0, 67, 36),
     [P_DKSRC] = PE("SRC", N_DKSRC, 3),             /* OFF (0.2.24, stored 3: the default), PUMP (stored 0: every beat of RATE), PART (the other part's level), MIDI (0.2.22: the notes of the SIDECHAIN page's channel and note for this part) */
@@ -261,7 +261,7 @@ static const param_desc_t XTP[NX] = {
     [X_CYFALL] = PD("FALL", F_TIME, 0, 127, 70),   /* the DEC time table */
     [X_CYCURVE] = PD("CURVE", F_BIPCT, -64, 63, 0),
     [X_CYSYNC] = PE("SYNC", N_ONOFF, 0),           /* CYCLE's own SYNC switch (not ENV SYNC) */
-    /* DUELL 1.1 (owner, DEST pages): per-source depth cards. Each runs through the matrix's smooth path as a virtual route (mod.c mod_vr_*), so it is as clean as the same route in a slot. The stored
+    /* DUELL 1.1 (owner, DEST pages): per-source depth cards. Each runs through the matrix's smooth path as a virtual route (mod.c vr_t / VR[]), so it is as clean as the same route in a slot. The stored
      * labels are keys (LBL_SHOWN gives the words); depths -64..+63, 0 = off */
     [X_ESAT] = PD("SATN", F_BIPCT, -64, 63, 0),    /* AMP ENV to SATURATION */
     [X_E2BLD] = PD("FBLND", F_BIPCT, -64, 63, 0),  /* FILTER ENV to FILTER BLEND */
@@ -275,20 +275,20 @@ static const param_desc_t XTP[NX] = {
     [X_L2BLD] = PD("FBLND", F_BIPCT, -64, 63, 0),  /* LFO 2 to FILTER BLEND */
     [X_LFO1LVL] = PD("LVL", F_PCT, 0, 127, 127),   /* LFO 1 LEVEL: the LFO's master depth (127 = 100 %, today's behaviour; the matrix DEPTH slots multiply on top) */
     [X_LFO2LVL] = PD("LVL", F_PCT, 0, 127, 127),   /* LFO 2 LEVEL */
-    [X_STRUM] = {"STRUM", F_INT, 0, 100, 0, 0, "ms"},   /* X27 (DUELL 1.1 item 144): the CHORD page's K3, ms between a chord's tones, low to high (seq.c strum_block); 0 shows OFF (ui_draw.c strum_card), as DUCK ATK's F_INT "ms" otherwise */
+    [X_STRUM] = {"STRUM", F_INT, U_MS, 0, 100, 0, 0},   /* X27 (DUELL 1.1 item 144): the CHORD page's K3, ms between a chord's tones, low to high (seq.c strum_block); 0 is OFF, as DUCK ATK's F_INT "ms" otherwise */
 };
 static const param_desc_t XTP_SYNC[2] = {          /* CYCLE RISE / FALL with SYNC on: as ENV SYNC's ATK / DEC (ESYNC_DESC) */
-    {"RISE", F_INT, 0, 127, 10, ESYNC_NAMES, 0},
-    {"FALL", F_INT, 0, 127, 70, ESYNC_NAMES, 0},
+    {"RISE", F_INT, 0, 0, 127, 10, ESYNC_NAMES},
+    {"FALL", F_INT, 0, 0, 127, 70, ESYNC_NAMES},
 };
 /* the TWIN FILTER's one-value-two-meanings: CUTOFF 2 is filter 1's OFFSET while LINK is on, filter 2's own CUTOFF with LINK off, TUNE on COMB (semitones around the note); RES 2 is RES (0..127) or, on COMB,
  * FDBK (FEEDBACK, -64..+63). TP[P_CUT2] / TP[P_RES2] hold the range of all of them (what is stored and clamped); tw_desc gives the one that applies (a page card, the editor, the matrix) */
 enum { TT_OFF, TT_LP, TT_BP, TT_HP, TT_NOTCH, TT_LADDER, TT_COMB };   /* P_TWTYPE (N_TWTYPE) */
-static const param_desc_t TWD_OFFSET = {"OFFSET", F_DSEMI, -TW_OFF_MAX, TW_OFF_MAX, 0, 0, 0};   /* (1.0, owner: whole semitones, 3 octaves; the stored value past it is clamped by the filter and shown clamped) */
-static const param_desc_t TWD_CUTOFF = {"CUTOFF", F_FILT, 0, UF_STEPS, UF_STEPS, 0, 0};
-static const param_desc_t TWD_TUNE = {"TUNE", F_SEMI, -24, 24, 0, 0, 0};
-static const param_desc_t TWD_RES = {"RES", F_PCT, 0, 127, 0, 0, 0};
-static const param_desc_t TWD_FDBK = {"FDBK", F_BIPCT, -64, 63, 0, 0, 0};
+static const param_desc_t TWD_OFFSET = {"OFFSET", F_DSEMI, 0, -TW_OFF_MAX, TW_OFF_MAX, 0, 0};   /* (1.0, owner: whole semitones, 3 octaves; the stored value past it is clamped by the filter and shown clamped) */
+static const param_desc_t TWD_CUTOFF = {"CUTOFF", F_FILT, 0, 0, UF_STEPS, UF_STEPS, 0};
+static const param_desc_t TWD_TUNE = {"TUNE", F_SEMI, 0, -24, 24, 0, 0};
+static const param_desc_t TWD_RES = {"RES", F_PCT, 0, 0, 127, 0, 0};
+static const param_desc_t TWD_FDBK = {"FDBK", F_BIPCT, 0, -64, 63, 0, 0};
 static const param_desc_t SCALE_D = PE("SCALE", N_SCALE, 0);     /* the instrument's SCALE and ROOT (core.h scale_g, root_g: the SCALE page, ui_input.c scale_knob): not parameters of a part, so no P_ id (25 and 26 are the TWIN FILTER's now) */
 static const param_desc_t ROOT_D = PD("ROOT", F_NOTE, 0, 11, 0);
 static const param_desc_t XFREE_D = PFREE;
@@ -318,10 +318,10 @@ static void ext_defaults(track_t *t)
 
 /* the INSERT's A B C as its TYPE means them (TP's ranges and defaults): the drives DRIVE TONE LEVEL, CRUSH BITS RATE
  * LPF, the swept ones RATE DEPTH FDBK, TAPE WOW SAT TONE, VINYL DUST NOISE WARP; OFF TP's own */
-#define PU(l, f, df, n, u) {l, f, 0, 127, df, n, u}
+#define PU(l, f, df, n, u) {l, f, u, 0, 127, df, n}
 static const param_desc_t INS_DESC[5][3] = {
     {PU("DRIVE", F_PCT, 64, 0, 0), PU("TONE", F_CUTOFF, 96, 0, 0), PU("LEVEL", F_DB, 96, 0, 0)},
-    {PU("BITS", F_INT, 99, N_IBITS, 0), PU("RATE", F_INT, 96, N_IRATE, "Hz"), PU("LPF", F_CUTOFF, 96, 0, 0)},
+    {PU("BITS", F_INT, 99, N_IBITS, 0), PU("RATE", F_INT, 96, N_IRATE, U_HZ), PU("LPF", F_CUTOFF, 96, 0, 0)},
     {PU("RATE", F_LFOHZ, 64, 0, 0), PU("DEPTH", F_PCT, 96, 0, 0), PU("FDBK", F_PCT, 96, 0, 0)},
     {PU("WOW", F_PCT, 47, 0, 0), PU("SAT", F_PCT, 71, 0, 0), PU("TONE", F_CUTOFF, 110, 0, 0)},     /* TAPE (0.2.14) */
     {PU("DUST", F_PCT, 47, 0, 0), PU("NOISE", F_PCT, 47, 0, 0), PU("WARP", F_PCT, 17, 0, 0)},      /* VINYL (0.2.14) */
@@ -351,20 +351,20 @@ static const param_desc_t GP[G_COUNT + 7u] = {
      * showed the USB state), SYNC was a placeholder, CPU a reading; the USB state and the CPU load are MENU > SYSTEM >
      * INFO's now (ui_menu.c). Kept: the ids and G_COUNT are fixed by the formats and the protocol (0.2.5: MIDI and SYNC carry the delay's modulation, below) */
     /* DUELL 0.2.5: the delay's MODULATION (SPEC 5c.2) on these two ids (core.h G_DMDEP, G_DMRATE): DEPTH 0 = off (the delay as before, bit for
-     * bit), 100 = the time swings +- 10 ms (never more than a quarter of the delay time); RATE as the chorus's, 0.05 .. 3.4 Hz, 0.51 Hz at power-on */
+     * bit), 100 = the time swings +- 4.6 ms, +- 25 cents from 0.51 Hz up (audit R07, fx_bus.c fx_swing; was +- 10 ms), never more than a quarter of the delay time; RATE as the chorus's, 0.05 .. 3.4 Hz, 0.51 Hz at power-on */
     [G_DMRATE] = PD("MRATE", F_LFOHZ, 0, 80, 44),
     [G_DMDEP] = PD("MDEPTH", F_PCT, 0, 100, 0),
     /* MIDI IN's routing, edited on GLO > MIDI K3 (DUELL 0.1; MENU > MIDI > MIDI IN in 1.2..1.5, up to 1.1.5 GLO > SYSTEM ROUT),
      * stored with the project as before. (was "--": stored 0 = CH1-4, as MIDI IN always was) */
     [G_ROUTE] = PE("ROUT", N_ROUTE, 0),
     [G_DMODE] = PE("MODE", N_DMODE, DMD_DIGITAL),   /* 0.2.16 (on the id of the old, unused G_INFO): the delay's mode, DIGI(TAL) (the plain delay, as ever) / PING(-PONG) / RAND(OM) / OCT+ (UP) */
-    [G_SLOT] = PD("SLOT", F_INT, 1, 16, 1),   /* DUELL: SAVE > MULTI's slot, M01..M16 (project.c multi.c) */
+    [G_SLOT] = PD("SLOT", F_INT, 1, (int)MU_SHOWN, 1),   /* DUELL: SAVE > MULTI's slot, M01..M16 (TIDE b6: M01..M18, core.h MU_SHOWN; project.c multi.c) */
     [G_SHMOD] = PD("MOD", F_PCT, 0, 100, 0),   /* 0.2.19 (on the id of the old, never shown G_NAME): SHIM's drift of the return's pitch, 0 = off (the old SHIM, bit for bit) */
     [G_LOAD] = PE("LOAD", N_GO, 0),
     [G_SAVE] = PE("SAVE", N_GO, 0),
     [G_ENGSEL] = PE("ENG", N_ENGNAME, 0),
     [G_RLOCUT] = PD("LOCUT", F_LOCUT, 0, 127, 75),   /* 0.2.14 (on the id of the old, unused G_ENGGO): the reverb's low cut; 0.2.22: 20 Hz .. 2 kHz, the default 75 = 299 Hz (61 = 88 Hz up to 0.2.21) */
-    [G_CLRSEQ] = PE("CLRSQ", N_GO, 0),
+    [G_DCLFO] = PD("CLFO", F_CLFO, 0, 15, 0),   /* b9 (on the id of the old CLEAR PATTERN go-value): the delay colour's slow LFO, 0 = off (the delay as before, bit for bit), x 8 COLR units each way at 0.25 Hz (fx_bus.c dly_col) */
     [G_INITSND] = PE("INIT", N_GO, 0),
     /* the reverb's model on the REVERB page: the id of the old GM drum channel (G_DRCH, inert since 1.0) */
     [G_RTYPE] = PE("TYPE", N_RTYPE, 2),         /* HALL at power-on since 1.2 (ROOM before; projects keep theirs) */
@@ -389,8 +389,6 @@ static uint32_t dly_mode_ui(void)
     uint32_t m = (uint32_t)song.g[G_DMODE];
     return m >= DMD_N ? (uint32_t)DMD_DIGITAL : m;
 }
-/* 1: the delay has its MODE card in the output mode now (0.2.22: every mode, DUEL too; the FX summary asks it, ui_draw.c) */
-static uint32_t dly_modes_here(void) { return 1; }
 /* 1 while the delay RUNS in an event mode (RANDOM, OCT UP) as the UI knows it */
 static uint32_t dly_ev_ui(void) { uint32_t m = dly_mode_ui(); return m == DMD_RAND || m == DMD_OCTUP; }
 /* in RANDOM and OCT UP the MDEPTH card (G_DMDEP, the delay's modulation depth) is CHANCE: the share of the clock edges that fire an event (stored in the same
@@ -455,10 +453,10 @@ static const uint8_t ATG_BITS[ATG_KINDS][9] = {
     {0, 1u << 5, 1u << 4, 1u << 3, 1u << 2, 1u << 1, 1u, (1u << 5) | (1u << 3) | (1u << 1), (1u << 4) | (1u << 2) | 1u},
 };
 static const param_desc_t ATG_DESC[ATG_KINDS] = {
-    {"TRGT", F_ENUM, 0, 0, 0, N_ATG_NONE, 0},
-    {"TRGT", F_ENUM, 0, 2, 0, N_ATG_ANALOG, 0},
-    {"TRGT", F_ENUM, 0, 6, 0, N_ATG_TRIO, 0},
-    {"TRGT", F_ENUM, 0, 8, 0, N_ATG_FM6, 0},
+    {"TRGT", F_ENUM, 0, 0, 0, 0, N_ATG_NONE},
+    {"TRGT", F_ENUM, 0, 0, 2, 0, N_ATG_ANALOG},
+    {"TRGT", F_ENUM, 0, 0, 6, 0, N_ATG_TRIO},
+    {"TRGT", F_ENUM, 0, 0, 8, 0, N_ATG_FM6},
 };
 /* the units of t's engine that follow the arp, 0 = ALL (the classic arp; also with the arp off) */
 static uint32_t atgt_bits(const track_t *t)
@@ -699,7 +697,7 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
     case F_ENUM:
         str_cpy(val, val_shown(d, d->names[v < d->min ? d->min : v > d->max ? d->max : v]), PV_LEN);
         if (d->unit)
-            *unit = d->unit;
+            *unit = UNIT_STR[d->unit];
         break;
     case F_BPM:
         fmt_int(val, v);
@@ -770,8 +768,28 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
         }
         *unit = "%";
         break;
+    case F_DEG:                                     /* a phase: 128 steps of 2.8125 degrees */
+        fmt_int(val, (v * 360 + 64) / 128);
+        *unit = "deg";
+        break;
+    case F_VOWL: {                                  /* VOICE's vowel: A E I O U at 0 / 32 / 64 / 95 / 127, the two nearest letters between */
+        int32_t k = v * 4, i = k / 127, r = k - i * 127;
+        val[0] = "AEIOU"[i + (r > 118)];
+        val[1] = r > 8 && r <= 118 ? '>' : 0;
+        val[2] = "AEIOU"[i + 1 > 4 ? 4 : i + 1];
+        val[3] = 0;
+        if (!val[1])
+            val[2] = 0;
+        break;
+    }
     case F_FMODE:                                   /* .. its MODE: the ends and the middle by name, a blend as the two */
         str_cpy(val, v <= 0 ? "LP" : v < 64 ? "LP>BP" : v == 64 ? "BP" : v < UF_HP ? "BP>HP" : "HP", 6);
+        break;
+    case F_CLFO:                                    /* the delay colour LFO: OFF, else the depth 1..15 */
+        if (v <= 0)
+            str_cpy(val, "OFF", 6);
+        else
+            fmt_int(val, v);
         break;
     case F_LOCUT:                                   /* the reverb's LOW CUT: OFF, else the corner in Hz */
         if (v <= 0) {
@@ -862,7 +880,7 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
             fmt_int(val, v);
         }
         if (d->unit)
-            *unit = d->unit;
+            *unit = UNIT_STR[d->unit];
         break;
     }
 }
@@ -882,13 +900,15 @@ enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK,   /* SC_TRK: HOME's MIXE
        SC_PERF,          /* DUELL 0.2.5: the PERFORM mode's page (PERF_PAGE below; ui_perform.c perf_knob): no parameter id */
        SC_MODS,          /* DUELL 0.2.14: GLO's MODULES page (core.h MODS_*: four device switches, ui.c mods_put; ui_input.c mods_knob): no parameter id */
        SC_FXSUM,
-       SC_GMIX };        /* 0.2.25 layout round: GLO's MIXER page (both parts' LEVEL and PAN, the MUTE cells, the meters: ui_layer.c, as the hold-GLO layer): no parameter id */       /* DUELL 0.2.22: FX's second page, SEND FX (the SELECTED part's three send levels with the global effect they feed under them: K1 CHORUS, K2 DELAY,
-                          * K3 REVERB; a twist jumps to that effect's page in GLO; ui_draw.c, ui_input.c fxsum_knob): no parameter id, nothing stored (the levels are P_CHOR, P_DLY, P_REV) */
+       SC_GMIX 
+       , SC_TIDE         /* TIDE hook (H10): HOME's TIDE and TIDE LIST (tide_ui.c): no parameter id */
+       };        /* 0.2.25 layout round: GLO's MIXER page (both parts' LEVEL and PAN, the MUTE cells, the meters: ui_layer.c, as the hold-GLO layer): no parameter id */       /* DUELL 0.2.22: FX's second page, SEND FX (the SELECTED part's three send levels with the global effect they feed under them: K1 CHORUS, K2 DELAY,
+                          * K3 REVERB; a twist jumps to that effect's page in GLO; ui_draw.c): no parameter id, nothing stored (the levels are P_CHOR, P_DLY, P_REV) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_BROWSE, GR_SLOTS, GR_USER /* (retired: no page) */, GR_TRK,
        GR_SLCR /* (retired: no page, no graph; kept so the ids after it hold) */, GR_MOD, GR_PATS, GR_TOOLS, GR_CHORD, GR_SLICES /* (retired with SLICE, 0.2.9: no page) */, GR_EVENTS,
        GR_FMOP, GR_FMOP2, GR_FMENV, GR_INS,
        GR_ENGINE,        /* GR_ENGINE: EDIT's first page: ENGINE, SOUND, FAV, INIT (SPEC 1.2) */   /* (GR_STEPS: SEQ TOOLS' knobs; GR_FMOP..: FM6's operator pages, ui_fm6op.c) */
-       GR_MORPH, GR_MORPHSET,     /* DUELL 4b: HOME's MORPH (fader, AMOUNT, ROLL, UNDO) and MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
+       GR_MORPH, GR_MORPHSET,     /* DUELL 4b: HOME's MORPH (fader, ROLL, AMOUNT; 1.0.0-b5: no UNDO) and MORPH SET (SMART ARP PITCH; 0.2.9: TARGET is ALGORITHM's BOTH) */
        GR_MODE,                   /* DUELL step 5: HOME's MODE (SPLIT / STEREO / LAYER, SPEC 5b.1) */
        GR_GLO, GR_MIDI, GR_MLEARN,   /* DUELL step 6: GLO (MUTE 1, MUTE 2, the parts' LEVELs and the level meters), MIDI (GR_MIDI: channels, MIDI IN), MIDI LEARN */
        GR_SCHAIN,                    /* DUELL 0.1: SIDECHAIN (the selected part's DUCK SRC / NOTE; was KNOB 3, 4 of the MIDI page) */
@@ -902,14 +922,24 @@ enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_
        GR_COMP,                      /* .. COMPRESSOR's transfer curve and gain reduction (graph_comp) */
        GR_FILT,                      /* .. the filter's response: MULTI FILTER 1/2, 2/2 and the TWIN FILTER's three pages: both filters in one picture (graph_filt, twin_graph.c) */
        GR_SUB,                       /* .. SUB OSC: the sub's wave small, with its octave copies when HARM is up (ui_graph.c graph_sub) */
-       GR_CYCLE,                     /* .. CYCLE ENV 1/2, 2/2: the cycle's shapes, the curve (ui_graph.c graph_cycle) */
-       GR_SEQHELP };                 /* item 118: SEQUENCER HELP, the legend of the STEP page's symbols (ui_graph.c graph_seqhelp; no knob does anything there) */                   /* DUELL 0.2.24: FX's SEND FX (the hint that a twist jumps to the effect's GLO page, and which effect is inactive for this part: ui_graph.c graph_fxsum) */
+       GR_CYCLE                      /* .. CYCLE ENV 1/2, 2/2: the cycle's shapes, the curve (ui_graph.c graph_cycle) */
+       , GR_TIDE, GR_TIDELIST            /* TIDE hook (H10): HOME's TIDE and TIDE LIST (tide_ui.c) */
+       };                   /* DUELL 0.2.24: FX's SEND FX (the hint that a twist jumps to the effect's GLO page, and which effect is inactive for this part: ui.c off_module, the notice of ui_graph.c graph_off) */
 
 typedef struct {
     const char *title;
     uint8_t fam, scope, graph;
     uint8_t id[4];               /* param ids; 0xFF = empty slot */
+    uint8_t vis;                 /* VIS_*: when the page is in the page order (ui.c page_visible); 0 = always */
 } page_t;
+/* The page order skips a page unless its rule holds (ui.c page_visible). A new conditional page names its rule here, in its row of PAGES */
+enum { VIS_ALWAYS, VIS_SHIM,        /* SHIMMER: the reverb TYPE is SHIM */
+       VIS_UFILT,                   /* the multimode filter's pages: the engine has it (engine_t.ufilt) */
+       VIS_TWIN,                    /* filter 2's TWIN MOD, TWIN CHAIN: its TYPE is not OFF */
+       VIS_E7,                      /* EDIT 2: the engine has an eighth card */
+       VIS_ATGT,                    /* ARP 3/3: the engine has more than ALL (its atgt kind) */
+       VIS_FM6,                     /* FM6's operator pages */
+       VIS_M5 };                    /* MATRIX 5-8: slots 1..4 are all in use */
 
 #define TEMPO_TAP_SLOT 2u        /* TEMPO's TAP card: the knob that is no parameter (ui_input.c edit_param, tempo_tap; ui_draw.c) */
 
@@ -926,16 +956,15 @@ static const page_t PAGES[] = {
     {"ENV 2 DEST", FAM_ENV, SC_TRACK, GR_ADSR, {P_E2FLT, XW_BASE + X_E2BLD, XW_BASE + X_E2DRV, XW_BASE + X_E2RES}},   /* DUELL 1.1 (owner): MULTI CUTOFF, FILTER BLEND, FILTER DRIVE, MULTI RES (the TIMBRE card is gone and no longer acts; P_E2SHP stays a stored id, never read) */
     {"LFO 1", FAM_LFO, SC_TRACK, GR_LFO, {P_LWAVE, P_LRATE, P_LSYNC, P_LFADE}},   /* WAVE RATE SYNC FADE: the shape, the speed (SYNC replaces RATE) */
     {"LFO 1 TRIG", FAM_LFO, SC_TRACK, GR_LFO, {P_LTRIG, P_LPHASE, P_LPOL, XW_BASE + X_LFO1LVL}},   /* how it starts: TRIG, the start PHS, POL */
-    {"LFO 1 DEST", FAM_LFO, SC_TRACK, GR_LFO, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},   /* 0.2.25 layout round (owner): the DEST pages draw their envelope's / LFO's curve as its first page (ui_graph.c env_of / lfo_is2) */
+    {"LFO 1 DEST", FAM_LFO, SC_TRACK, GR_LFO, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},   /* 0.2.25 layout round (owner): the DEST pages draw their envelope's / LFO's curve as its first page (ui_graph.c env_of) */
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_L2WAVE, P_L2RATE, P_L2SYNC, P_L2FADE}},   /* DUELL: LFO 2, a matrix source */
     {"LFO 2 TRIG", FAM_LFO, SC_TRACK, GR_LFO, {P_L2TRIG, P_L2PHASE, P_L2POL, XW_BASE + X_LFO2LVL}},   /* DUELL 1.1: K4 LEVEL, the LFO's master depth */
     {"LFO 2 DEST", FAM_LFO, SC_TRACK, GR_LFO, {XW_BASE + X_LFO2, XW_BASE + X_L2RES2, XW_BASE + X_L2FMODE, XW_BASE + X_L2BLD}},   /* DUELL 1.1 (owner): TWIN CUTOFF (the stored X_LFO2, also on TWIN MOD), TWIN RES, MULTI MODE, FILTER BLEND. The old PITCH / MULTI CUTOFF / TIMBRE cards are gone and no longer act (P_L2PIT / P_L2FLT / P_L2SHP stay stored ids, never read; the matrix reaches the same destinations) */
     {"MATRIX 1-4", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},   /* KNOB 1: the slot (mod_ui_slot) */
-    {"MATRIX 5-8", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}}, /* DUELL: slots 5..8, the same layout */
+    {"MATRIX 5-8", FAM_LFO, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}, VIS_M5}, /* DUELL: slots 5..8, the same layout */
     /* FAM_FX (0.2.21: only the PART's own pages) in the order the sound flows (fx.c mix_part): the part's DIST (FX page, KNOB 1) -> INSERT -> EQ -> DUCK -> level, pan and the
-     * sends (FX page KNOBS 2-4); the global buses (CHORUS, the delay, the REVERB) are GLO's pages now, and the second page here, SEND FX, shows the part's three sends beside them */
+     * sends (FX page KNOBS 2-4); the global buses (CHORUS, the delay, the REVERB) are GLO's pages now */
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
-    {"SEND FX", FAM_FX, SC_FXSUM, GR_FXSUM, {0xFF, 0xFF, 0xFF, 0xFF}},   /* 0.2.22 (owner): the FX family's SECOND page (after FX, before INSERT 1/2), part-scoped (only the selected part's badge): K1 CHORUS, K2 DELAY, K3 REVERB show THIS part's send level (P_CHOR, P_DLY, P_REV: the FX page edits them) and what the global effect is (delay mode and time, reverb type and size); K4 no card. A twist of K1 / K2 / K3 jumps to GLO's CHORUS / DELAY 1/2 / REVERB (ui_input.c fxsum_knob), no value changes */
     {"INSERT 1/2", FAM_FX, SC_TRACK, GR_INS, {P_ITYPE, P_IA, P_IB, P_IC}},   /* 1.5: the track's INSERT (fx.c) */
     {"INSERT 2/2", FAM_FX, SC_TRACK, GR_INS, {P_IMIX, 0xFF, 0xFF, 0xFF}},  /* .. its dry / wet */
     {"EQ 1/2", FAM_FX, SC_TRACK, GR_EQ, {P_EQLF, P_EQLG, P_EQMF, P_EQMG}},   /* DUELL (SPEC 5c.3): the part's EQ after its INSERT. 0.2.25 layout round (owner): no ON / OFF switch, each band's frequency then its gain:
@@ -946,7 +975,7 @@ static const page_t PAGES[] = {
     /* SCL (the button printed SEL): page 1 SCALE is GLOBAL (K1 SCALE, K2 ROOT, K3 OFF-SCALE SNAP / PLAY: the instrument's, core.h), page 2 CHORD is the
      * SELECTED PART's (K1 CHRD, K2 VOIC: chord.c, K3 STRUM: seq.c strum_block; TRANSPOSE is the patch's since DUELL 1.1: VOICE 1/2 K4). No page mixes the two kinds (owner rule) */
     {"SCALE", FAM_SCL, SC_SCALE, GR_SCALE, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, XW_BASE + X_STRUM, 0xFF}},   /* DUELL 1.1 (owner 2026-10-27): K1 CHRD, K2 VOIC (the part's chord keys), K3 STRUM (item 144: ext slot X27, hidden where it cannot act: ui_draw.c card_hidden_vp), K4 free. TRANSPOSE left
+    {"CHORD", FAM_SCL, SC_TRACK, GR_CHORD, {P_CHRD, P_VOIC, XW_BASE + X_STRUM, P_VOICE}},   /* DUELL 1.1 (owner 2026-10-27): K1 CHRD, K2 VOIC (the part's chord keys), K3 STRUM (item 144: ext slot X27, hidden where it cannot act: ui_draw.c card_hidden_vp), K4 the part's VOICE (chord keys play a chord only in POLY: the page says NEEDS POLY, ui_graph.c graph_chord; the same control as VOICE 1/2 K1). TRANSPOSE left
                                                                              * this page for VOICE 1/2 K4 (it is the patch's now: a setting sits on the page it belongs to); the KEY OFFSET is removed */
     /* SPEC 1.2: EDIT's first sub-page is the ENGINE page (the engine is never hidden behind a hold), then the engine's */
     /* T0227 (owner): the ENGINE page changes the engine and starts its controls: K1 ENGINE, K2..K4 the engine's first three (card positions 0..2: engine_t.uiord);
@@ -954,24 +983,24 @@ static const page_t PAGES[] = {
      * on an engine that has one (ui.c page_visible). (Was: K1 ENGINE, K2 SOUND, K3 FAV, K4 INIT; EDIT 1 positions 0..3, EDIT 2 4..7) */
     {"ENGINE", FAM_EDIT, SC_ENGINE, GR_ENGINE, {0xFF, P_E0, P_E1, P_E2}},
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E3, P_E4, P_E5, P_E6}},
-    {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E7, 0xFF, 0xFF, 0xFF}},
+    {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E7, 0xFF, 0xFF, 0xFF}, VIS_E7},
     /* the filters in signal order (0.2.21, owner): the SUB OSC, then the MULTIMODE filter (voice.c uf_run), on every engine (engine_t.ufilt); the engines' own filter pages (VCF on ANALOG, TRIO FILTER,
      * NOISE FILT) are gone since cloud job J: ANALOG's VCF and NOISE's filter are the MULTI FILTER, TRIO's is the TWIN FILTER's LP BP HP NOTCH */
     {"SUB OSC", FAM_EDIT, SC_TRACK, GR_SUB, {XW_BASE + X_SUBWAVE, XW_BASE + X_SUBOCT, XW_BASE + X_SUBLVL, 0xFF}},   /* SUB HARMONICS is disabled (owner, 2026-10-21): no HARM card, the page is WAVE, OCTAVE, LEVEL (X_SUBHARM stays reserved, its stored value is never played); cloud job H (owner-approved 2026-10-19): the SUB LAYER (job F), after the engine's own pages and before filter 1 (the voice chain's order: engine, SUB, filter 1, filter 2):
                                                                              * K1 WAVE (the type first), K2 OCTAVE, K3 HARM, K4 LEVEL (the mix last). Values in the extension slots (ext.h XV): no MIDI LEARN or parameter lock on these cards (their wide ids are not 7-bit) */
-    {"MULTI FILTER 1/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_FREEA, P_FREEB, P_FREEC, P_FREED}},   /* the MULTIMODE filter (DUELL 0.2.9): K1 CUT K2 RES K3 MODE K4 SLOPE (0.2.20, owner: back to this order);
+    {"MULTI FILTER 1/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_FREEA, P_FREEB, P_FREEC, P_FREED}, VIS_UFILT},   /* the MULTIMODE filter (DUELL 0.2.9): K1 CUT K2 RES K3 MODE K4 SLOPE (0.2.20, owner: back to this order);
                                                                              * the generic cutoff routes (on the engines with no filter of their own), CC74 / CC71 and the matrix's CUT / FRES drive it */
-    {"MULTI FILTER 2/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_KTRK, P_E2FLT, P_LD_FLT, 0xFF}},   /* (DUELL 1.1: K4, the LFO 2 cutoff depth, is gone with the LFO 2 DEST card: it no longer acts) */   /* 0.2.21: K1 KEY TRK (voice.c: the cutoff follows the note); 0.2.22: K2 ENV 2, K3 LFO 1, K4 LFO 2 (owner: no AMP ENV card) -> the cutoff:
+    {"MULTI FILTER 2/2", FAM_EDIT, SC_TRACK, GR_FILT, {P_KTRK, P_E2FLT, P_LD_FLT, 0xFF}, VIS_UFILT},   /* (DUELL 1.1: K4, the LFO 2 cutoff depth, is gone with the LFO 2 DEST card: it no longer acts) */   /* 0.2.21: K1 KEY TRK (voice.c: the cutoff follows the note); 0.2.22: K2 ENV 2, K3 LFO 1, K4 LFO 2 (owner: no AMP ENV card) -> the cutoff:
                                                                              * the SAME stored values as the DEST pages' FLT cards (P_E2FLT, P_LD_FLT, P_L2FLT; page_desc gives them their names here). A depth connects two modules, so it is
                                                                              * reachable at both: on the multimode filter's page and on its source's DEST page (owner 2026-10-16). All four cards show on every engine since cloud job J */
     /* cloud job H (owner-approved 2026-10-19, FILTER_PAGES_PROPOSAL Option B): filter 2, the TWIN FILTER, after filter 1 in the order the sound flows. TWIN FILTER: K1 TYPE, K2 LINK, K3 OFFSET / CUTOFF / TUNE (tw_desc), K4 RES / FDBK;
      * TWIN MOD (skipped while TYPE is OFF: ui.c page_visible): KEY TRACK FILTER ENV LFO 1 LFO 2 as MULTI FILTER 2/2; TWIN CHAIN (skipped while TYPE is OFF): ROUTE, DRIVE, BLEND, K4 empty. What hides: ui_draw.c card_hidden_vp */
     {"TWIN FILTER", FAM_EDIT, SC_TRACK, GR_FILT, {P_TWTYPE, XW_BASE + X_LINK, P_CUT2, P_RES2}},
-    {"TWIN MOD", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_KTRK2, XW_BASE + X_ENV2, XW_BASE + X_LFO1, XW_BASE + X_LFO2}},
-    {"TWIN CHAIN", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_ROUTE, P_DRV2, P_BLEND, 0xFF}},
-    {"OP TUNE", FAM_EDIT, SC_TRACK, GR_FMOP, {0xFF, 0xFF, 0xFF, 0xFF}},    /* FM6 only: KNOB 1 the operator, then its */
-    {"OP ENV", FAM_EDIT, SC_TRACK, GR_FMENV, {0xFF, 0xFF, 0xFF, 0xFF}},     /* bytes of the track's patch (ui_fm6op.c): */
-    {"OP MODE", FAM_EDIT, SC_TRACK, GR_FMOP2, {0xFF, 0xFF, 0xFF, 0xFF}}, /* CRS FINE LEVEL / STG RATE LEVEL / MODE DTUN VEL */
+    {"TWIN MOD", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_KTRK2, XW_BASE + X_ENV2, XW_BASE + X_LFO1, XW_BASE + X_LFO2}, VIS_TWIN},
+    {"TWIN CHAIN", FAM_EDIT, SC_TRACK, GR_FILT, {XW_BASE + X_ROUTE, P_DRV2, P_BLEND, 0xFF}, VIS_TWIN},
+    {"OP TUNE", FAM_EDIT, SC_TRACK, GR_FMOP, {0xFF, 0xFF, 0xFF, 0xFF}, VIS_FM6},    /* FM6 only: KNOB 1 the operator, then its */
+    {"OP ENV", FAM_EDIT, SC_TRACK, GR_FMENV, {0xFF, 0xFF, 0xFF, 0xFF}, VIS_FM6},     /* bytes of the track's patch (ui_fm6op.c): */
+    {"OP MODE", FAM_EDIT, SC_TRACK, GR_FMOP2, {0xFF, 0xFF, 0xFF, 0xFF}, VIS_FM6}, /* CRS FINE LEVEL / STG RATE LEVEL / MODE DTUN VEL */
     {"VOICE 1/2", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_PRIO, P_DETUNE, P_TRANS}},   /* 0.2.18, top-down: how the voices are used (MODE, PRIORITY, DETUNE); DUELL 1.1 (owner 2026-10-27): K4 TRANSPOSE,
                                                                              * -24..+24 semitones, STORED WITH THE PATCH (ui.c param_kept no longer keeps it: a bass patch recalls at -24, a lead at 0; was the part's, on the CHORD page). T0227 (owner): VOICE ALLOCATION is no
                                                                              * control any more: the voices always rotate (voice.c voice_alloc; the stored P_ALLOC byte stays in the formats, ignored) */
@@ -990,8 +1019,9 @@ static const page_t PAGES[] = {
     {"CHORUS", FAM_GLO, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
     {"DELAY 1/2", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DMODE, G_DTIME, G_DFDBK, G_DCOLOR}},   /* 0.2.16, top-down: MODE first (DIGITAL, PING-PONG, RANDOM, OCT UP: fx_bus.c; in DUEL all mono, PING-PONG as DIGITAL), then the loop: TIME, FDBK, COLR */
     {"DELAY 2/2", FAM_GLO, SC_GLOBAL, GR_NONE, {G_PINGSPREAD, G_DMRATE, G_DMDEP, G_DMIX}},   /* SPREAD (PING-PONG, RANDOM, OCT UP), the delay's MODULATION RATE, DEPTH (CHANCE in RANDOM / OCT UP), MIX last */
+    {"COLR LFO", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DCLFO, 0xFF, 0xFF, 0xFF}},   /* b9: the delay colour's slow LFO (CLFO: 0 off, 1..15 = +-8 .. +-120 COLR units at 0.25 Hz; DUB BASIC and DUB CHORD use 5) */
     {"REVERB", FAM_GLO, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, G_RLOCUT}},   /* K4 LOCUT (0.2.14); TYPE: ROOM / SPRING / HALL / SHIM / RESO / PLATE */
-    {"SHIMMER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_SHPITCH, G_SHMOD, 0xFF, 0xFF}},   /* 0.2.19: SHIM's own page (ui.c page_visible: skipped by the page buttons and SELECT unless TYPE is SHIM): PITCH (UP, DOWN, BOTH), MOD */
+    {"SHIMMER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_SHPITCH, G_SHMOD, 0xFF, 0xFF}, VIS_SHIM},   /* 0.2.19: SHIM's own page (ui.c page_visible: skipped by the page buttons and SELECT unless TYPE is SHIM): PITCH (UP, DOWN, BOTH), MOD */
     {MASTER_PAGE_TITLE, FAM_GLO, SC_GLOBAL, GR_MSTG, {G_BM, G_WD, 0xFF, 0xFF}},   /* 0.2.25 layout round (owner): STEREO MASTER, one page for the master stereo stages where WIDTH and MASTER were: K1 BASS MONO (where the low end goes mono:
                                                                              * BASS / MONO, two lines), K2 WIDTH (0..200 %, 100 = as it is; fx.c width_stage runs first, BASS MONO has the last word below its corner); the panel pictures the mono
                                                                              * region and the widening (ui_graph.c graph_mstg); not in DUEL (no cards, the panel says why) */
@@ -1010,33 +1040,27 @@ static const page_t PAGES[] = {
     {"PATTERNS", FAM_SAVE, SC_GLOBAL, GR_PATS, {0xFF, 0xFF, 0xFF, 0xFF}},   /* SLOT, LOAD SAVE (ui.c pat_load; the 16 slots
                                                                              * patslot.c); the tap after PRESETS */
     {"MULTIS", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {G_SLOT, G_LOAD, G_SAVE, 0xFF}},   /* KNOB 1 the multi, K2 LOAD, K3 SAVE */
-    {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_CLRSEQ, G_INITSND, 0xFF, 0xFF}},
+    {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_TOOLS, {G_INITSND, 0xFF, 0xFF, 0xFF}},   /* b4 UI round 2: K1 INIT, K2 RESTORE ALL; CLEAR PATTERN is gone (QUICK SEQ and QUICK REC clear); G_CLRSEQ stays an id */
     {"ARP 1/3", FAM_ARP, SC_TRACK, GR_ARP, {P_AMODE, P_AHOLD, P_AORDER, P_AOCT}},   /* 0.2.18, top-down: what it plays: MODE, HOLD (also REC outside the sequencer), ORD, OCT */
     {"ARP 2/3", FAM_ARP, SC_TRACK, GR_ARP, {P_ARATE, P_AGATE, P_ASWING, P_APROB}},   /* 0.2.25 layout round (owner): ARP 1/3 and 2/3 draw the MODE's pattern (ui_graph.c graph_arp) */   /* .. then when: RATE, GATE, SWG, PROB */
-    {"ARP 3/3", FAM_ARP, SC_TRACK, GR_NONE, {P_ATGT, 0xFF, 0xFF, 0xFF}},   /* DUELL: ARP TARGET (SPEC 2.3) */
+    {"ARP 3/3", FAM_ARP, SC_TRACK, GR_NONE, {P_ATGT, 0xFF, 0xFF, 0xFF}, VIS_ATGT},   /* DUELL: ARP TARGET (SPEC 2.3) */
     {"STEP", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
-    {"SEQUENCER HELP", FAM_SEQ, SC_TRACK, GR_SEQHELP, {0xFF, 0xFF, 0xFF, 0xFF}},   /* item 118 (FINAL_V1_07b_sequencer_help): page 2 of the STEP family, the symbols of the piano roll in words; the knobs do nothing here */
     {"PARAMETER LOCKS", FAM_SEQ, SC_TRACK, GR_EVENTS, {0xFF, 0xFF, 0xFF, 0xFF}},  /* the locks, events, CHANCE and RATCH as a
                                                                              * list, PLAY and CLEAR (ui_events.c) */
     /* HOME's pages, in this order, a tap of HOME (or a SELECT detent) each, then
      * the round again (0.2.14: no OVERVIEW) (ui.c home_tap, page_select). DUELL 3.5 (SPEC 3.5): MORPH is the main page (KNOB 1 the fader A..B, 2
-     * ROLL A / B, 3 UNDO of the far end, 4 AMOUNT: twist gestures past a detent, ui_input.c morph_knob), then MORPH SET (KNOB 1
+     * ROLL A / B, 3 nothing (1.0.0-b5: no UNDO), 4 AMOUNT: a twist past a detent, ui_input.c morph_knob), then MORPH SET (KNOB 1
      * SMART, 2 ARP, 3 PITCH, 4 empty: 0.2.9, TARGET is ALGORITHM's BOTH), the output MODE (SPEC 5b.1: KNOB 1 SPLIT / STEREO / LAYER; core.h duell_mode, kept with
      * the settings: ui_input.c mode_knob, mode_settings), the MIXER (MUTE PAN SPACE LEVEL: the mixer level). No P_* id: the morph is not a
      * parameter */
     {"MORPH", FAM_TRK, SC_MORPH, GR_MORPH, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"MORPH SET", FAM_TRK, SC_MORPH, GR_MORPHSET, {0xFF, 0xFF, 0xFF, 0xFF}},
-    {"MODE", FAM_TRK, SC_MODE, GR_MODE, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"TIDE SETTINGS", FAM_TRK, SC_TIDE, GR_TIDELIST, {0xFF, 0xFF, 0xFF, 0xFF}},
+    {"AUTO TIDE", FAM_TRK, SC_TIDE, GR_TIDE, {0xFF, 0xFF, 0xFF, 0xFF}},
     /* (0.2.25 layout round, owner: HOME's MIXER page is gone: the mixer is GLO's first page, MIXER, and the hold-GLO layer; SPACE is PERFORM's K2) */
-    /* the matrix pages again as the ENV family's last two (after AMP ENV, AMP DEST, ENV 2, ENV 2 DEST): the same title, graph and ids as the LFO
-     * family's MOD 1 / MOD 2, so ENV 2 is routable without the LFO button. Appended here so no earlier PAGES index moves; the family
-     * order, the counter and the remembered page work by index + family, the help by title (the same hint), mod_ui_slot is shared */
-    /* cloud job H (owner-approved 2026-10-19): the CYCLE envelope (job F) in the ENV family after ENV 2 DEST and before the matrix pages (the family goes round in table order, so the pages are put here and no earlier index moves).
+    /* cloud job H (owner-approved 2026-10-19): the CYCLE envelope (job F) in the ENV family after ENV 2 DEST (the family goes round in table order; the matrix pages are the LFO round's only).
      * CYCLE has five stored values: 1/2 MODE (LOOP, ONCE), SYNC (OFF / ON), RISE, FALL; 2/2 CURVE alone on K1 */
     {"CYCLE ENV 1/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYMODE, XW_BASE + X_CYSYNC, XW_BASE + X_CYRISE, XW_BASE + X_CYFALL}},
     {"CYCLE ENV 2/2", FAM_ENV, SC_TRACK, GR_CYCLE, {XW_BASE + X_CYCURVE, XW_BASE + X_CYCUT2, XW_BASE + X_CYPAN, XW_BASE + X_CYPIT}},   /* DUELL 1.1 (owner): CURVE, TWIN CUTOFF, PAN, PITCH */
-    {"MATRIX 1-4", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M1SRC, P_M1DST, P_M1AMT}},
-    {"MATRIX 5-8", FAM_ENV, SC_TRACK, GR_MOD, {0xFF, P_M5SRC, P_M5DST, P_M5AMT}},
 };
 #define NPAGES (sizeof(PAGES) / sizeof(PAGES[0]))
 /* The CPU TEST screen (DUELL 0.2.2): on no button and in no family's round (not in PAGES: the GLO group is MIXER, TEMPO, CHORUS, DELAY 1/2, 2/2, REVERB, SHIMMER, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN).
@@ -1061,9 +1085,6 @@ static uint8_t mod_ui_slot;      /* the MOD pages: the matrix slot of the page (
 /* a MOD page's first slot (0: MOD, 4: MOD 2) */
 static uint32_t mod_page_base(const page_t *pg) { return (uint32_t)(pg->id[1] - P_M1SRC) / 3u; }
 
-/* SEND FX (0.2.22): card k's stored send level (the selected part's) and the GLO page its twist jumps to (the page whose first card is that id) */
-static const uint8_t FXSUM_ID[3] = {P_CHOR, P_DLY, P_REV};
-static const uint8_t FXSUM_TO[3] = {G_CRATE, G_DMODE, G_RTYPE};
 /* GLO > SIDECHAIN's NOTE card (0.2.22): the note that ducks the part, 0 = ANY, else the note (F_DKNOTE names it); the default is the GM kick */
 static const param_desc_t SC_NOTE_D = PD("NOTE", F_DKNOTE, 0, 127, SC_NOTE_DEF);
 
@@ -1119,8 +1140,8 @@ static uint32_t pg_id(const page_t *pg, uint32_t slot)
 }
 /* MULTI FILTER 2/2 (0.2.21, 0.2.22): ENV 2's, LFO 1's and LFO 2's cutoff amounts are the DEST pages' P_E2FLT, P_LD_FLT, P_L2FLT (one stored value each, TP's "FLT"); here a card
  * names its source, so the page reads KTRK, ENV 2, LFO 1, LFO 2. Same range, format and default as TP's */
-static const param_desc_t DST_TCUT = {"TCUT", F_BIPCT, -64, 63, 0, 0, 0};   /* LFO 2 DEST K1: TWIN CUTOFF (key TCUT: LBL_SHOWN) */
-static const param_desc_t KT_FLT[3] = {{"ENV 2", F_BIPCT, -64, 63, 0, 0, 0}, {"LFO 1", F_BIPCT, -64, 63, 0, 0, 0}, {"LFO 2", F_BIPCT, -64, 63, 0, 0, 0}};
+static const param_desc_t DST_TCUT = {"TCUT", F_BIPCT, 0, -64, 63, 0, 0};   /* LFO 2 DEST K1: TWIN CUTOFF (key TCUT: LBL_SHOWN) */
+static const param_desc_t KT_FLT[3] = {{"ENV 2", F_BIPCT, 0, -64, 63, 0, 0}, {"LFO 1", F_BIPCT, 0, -64, 63, 0, 0}, {"LFO 2", F_BIPCT, 0, -64, 63, 0, 0}};
 static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg_id(pg, slot);
@@ -1128,8 +1149,8 @@ static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **
         *valp = 0;
         return 0;
     }
-    if (pg->scope == SC_STEP || pg->scope == SC_TRK || pg->scope == SC_MORPH || pg->scope == SC_MODE || pg->scope == SC_TEST ||
-        pg->scope == SC_SCALE || pg->scope == SC_PERF || pg->scope == SC_MODS || pg->scope == SC_FXSUM) {
+    if (pg->scope == SC_STEP || pg->scope == SC_TRK || pg->scope == SC_MORPH || TIDE_MODE_PG(pg) || pg->scope == SC_TEST ||
+        pg->scope == SC_SCALE || pg->scope == SC_PERF || pg->scope == SC_MODS) {
         *valp = 0;
         return 0;
     }
@@ -1175,7 +1196,7 @@ static const char *const LBL_SHOWN[][2] = {
     {"CUT", "CUTOFF"}, {"VCE", "MODE"}, {"PRIO", "PRIORITY"}, {"GLMOD", "GLIDE MODE"}, {"GLD", "GLIDE"}, {"SPRD", "SPREAD"},
     {"DTUNE", "DETUNE"}, {"DTN", "DETUNE"}, {"DTUN", "DETUNE"},
     {"SWG", "SWING"}, {"CLK", "CLOCK"}, {"COLR", "COLOR"}, {"CRT", "RATE"}, {"CDP", "DEPTH"},
-    {"MRATE", "MOD RATE"}, {"MDEPTH", "MOD DEPTH"}, {"LOCUT", "LOW CUT"}, {"CLRSQ", "CLEAR"},
+    {"MRATE", "MOD RATE"}, {"MDEPTH", "MOD DEPTH"}, {"LOCUT", "LOW CUT"}, {"CLFO", "COLOR LFO"},
     {"LVL", "LEVEL"}, {"SCL", "SCALE"}, {"LEN", "LENGTH"}, {"DIV", "DIVISION"},
     /* the engines (EDIT 1 / EDIT 2 and their mode-dependent cards) */
     {"NOIS", "NOISE"}, {"DRV", "DRIVE"}, {"LINE", "MODE"},
@@ -1205,13 +1226,14 @@ static const char *const VAL_SHOWN[][3] = {
     {"CURVE", "LIN", "LINEAR"}, {"CURVE", "EXP", "EXPONENTIAL"},
     {"CLK", "INT", "INTERNAL"}, {"ROUT", "OWN CH", "PART CHANNEL"}, {"ROUT", "SELECTED", "ANY CHANNEL"},
     {"TYPE", "SHIM", "SHIMMER"}, {"TYPE", "RESO", "RESONATOR"},                                  /* REVERB TYPE */
-    {"VOIC", "INV1", "INVERSION 1"}, {"VOIC", "INV2", "INVERSION 2"},
+    {"VOIC", "INV1", "1ST INV"}, {"VOIC", "INV2", "2ND INV"},   /* ("INVERSION 1" was cut to "INVERSION" on the narrow cards the CHORD page has beside STRUM: INV 1 or 2 could not be told apart) */
     {"ARP", "MAJ", "MAJOR"}, {"ARP", "MIN", "MINOR"},                                           /* LOFI ARP */
     {"ENG", "PHYS", "PHYSICAL"},                                                                 /* the engine list value (G_ENGSEL): the stored name PHYS stays the key */
     {"MODEL", "MODAL", "BELL"}, {"MODEL", "MEMB", "DRUM"}, {"MODEL", "SYMP", "SITAR"},          /* PHYS (owner 2026-10-25: the stored names MODAL MEMB SYMP stay the keys) */
     {"REG", "CLARI", "CLARINET"}, {"REG", "CHAPL", "CHAPEL"}, {"REG", "BRITE", "BRIGHT"},        /* WHEEL's BARS list (owner 2026-10-25) */
     {"PERC", "2ND", "SECOND"}, {"PERC", "3RD", "THIRD"}, {"PERC", "2SOFT", "SECOND\nSOFT"}, {"PERC", "3SOFT", "THIRD\nSOFT"},
     {"PERC", "2SLOW", "SECOND\nSLOW"}, {"PERC", "3SLOW", "THIRD\nSLOW"},                        /* WHEEL's PERCUSSION (the real organ's tabs) */
+    {"WAVE", "2xPULSE+TRI", "2xPULSE+\nTRI"}, {"WAVE", "2xSAW+TRI", "2xSAW+\nTRI"}, {"WAVE", "PULSE&SAW", "PULSE&\nSAW"}, {"WAVE", "PULSE&NOISE", "PULSE&\nNOISE"},   /* TRIO's WAVE: too wide for its card in one line */
     {"TABLE", "SAWSQ", "SQUARE\nSAW"}, {"TABLE", "HARM", "HARMONICS"}, {"TABLE", "ODD", "SQR\nSWEEP"}, {"TABLE", "RESO", "FILTER\nSWEEP"}, {"TABLE", "DIGI", "FM"},
     {"TABLE", "HOOVR", "HOOVER"}, {"TABLE", "WOBBL", "WOBBLE"}, {"TABLE", "USR1", "USER 1"}, {"TABLE", "USR2", "USER 2"}, {"TABLE", "USR3", "USER 3"},   /* WAVE (owner 2026-10-25: the stored names stay the keys) */
     /* the scales (owner 2026-10-25: full words; the stored names are the keys; GLOBAL SCALE card, the piano roll title) */
@@ -1221,7 +1243,8 @@ static const char *const VAL_SHOWN[][3] = {
     {"SCALE", "DIMHW", "DIMINISHED\nHALF-WHOLE"}, {"SCALE", "DIMWH", "DIMINISHED\nWHOLE-HALF"},
     /* the chord keys' TYPE list and the voicing (owner 2026-10-25) */
     {"CHRD", "DIA3", "DIATONIC\n3"}, {"CHRD", "DIA7", "DIATONIC\n7TH"}, {"CHRD", "MAJ", "MAJOR"}, {"CHRD", "MIN", "MINOR"}, {"CHRD", "DOM7", "DOMINANT\n7TH"},
-    {"CHRD", "MAJ7", "MAJOR\n7TH"}, {"CHRD", "MIN7", "MINOR\n7TH"}, {"CHRD", "SUS4", "SUSPENDED\n4TH"}, {"CHRD", "POW", "POWER\nCHORD"}, {"VOIC", "+OCT", "BASS\nNOTE"},
+    {"CHRD", "MAJ7", "MAJOR\n7TH"}, {"CHRD", "MIN7", "MINOR\n7TH"}, {"CHRD", "SUS4", "SUSPENDED\n4TH"}, {"CHRD", "POW", "POWER\nCHORD"},
+    {"CHRD", "MIN9", "MINOR\n9TH"}, {"CHRD", "MAJ9", "MAJOR\n9TH"}, {"CHRD", "SUS2", "SUSPENDED\n2ND"}, {"CHRD", "ADD9", "ADD\n9TH"}, {"CHRD", "MIN11", "MINOR\n11TH"}, {"CHRD", "DIA9", "DIATONIC\n9TH"}, {"VOIC", "+OCT", "BASS\nNOTE"},
     /* LOFI's BITS list and the other lists (owner 2026-10-25) */
     {"BITS", "4BIT", "4 BIT"}, {"BITS", "4B/2", "4 BIT\nHALF RATE"}, {"BITS", "8BIT", "8 BIT"}, {"BITS", "1BIT", "1 BIT"}, {"BITS", "STEP", "CHIP"},
     {"MODE", "UP+8", "UP AND\nOCTAVE"}, {"MODE", "ORD", "AS\nPLAYED"}, {"HOLD", "ARP", "ARP\nONLY"}, {"CLK", "TRS", "TRS MIDI"},
@@ -1242,7 +1265,7 @@ static const char *val_shown(const param_desc_t *d, const char *n)
                 return PC[i][1];
         return n;
     }
-    if (d->names == N_RWAVE || d->names == N_ANALOG_WAVE) {   /* item 165 (owner): LOFI's and ANALOG's WAVE lists in full words; their own table, so the LFO's and the SUB OSC's WAVE lists (the same label) are not touched */
+    if (d->names == N_RWAVE || d->names == N_ANALOG_WAVE || d->names == N_LWAVE) {   /* item 165 (owner): LOFI's and ANALOG's WAVE lists in full words; b4 (UI audit 7): the LFOs' too, as SUB OSC's SINE (S&H stays) */
         static const char *const WV[][2] = {{"PLS", "PULSE"}, {"TRI", "TRIANGLE"}, {"SIN", "SINE"}, {"SQR", "SQUARE"}};
         for (i = 0; i < NELEM(WV); i++)
             if (str_eq(n, WV[i][0]))
@@ -1267,8 +1290,8 @@ static const char *label_shown(const char *l)
 static const char *desc_shown(const param_desc_t *d)
 {
     static const struct { uint8_t id; const char *name; } TS[] = {
-        {P_TRIM, "PATCH\nLEVEL"}, {P_APROB, "CHANCE"}, {P_EQLF, "LOW\nFREQUENCY"}, {P_EQLG, "LOW\nGAIN"}, {P_EQMF, "MID\nFREQUENCY"}, {P_EQMG, "MID\nGAIN"},
-        {P_EQMQ, "MID Q"}, {P_EQHF, "HIGH\nFREQUENCY"}, {P_EQHG, "HIGH\nGAIN"}, {P_CHRD, "TYPE"},
+        {P_TRIM, "PATCH\nLEVEL"}, {P_APROB, "CHANCE"}, {P_EQLF, "LOW FREQ"}, {P_EQLG, "LOW\nGAIN"}, {P_EQMF, "MID FREQ"}, {P_EQMG, "MID\nGAIN"},
+        {P_EQMQ, "MID Q"}, {P_EQHF, "HIGH FREQ"}, {P_EQHG, "HIGH\nGAIN"}, {P_CHRD, "TYPE"},   /* (I13: the EQ's frequencies on one line) */
     };
     uint32_t i;
     for (i = 0; i < NELEM(TS); i++)
@@ -1278,6 +1301,8 @@ static const char *desc_shown(const param_desc_t *d)
         return "PITCH\nDROP";
     if (d == &ENG_WAVE.edit[2])                       /* WAVE's BEND is a bend of the phase (owner 2026-10-25); PHYSICAL's DRUM BEND is PITCH DROP above */
         return "PHASE\nBEND";
+    if (d == &ENG_ANALOG.edit[4])                     /* ANALOG's PW (PWM's width, audit P09): PULSE WIDTH is too wide for the AUTOMATION list and MIDI LEARN's line; LOFI's and TRIO's keep it */
+        return "PWM";
     if (d == &ENG_WAVE.edit[3])                       /* WAVE's SYNC is a hard sync of the table's phase */
         return "HARD\nSYNC";
     if (d == &GP[G_SHMOD])
@@ -1315,7 +1340,7 @@ static const char *eng_shown(const char *name)
 static const char *title_shown(const char *t)
 {
     static const char *const TT[][2] = {
-        {"STEP", "SEQUENCER"}, {"ENV 2", "FILTER ENV"}, {"ENV 2 DEST", "FILTER ENV DEST"}, {"AMP DEST", "AMP ENV DEST"}, {"TWIN MOD", "TWIN CUTOFF MOD"}, {"SEND FX", "SENDS"},   /* (DUELL 1.1, owner: the DEST pages say ENV; the header picks the font that fits: ui_draw.c head) */
+        {"STEP", "SEQUENCER"}, {"ENV 2", "FILTER ENV"}, {"ENV 2 DEST", "FILTER ENV DEST"}, {"AMP DEST", "AMP ENV DEST"}, {"TWIN MOD", "TWIN CUTOFF MOD"},   /* (DUELL 1.1, owner: the DEST pages say ENV; the header picks the font that fits: ui_draw.c head) */
         /* the engines' EDIT 1 / EDIT 2 titles */
         {"FLT", "FILTER"}, {"OP TUNE", "OPERATOR TUNE"}, {"OP ENV", "OPERATOR ENV"}, {"OP MODE", "OPERATOR MODE"},
         {"PHS", "OSC"}, {"MOTN", "MOTION"}, {"VOWL", "SPEECH"}, {"BARS", "DRAWBARS"}, {"EXCT", "EXCITER"}, {"SRC", "SOURCE"}, {"MOVE", "MOTION"},

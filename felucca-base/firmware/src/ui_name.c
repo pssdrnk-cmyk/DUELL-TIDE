@@ -116,9 +116,11 @@ static void name_open(uint32_t kind, uint32_t slot)
         char tag[4];
         str_cpy(nm.ph, "PATTERN", sizeof nm.ph);
         pat_label(slot % PS_SLOTS, tag, b);
+        if (slot % PS_SLOTS >= PS_USER0 && !ps_changed(slot % PS_SLOTS))
+            b[0] = 0;                                  /* (an empty USER slot: a random name to start from) */
     } else {
         str_cpy(nm.ph, "MULTI ", sizeof nm.ph);       /* DUELL: "MULTI M05" (SAVE > MULTI) */
-        mu_label(nm.ph + 6, slot % MU_SLOTS);
+        mu_label(nm.ph + 6, slot % MU_SHOWN);
         if (kind == NK_PROJ_RENAME)
             project_name(slot, b);
         else
@@ -228,9 +230,7 @@ static void nm_random(void)                            /* a new name, never the 
     uint32_t x;
     do {
         x = nm.rnd ? nm.rnd : fm1_ms * 2654435761u | 1u;
-        x ^= x << 13;
-        x ^= x >> 17;
-        x ^= x << 5;
+        xs32(&x);
         nm.rnd = x;
         str_cpy(b, NM_RA[x & 63u], sizeof b);
         str_cpy(b + str_len(b), " ", 2);
@@ -337,7 +337,7 @@ static void name_input(uint32_t notes, uint32_t oct)
         nm.rep_t = fm1_ms + NM_RATE_MS;
     }
     for (k = 0; k < 4u; k++)
-        if ((s = panel_enc(EN_K1 + k)) != 0)
+        if ((s = panel_enc(EN_K1 + k)) != 0 && !kr_quiet(k))
             nm_knob(k, s);
     enc_drop();                                        /* the other knobs do nothing here */
     if (oct & 2u)
@@ -424,50 +424,53 @@ static void nm_draw_panel(void)
 {
     static const char *const FN[5] = {"F#", "G#", "A#", "C#", "D#"};
     uint32_t i;
-    cv_begin(240, H_GRAPH, T_BG);
-    cv_bg = T_BG;
-    if (nm.key) {                                      /* the cycling key's characters: typed THEME, next ACCENT */
-        const char *g = nm_group(nm.key - 1u);
-        uint32_t n = str_len(g);
-        for (i = 0; i < n; i++) {
-            int32_t x = 10 + 26 * (int32_t)i;
-            char c[2] = {g[i], 0};
-            int typed = i == nm.tap, next = i == (nm.tap + 1u) % n;
-            uint16_t f = typed ? T_THEME : T_BG;   /* (DUELL 1.1: idle keys a neutral cell, as PERFORM) */
-            cv_rrect(x, 4, 22, 22, 4, f, T_BG);
-            GFX_HOOK_ALIGN(x, 4, x + 22, 26, AL_HV, "name cycling letter in its cell");
-            cv_text_in(x, 4 + CAP_IN(M, 22), 22, &AF_M, c, typed ? T_INK : next ? T_ACCENT : T_TEXT, f);
+    CV_BANDS(H_GRAPH) {
+        cv_begin(240, H_GRAPH, T_BG);
+        cv_bg = T_BG;
+        if (nm.key) {                                      /* the cycling key's characters: typed THEME, next ACCENT */
+            const char *g = nm_group(nm.key - 1u);
+            uint32_t n = str_len(g);
+            for (i = 0; i < n; i++) {
+                int32_t x = 10 + 26 * (int32_t)i;
+                char c[2] = {g[i], 0};
+                int typed = i == nm.tap, next = i == (nm.tap + 1u) % n;
+                uint16_t f = typed ? T_THEME : T_BG;   /* (DUELL 1.1: idle keys a neutral cell, as PERFORM) */
+                cv_rrect(x, 4, 22, 22, 4, f, T_BG);
+                GFX_HOOK_ALIGN(x, 4, x + 22, 26, AL_HV, "name cycling letter in its cell");
+                cv_text_in(x, 4 + CAP_IN(M, 22), 22, &AF_M, c, typed ? T_INK : next ? T_ACCENT : T_TEXT, f);
+            }
+            cv_text_on(14 + 26 * (int32_t)n, 8, &AF_S, "TAP AGAIN: NEXT", T_MID, T_BG);
+        } else {
+            cv_text_on(10, 8, &AF_S, nm.num ? "ONE TAP, ONE CHARACTER" : "TAP AGAIN: NEXT LETTER", T_MID, T_BG);
         }
-        cv_text_on(14 + 26 * (int32_t)n, 8, &AF_S, "TAP AGAIN: NEXT", T_MID, T_BG);
-    } else {
-        cv_text_on(10, 8, &AF_S, nm.num ? "ONE TAP, ONE CHARACTER" : "TAP AGAIN: NEXT LETTER", T_MID, T_BG);
+        cv_text_r(230, 8, &AF_S, nm.num ? "123" : "ABC", vt(T_THEME, T_BG), T_BG);
+        GFX_HOOK_ALIGN(3, 0, 237, 0, AL_H | AL_CELLS | AL_N(8), "name keys' row in the panel");
+        for (i = 0; i < 16u; i++) {                        /* the white keys: the left octave, then the right one */
+            int32_t x = 9 + 28 * (int32_t)(i % 8u), y = i < 8u ? 31 : 54;   /* (x 9 .. 231: centred) */
+            int act = nm.key == i + 1u;
+            uint16_t f = act ? T_THEME : T_BG;
+            const char *g = nm_group(i);
+            cv_rrect(x, y, 26, 20, 4, f, T_BG);
+            GFX_HOOK_ALIGN(x, y, x + 26, y + 20, AL_HV, "name white key letters centred");
+            cv_text_in(x, y + CAP_IN(S, 20), 26, &AF_S, g, act ? T_INK : T_TEXT, f);
+        }
+        for (i = 0; i < 5u; i++) {                         /* the black keys, by name */
+            int32_t x = 9 + 45 * (int32_t)i, y = 80;
+            if (!i)
+                GFX_HOOK_ALIGN(3, 0, 237, 0, AL_H | AL_CELLS | AL_N(5), "name keys' row in the panel");
+            if (i != NB_LEFT && i != NB_RIGHT)               /* (the arrows: one small glyph under the name, centred across; the up / down pair is measured on the words) */
+                GFX_HOOK_ALIGN(0, y, 0, y + 36, AL_V | AL_N(2), "name black key name + use centred up/down");
+            GFX_HOOK_ALIGN(x, 0, x + 42, 0, AL_H | AL_PASS, "name black key name / use centred across");
+            cv_text_in(x, y + 1, 42, &AF_S, FN[i], T_TEXT, T_BG);
+            GFX_HOOK_ALIGN(x, 0, x + 42, 0, AL_H | AL_PASS, "name black key name / use centred across");
+            if (i == NB_LEFT || i == NB_RIGHT)
+                cv_text_in(x, y + 17, 42, &AF_S, i == NB_LEFT ? "<" : ">", T_TEXT, T_BG);
+            else
+                cv_text_in(x, y + 17, 42, &AF_S, i == NB_SPACE ? "SPACE" : i == NB_DEL ? "DEL" : nm.num ? "ABC" : "123",
+                          T_TEXT, T_BG);
+        }
+        cv_blit(0, Y_GRAPH);
     }
-    cv_text_r(230, 8, &AF_S, nm.num ? "123" : "ABC", vt(T_THEME, T_BG), T_BG);
-    GFX_HOOK_ALIGN(3, 0, 237, 0, AL_H | AL_CELLS | AL_N(8), "name keys' row in the panel");
-    for (i = 0; i < 16u; i++) {                        /* the white keys: the left octave, then the right one */
-        int32_t x = 9 + 28 * (int32_t)(i % 8u), y = i < 8u ? 31 : 54;   /* (x 9 .. 231: centred) */
-        int act = nm.key == i + 1u;
-        uint16_t f = act ? T_THEME : T_BG;
-        const char *g = nm_group(i);
-        cv_rrect(x, y, 26, 20, 4, f, T_BG);
-        GFX_HOOK_ALIGN(x, y, x + 26, y + 20, AL_HV, "name white key letters centred");
-        cv_text_in(x, y + CAP_IN(S, 20), 26, &AF_S, g, act ? T_INK : T_TEXT, f);
-    }
-    for (i = 0; i < 5u; i++) {                         /* the black keys, by name */
-        int32_t x = 9 + 45 * (int32_t)i, y = 80;
-        if (!i)
-            GFX_HOOK_ALIGN(3, 0, 237, 0, AL_H | AL_CELLS | AL_N(5), "name keys' row in the panel");
-        GFX_HOOK_ALIGN(0, y, 0, y + 36, AL_V | AL_N(2), "name black key name + use centred up/down");
-        GFX_HOOK_ALIGN(x, 0, x + 42, 0, AL_H | AL_PASS, "name black key name / use centred across");
-        cv_text_in(x, y + 2, 42, &AF_S, FN[i], T_TEXT, T_BG);
-        GFX_HOOK_ALIGN(x, 0, x + 42, 0, AL_H | AL_PASS, "name black key name / use centred across");
-        if (i == NB_LEFT || i == NB_RIGHT)
-            cv_text_in(x, y + 18, 42, &AF_S, i == NB_LEFT ? "<" : ">", T_TEXT, T_BG);
-        else
-            cv_text_in(x, y + 18, 42, &AF_S, i == NB_SPACE ? "SPACE" : i == NB_DEL ? "DEL" : nm.num ? "ABC" : "123",
-                      T_TEXT, T_BG);
-    }
-    cv_blit(0, Y_GRAPH);
 }
 static void nm_draw_foot(void)
 {

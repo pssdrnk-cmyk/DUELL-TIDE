@@ -126,8 +126,8 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     }
     {   /* RAND: both vowels move towards this note's random vowel (0 = off, 127 = fully random) */
         int32_t rv = (int32_t)(((uint32_t)v->s[7] >> 25) << 8), v0 = p[P_E0] << 8, v1 = p[P_E1] << 8;
-        v0 += ((rv - v0) * p[P_E7] * 258) >> 15;
-        v1 += ((rv - v1) * p[P_E7] * 258) >> 15;
+        v0 += ((rv - v0) * Q15_FROM_127(p[P_E7])) >> 15;
+        v1 += ((rv - v1) * Q15_FROM_127(p[P_E7])) >> 15;
         vowel_at(v0, fa, ba);      /* (the accent no longer moves the vowel: another vowel is another level) */
         vowel_at(v1, fb, bb);
     }
@@ -161,7 +161,7 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     rp = (1u << 30) / ((tp >> 16) | 1u);
     rn = (1u << 30) / (((te - tp) >> 16) | 1u);
     gv = 32767 - p[P_E5] * p[P_E5] * 2;                 /* BREATH: voicing fades at the top */
-    gn = p[P_E5] * 258;                                 /* noise: Q15, up to 1.0 */
+    gn = Q15_FROM_127(p[P_E5]);                                 /* noise: Q15, up to 1.0 */
     og = 13000 - ((p[P_E6] - 64) * 50);                 /* output: narrower bands ring louder */
     og = (int32_t)(((int64_t)og * fmt_ratio((60 * 16 - v->pitch_cur) / 4)) >> 16);   /* 1.5 dB / oct: low notes are sparse pulses */
     ogk = (og >> 2) * (4 + (buzz >> 10) + (m->cutoff >> 11));   /* the accent (velocity over 110) opens the presence, up to k + 3 */               /* presence k = 1 .. 4.9 */
@@ -183,7 +183,7 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
         }
         /* F1 -> F2 -> F3 -> F4, Q30, rounded; the signal x 64 inside: the rounding
          * dead band of F1 (+-0.5 / A, ~340 at 270 Hz) stays below 6 LSB */
-        a = (int32_t)(((int64_t)r1.a * (x << 6) + (int64_t)r1.b * y1 + (int64_t)r1.c * y2 + (1 << 29)) >> 30);
+        a = (int32_t)(((int64_t)r1.a * (x * 64) + (int64_t)r1.b * y1 + (int64_t)r1.c * y2 + (1 << 29)) >> 30);
         y2 = y1;
         y1 = a;
         a = (int32_t)(((int64_t)r2.a * a + (int64_t)r2.b * y3 + (int64_t)r2.c * y4 + (1 << 29)) >> 30);
@@ -197,7 +197,7 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
         y7 = clamp(a, -(1 << 28), 1 << 28);             /* int32 state stays far from overflow */
         s = soft_knee(clamp((int32_t)(((int64_t)y7 * og + (int64_t)(y7 - y8) * ogk) >> 21), -200000, 200000), 24000);
         ph += inc;
-        out[i] += voice_amp(s, m, i) << 1;
+        out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph;
     v->ph[1] = (uint32_t)y7;
@@ -212,6 +212,7 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     v->s[6] = lp;
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t FORMANT_PRESETS[] = {
     /* VOWEL VOWL2 TALK SHIFT | BUZZ BREATH Q RAND */
     {"CHOIR AAH", {0, 0, 0, 0, 40, 22, 60, 0}, {85, 90, 115, 95}, 0, 0, FX(0, 70, 15, 90), PAT(5)},
@@ -219,22 +220,25 @@ static const preset_t FORMANT_PRESETS[] = {
     {"WOW BASS", {95, 0, 68, 0, 100, 0, 80, 0}, {0, 70, 70, 30}, 0, 1, FX(10, 0, 10, 10), PAT(8)},
     {"WHISPER", {0, 95, 88, 3, 50, 120, 50, 0}, {50, 90, 110, 90}, 0, 0, FX(0, 40, 30, 70), PAT(5)},
 };
+#endif
 
 static const engine_t ENG_FORMANT = {
     .name = "VOICE",
     .page_title = {"VOWL", "TONE"},
     .edit = {
-        {"VOWL 1", F_INT, 0, 127, 0, 0, 0},
-        {"VOWL 2", F_INT, 0, 127, 64, 0, 0},
-        {"TALK", F_TIME, 0, 127, 0, 0, 0},
-        {"SHIFT", F_SEMI, -12, 12, 0, 0, 0},
-        {"BUZZ", F_PCT, 0, 127, 64, 0, 0},
-        {"BRTH", F_PCT, 0, 127, 10, 0, 0},
-        {"Q", F_PCT, 0, 127, 64, 0, 0},
-        {"RAND", F_PCT, 0, 127, 0, 0, 0},
+        {"VOWL 1", F_VOWL, 0, 0, 127, 0, 0},
+        {"VOWL 2", F_VOWL, 0, 0, 127, 64, 0},
+        {"TALK", F_TIME, 0, 0, 127, 0, 0},
+        {"SHIFT", F_SEMI, 0, -12, 12, 0, 0},
+        {"BUZZ", F_PCT, 0, 0, 127, 64, 0},
+        {"BRTH", F_PCT, 0, 0, 127, 10, 0},
+        {"Q", F_PCT, 0, 0, 127, 64, 0},
+        {"RAND", F_PCT, 0, 0, 127, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = FORMANT_PRESETS,
     .npresets = NELEM(FORMANT_PRESETS),
+#endif
     .note_on = formant_note_on,
     .render = formant_render,
     .knob = {P_E0, P_E4, P_E5, P_E2},

@@ -2,7 +2,8 @@
 /* A small independent float model of the DX7 voice core, for comparing the FM6 engine with (tests/dx7_compat.c renders the
  * engine's side). Own code, written for this test; it does not include or link any firmware file and shares no code with
  * fm6_core.c or Dexed. It reads the .syx itself (own parser), renders in double precision, per sample, and writes WAVs
- * (44.1 kHz mono 16 bit) in the engine's level scale (one carrier of amplitude 1.0 = 6000).
+ * (44.1 kHz mono 16 bit) in the engine's level scale (one carrier of amplitude 1.0 = 4045: calibrated on INIT VOICE, whose held level the engine
+ * puts at 5721 RMS; with 6000 the model was 3.4 dB louder, and every deviation figure carried that offset).
  *   dx7_ref OUTROOT FILE.syx ...      (same note rule, velocity 100, 1.5 s held, 2.0 s in all as dx7_compat)
  * WHAT IT MODELS: algorithms (graph from the editor's table: the wiring is NOT independently checked), ratio / fixed
  * frequency, fine, detune, the 4-stage amplitude EG (rate law, attack curve, flat-stage holds), rate scaling, level
@@ -18,9 +19,10 @@
 #include <string.h>
 #include <math.h>
 #include <stdint.h>
+#include "mkdirs.h"
 
 #define SR 44100.0
-static const uint8_t ALGT[32][6] = {      /* from web/editor.html FM6.ALG: per operator (op6 first) in-bus, out-bus, add, feedback flags */
+static const uint8_t ALGT[32][6] = {      /* from web/editor/fm6voice.js FM6.ALG: per operator (op6 first) in-bus, out-bus, add, feedback flags */
     {0xc1,0x11,0x11,0x14,0x01,0x14},{0x01,0x11,0x11,0x14,0xc1,0x14},{0xc1,0x11,0x14,0x01,0x11,0x14},{0xc1,0x11,0x94,0x01,0x11,0x14},
     {0xc1,0x14,0x01,0x14,0x01,0x14},{0xc1,0x94,0x01,0x14,0x01,0x14},{0xc1,0x11,0x05,0x14,0x01,0x14},{0x01,0x11,0xc5,0x14,0x01,0x14},
     {0x01,0x11,0x05,0x14,0xc1,0x14},{0x01,0x05,0x14,0xc1,0x11,0x14},{0xc1,0x05,0x14,0x01,0x11,0x14},{0x01,0x05,0x05,0x14,0xc1,0x14},
@@ -155,7 +157,7 @@ static void render(const voice_t *v, int note, int vel, double *out, int n, int 
                 ph[k] += fq[k] / SR; ph[k] -= floor(ph[k]);
             }
         }
-        xl = sum * 6000.0;
+        xl = sum * 4045.0;
         out[i] = xl - dc;
         dc += (xl - dc) * (1.0 / 1024);
     }
@@ -182,7 +184,7 @@ int main(int argc, char **argv)
         if (strlen(bank) > 4) bank[strlen(bank) - 4] = 0;
         for (i = 0; bank[i]; i++) if (bank[i] == ' ') bank[i] = '_';
         snprintf(dir, sizeof dir, "%s/%s", argv[1], bank);
-        snprintf(path, sizeof path, "mkdir -p '%s'", dir); if (system(path)) return 1;
+        if (mkdirs(dir)) { fprintf(stderr, "cannot create %s\n", dir); return 1; }
         for (k = 0; k < 32; k++) {
             voice_t v;
             char lo[11], fn[800];

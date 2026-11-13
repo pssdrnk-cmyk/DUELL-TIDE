@@ -1,5 +1,7 @@
 # MIXSPLIT: mix_block as separate stages (job 1 of the second-core work)
 
+> Developer reference, historical. Notes on splitting the audio block into stages (the first step of the two-core work); the stages are in `fx.c`. Kept at this path because source and test comments cite it.
+
 Branch `cloud/mixsplit`. Code: `felucca-base/firmware/src/fx.c` (stages), `felucca-base/tests/mixsplit_test.c` and `tests/mixsplit_ref.h` (the test and the old path it compares with). No arithmetic was changed: every stage body is the code that was inline in `mix_block` / `mix_part`, in the same order. Nothing here starts a second core; it only makes the cut lines visible and testable.
 
 ## 1. The stages
@@ -63,7 +65,7 @@ The device toolchain (JieLi clang 4) is not available here. The figures below ar
 | `mix_events` | 120 B | about 0.1 KB |
 | `events_block` (own function now) | 4,904 B | about 3.7 KB |
 
-Sum now 13,092 B against 12,320 B: about +6 % of code (about +0.6 KB on the device: prologues, the `mixpart_t` hand-over). This is flash code: `mix_block` was NOT in the hot RAM set (tools/hot_fns.py lists no `mix_block`; its own header says "7.9 KB, mostly cold paths: too big"), so tools/hot_fns.py is unchanged and the hot RAM budget (12,512 B, 244 B free) is not affected by this change. The new functions run from the flash through the cache like `mix_block` did. Owner's Mac build: check the linked sizes, the elfcheck, and the audio load on the unit (the bench), because the flash/cache layout moved.
+Sum now 13,092 B against 12,320 B: about +6 % of code (about +0.6 KB on the device: prologues, the `mixpart_t` hand-over). This is flash code: `mix_block` was NOT in the hot code set (tools/hot_fns.py lists no `mix_block`; its own header says "7.9 KB, mostly cold paths: too big"), so tools/hot_fns.py is unchanged and the hot code budget (12,512 B, 244 B free) is not affected by this change. The new functions run from the flash through the cache like `mix_block` did. Owner's Mac build: check the linked sizes, the elfcheck, and the audio load on the unit (the bench), because the flash/cache layout moved.
 
 Call levels: audio_block -> mix_block -> one stage (`part_voice`/`part_fx`/`part_mix`/`mix_sends`/`mix_master`) -> the existing callees. One level more than before for the part code (`mix_part` itself is a small static function the compiler is free to inline into `mix_block`); the deepest chain (`part_voice` -> `track_render` -> engine -> helpers) is one frame deeper than inline, and `mix_block`'s own frame is smaller (it no longer holds every stage's locals), so the peak stack should not grow by much; check the stack margin on the device.
 
@@ -112,7 +114,7 @@ Read-only during the parts and not snapshotted: `song.*`, `sv.*` (SPACE state: w
 
 Stack: `blockstate_t` (36 B) is a local of `mix_block`. `vmod_t` grew by 4 B (a pointer; one per voice on the stack of `track_render`). Time: `mix_block` no longer clears five global arrays; the parts clear their own (`pacc_clear`) and `mix_gather` sums: about 640 more word accesses a block than before (about 1,100 with SPACE's floors), an estimate to check with the bench.
 
-Hot set (tools/hot_fns.py, NOT edited): touched by steps 1 to 4: `mix_spread` (its arguments, the accumulators and the snapshot through `m`), `uf_run` (new parameter `mx` for the cross-fade), `uf_voice` (passes `m->mx`), `fm6_render` (passes the part's buses), `fm6_note_compute` (new parameter, `fm6_core_render` is inlined into it on the device), `spread_clear` (buffer as a parameter), `mod_voice` (the window as a parameter), `morph_end` (the part's `mw` / `mxf`). Untouched: the other 23 (`eq_run`, `track_dist`, `track_insert`, `duck_run`, `ins_swept`, the reverbs, `dly_mod`, `fx_buses_mod`, `wave_render`, `wv_*`, `fm6_op_*`, `fm6_carriers`, `fm6_note_of`, `uf_coef`, `sine_i`, `osc_sine`, `mod_voice_add`, `perf_flanger`, `perf_drive`). Host sizes (x86-64, `-Os -fno-inline`, only the direction is meaningful; the device is the owner's to measure, 200 B are free in the hot block): `mix_spread` +74, `uf_run` -9, `uf_voice` +11, `fm6_render` +3, `fm6_note_compute` +23 (with `fm6_core_render` -11), `spread_clear` -10, `mod_voice` -19, `morph_end` +47: about +109 B in all. If the hot block is over its limit, `morph_end` (47 B for the part index) and `mix_spread` are the two to look at first.
+Hot set (tools/hot_fns.py, NOT edited): touched by steps 1 to 4: `mix_spread` (its arguments, the accumulators and the snapshot through `m`), `uf_run` (new parameter `mx` for the cross-fade), `uf_voice` (passes `m->mx`), `fm6_render` (passes the part's buses), `fm6_note_compute` (new parameter, `fm6_core_render` is inlined into it on the device), `spread_clear` (buffer as a parameter), `mod_voice` (the window as a parameter), `morph_end` (the part's `mw` / `mxf`). Untouched: the other 23 (`eq_run`, `track_dist`, `track_insert`, `duck_run`, `ins_swept`, the reverbs, `dly_mod`, `fx_buses_mod`, `wave_render`, `wv_*`, `fm6_op_*`, `fm6_carriers`, `fm6_note_of`, `uf_coef`, `sine_i`, `osc_sine`, `mod_voice_add`, `perf_flanger`, `perf_drive`). Host sizes (x86-64, `-Os -fno-inline`, only the direction is meaningful; the device is the owner's to measure, 200 B are free in the hot code): `mix_spread` +74, `uf_run` -9, `uf_voice` +11, `fm6_render` +3, `fm6_note_compute` +23 (with `fm6_core_render` -11), `spread_clear` -10, `mod_voice` -19, `morph_end` +47: about +109 B in all. If the hot code is over its limit, `morph_end` (47 B for the part index) and `mix_spread` are the two to look at first.
 
 ### 6.4 Test
 
@@ -124,7 +126,7 @@ Host status: as in section 5. On this machine `morph` (a division trap in the SM
 
 ### 6.5 Job 2b: the cost clean-up (same branch, later commits)
 
-The owner's Mac check found the first build of section 6 too dear: four host cost checks failed (`perform` SPACE, `cpuscen` M06 4+4 with MORPH, `uf` KEY TRK, the `bench` idle row 527 against 455) and the hot RAM free fell from 200 B to 104 B. The cost checks and the bench count instructions with a macOS counter, so they report and pass on Linux. Here the same scenes were counted with valgrind (callgrind, `-O1 -fno-builtin` as the bench, 400 blocks of 32 samples, host instructions a sample, the work of `mix_block` and `wave_service`), cloud/mixsplit against this branch:
+The owner's Mac check found the first build of section 6 too dear: four host cost checks failed (`perform` SPACE, `cpuscen` M06 4+4 with MORPH, `uf` KEY TRK, the `bench` idle row 527 against 455) and the hot code free fell from 200 B to 104 B. The cost checks and the bench count instructions with a macOS counter, so they report and pass on Linux. Here the same scenes were counted with valgrind (callgrind, `-O1 -fno-builtin` as the bench, 400 blocks of 32 samples, host instructions a sample, the work of `mix_block` and `wave_service`), cloud/mixsplit against this branch:
 
 | scene | cloud/mixsplit | partstate (first build) | partstate now |
 |---|---|---|---|
@@ -188,7 +190,7 @@ Core 0 (the main thread): `mix_events`, PERFORM's begin, the snapshot, part 1's 
 
 ### 8.1 The model
 
-One table (top of `budget.c`), in the units of `tests/bench_baseline.txt` (host instructions a sample), turned into 1/100 of a percent of the time budget by `BD_U` with `BUDGET_MARGIN` 115 %. `BUDGET_LIMIT` is 80 (percent), `NOTES_MAX` 10, the voice pool `NVOICE` 8 (so 8 is the most a part gets until the pool grows). All three are named constants.
+One table (top of `budget.c`), in the units of `tests/bench_baseline.txt` (host instructions a sample), turned into 1/100 of a percent of the time budget by `BD_U` with `BUDGET_MARGIN` 115 %. `BUDGET_LIMIT` is 72 (percent; it was 80, later 81 and 84: the CPU fix of wave 14 measured the real per-second peak on the unit at about 30 + 0.74 x the model, so the allowance over the model is `BUDGET_PEAK` 18 points and the two make 90), `NOTES_MAX` 10, the voice pool `NVOICE` 8 (so 8 is the most a part gets until the pool grows). All three are named constants.
 
 | item | % of the time budget, margin applied | source |
 |---|---|---|
@@ -220,26 +222,26 @@ The task asked for `floor((limit - global - other fixed - this fixed - other voi
 
 The old VOICE CAP code is kept and still applies, as the stricter of the two. It was NOT removed: in the 16 factory multis the budget is stricter or equal in all 32 parts (table below), so it could go, but its tests (`cpuscen` section C, the P table) need the Mac's instruction counter and could not be run here. Remove it after `./host_tests.sh cpuscen` runs on the Mac with the budget in `ui_test.c`'s frame.
 
-### 8.4 NOTES a part, the 16 factory multis (default effects as loaded; and in cpuscen's state, MORPH on End B)
+### 8.4 NOTES a part, the 16 factory multis (default effects as loaded; and in cpuscen's state, MORPH on End B; re-made 2026-11-05 for the curated order of D31 and with TIDE's DSP items of audit A01 in the charge)
 
 | multi | parts | mode | as loaded | MORPH on | old cap |
 |---|---|---|---|---|---|
-| M01 REESE SWAMP | WAVE / ANALOG | LAYER | 3 / 3 (UNISON: one note) | 3 / 3 | 8 / 8 |
-| M02 NIGHT ORGAN | WHEEL / WAVE | LAYER | 3 / 3 | 2 / 2 | 8 / 8 |
-| M03 PAD SPLIT | WAVE / ANALOG | LAYER | 3 / 3 | 2 / 2 | 8 / 8 |
-| M04 DUB CHORD | FM6 / ANALOG | LAYER | 3 / 3 | 2 / 2 | 6 / 8 |
-| M05 WHISPER TIDE | WAVE / VOICE | LAYER | 2 / 2 | 2 / 2 | 8 / 4 |
-| M06 TINE STRINGS | TRIO / FM6 | LAYER | 3 / 3 | 2 / 2 | 8 / 6 |
-| M07 FINAL REEL | WAVE / TRIO | LAYER | 8 / 8 | 3 / 3 | 8 / 8 |
-| M08 MONO DUEL | TRIO / ANALOG | DUEL | 3 / 3 (mono) | 3 / 3 | 8 / 8 |
-| M09 ACID ETHER | ANALOG / ANALOG | LAYER | 3 / 3 (mono) | 2 / 2 | 8 / 8 |
-| M10 WIRED SNAIL | ANALOG / ANALOG | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
-| M11 EERIE SIGNAL | VOICE / WHEEL | LAYER | 3 / 3 | 3 / 3 | 4 / 8 |
-| M12 DEAD BUFFER | WAVE / NOISE | LAYER | 8 / 8 | 3 / 3 | 8 / 8 |
-| M13 COLD CHAPEL | WAVE / PHYS | LAYER | 2 / 2 | 2 / 2 | 8 / 3 |
-| M14 GARGLE ACID | WAVE / ANALOG | LAYER | 3 / 3 (mono) | 3 / 3 | 8 / 8 |
-| M15 WOOD & SKIN | LOFI / PHYS | LAYER | 2 / 2 | 2 / 2 | 8 / 3 |
-| M16 STRESS TEST | PHYS / WAVE | LAYER | 1 / 1 | 1 / 1 | 3 / 8 |
+| M01 BASIC CHORD | ANALOG / NOISE | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M02 DUB CHORD | FM6 / ANALOG | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
+| M03 CELLAR TAPE | PHYS / PHASE | LAYER | 2 / 2 | 2 / 2 | 3 / 8 |
+| M04 NIGHT ORGAN | WHEEL / WAVE | LAYER | 2 / 2 | 1 / 1 | 8 / 8 |
+| M05 ORGAN SKANK | WHEEL / PHASE | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M06 WARM ECHO | ANALOG / ANALOG | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M07 MINIMAL 12 | ANALOG / PHASE | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M08 TINE DUB | FM6 / ANALOG | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
+| M09 DEEP 332 | ANALOG / ANALOG | LAYER | 3 / 3 | 3 / 3 | 8 / 8 |
+| M10 PAD SPLIT | WAVE / ANALOG | LAYER | 2 / 2 | 1 / 1 | 8 / 8 |
+| M11 WHISPER TIDE | WAVE / VOICE | LAYER | 2 / 2 | 1 / 1 | 8 / 4 |
+| M12 TINE STRINGS | TRIO / FM6 | LAYER | 3 / 3 | 2 / 2 | 8 / 8 |
+| M13 COLD CHAPEL | WAVE / PHYS | LAYER | 1 / 1 | 1 / 1 | 8 / 3 |
+| M14 EERIE SIGNAL | VOICE / WHEEL | LAYER | 2 / 2 | 1 / 1 | 4 / 8 |
+| M15 HAZY TENSOR | ANALOG / NOISE | LAYER | 2 / 2 | 2 / 2 | 8 / 8 |
+| M16 FINAL REEL | PHYS / WAVE | LAYER | 1 / 1 | 1 / 1 | 3 / 8 |
 
 (`./host_tests.sh budget` prints the full table with the global and part costs and the reasons.) One core with a margin of 1.15 and a limit of 80 % gives 2 to 3 notes a part for most multis, as CPU_PLAN section 3 (one core) said; M07 and M12 as loaded fit 8 + 8 (pool-limited). The MORPH column is lower because an End B that switches a filter on or changes the slope costs every voice (the 0.2.11 cap counted it too).
 

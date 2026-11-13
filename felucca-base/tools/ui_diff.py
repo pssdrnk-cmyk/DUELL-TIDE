@@ -22,7 +22,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 DEF_T = ROOT.parent.parent.parent / "DUELL" / "working docs" / "ui_redesign"
-NAMES = ["01_morph", "02_engine", "03_patches", "04_fx-send", "05_env", "06_lfo", "07_sequencer", "07b_sequencer_help", "08_setup", "09_mixer", "10_battery"]
+NAMES = ["01_morph", "02_engine", "03_patches", "04_fx-send", "05_env", "06_lfo", "07_sequencer", "08_setup", "09_mixer", "10_battery"]
 H_END, F_START = 22, 218
 
 

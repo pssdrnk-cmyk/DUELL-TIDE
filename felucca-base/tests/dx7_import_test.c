@@ -136,7 +136,8 @@ int main(int argc, char **argv)
         up_load(slot);
         ok = 1;
         for (i = 0; i < P_COUNT; i++)
-            if (!param_kept(i) || i == P_LEVEL)
+            if ((!param_kept(i) || i == P_LEVEL) &&
+                !(i >= P_M1SRC && i <= P_M8AMT && (i - P_M1SRC) % 3u != 2u && !val[i + 2u - (i - P_M1SRC) % 3u]))   /* (DUELL 1.1: a load puts the preselected pairs into the matrix at amount 0, mod_preselect: a route of the record's own has its amount) */
                 ok &= trk[0].p[i] == val[i];
         params_ok += ok;
         fm6_unpack(pk, v);

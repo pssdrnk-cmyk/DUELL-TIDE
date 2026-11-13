@@ -120,6 +120,7 @@ export function inertReason(part, id) {
   if (e.name === "LOFI" && id === P_E0 + 2 && p[P_E0 + 1] !== 0) return "WAVE NOT PULSE";   // 1.1: LOFI PULSE WIDTH (K4) shows with WAVE PLS only (the unit: ui_draw.c card_hidden_vp)
   if (id >= P_E0) return unusedLabel(descOf(part, id)) ? "UNUSED" : null;
   if (id >= ID.P_IA && id <= ID.P_IMIX && id !== ID.P_ITYPE && !p[ID.P_ITYPE]) return "INSERT OFF";
+  if (e.ownenv && (id === ID.P_ED_PIT || id === ID.P_ED_SHP)) return "OWN ENV";   // b9: AMP DEST's PITCH and TIMBRE take ENV 1, which FM6 (its operators have their own envelopes) does not run (the unit: ui_draw.c card_hidden_vp)
   if (id === ID.P_LRATE && p[ID.P_LSYNC]) return "SYNC ON";
   if (id === ID.P_L2RATE && p[ID.P_L2SYNC]) return "SYNC ON";
   // (DUELL 1.1, owner 2026-10-25: FM6's AMP ENV knobs show and act on the carrier operators; the matrix destinations for these four stay refused, dstWhy below)
@@ -263,7 +264,7 @@ export const PART_TABS = [
 // firmware params.c MASTER_PAGE_TITLE; this one place here); then COMPRESSOR (K1 RATIO, K2 THRESH, K3 ATTACK, K4 RELEASE)
 export const MASTER_TITLE = "STEREO MASTER";
 export const GLOBAL_TABS = [
-  { key: "global", label: "GLOBAL", pages: ["TEMPO", "CHORUS", "DELAY 1/2", "DELAY 2/2", "REVERB", "SHIMMER", MASTER_TITLE, "COMPRESSOR"] },
+  { key: "global", label: "GLOBAL", pages: ["TEMPO", "CHORUS", "DELAY 1/2", "DELAY 2/2", "COLR LFO", "REVERB", "SHIMMER", MASTER_TITLE, "COMPRESSOR"] },
   { key: "patches", label: "PATCHES", pages: ["PATCHES"] },
   { key: "multis", label: "MULTIS", pages: ["MULTIS"] },
   { key: "patterns", label: "PATTERNS", pages: ["PATTERNS"] },   // 0.2.25: the pattern slots P01..P16 through the backup objects 21..23 (stored.js)
@@ -285,16 +286,16 @@ export const DUPLICATE = {
   "CYCLE ENV 1/2": "the ENV tab's CYCLE ENV card (MODE, SYNC, RISE, FALL, CURVE)",
   "CYCLE ENV 2/2": "the ENV tab's CYCLE ENV card",
   MIXER: "the unit's GLO > MIXER page (0.2.25 layout round: GLO's first page; item 117 order: K1 LEVEL 1, K2 LEVEL 2, K3 PAN 1, K4 PAN 2, the MUTE cells): each part column's MIXER block (LEVEL, PAN, MUTE)",
-  "SEND FX": "the unit's SEND FX page (FX's second page) shows the selected part's three sends (the FX tab's CHO DLY REV cards) beside the effects they feed (the GLOBAL tab's cards); its twists only jump to those pages (item 117: the page says so, TURN A KNOB: JUMP TO GLOBAL EFFECT SETTINGS, and names the effects that are inactive for the part)",
 };
 export const NOT_EDITABLE = [
   ["SCALE", "SCALE, ROOT and OFF-SCALE are the instrument's, not parameters: the editor protocol has no command for them"],
   ["MIDI", "the parts' MIDI channels (PART 1 CHANNEL, PART 2 CHANNEL) are not reachable by the protocol; MIDI IN is on the MIDI tab"],
   ["TOOLS", "CLEAR SEQ is the SEQ tab's Clear; INITIALIZE SOUND is the Init patch... button of each part; RESTORE ALL is on the PATCHES tab"],
-  ["SEQUENCER HELP", "the legend of the STEP page's symbols on the unit (page 2 of the STEP family, item 118): no controls, nothing to edit"],
   ["PARAMETER LOCKS", "recorded motion and locks: not in this version (the protocol has MOTION; 1.1.0-test2: a lock can name every matrix destination, see lockTarget)"],
-  ["MORPH", "the MORPH fader, ROLL and UNDO have no protocol command; a saved patch or multi keeps End B as exact values, and PATCH_RAW and the backup carry it (see below)"],
+  ["MORPH", "the MORPH fader and ROLL have no protocol command; a saved patch or multi keeps End B as exact values, and PATCH_RAW and the backup carry it (see below)"],
   ["MORPH SET", "SMART, ARP and PITCH of the morph have no protocol command"],
+  ["TIDE SETTINGS", "TIDE's MORPH SET (MUSIC, SMART, WILD, ARP, PITCH, WASH): no protocol command"],
+  ["AUTO TIDE", "TIDE's automatic morph (MODE, TIME, WAIT, TARGET, VARY BARS): kept in the settings record's reserved tail, no protocol command (the backup carries it with the settings)"],
   ["MODE", "the output MODE (DUEL, STEREO, LAYER), XFADE and SPLIT have no protocol command"],
 ];
 export function uncoveredPages() {

@@ -26,7 +26,7 @@
 #define PROJ_PHYS 2u                           /* project_t.phys, byte 64: always written 2, a project that says otherwise is not one */
 #define PROJ_REV 8u                            /* byte 67: 8 = ROLL CHAINED storage (2026-10-29): per part, after the extension slots, End B as values (a length byte, 0 = none, then morph.c's MBV block: the hand-set marks in it), then engine, preset and the steps; the edit list and the 7-byte seed block are gone. 7 (editable B: the edit list and the 7-byte block) and before are refused */
 #define PROJ_MB_N 7u                           /* End B's seed block: morph.c MB_N (a MULTI keeps it: multi.c; the project file does not since PROJ_REV 8) */
-#define PROJ_BV_MAX 195u                       /* End B as values: morph.c MBV_MAX (the _Static_assert at project_capture) */
+#define PROJ_BV_MAX (195u + TIDE_MBV_FMT_N)    /* End B as values: morph.c MBV_MAX (the _Static_assert at project_capture) */   /* TIDE hook (H9) */
 #define PROJ_NAME_LEN 12u                      /* the name: the reserved tail's end */
 typedef struct {                               /* one track */
     int16_t p[P_COUNT];
@@ -326,6 +326,7 @@ static int project_restore_runtime(const project_t *input)
     uint8_t fv[NTRK][FP_SIZE + 1u];
     int32_t fslot[NTRK];
     if (!proj_ok(input) || !proj_engines_ok(input)) return 1;
+    bd_dl_ok = 0;                                       /* b11: the deadline's items from the audio interrupt again until budget_poll's next publish (budget.h) */
     if (p != input) memcpy(p, input, sizeof *p);
     if (!proj_keep_play)
         transport_req = 2;
@@ -390,6 +391,7 @@ static int project_restore_runtime(const project_t *input)
     for (k = 0; k < NTRK; k++)
         pat_sig[k] = ~steps_sig(&trk[k]);               /* a project's steps are the user's */
     undo_depth--;
+    TIDE_LOADED(3u);                                    /* TIDE hook (H18): both parts start as written, the arc at RISE */
     if (!proj_morph_skip)                               /* PROJ_REV 8: each part's End B as saved (the autosave, a backup): its values (the marks of the values set by hand in them); a project without leaves the morph as it was (the next action re-bases it) */
         for (k = 0; k < NSHOWN; k++)
             if (p->bvn[k])
@@ -411,6 +413,7 @@ static void persist_note(const persist_t *p)       /* p is the record now in the
 {
     memcpy(&persist_saved, p, sizeof persist_saved);
     persist_saved_map = persist_map_crc(p->map);
+    memcpy(tide_tail_saved, p->map_tail + TIDE_TAIL_AT, TIDE_TAIL_N);
 }
 static void persist_base(persist_t *p)             /* p := the saved record's head (fields this build does not export survive); the map is the caller's export */
 {
@@ -419,7 +422,9 @@ static void persist_base(persist_t *p)             /* p := the saved record's he
 }
 static int persist_is_saved(const persist_t *p)    /* the exported p equals what is in the flash */
 {
-    return !memcmp(p, &persist_saved, sizeof persist_saved) && persist_map_crc(p->map) == persist_saved_map;
+    return !memcmp(p, &persist_saved, sizeof persist_saved) && persist_map_crc(p->map) == persist_saved_map
+           && !memcmp(p->map_tail + TIDE_TAIL_AT, tide_tail_saved, TIDE_TAIL_N)
+        ;
 }
 static uint8_t persist_pending;                 /* 1 requested, 2 waiting after a flash error */
 static uint32_t persist_retry_ms;
@@ -595,7 +600,7 @@ static uint32_t autosave_sig(void)
         h = as_mix(h, fm6_patch[i], sizeof fm6_patch[i]);
     }
     for (i = 0; i < G_COUNT; i++)
-        if (i != G_SLOT && i != G_LOAD && i != G_SAVE)       /* (0.2.19: G_NAME is SHIM's MOD now) */
+        if (i != G_SLOT && i != G_LOAD && i != G_SAVE)       /* (G_SHMOD, SHIM's MOD since 0.2.19; was G_NAME) */
             h = as_mix(h, &song.g[i], sizeof song.g[i]);
     h = as_mix(h, &motion, sizeof motion);
     h = as_mix(h, &(uint32_t){morph_sig()}, 4u);        /* (cloud job G: End B's roll and the values set by hand are part of the music) */

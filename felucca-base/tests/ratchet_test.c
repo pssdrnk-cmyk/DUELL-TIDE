@@ -119,7 +119,7 @@ static int play(void)
 
     t = one_step(2, 0);                               /* swing: a step's parts stay inside its swung length */
     t->p[P_SLEN] = 2;
-    t->p[P_SSWING] = SWING_MAX;
+    t->p[P_SSWING] = 75;
     t->step[1] = t->step[0];
     seq_start();
     n = run(t, (step_len(t, 0) + step_len(t, 1)) / CTL - 1u, at, 8, 0);
@@ -193,7 +193,7 @@ static int projects(void)
     trk[1].step[7].time = ST_NOTE; trk[1].step[7].n = 1; trk[1].step[7].note[0] = 50;
     project_save(2);
     step_set_ratchet(&trk[1].step[7], 1);
-    project_load(2);
+    project_load(MIDX(2));
     bad += check("  project save and load keep the ratchet", step_ratchet(&trk[1].step[7]) == 3u);
     return bad;
 }

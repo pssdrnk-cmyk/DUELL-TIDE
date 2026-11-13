@@ -45,6 +45,7 @@ static void reset(void)
     memset(mo_bits, 0, sizeof mo_bits); kb_mo = 0;
     trk[0].p[P_VOICE] = V_POLY; scale_g = 0; root_g = 0;
     midi_pch[0] = 0; midi_pch[1] = 1;
+    trk[0].p[P_TRANS] = 0;                               /* (1.1: a power-on part has TRN -12; the key C4 = note 60 below needs 0) */
     events_block(CTL);
     clr();
 }
@@ -95,7 +96,7 @@ int main(void)
     per = div_samples(2);
     t->nheld = 3; t->held[0] = 60; t->held[1] = 64; t->held[2] = 67; memset(held_key[0], 0, sizeof held_key[0]);
     t->arp_pos = 0xFFFFFFF; t->arp_idx = 0xFFFFFFFFu;
-    for (i = 0; i < 6; i++) { arp_tick(t, per); arp_tick(t, per / 2u); drain(); }
+    for (i = 0; i < 6; i++) { arp_tick(t, per + 1u); drain(); }   /* (a step per period: the overshoot is carried, a half period more would be a seventh step in nine; b8: per + 1, the step is the exact 5512.5 samples now, not the rounded-down 5512) */
     bad += check("ARP: six steps, six note-ons C E G C E G in order", count(0x90u, 60) == 2 && count(0x90u, 64) == 2 && count(0x90u, 67) == 2 && NOTE(0) == 60u && NOTE(2) == 64u && NOTE(4) == 67u);
     bad += check("ARP: velocity 100 on channel 1, a note-off before the next note-on", VEL(0) == 100u && CHN(0) == 0u && ST(1) == 0x80u && NOTE(1) == 60u);
     t->nheld = 0; t->p[P_AMODE] = 0; arp_tick(t, per); drain();
@@ -130,7 +131,7 @@ int main(void)
     arp_off(t); drain();
     bad += check("channel changed while sounding: the note-off uses the note-on's channel (1)", ev_n == 2 && ST(1) == 0x80u && CHN(1) == 0u && CHN(0) == 0u);
     clr();
-    arp_tick(t, per); drain();
+    arp_tick(t, per + 1u); drain();   /* (b8: the exact step is 5512.5 samples) */
     bad += check("  the next note-on goes to the new channel (10)", ev_n >= 1 && ST(0) == 0x90u && CHN(0) == 9u);
     clr(); arp_forget(t); trk_all_off(t); drain();
     bad += check("  a panic (arp_forget) ends the sounding note on channel 10", ev_n == 1 && ST(0) == 0x80u && CHN(0) == 9u && NOTE(0) == 60u);
@@ -150,10 +151,46 @@ int main(void)
     bad += check("LAYER: part 1's arp sends on channel 1", ev_n >= 1 && ST(0) == 0x90u && CHN(0) == 0u && NOTE(0) == 60u);
     duell_mode_force(DM_SPLIT);
 
+    /* 8. USB MIDI out not draining (ring full): a note-on must not take the last slot and leave its note-off dropped (stuck note on the host) */
+    reset();
+    t = &trk[0];
+    while (mo_w - mo_r < MQ - 1u) midi_out_event(0x08u | 0x8Fu << 8 | 1u << 16);       /* filler note-offs, channel 16, up to one free slot */
+    arp_note_on(t, 60, 100); arp_note_off(t, 60);
+    {
+        int ons = 0, offs = 0;
+        uint32_t k;
+        for (k = mo_r; k != mo_w; k++) {
+            uint32_t pkt = midi_out_q[k % MQ];
+            ons += ((pkt >> 8) & 0xFFu) == 0x90u && ((pkt >> 16) & 0x7Fu) == 60u;
+            offs += ((pkt >> 8) & 0xFFu) == 0x80u && ((pkt >> 16) & 0x7Fu) == 60u;
+        }
+        bad += check("full ring: no note-on without its note-off reaches the host (stuck note)", ons == 0 || offs >= ons);
+        bad += check("  the ring never overruns", mo_w - mo_r <= MQ);
+    }
+    clr();
+
+    /* 9. a note-on the ring dropped is not marked as sent (no stray note-off later); a note-off the ring dropped stays marked (the note is still on) */
+    reset();
+    t = &trk[0];
+    while (mo_w - mo_r < MQ - MO_RESERVE) midi_out_event(0x08u | 0x8Fu << 8 | 1u << 16);   /* the ring up to the note-offs' reserve: a note-on finds no room */
+    arp_note_on(t, 60, 100);
+    bad += check("a note-on the full ring dropped is not marked as sent", !((mo_bits[0][60 >> 5] >> (60 & 31u)) & 1u));
+    clr();
+    arp_note_off(t, 60);
+    bad += check("  its note-off then sends nothing", mo_w == mo_r);
+    arp_note_on(t, 62, 100); clr();                                                           /* (an On that went out, then the ring is filled to the top) */
+    while (mo_w - mo_r < MQ) midi_out_event(0x08u | 0x8Fu << 8 | 1u << 16);
+    arp_note_off(t, 62);
+    bad += check("a note-off the full ring dropped keeps its note marked", (mo_bits[0][62 >> 5] >> (62 & 31u)) & 1u);
+    clr();
+    arp_note_off(t, 62);
+    bad += check("  and the next try ends the note", mo_w - mo_r == 1u && !((mo_bits[0][62 >> 5] >> (62 & 31u)) & 1u));
+    clr();
+
     {   /* the width of the LAYER note on GLO > MIDI (ui_graph.c graph_midi, AF_S at x = 12, the screen is 240 wide) */
-        int32_t w = text_w(&AF_S, "LAYER MODE: PART 1 CHANNEL COUNTS");
+        int32_t w = text_w(&AF_S, "LAYER: PART 1 CHANNEL COUNTS");
         printf("  LAYER note width %d px (x 12 .. %d of 240)\n", (int)w, (int)(12 + w));
-        bad += check("LAYER note fits inside the 240 px screen (the longest other line on that page is 203 px)", 12 + w <= 240);
+        bad += check("LAYER note fits inside the 240 px screen with a margin (the longest other line on that page is 203 px)", 12 + w <= 228);
     }
     printf("%s\n", bad ? "MIDI OUT ARP/SEQ TEST FAILED" : "midi out arp/seq test passed");
     return bad != 0;

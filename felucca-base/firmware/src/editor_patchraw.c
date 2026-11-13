@@ -57,7 +57,7 @@ static uint32_t ed_pr_write(const uint8_t *a, uint32_t n)
             rc = 2;
         else {
             int r = up_put_raw(a[1], ed_pr_rec, ed_pr_len);
-            rc = r == 0 ? 0u : r == 1 ? 1u : r == 2 && song.playing ? 3u : 4u;
+            rc = r == 0 ? 0u : r == 1 ? 1u : r == PT_FULL ? 6u : r == 2 && song.playing ? 3u : 4u;
         }
         ed_pr_put = 0;
         return rc;

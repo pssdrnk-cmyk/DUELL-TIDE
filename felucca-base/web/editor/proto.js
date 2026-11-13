@@ -13,7 +13,7 @@ export const cstr = (s) => [...asc(s), 0];
 export function rstr(a, pos) { let s = ""; while (pos < a.length && a[pos]) s += String.fromCharCode(a[pos++]); return [s, pos + 1]; }
 
 // INFO: version, counts, engine names, tagged blocks
-const TAG_LEN = { 0x55: 3, 0x4d: 4, 0x42: 3, 0x46: 4, 0x53: 3, 0x50: 3, 0x4e: 3, 0x52: 3, 0x4c: 3, 0x41: 4, 0x54: 3, 0x56: 3, 0x43: 3, 0x57: 3, 0x58: 4, 0x59: 3, 0x5a: 3, 0x5b: 3, 0x4b: 3, 0x4f: 3 };
+const TAG_LEN = { 0x55: 3, 0x4d: 4, 0x42: 3, 0x46: 4, 0x53: 3, 0x50: 3, 0x4e: 3, 0x52: 3, 0x4c: 3, 0x41: 4, 0x54: 3, 0x56: 3, 0x43: 3, 0x57: 3, 0x58: 4, 0x59: 3, 0x5a: 3, 0x5b: 3, 0x4b: 3, 0x4f: 3, 0x44: 3 };
 export function parseInfo(a) {
   let [version, pos] = rstr(a, 0);
   if (pos < 1 || pos > a.length) throw new Error("The unit sent an unreadable INFO");
@@ -34,6 +34,8 @@ export function parseInfo(a) {
            // morphView: tag 4F 01 bit 0 (item 159): a part's values are read AS SHOWN at the MORPH fader (the unit's cards) and written as its knob writes; TRACK_DUMP's byte 1 and
            // TRACK_PARAM's scope + 4 read and write the stored Original (the librarian's copy); WATCH bit 2: TRACK_CHANGED for every value of the other part
            morphView: !!((tags[0x4f]?.[0] ?? 0) & 1),
+           // tide: tag 44 01 bit 0: the firmware is TIDE (the version string stays "DUELL 1.1"); a plain DUELL unit sends no 44 tag
+           tide: !!((tags[0x44]?.[0] ?? 0) & 1),
            // locks: tag 4C 01 caps (the sequencer's parameter locks, MOTION ops 5..7; bit 1 = targets past 127, ops 9..11); motionMax: tag 41 01 lo hi (the motion capacity, 128: op 8 lists them all), else 64
            locks: tags[0x4c] ? tags[0x4c][0] & 127 : null, lockWide: !!((tags[0x4c]?.[0] ?? 0) & 2), motionMax: tags[0x41] ? tags[0x41][0] | tags[0x41][1] << 7 : 64 };
 }

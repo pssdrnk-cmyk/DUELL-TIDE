@@ -70,8 +70,14 @@ GROUPS = {
     2: ["eq_run", "ins_swept", "track_dist", "duck_run", "mix_spread", "track_insert",
         "rev_room", "rev_shim", "dly_mod", "fx_buses_mod"],
     3: ["fm6_note_compute", "fm6_render", "fm6_carriers", "fm6_note_of", "wv_line", "sine_i", "osc_sine",
-        "uf_coef", "spread_clear", "mod_voice", "mod_voice_add", "morph_end", "perf_flanger", "perf_drive"],
+        "uf_coef", "spread_clear", "mod_voice", "mod_voice_add", "morph_end", "perf_flanger", "perf_drive",
+        "fm6_xblock", "fm6_xtune", "fm6_osc_base4"],   # TIDE: the FM6 bridge of a GLIDE (fm6_xfer.c), per note x operator while a crossing runs (unit 2026-11-06: from the flash it spiked the half to 102 %); absent without TIDE
 }
+# The two-core layout has spare range-X RAM. Keep these leaf loops in RAM while
+# releasing room in the top hot block; ram_place validates their call closure.
+import os
+if os.environ.get("DUELL_TWOCORE") == "1":
+    GROUPS[2] = [f for f in GROUPS[2] if f not in ("eq_run", "ins_swept")]
 # 0.2.14 merge (2026-10-15): the set re-checked against the merged code. track_dist grew 218 -> 316 B (the DIST blend), mix_spread 656 -> 798 B
 # (MODULES PART FX), and the 12,596 B of R3 overflowed RAMCODE by 84 B. perf_phaser (384 B) went back to the flash: it runs only while PERFORM's
 # FX is held on that stage, not in the steady state; the new PERFORM filter (perform.c perf_filter, 852 B) is in the flash too (it did not fit).

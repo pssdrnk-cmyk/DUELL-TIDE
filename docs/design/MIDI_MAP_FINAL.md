@@ -1,5 +1,7 @@
 # MIDI MAP, FINAL version: the complete CC table with the owner's answers applied, the standard names kept, and what the Akai Force and MPC really show (2026-10-20, updated by the second round of the same day)
 
+> Design record. The feature is built; what ships is described in [MIDI_MAP_DEFAULTS.csv](../MIDI_MAP_DEFAULTS.csv), [MIDI_MAP_ENGINE.md](../MIDI_MAP_ENGINE.md) and [the README](../../README.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 > **Note:** the shipped numbers are in [MIDI_MAP_DEFAULTS.csv](../MIDI_MAP_DEFAULTS.csv) and in the README. CC 1, 2, 4, 11 and 64 are inputs (mod wheel, breath, foot, expression, sustain pedal) that you can use as sources in the mod matrix; they cannot be assigned to parameters.
 
 Private. Research and writing only: no code changed, no branch made, no picture drawn (plain text tables). INDEX.md and the other documents were not touched. This replaces the number choices of MIDI_MAP_DESIGN_2.md ("version 2") and applies the owner's answers; the table design, the unit page and the editor tab of MIDI_MAP_DESIGN.md ("version 1") stay, and section 6 lists only what changes. The owner's second round of decisions on 2026-10-20 is applied throughout and summarised in section 2b.
@@ -35,7 +37,7 @@ Marks, as in the other studies: **CONFIRMED** (read today in a manual, a release
 2. **The morph fader sits on CC70**, the standard "Sound Controller 1 (Sound Variation)"; exception X8 is gone because it is now decided yes.
 3. **ROLL is one CC (102), centred like the knob on the unit**: 0 to 42 rolls End A, 43 to 84 does nothing (the middle, 64 is the rest position), 85 to 127 rolls End B. **MORPH AMOUNT is CC103.** UNDO and the four morph setting switches (TARGET, SMART/WILD, ARP, PITCH) are learn-only.
 4. **X6 stays** (the mod wheel CC1 moves the morph fader): checked in the firmware, it is a separate, direct path and takes no matrix slot. **X7 stays** (the expression pedal CC11 only feeds the matrix).
-5. **CC2 (breath) and CC4 (foot) are matrix sources** (BREATH and FOOT, next to the mod wheel CC1, expression CC11 and sustain pedal CC64); they cannot be assigned to parameters. **MORPH becomes a matrix destination** (FEATURE_LIST item 9, the next edition); no change to the CC map.
+5. **CC2 (breath) and CC4 (foot) are matrix sources** (BREATH and FOOT, next to the mod wheel CC1, expression CC11 and sustain pedal CC64); they cannot be assigned to parameters. **MORPH becomes a matrix destination** (history/FEATURE_LIST item 9, the next edition); no change to the CC map.
 
 **Earlier changes against version 2 (still valid).** BREATH and FOOT as inputs on their standard numbers CC2 and CC4; LFO rows beyond the vibrato learn-only (X4 shrinks to 16 numbers); no Force sheet; EQ and ARP learn-only; INSERT direct (X5).
 
@@ -104,7 +106,7 @@ Result: these four are learn-only and global (a controller can still be taught t
 
 **4. X7 stays (decided yes): the expression pedal CC11 only feeds the matrix as a source and does not change the loudness by itself.**
 
-**5. CC2 and CC4 are inputs: the matrix has the sources BREATH and FOOT. New request: MORPH becomes a matrix destination** (FEATURE_LIST item 9; his words: "the matrix should have a destination for the morph fader... that will be the next edition"). That is the way an LFO or CYCLE can later move the morph fader. It needs no change to the CC map. Today the morph fader is not a destination (the firmware says so in `mod.c`).
+**5. CC2 and CC4 are inputs: the matrix has the sources BREATH and FOOT. New request: MORPH becomes a matrix destination** (history/FEATURE_LIST item 9; his words: "the matrix should have a destination for the morph fader... that will be the next edition"). That is the way an LFO or CYCLE can later move the morph fader. It needs no change to the CC map. Today the morph fader is not a destination (the firmware says so in `mod.c`).
 
 **6. Unchanged:** the standard-name rules, the approved exceptions X2 (DELAY send 92, DETUNE 94), X3 (LFO 1 as vibrato, 76 to 78), X4 (the fine-half block) and X5 (INSERT on 12, 13, 95), and the rest of the map.
 
@@ -361,16 +363,16 @@ The owner's own observation ("I scrolled through a list of 128 and some have nam
 
 The firmware reads CC1, CC2, CC4 and CC11 for the matrix (mod.c mod_midi); CC 1, 2, 4, 11 and 64 are inputs (mod wheel, breath, foot, expression, sustain pedal) that you can use as sources in the mod matrix; they cannot be assigned to parameters. The text below is the design study of the two sources and is kept as written.
 
-The owner said yes (FEATURE_LIST item 8) and confirmed it in the second round. Made exactly like CC11 (EXPRESSION). Facts read in the firmware (mod.c, midi_control.c, params.c, core.h of the newest line):
+The owner said yes (history/FEATURE_LIST item 8) and confirmed it in the second round. Made exactly like CC11 (EXPRESSION). Facts read in the firmware (mod.c, midi_control.c, params.c, core.h of the newest line):
 
 - **Source ids.** The matrix has 15 sources today, ids 0 to 14 (OFF, LFO1, AENV, VEL, KEY, RAND, MODW, AT, EXPR, S&H, SLEW, ENV2, LFO2, MORPH, DUCK). The list is append-only (stored patches keep their meaning) and the plan gives CYCLE id 15. So **BREATH = id 16 and FOOT = id 17** (CYCLE first, as planned; if BREATH and FOOT are made first they take 15 and 16 and CYCLE moves to 17: ids follow the order of making). The list then has 18 of 128 places.
 - **What each does.** BREATH is the value of CC2 and FOOT of CC4 on the channel of the part, 0 to 127 scaled to the matrix range 0 to 1, same as MODW (CC1). It is unipolar. Nothing is stored in patches except the source id (one byte, as now).
 - **Default.** With no controller connected the value is 0 (like MODW), so a missing breath controller cannot open a filter by itself. CC121 (Reset All Controllers) sets both to 0. EXPRESSION keeps its own MIDI rule (full until a CC11 arrives).
 - **Part rule.** As CC1 and CC11 today: the part that the channel plays; in LAYER both parts receive it (the code that feeds CC1, CC11 and aftertouch to part 2 in LAYER also feeds these).
-- **They do not move the morph fader yet.** Only CC1 does (X6, directly, not through the matrix). BREATH and FOOT would reach the morph only through the matrix, which has MORPH as a source but no morph destination today. The owner decided (2026-10-20, FEATURE_LIST item 9) that MORPH becomes a matrix destination in the next edition; then breath, foot, an LFO and CYCLE can move the morph fader through a slot. No change to the CC map.
+- **They do not move the morph fader yet.** Only CC1 does (X6, directly, not through the matrix). BREATH and FOOT would reach the morph only through the matrix, which has MORPH as a source but no morph destination today. The owner decided (2026-10-20, history/FEATURE_LIST item 9) that MORPH becomes a matrix destination in the next edition; then breath, foot, an LFO and CYCLE can move the morph fader through a slot. No change to the CC map.
 - **How they appear.** In the unit's matrix source list the names are **BREATH** and **FOOT**, placed in the knob order right after EXPR (the MIDI controllers together: MODW, AT, EXPR, BREATH, FOOT, then S&H, SLEW, MORPH, DUCK). In the editor the labels file gets two entries: BREATH = "BREATH CONTROLLER", FOOT = "FOOT CONTROLLER". The MIDI MAP shows rows 2 and 4 as INPUT lines with the text "BREATH (matrix source)" / "FOOT (matrix source)", not editable, like 1 and 11.
 - **Hide-inert rules.** A source is a choice in a list, not a control, so nothing is hidden or faded: BREATH and FOOT are always selectable. A slot that uses a source nobody sends is simply 0, exactly as MODW without a wheel (no silent control in the honesty-rule sense: the source is named on the slot). Hide rules that stay as today: a slot whose destination is hidden (for example DRIVE while filter 2 is OFF) keeps hiding the same way, whichever source it uses. The learn refuses 2 and 4.
-- **Cost (est.).** Firmware about +150 B of program (two cases in the source reader, two in the MIDI input), +16 B of names; RAM +2 B per part (the part record is padded to a multiple of 16 B, so 0 to 64 B in all); hot RAM 0 expected (HYPOTHESIS: the matrix reader's placement was not checked); CPU nothing unless a slot uses them. Editor: two labels. About **1 round** including the automatic check (CC2 and CC4 reach the source, reset on CC121, LAYER feeds both parts).
+- **Cost (est.).** Firmware about +150 B of program (two cases in the source reader, two in the MIDI input), +16 B of names; RAM +2 B per part (the part record is padded to a multiple of 16 B, so 0 to 64 B in all); hot code 0 expected (HYPOTHESIS: the matrix reader's placement was not checked); CPU nothing unless a slot uses them. Editor: two labels. About **1 round** including the automatic check (CC2 and CC4 reach the source, reset on CC121, LAYER feeds both parts).
 
 ---
 
@@ -431,7 +433,7 @@ Rule from the owner (memory "reuse open source"): take tested pieces with a lice
 | Standard names in the editor | about 3 KB, no firmware cost | same, now generated from the CSV above | 0; plus 13 Force/MPC strings (under 0.3 KB, editor only) |
 | CSV, printable list, Force sheet | in version 2 | dropped | about -0.5 KB editor code and about -0.5 round |
 | Firmware, ROLL as one CC | two CCs (today 21 and 22) | one CC with value halves | small change in `midi_control.c` (the morph CC handler), about 0.3 round with the automatic check; the morph destination in the matrix is a separate item (FEATURE_LIST 9), not costed here |
-| Matrix sources BREATH, FOOT | not in version 2 | +150 B program, +16 B names, +2 B RAM per part (0 to 64 B), hot RAM 0 expected | new, section 5 |
+| Matrix sources BREATH, FOOT | not in version 2 | +150 B program, +16 B names, +2 B RAM per part (0 to 64 B), hot code 0 expected | new, section 5 |
 | CPU | one table read per CC | same | 0 |
 | Work | map 7 to 9 rounds | map 6.5 to 8.5 rounds, plus about 1 round for BREATH and FOOT | net about +0.5 to +1 |
 | Cheap first step | editor-only read-only table of today's CCs, beside the proposed map | same | 0 |
@@ -466,6 +468,6 @@ Every question of the first round is answered (2026-10-20, section 2b). Nothing 
 | CYCLE as source id 15, source list 15 to 16 | EXTENSION_BLOCK_PLAN.md section 3.4 |
 | Today's CC list, learn, table and unit page | MIDI_MAP_DESIGN.md |
 | The proposed map, exceptions X1 to X8, the Virus layout, the 20 new values | MIDI_MAP_DESIGN_2.md |
-| The owner's answers | FEATURE_LIST.md items 7, 8 and 9; memory file project-headline-features-direction; the second round of 2026-10-20 in section 2b |
+| The owner's answers | [history/FEATURE_LIST.md](../history/FEATURE_LIST.md) items 7, 8 and 9; the second round of 2026-10-20 in section 2b |
 | CC1 moves the morph fader directly (not through the matrix); the morph CC handler; the morph queue `MQ_FADER`; MORPH not a destination | `felucca-base/firmware/src` (`midi_control.c` CC1 case and `midi_morph`, `morph.c` `morph_push`, `mod.c` header comment), read only |
 | Counts and duplicate check | a small script run today (table held as one entry per number; counts in 3.4) |

@@ -53,7 +53,7 @@ static void run(const char *name, uint32_t mode, int perf)
             chord |= 1u << k;
     duell_mode_req = DM_LAYER;
     scene_put(1, "M02_WHISPER_TIDE");
-    project_load(1);
+    project_load(MIDX(1));
     for (b = 0; b < 8u; b++) { mix_block(out, CTL); while (wave_service()) ; }
     for (k = 0; k < NTRK; k++) {
         if (mode == 1 || mode == 3 || mode == 4) trk[k].p[P_REV] = 0;

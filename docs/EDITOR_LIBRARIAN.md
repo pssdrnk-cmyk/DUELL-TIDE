@@ -1,12 +1,21 @@
 # The patch library in the web editor
 
-**DUELL**
-MultiMorphing Bitimbral Synthesizer
-by OSCILL/R
+**TIDE**
+Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments), GPL-3.0
 
 The editor's **PATCHES** tab (GLOBAL column) is a library for the 128 patch slots on your unit. You can keep patches in files, move them between units, copy and swap slots, and bring in DX7 voices. It needs DUELL 0.2.19 or newer on the unit (the editor tells you if yours is older). Try it without a unit: open the editor with `?mock=1`.
 
-Every slot is always writable. A slot holds either a patch you saved or the factory sound of that place; saving over a slot replaces what it holds, and **Restore** brings the factory sound back.
+A slot holds either a patch you saved or the factory sound of that place; saving over a slot replaces what it holds, and **Restore** brings the factory sound back.
+
+## With TIDE: USER slots and sounds 129 to 171
+
+On a TIDE unit the editor still works on **128 slots**, numbered 1 to 128 as in the list above. What differs from plain DUELL:
+
+- **Slots 125 to 128 are the USER slots U1 to U4.** Until you save into one it is listed as `USER EMPTY` and holds no factory sound: loading it into a part changes nothing, and the editor reads it as a blank default sound. **Restore** on a saved USER slot empties it again.
+- **The factory sounds #125 to #128 and the 43 more, #129 to #171, have no slot**, so the editor does not list, export or write them. They are read-only places on the unit's PATCHES list (SAVE offers USER 1 for them). To keep one, load it on the unit and save it into a slot.
+- **The store holds 126 saved patches, not 128.** Overwriting a saved slot always works. Saving into a 127th empty slot is refused by the unit (it shows STORE FULL), nothing is written, and the editor reports the error. **Restore** a saved slot to make room. An import that would need more room stops at that point; the patches before it are written.
+- **The pattern slots P29 to P32 are USER slots too.** They are on the unit's SAVE > PATTERNS page; this page is about patches only.
+- **The mock unit** (`?mock=1`) still models the plain 128-slot bank: no USER slots and no sounds past 128. Try USER slots on a unit or in the [emulator](https://pssdrnk-cmyk.github.io/DUELL-TIDE/emu/).
 
 ## What you can do
 
@@ -67,8 +76,12 @@ Drop a patch file, a DX7 file, or a slot from the list **on a part's column** (P
 
 On the WAVETABLES tab, drop a WAV file (a single-cycle wave or a wavetable like the ones Serum and Vital export) or a wavetable file on one of the three slots (anywhere else on the tab: the first empty slot). **Export file** saves a table from the unit as a small file ("duell-wavetable", about 1.7 KB) you can share; drop it on a slot of another unit to put it there. A WAV is reduced to 19 frames and 64 harmonics and the phases are not kept (the page says so); a wavetable file holds exactly what a unit stores, so nothing is lost on the way.
 
+## Multis
+
+The MULTIS tab lists M01 to M26. On a unit with the b10 firmware all of them are stored slots (M17 to M26, the acid, electro, ambient and drone scenes, were built-in only before): Recall, Save to unit, Download file, Rename and Import file work on every row; a slot you never saved shows its built-in multi, and saving over it replaces that (ERASE on the unit brings it back). A unit with an older firmware keeps M17 and up built in: the rows say "read-only" and only Recall works. Backups carry M17 to M26 (objects 42 to 46, archive version 6); a version 5 backup restores without touching them.
+
 ## Good to know
 
 - Files from a unit with a newer record form may be refused by an older unit; the unit's own checks decide, and the editor shows the reason.
-- A unit before 0.2.20 cannot take a patch whole; the editor hides the file buttons and says so.
-- Everything here is beta. Keep a backup (the Backup page) before you write many slots.
+- A unit older than 0.2.20 cannot take a patch whole; the editor hides the file buttons and says so.
+- The library is young: keep a backup (the Backup page) before you write many slots.

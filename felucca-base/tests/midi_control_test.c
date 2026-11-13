@@ -118,7 +118,7 @@ static int clock_test(uint32_t source)
     clock_packet(source == 1u ? 2u : 1u, 0xFA, 1);
     bad += check(source == 1 ? "USB mode ignores TRS Start" : "TRS mode ignores USB Start", !song.playing);
     clock_packet(source, 0xFA, 2);
-    bad += check(source == 1 ? "USB Start begins at step zero" : "TRS Start begins at step zero", song.playing && trk[0].seq_idx == 0u);
+    bad += check(source == 1 ? "USB Start arms step zero" : "TRS Start arms step zero", song.playing && trk[0].seq_pos == 0x7FFFFFFFu);
     clock_to(source, 2, 7);
     bad += check(source == 1 ? "USB six pulses advance exactly one 16th step" : "TRS six pulses advance exactly one 16th step", trk[0].seq_idx == 1u && song.g[G_BPM] == 120);
     fm1_ms = 132; events_block(CTL); uint16_t idx = trk[0].seq_idx; uint32_t pos = trk[0].seq_pos;
@@ -505,7 +505,7 @@ static int auto_clock_test(void)
     /* Start locks at once; the locked port's Stop / Continue; the other port's Start ignored; silence after Stop: INT, stopped */
     ac_setup(); ac_run(0, 0, 100, 0);
     queued(0xFA, 0, 0, 1);
-    bad += check("USB Start in AUTO: locked at once, plays from step 1", clock_src() == 1u && song.playing && trk[1].seq_idx == 0u);
+    bad += check("USB Start in AUTO: locked at once, arms step 1", clock_src() == 1u && song.playing && trk[1].seq_pos == 0x7FFFFFFFu);
     ac_run(120, 0, 500, 0);
     bad += check("USB Start then its pulses: the steps move", trk[1].seq_idx > 0u && clock_src() == 1u);
     queued(0xFC, 0, 0, 1);
@@ -773,12 +773,12 @@ static int learn_test(void)
     cut = trk[0].p[P_FREEA];
     turn(EN_K1, -3);
     ok = ui.ml.pick && ui.ml.trk == 0u && ui.ml.id == P_FREEA && trk[0].p[P_FREEA] == cut - 3 && ml_arm;
-    { char b[40]; ml_line(b); ok &= str_eq(b, "T1 CUTOFF: SEND A CC"); }
+    { char b[40]; ml_line(b); ok &= str_eq(b, "PART 1 CUTOFF: SEND A CC"); }
     queued(0xB0, 1, 99, 1); queued(0xB0, 64, 127, 1); queued(0xB0, 64, 0, 1); queued(0xB0, 0, 5, 1);
     frame();
     ok &= !ml_count() && ui.ml.pick;                                   /* (CC1, CC64, CC0: never learned) */
     queued(0xB0, 26, 100, 1); frame();
-    ok &= ml_count() == 1u && ml_entry(26, 0, P_FREEA) && msg_is("CC26 -> T1 CUTOFF") && !ui.ml.pick && !ml_arm;
+    ok &= ml_count() == 1u && ml_entry(26, 0, P_FREEA) && msg_is("CC26 -> PART 1 CUTOFF") && !ui.ml.pick && !ml_arm;
     ok &= trk[0].p[P_FREEA] == cut - 3;                                /* (the learning CC sets nothing itself) */
     { char b[40]; ml_line(b); ok &= str_eq(b, "LEARN: TURN A KNOB"); }
     bad += check("  EDIT 1 KNOB 2 picks T1 CUT; CC1 / CC64 / CC0 are passed over; CC26 is learned", ok);
@@ -787,7 +787,7 @@ static int learn_test(void)
     queued(0xB1, 26, 0, 1);                                          /* (channel 2: part 2's, still T1 CUT) */
     ok &= trk[0].p[P_FREEA] == 0;
     turn(EN_K1, 1);
-    { char b[40]; ml_line(b); ok &= str_eq(b, "T1 CUTOFF = CC26"); }
+    { char b[40]; ml_line(b); ok &= str_eq(b, "PART 1 CUTOFF = CC26"); }
     bad += check("  CC26 sets T1 CUT on any channel ROUT hears; the knob again shows its CC", ok);
     song.g[G_ROUTE] = 0; queued(0xB9, 26, 64, 1);
     bad += check("  ROUT CH1-4: CC26 on channel 10 is ignored as before", trk[0].p[P_FREEA] == 1);
@@ -830,7 +830,7 @@ static int learn_test(void)
     ok &= trk[0].p[P_FREEA] != 99;
     turn(EN_K2, 1);                                                  /* T1 RES */
     queued(0xB0, 27, 0, 1); frame();
-    ok &= ml_count() == 2u && ml_entry(27, 0, P_FREEA) && !ml_entry(27, 0, P_FREEB) && ui.ml.pick && msg_is("CC27 IS T1 CUTOFF");   /* (CUT keeps CC27: the number is taken) */
+    ok &= ml_count() == 2u && ml_entry(27, 0, P_FREEA) && !ml_entry(27, 0, P_FREEB) && ui.ml.pick && msg_is("CC27 IS PART 1 CUTOFF");   /* (CUT keeps CC27: the number is taken) */
     ml_drop(27, NTRK, P_COUNT); ml_heard = 0; ml_arm = 1;                  /* (CUT's CC27 cleared: the number is free) */
     queued(0xB0, 27, 0, 1); frame();
     ok &= ml_count() == 2u && ml_entry(27, 0, P_FREEB) && !ml_cc_of(0, P_FREEA);
@@ -839,7 +839,7 @@ static int learn_test(void)
     /* OCT- clears the picked parameter's CC; no octave */
     turn(EN_K2, -1);
     press(B_OCTDN);
-    ok = !ml_cc_of(0, P_FREEB) && msg_is("T1 RES CC CLEARED") && song.octave == 0 && ui.ml.on;
+    ok = !ml_cc_of(0, P_FREEB) && msg_is("PART 1 RES CC CLEARED") && song.octave == 0 && ui.ml.on;
     press(B_OCTDN);
     ok &= msg_is("NO CC TO CLEAR") && song.octave == 0;
     memcpy(before, trk[0].p, sizeof before);
@@ -852,7 +852,7 @@ static int learn_test(void)
     ml_learn(30, 0, P_FREEB);
     turn(EN_K2, -1);                                                   /* T1 RES picked again */
     press(B_OCTDN);                                                    /* T1 RES picked: drops CC30 only */
-    ok = ml_entry(16, 1, P_PAN) && !ml_cc_of(0, P_FREEB) && msg_is("T1 RES CC CLEARED");
+    ok = ml_entry(16, 1, P_PAN) && !ml_cc_of(0, P_FREEB) && msg_is("PART 1 RES CC CLEARED");
     press(B_OCTDN);
     ok &= ml_entry(16, 1, P_PAN) && msg_is("NO CC TO CLEAR");
     ml_drop(16, NTRK, P_COUNT);
@@ -1055,9 +1055,47 @@ static int editb_midi_test(void)
     return bad;
 }
 
+/* review FR8: held notes from MIDI, the keys and the arp stay counted (A3, A4, A6) */
+static int fr8_test(void)
+{
+    int bad = 0; uint32_t local;
+    /* A3: ARP KEEPS RUNNING, a sound load while a MIDI chord is held: the later note-offs still reach the arp */
+    midi_test_reset(); trk[0].p[P_AMODE] = 1; mods_keep = MODK_ARP;
+    queued(0x90, 60, 100, 1); queued(0x90, 64, 100, 1);
+    panic_req |= 1u; panic_keep |= 1u; events_block(CTL);
+    bad += check("FR8 A3: ARP KEEPS RUNNING, a sound load keeps the held MIDI chord", trk[0].nheld == 2u);
+    queued(0x80, 60, 0, 1); queued(0x80, 64, 0, 1);
+    bad += check("FR8 A3: ARP KEEPS RUNNING, the MIDI chord's note-offs after a sound load empty the arp", !trk[0].nheld && !trk[0].arp_phys && !midi_owners[0]);
+    mods_keep = 0;
+    /* A4: a key on the note a MIDI note holds: the arp's count of held keys goes back to 0 */
+    midi_test_reset(); fm1_in.notes = 1u; events_block(CTL); local = kb_note[0]; fm1_in.notes = 0; events_block(CTL);
+    midi_test_reset(); trk[0].p[P_AMODE] = 1;
+    queued(0x90, local, 100, 1); fm1_in.notes = 1u; events_block(CTL); fm1_in.notes = 0; events_block(CTL); queued(0x80, local, 0, 1);
+    bad += check("FR8 A4: MIDI on, the key on the same note, key off, MIDI off: the arp holds nothing", !trk[0].arp_phys && !trk[0].nheld);
+    /* A4: LAYER with SPLIT, a MIDI note routed to part 2 alone is not released on part 1 */
+    midi_test_reset(); local = duell_mode; duell_mode_req = DM_LAYER; events_block(CTL); mix_split = 61; trk[0].p[P_AMODE] = 1;
+    queued(0x90, 50, 100, 1); queued(0x90, 72, 100, 1); queued(0x80, 72, 0, 1);
+    bad += check("FR8 A4: LAYER SPLIT, part 2's MIDI note-off leaves part 1's held note counted", trk[0].arp_phys == 1u && trk[0].nheld == 1u);
+    queued(0x80, 50, 0, 1);
+    bad += check("FR8 A4: LAYER SPLIT, part 1's note-off then empties part 1's arp", !trk[0].arp_phys && !trk[0].nheld);
+    mix_split = 0; duell_mode_req = (uint8_t)local; events_block(CTL);
+    /* A6: MIDI IN = SEL, a bend and channel pressure held across a part change do not stay on the old part */
+    midi_test_reset(); song.g[G_ROUTE] = 1; events_block(CTL);
+    queued(0xE0, 127, 127, 1); queued(0xD0, 90, 0, 1);
+    bad += check("FR8 A6: SEL, the bend and pressure reach the selected part 1", midi_bend_target[0] == 512 && trk[0].at == 90);
+    song.sel = 1; events_block(CTL); queued(0xE0, 0, 64, 1); queued(0xD0, 0, 0, 1);
+    bad += check("FR8 A6: SEL, part 2 selected, the wheel centred: part 1 is not left bent or pressed", !midi_bend_target[0] && !midi_bend_target[1] && !trk[0].at);
+    song.sel = 0; events_block(CTL);
+    queued(0x90, 60, 100, 1); queued(0xE0, 127, 127, 1); song.sel = 1; events_block(CTL);
+    bad += check("FR8 A6: SEL, a part still holding a MIDI note keeps its bend at a part change", midi_bend_target[0] == 512);
+    queued(0xE0, 0, 64, 1); queued(0x80, 60, 0, 1);
+    bad += check("FR8 A6: ... and its note's channel centres it", !midi_bend_target[0]);
+    song.g[G_ROUTE] = 0; song.sel = 0; events_block(CTL);
+    return bad;
+}
 int main(void)
 {
     int bad = controls_test() + sustain_test() + ownership_test() + clock_test(1) + clock_test(2) + clock_arp_and_boundaries() +
-              arp_ext_stop_test() + arp_ext_clock_test() + auto_clock_test() + usb_burst_test() + drain_test() + route_test() + cc_map_test() + learn_test() + editb_midi_test() + stop_all_test();
+              arp_ext_stop_test() + arp_ext_clock_test() + auto_clock_test() + usb_burst_test() + drain_test() + route_test() + cc_map_test() + learn_test() + editb_midi_test() + stop_all_test() + fr8_test();
     printf("%s\n", bad ? "MIDI CONTROL/CLOCK TEST FAILED" : "MIDI control/clock integration tests passed"); return bad != 0;
 }

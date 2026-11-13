@@ -49,8 +49,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const tabPages = new Set(GLOBAL_TABS.flatMap((t) => t.pages)), gOn = new Set(); for (const pg of L.PAGES) if (pg.scope === "GLOBAL" && tabPages.has(pg.title) && pg.title !== "MULTIS") for (const id of pg.ids) if (id >= 0 && id < L.G_COUNT) gOn.add(id);
   const gm = [...gOn].filter((id) => !GLOBAL[id]); ok(gm.length === 0, `labels: every global control on a page has a long label (${gm.join(",") || "none missing"})`);
   const want = { 42: "PRIORITY", 37: "MODE", 41: "GLIDE TYPE", 38: "GLIDE", 95: "SPREAD", 44: "UNISON DETUNE", 102: "TEMPO SYNC", 73: "ATTACK", 74: "DECAY", 75: "SUSTAIN", 76: "RELEASE", 109: "PATCH LEVEL", 6: "PITCH DEPTH", 7: "TIMBRE DEPTH",
-    114: "FILTER ENV", 27: "KEY TRACK", 14: "LFO 1", 117: "LFO 2", 29: "LENGTH", 30: "DIVISION", 31: "SWING", 32: "GATE", 81: "TYPE", 96: "TYPE", 105: "CURVE", 112: "RATE", 16: "AMP DEPTH" };
-  ok(Object.entries(want).every(([id, t]) => PART[id][0] === t), "labels (T0229, rules R1..R6): inside a card the short name, the card's title carries the context (VOICE: MODE PRIORITY GLIDE TYPE SPREAD; MULTI CUTOFF MOD: FILTER ENV KEY TRACK LFO 1 LFO 2; PATTERN: LENGTH DIVISION SWING GATE; CHORD / INSERT: TYPE; DUCKING: RATE CURVE)");
+    114: "FILTER ENV DEPTH", 27: "KEY TRACK", 14: "LFO 1 DEPTH", 29: "LENGTH", 30: "DIVISION", 31: "SWING", 32: "GATE", 81: "TYPE", 96: "TYPE", 105: "CURVE", 112: "RATE", 16: "AMP DEPTH" };
+  ok(Object.entries(want).every(([id, t]) => PART[id][0] === t), "labels (T0229, rules R1..R6): inside a card the short name, the card's title carries the context (VOICE: MODE PRIORITY GLIDE TYPE SPREAD; MULTI CUTOFF MOD: FILTER ENV DEPTH KEY TRACK LFO 1 DEPTH (1.1: no LFO 2 card); PATTERN: LENGTH DIVISION SWING GATE; CHORD / INSERT: TYPE; DUCKING: RATE CURVE)");
   const vce = longDesc(L.TP[37], 37), prio = longDesc(L.TP[42], 42);
   ok(vce.names.join() === "POLY,MONO,LEGATO,UNISON" && prio.names.join() === "LAST,LOWEST,HIGHEST" && vce.short === "VCE", "labels: value names spelled out (POLY MONO LEGATO UNISON; LAST LOWEST HIGHEST; id 43 is the TWIN FILTER's TYPE now, job I names it), the unit's short label kept");
   ok(longDesc(L.TP[37], 37) === vce && L.TP[37].label === "VCE", "labels: the same descriptor object for the same control (a drag is never rebuilt) and the firmware's table untouched");
@@ -191,11 +191,38 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok(!S.parseMultiFile({ format: "duell-multis", version: 1, multis: [{ slot: 1, data: file.multis[0].data, size: 3, crc: 1 }] }).multis[0].bytes, "multi file: a damaged entry is left out (checksum)");
 }
 
+// ---- 1b: b10 U4: the multis M17..M26 (backup ids 42..46, caps bit 6): the same calls, 26 slots
+{
+  const { m, u } = await connect({ caps: 127 });
+  ok(u.info.caps === 127, "U4: the mock unit reports caps 127");
+  const used = await u.multiUsed();
+  ok(used.length === 26, "U4: multiUsed asks all 26 slots");
+  let r = await S.readMultis(u);
+  ok(r.records.length === 26 && r.records[16] === null && r.objs.size === 13, "U4: readMultis reads 13 objects (13..20, 42..46) and gives 26 records; M17 holds none yet");
+  const rec = r.records[11];
+  await S.importMulti(u, 16, rec, "SEVENTEEN");
+  await S.importMulti(u, 25, rec, "TWENTYSIX");
+  r = await S.readMultis(u);
+  ok(S.multiName(r.records[16]) === "SEVENTEEN" && S.multiName(r.records[25]) === "TWENTYSIX" && m.multiStored[16] === "SEVENTEEN" && m.multiStored[25] === "TWENTYSIX" && m.objs.has(42) && m.objs.has(46) && !m.objs.has(43),
+     "U4: import into M17 and M26 writes the objects 42 and 46, M18 and the rest stay empty");
+  const names = await u.readMultiObjects();
+  ok(names.length === 26 && names[16] === "SEVENTEEN" && names[25] === "TWENTYSIX" && names[2] === "TESTONE", "U4: readMultiObjects names 26 slots");
+  await u.renameMulti(16, "RENAMED 17");
+  ok(u.multiNames[16] === "RENAMED 17" && m.multiStored[16] === "RENAMED 17" && m.multiStored[25] === "TWENTYSIX", "U4: rename of M17 rewrites object 42 only");
+  const file = S.multiFile([{ slot: 25, bytes: (await S.readMultis(u)).records[25] }], u.info.version);
+  ok(S.parseMultiFile(JSON.parse(JSON.stringify(file))).multis[0].slot === 25, "U4: the multi file keeps slot 26");
+}
+{
+  const { u } = await connect();      // caps 63: M17 and up are built in, no stored slot behind them
+  let msg = ""; try { await S.importMulti(u, 16, (await S.readMultis(u)).records[11]); } catch (e) { msg = e.message; }
+  ok((await S.readMultis(u)).records.length === 16 && /no stored multi in slot M17/.test(msg) && (await u.multiUsed()).length === 16, "U4: a unit without caps bit 6 has 16 stored multis; an import into M17 is refused with the reason");
+}
+
 // ---- 4: pattern slots
 {
   const { m, u } = await connect();
   let r = await S.readPatterns(u);
-  ok(r.slots[2]?.name === "PAT THREE" && r.slots[2].len === 12 && r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[0].name === "MORODER OCT", "patterns: the 32 slots are read from the unit's objects 21..23 (P03 PAT THREE, 12 steps; every slot holds a named pattern)");
+  ok(r.slots[2]?.name === "PAT THREE" && r.slots[2].len === 12 && r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[0].name === "DUB CHORD", "patterns: the 32 slots are read from the unit's objects 21..23 (P03 PAT THREE, 12 steps; every slot holds a named pattern)");
   const rec = S.patternRecord(r.objs, 2), d = S.decodePattern(rec), back = S.encodePattern(d);
   ok(back.every((x, i) => x === rec[i]), "patterns: a record decodes and encodes bit for bit (notes, nudge, ratchet bits)");
   const s0 = { index: 0, n: 2, notes: [60, 67, 0, 0], time: 0, flags: 3, vel: 99, hits: [0, 0, 0], chance: 55, ratchet: 3, nudge: 3 }, s1 = S.unpackStep(S.packStep(s0), 0);
@@ -219,12 +246,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const r0 = await S.readPatterns(u);
   ok(r0.slots.length === 32 && S.PATTERN_SLOTS === 32, "patterns: the unit lists three objects: 32 slots (11 + 11 + 10), every one a pattern");
   const c = await connect({ pat32: true }), r = await S.readPatterns(c.u);
-  ok(r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[2].name === "OFFBEAT" && r.slots[31].name === "SEVEN EIGHT" && r.slots[31].len === 14, `patterns: ?mock=pat32 is the unit's plain defaults: ${r.slots.length} slots, P03 OFFBEAT, P32 SEVEN EIGHT (14 steps)`);
+  ok(r.slots.length === 32 && r.slots.every((x) => x && x.name) && r.slots[2].name === "DUB OFFBEAT" && r.slots[31].name === "SEVEN EIGHT" && r.slots[31].len === 14, `patterns: ?mock=pat32 is the unit's plain defaults: ${r.slots.length} slots, P03 DUB OFFBEAT, P32 SEVEN EIGHT (14 steps)`);
   ok([21, 22, 23].every((id, o) => { const b = c.m.objs.get(id); return b.length > 400 && b.length <= 3584 && String.fromCharCode(...b.slice(0, 4)) === "PTS3" && b[6] === (o < 2 ? 11 : 10) && b[7] === 11 && (b[4] | b[5] << 8) === b.length; }), "patterns: the objects are PTS3: used length = size, 11 / 11 / 10 slots, 11 an object (PS_PER from the header)");
   const rec = S.patternRecord(r.objs, 31), d = S.decodePattern(rec);
   await S.storePattern(c.u, 30, S.encodePattern({ ...d, name: "WRITTEN 31" }));
   const r2 = await S.readPatterns(c.u);
-  ok(r2.slots[30].name === "WRITTEN 31" && r2.slots[31].name === "SEVEN EIGHT" && r2.slots[0].name === "MORODER OCT" && S.patternRecord(r2.objs, 30)[7] === 1, "patterns: a slot of the third object (P31) is written and read back, its neighbours untouched, saved by the user (flag)");
+  ok(r2.slots[30].name === "WRITTEN 31" && r2.slots[31].name === "SEVEN EIGHT" && r2.slots[0].name === "DUB CHORD" && S.patternRecord(r2.objs, 30)[7] === 1, "patterns: a slot of the third object (P31) is written and read back, its neighbours untouched, saved by the user (flag)");
   // the compact format: every record packs and unpacks to itself; a pattern that fills an object is refused before anything is written
   const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
   const P = await import("./editor/patslot.js");
@@ -253,13 +280,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const orig = m.request.bind(m); m.request = async (r, o) => { if (r[0] === CMD.MENU_DESC) descs++; return orig(r, o); };
   const val = (id) => u.menu.find((x) => x.id === id).value;
   m.deviceMenu(42, 150); m.deviceMenu(33, 6); m.deviceMenu(35, 4); m.deviceMenu(34, -9); m.deviceMenu(39, 60); m.deviceMenu(29, 0); m.deviceMenu(22, 4320);
-  m.deviceMenu(6, 0); m.deviceMenu(26, 1); m.deviceGlobalQuiet(ID.G_BPM, 133);
+  m.deviceMenu(6, 0); m.deviceMenu(15, 1); m.deviceGlobalQuiet(ID.G_BPM, 133);
   const bpm0 = u.g[ID.G_BPM];
   u.startPoll(60);
   await sleep(700);
   ok(val(42) === 150 && val(33) === 6 && val(35) === 4 && val(34) === -9 && val(39) === 60 && val(29) === 0 && menuEvents > 0,
     "poll: WIDTH, BASS MONO, COMP RATIO / THRESH, a SIDECHAIN note and a MODULES switch turned ON THE UNIT reach the editor's settings (and a \"menu\" event)");
-  ok(val(22) === 4320 && val(6) === 0 && val(26) === 1, "poll: the other MENU rows (TUNE, KNOB ACCEL, CPU METER) follow within a turn of the rotation");
+  ok(val(22) === 4320 && val(6) === 0 && val(15) === 1, "poll: the other MENU rows (TUNE, KNOB ACCEL, RESTORE LAST) follow within a turn of the rotation");
   ok(bpm0 !== 133 && u.g[ID.G_BPM] === 133, "poll: a global (TEMPO) whose push was lost is read from the dump");
   u.disconnect();
   // not while the user holds a control or has a write in flight
@@ -301,7 +328,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ok(lenOk, "labels: the slots' long value names keep the firmware list's length and order (ROUTE: PARALLEL; SUB WAVE: TRIANGLE)");
   ok(longDesc(L.XTP[X.X_CYRISE], "x11") === longDesc(L.XTP[X.X_CYRISE], "x11") && longDesc(L.XTP[X.X_CYRISE], "x11").label === "RISE" && longDesc(L.XSYNC[0], "x11").label === "RISE" && longDesc(L.XSYNC[0], "x11").fk === L.XSYNC[0].fk, "labels: the same descriptor object for the same slot (a drag is never rebuilt); CYCLE RISE keeps its name with SYNC on");
   ok(whyText("TWIN OFF").length > 5 && whyText("TWIN COMB").length > 5 && ["TWIN OFF", "TWIN COMB"].every((k) => WHY[k].length <= 60), "labels: the hide reasons of the second filter are short plain lines (TWIN OFF, TWIN COMB)");
-  ok(Object.keys(TWIN_LONG).join() === "OFFSET,CUTOFF,TUNE,RES,FDBK" && NX === 16, "labels: CUTOFF 2 reads OFFSET, CUTOFF or TUNE and RES 2 reads RESONANCE or FEEDBACK by the unit's short labels");
+  ok(Object.keys(TWIN_LONG).join() === "OFFSET,CUTOFF,TUNE,RES,FDBK" && NX === 28, "labels: CUTOFF 2 reads OFFSET, CUTOFF or TUNE and RES 2 reads RESONANCE or FEEDBACK by the unit's short labels");
 }
 
 // ---- tabs

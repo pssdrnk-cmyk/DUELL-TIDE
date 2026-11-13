@@ -209,9 +209,39 @@ static void pd_line_gen(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uin
     PD_LINE_END
 }
 
+/* A cycle that does not end where the next one starts (RESONANT SAW restarts at full height; a bent wave meets a RESONANCE one) steps at each wrap and aliased (-32 dB of
+ * inharmonic power at C3, -26 at C5). After the line is rendered, each wrap in the block gets the polyBLEP of dsp.c scaled by that step, on the sample either side; the
+ * loops above stay branch-free. ph is the phase of sample 0 and tg its toggle (a wrap just before it: ph < inc, tg already flipped); a wrap just after the last sample is
+ * corrected there (its other half is the next block's sample 0) */
+static __attribute__((noinline)) void pd_edge(const pdw_t *const *wp, uint32_t ph, uint32_t inc, uint32_t tg, int32_t *dst, uint32_t n)
+{
+    uint32_t j = 0, o = tg ^ 1u;
+    if (!inc)
+        return;
+    for (;;) {
+        int32_t s;
+        if (ph >= inc) {                                     /* the next wrap: sample j has the phase ph < inc */
+            uint32_t k = (0xFFFFFFFFu - ph) / inc + 1u;
+            j += k;
+            ph += k * inc;
+            o = tg;
+            tg ^= 1u;
+        }
+        if (j > n)
+            break;
+        s = pd_wave(wp[tg], 0) - pd_wave(wp[o], 65535u);    /* (the new cycle's first value minus the old one's last) */
+        if (j)
+            dst[j - 1u] += (s * blep(ph - inc, inc)) >> 16;
+        if (j < n)
+            dst[j] += (s * blep(ph, inc)) >> 16;
+        ph += inc;
+        j++;
+    }
+}
+
 static void pd_line(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uint32_t *tgp, int32_t *dst, uint32_t n)
 {
-    uint32_t a = wp[0]->w, b = wp[1]->w;
+    uint32_t a = wp[0]->w, b = wp[1]->w, ph = *php, tg = *tgp;
     if (a < 5u && b < 5u) {
         if ((1u << a | 1u << b) & ~13u)                      /* (13: the waves 0, 2, 3 have one break point) */
             pd_line_bent(wp, php, inc, tgp, dst, n);
@@ -227,6 +257,8 @@ static void pd_line(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uint32_
         pd_line_r6(wp, php, inc, tgp, dst, n);
     else
         pd_line_r7(wp, php, inc, tgp, dst, n);
+    if ((a > 4u || b > 4u) && (a != b || a == 5u))
+        pd_edge(wp, ph, inc, tg, dst, n);
 }
 
 /* the lines (s1, s2) mixed (L 1) or ring-modulated (L 2) or line 1 alone (L 0), and the amplitude ramp (dsp.c amp_at, voice_amp, by adding the step instead of multiplying) */
@@ -239,7 +271,7 @@ static void pd_line(const pdw_t *const *wp, uint32_t *php, uint32_t inc, uint32_
             s = mulq15(s, s2[i]);                                                                                  \
         amp = m->amp0 + ((x + ((x >> 31) & (CTL - 1))) >> CTL_LOG2);                                              \
         x = (int32_t)((uint32_t)x + (uint32_t)d);                                                                  \
-        out[i] += mulq15(mulq15(s, amp), VOICE_FS) << 1;                                                           \
+        out[i] += mulq15(mulq15(s, amp), VOICE_FS) * 2;                                                            \
     }
 
 static void pd_mix(int32_t *out, const int32_t *s1, const int32_t *s2, uint32_t n, const vmod_t *m, uint32_t line)    /* line: 0 one, 1 mix, 2 ring */
@@ -312,7 +344,7 @@ static __attribute__((noinline)) void phase_render_m(track_t *t, voice_t *v, int
                 tg1 ^= 1;
             s = ring ? mulq15(s, s2) : (s + s2) >> 1;
         }
-        out[i] += voice_amp(s, m, i) << 1;
+        out[i] += voice_amp(s, m, i) * 2;
     }
     v->ph[0] = ph0;
     v->ph[1] = ph1;
@@ -379,6 +411,7 @@ static void phase_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         phase_render_0(t, v, out, n, m);
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t PHASE_PRESETS[] = {
     /* name, {WAVE, WAVE2, DCW, ENV, DTN, LINE, -, -}, {A D S R}, fenv, mono (E7 was the engine's own SUB until cloud job J) */
     {"BRASS", {0, 0, 30, 90, 0, 0, 0, 0}, {8, 70, 90, 40}, 0, 0, FX(0, 20, 20, 40), PAT(6)},
@@ -388,22 +421,25 @@ static const preset_t PHASE_PRESETS[] = {
     {"BELL", {6, 0, 80, 50, 0, 0, 0, 0}, {0, 95, 0, 90}, 0, 0, FX(0, 0, 30, 70), PAT(7)},
     {"WIRE", {4, 7, 70, 40, 7, 0, 0, 0}, {10, 80, 80, 60}, 0, 0, FX(15, 30, 30, 40), PAT(4)},
 };
+#endif
 
 static const engine_t ENG_PHASE = {
     .name = "PHASE",
     .page_title = {"PHS", "LINE"},
     .edit = {
-        {"WAVE 1", F_ENUM, 0, 7, 0, N_PD_WAVE, 0},
-        {"WAVE 2", F_ENUM, 0, 8, 0, N_PD_WAVE2, 0},
-        {"DCW", F_PCT, 0, 127, 60, 0, 0},
-        {"ENV", F_PCT, 0, 127, 64, 0, 0},
-        {"DTN", F_INT, 0, 127, 0, 0, "ct"},
-        {"LINE", F_ENUM, 0, 1, 0, N_PD_LINE, 0},
+        {"WAVE 1", F_ENUM, 0, 0, 7, 0, N_PD_WAVE},
+        {"WAVE 2", F_ENUM, 0, 0, 8, 0, N_PD_WAVE2},
+        {"DCW", F_PCT, 0, 0, 127, 60, 0},
+        {"ENV", F_PCT, 0, 0, 127, 64, 0},
+        {"DTN", F_INT, U_CT, 0, 127, 0, 0},
+        {"LINE", F_ENUM, 0, 0, 1, 0, N_PD_LINE},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the global SUB LAYER (chain_sub.c) replaces it */
         {"-", F_INT, 0, 0, 0, 0, 0},
     },
+#if DUELL_PRESETS
     .presets = PHASE_PRESETS,
     .npresets = NELEM(PHASE_PRESETS),
+#endif
     .note_on = phase_note_on,
     .render = phase_render,
     .knob = {P_E2, P_E3, P_E4, P_REL},

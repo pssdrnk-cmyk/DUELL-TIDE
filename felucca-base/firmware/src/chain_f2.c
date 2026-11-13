@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* The chain's filter 2 and DRIVE (cloud job B's stub, filled by job E: TWIN_FILTER_DESIGN.md, TWIN_FILTER_DESIGN_2.md 2 and 3).
+/* The chain's filter 2 and DRIVE (TWIN_FILTER_DESIGN.md, TWIN_FILTER_DESIGN_2.md 2 and 3).
  * chain_f2_on: 1 when filter 2 runs for voice v this block (TYPE not OFF); chain_f2: the stage, called by voice_chain.c chain_stages after filter 1 on the voice's scratch block tmp (n samples, the
  * engine's signal at full level, before the amp), m the voice's modulation, uc filter 1's effective cutoff (Q8 dial steps). The stage keeps its state per voice (start from rest when v->chn ==
  * VCH_NEW, or when TYPE comes on while the voice is in the chain).
@@ -56,16 +56,17 @@ __attribute__((noinline)) int chain_f2_on(track_t *t, voice_t *v)
 static __attribute__((noinline)) void f2_svf(f2k_t *s, const int32_t *in, int32_t *out, uint32_t n, int32_t idx, int32_t k, uint32_t mode)
 {
     tsvf_t f;
-    int32_t ic1 = s->s[0], ic2 = s->s[1], ma = TRIO_MIX[mode][0], mb = TRIO_MIX[mode][1], mc = TRIO_MIX[mode][2], mba, dmb;
+    int32_t rn, ic1 = s->s[0], ic2 = s->s[1], ma = TRIO_MIX[mode][0], mb = TRIO_MIX[mode][1], mc = TRIO_MIX[mode][2], mba, dmb;
     uint32_t i;
     if (mode >= 2u)
         mb = -(k >> 2);                                 /* HP / notch: in - k bp (- lp) */
-    mba = s->s[2] << 5;                                 /* (k * bp in the output moves in a line from last block's k: a step of RES would step the output) */
+    mba = s->s[2] * 32;                                 /* (k * bp in the output moves in a line from last block's k: a step of RES would step the output) */
     dmb = mb - s->s[2];
     tsvf_coef_k(&f, idx, k);
+    rn = 1 << (f.sh - 1);
     for (i = 0; i < n; i++) {
         int32_t x = soft_knee(mulq15(in[i], 22369), 16000) >> 1;   /* (the input saturates above half scale) */
-        int32_t v3 = x - ic2, v1 = (f.a1 * ic1 + f.a2 * v3 + 4096) >> 13, v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3 + 4096) >> 13), a, y;   /* (rounded: a truncated shift leaves a DC offset of 0.5 / g) */
+        int32_t v3 = x - ic2, v1 = ic1 + ((f.b1 * ic1 + f.a2 * v3 + rn) >> f.sh), v2 = ic2 + ((f.a2 * ic1 + f.a3 * v3 + rn) >> f.sh), a, y;   /* (rounded: a truncated shift leaves a DC offset of 0.5 / g) */
         ic1 = 2 * v1 - ic1;
         ic2 = clamp(2 * v2 - ic2, -150000, 150000);
         a = clamp(ic1, -49152, 49152);                  /* beyond +-49152 a quarter of the excess */
@@ -78,15 +79,15 @@ static __attribute__((noinline)) void f2_svf(f2k_t *s, const int32_t *in, int32_
     s->s[1] = ic2;
     s->s[2] = mb;
 }
-/* the SVF table's g (Q12, tan of the cutoff) at the table index idx (Q8), as tsvf_coef_k reads it */
+/* the SVF table's g (Q12, tan of the cutoff) at the table index idx (Q8) */
 static inline int32_t f2_g(int32_t idx)
 {
     int32_t i, g;
     idx = clamp(idx, 0, 127 << 8);
     i = idx >> 8;
-    g = SVF_G[i];
+    g = SVF_G[i] >> 2;
     if (i < 127)
-        g += ((SVF_G[i + 1] - g) * (idx & 255)) >> 8;
+        g += (((SVF_G[i + 1] >> 2) - g) * (idx & 255)) >> 8;
     return g;
 }
 /* LADDER: G the one-pole's coefficient g / (1 + g) (Q16), kf the feedback (Q12, 0 .. 4.4): the loop is one sample late, tanh on the sum that enters the cascade bounds it. The stages keep 6 more
@@ -96,7 +97,7 @@ static __attribute__((noinline)) void f2_lad(f2k_t *s, const int32_t *in, int32_
     int32_t s1 = s->s[0], s2 = s->s[1], s3 = s->s[2], s4 = s->s[3], y4 = s->s[4];
     uint32_t i;
     for (i = 0; i < n; i++) {
-        int32_t u = softclip((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) << 6, v, y1, y2, y3;
+        int32_t u = softclip((in[i] >> 1) - ((kf * (y4 >> 6)) >> 12)) * 64, v, y1, y2, y3;
         v = (int32_t)(((int64_t)(u - s1) * G + 32768) >> 16);
         y1 = v + s1;
         s1 = y1 + v;
@@ -114,7 +115,7 @@ static __attribute__((noinline)) void f2_lad(f2k_t *s, const int32_t *in, int32_
             y4 = neg ? -a : a;
         }
         s4 = y4 + v;
-        out[i] = soft_knee(((y4 + 32) >> 6) << 1, UF_KNEE);
+        out[i] = soft_knee(((y4 + 32) >> 6) * 2, UF_KNEE);
     }
     s->s[0] = s1;
     s->s[1] = s2;
@@ -155,9 +156,9 @@ static __attribute__((noinline)) void f2_comb(f2k_t *s, int16_t *line, uint32_t 
             rp += (int32_t)len << 8;
         ix = rp >> 8;
         ix1 = ix + 1 == (int32_t)len ? 0 : ix + 1;
-        del = (line[ix] + (((line[ix1] - line[ix]) * (rp & 255)) >> 8)) << 1;
+        del = (line[ix] + (((line[ix1] - line[ix]) * (rp & 255)) >> 8)) * 2;
         lp += ((del - lp) * 3) >> 2;                    /* the loop's damping */
-        dcs += ((lp << 12) - dcs) >> 11;                /* .. and a high-pass at 3.4 Hz: a feedback comb has a gain of 1 / (1 - feedback) at 0 Hz, 16 at the most, and the line's clip would make an offset of it */
+        dcs += (lp * 4096 - dcs) >> 11;                 /* .. and a high-pass at 3.4 Hz: a feedback comb has a gain of 1 / (1 - feedback) at 0 Hz, 16 at the most, and the line's clip would make an offset of it */
         y = in[i] + ((fe * (lp - ((dcs + 2048) >> 12))) >> 12);
         ys = soft_knee(y, UF_KNEE);
         line[wr] = (int16_t)((ys + 1) >> 1);            /* (the line holds half: 64383 / 2 at the most) */
@@ -199,7 +200,7 @@ static void f2_start(const track_t *t, const voice_t *v, f2s_t *s, f2k_t *k, uin
             s->nst = 0x2468ACE + (int32_t)v->age;
     } else if (ty == TT_LADDER) {
         int32_t y = ((x >> 1) * 4096) / (4096 + clamp(res, 0, 127) * 142);
-        k->s[0] = k->s[1] = k->s[2] = k->s[3] = k->s[4] = y << 6;
+        k->s[0] = k->s[1] = k->s[2] = k->s[3] = k->s[4] = y * 64;
     } else if (ty == TT_COMB) {
         uint32_t pi = PART_OF(t), len;
         int16_t *line;
@@ -217,14 +218,13 @@ static void f2_start(const track_t *t, const voice_t *v, f2s_t *s, f2k_t *k, uin
 /* DRIVE d 0..127 (TWIN_FILTER_DESIGN 2.5): 0 is not run. SOFT, the curve of ANALOG's DRV and SAT and TAPE's SAT (fx.c ins_tape_sat): tanh of the signal times the gain g (Q12, 1x .. 8.9x, 4096 + 2 d^2),
  * the level kept by g^-0.75 (c, Q12: fx.c ins_tape_comp's law); 1 .. 11 blend the dry and the driven signal as SAT does since 0.2.14 (dry + (wet - dry) x d / 12; w, Q12). g, c and w glide
  * in a line from last block's d0 to this block's d1: no zipper, and 0 -> 1 starts from the dry signal */
-static uint32_t ins_isqrt(uint32_t v);                  /* (fx.c) */
 static int32_t f2_comp(uint32_t d)                      /* 4096 x gain^-0.75 of g = 4096 + 2 d^2 (fx.c ins_tape_comp's law): two integer roots, worked out when d changes (the state keeps the last) */
 {
     uint32_t q, q4;
     if (!d)
         return 4096;
-    q = ins_isqrt((4096u + d * d * 2u) << 16);          /* 256 x sqrt(g) */
-    q4 = ins_isqrt(q << 8);                             /* 256 x g^0.25 */
+    q = isqrt32((4096u + d * d * 2u) << 16);          /* 256 x sqrt(g) */
+    q4 = isqrt32(q << 8);                             /* 256 x g^0.25 */
     return (int32_t)(0x80000000u / ((q * q4) >> 6));
 }
 #ifdef DUELL_TWIN_COUNT                                 /* (tests/twin_test.c: how often DRIVE runs; DRIVE 0 must not) */
@@ -294,7 +294,7 @@ static inline int32_t f2_wp(const f2q_t *q, uint32_t i)
 }
 /* BLEND at sample i of the block, in 1/32 (bq, -2048 .. 2016) and the weights it gives (Q12): bsw the unfiltered input's share of filter 2's input (SERIES, BLEND above 0), bnw filter 1's share of
  * the output (SERIES, BLEND below 0), wpw filter 2's share (PARALLEL) */
-static inline int32_t f2_bq(const f2q_t *q, uint32_t i) { return (q->b0 << 5) + (q->b1 - q->b0) * (int32_t)(i + 1u); }
+static inline int32_t f2_bq(const f2q_t *q, uint32_t i) { return q->b0 * 32 + (q->b1 - q->b0) * (int32_t)(i + 1u); }
 
 /* before filter 1 (voice_chain.c chain_stages): dry gets the signal that filter 2 needs unfiltered, and in PARALLEL (or while the ROUTE slides to or from it) DRIVE acts on the signal that enters
  * filter 1: tmp. dry holds (s->dk): 1 the engine's signal as it came (SERIES with BLEND above 0; the ROUTE sliding), 2 the driven signal (PARALLEL: both filters get it), 0 nothing */
@@ -359,8 +359,8 @@ static __attribute__((noinline)) void f2_cut(track_t *t, voice_t *v, const vmod_
     }
     if (mod->on)
         ms += mod_f2_voice(t, v);
-    q->tune = clamp((clamp(p[P_CUT2], -24, 24) << 4) + ((ms * 2711) >> 15), -768, 768);
-    ac = accent_dir(accent_lift(v->vel, m->envq15), accent_dir_type(q->ty));   /* the accent's lift, the way filter 2's TYPE opens (LP up, HP down, BP / NOTCH / COMB none); uc is filter 1's cutoff WITHOUT its own lift (voice_chain.c passes m->ucn) */
+    q->tune = clamp((clamp(p[P_CUT2], -24, 24) * 16) + ((ms * 2711) >> 15), -768, 768);
+    ac = accent_dir(accent_lift(ACCENT_VEL(v), m->envq15), accent_dir_type(q->ty));   /* the accent's lift, the way filter 2's TYPE opens (LP up, HP down, BP / NOTCH / COMB none); uc is filter 1's cutoff WITHOUT its own lift (voice_chain.c passes m->ucn) */
     c = link ? uc + TW_OFF_Q8(clamp(p[P_CUT2], -TW_OFF_MAX, TW_OFF_MAX)) + ac : clamp(p[P_CUT2], 0, UF_STEPS) * 256 + (ACCENT_BOTH(ENGINES[t->engine]) ? ac : 0);   /* LINK off: the lift only on ANALOG, TRIO, NOISE, as before */
     if (XV(t, X_KTRK2))
         c += UF_KT(XV(t, X_KTRK2), v->pitch_cur);
@@ -378,6 +378,8 @@ static __attribute__((noinline)) void f2_cut(track_t *t, voice_t *v, const vmod_
     }
     s->cl = c;
     q->cab = c;
+    if (v == &t->v[t->m_vi % NVOICE])
+        LVC2(t) = (uint8_t)(c >> 7);                    /* TIDE live graphs: the TWIN pages' tick (ui_live.c); written only */
 }
 
 /* ------------------------------------------------------------------------------------------ the stage --- */

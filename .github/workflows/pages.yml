@@ -1,25 +1,42 @@
-# Publishes the DUELL site (landing page, installer, emulator) to GitHub Pages.
+# Publishes the TIDE site (landing page, installer, emulator) to GitHub Pages.
 #
 # Nothing generated is committed. The workflow builds the site from the committed sources with
-# felucca-base/web/make_site.py. The two build products that need the firmware toolchain or Emscripten
-# are NOT built here; they are taken from the newest release (pre-releases count, drafts do not), if it has them:
-#   duell-*.fwsc            the firmware package, any version in the name (duell-0.2.1-beta.fwsc) -> /install/ (+ duell-latest.fwsc, duell-version.json)
-#   duell-emulator*.zip     the emulator, any version in the name (duell-emulator-0.2.1-beta.zip) (the contents of felucca-base/build/emu, zipped) -> /emu/
-# The emulator itself is built from the committed sources (step below); a release zip is used only if that build leaves nothing.
-# An emulator-only release is fine: without the .fwsc the installer page shows "DUELL firmware is not yet released"
-# (and its flow stays hidden); without the emulator zip /emu/ says the emulator is not attached. Neither fails the job.
+# felucca-base/web/make_site.py. The firmware packages and the emulator build are not made here (the firmware toolchain is not
+# on the runner); the packages come from the GitHub releases, the emulator is built from the sources:
+#   Stable  the highest-version normal (non-pre-release, non-draft) release with tide-stable-X.Y.Z.fwsc (tag tide-X.Y.Z; GitHub's "Latest")
+#   Beta    the newest pre-release with tide-beta-X.Y.Z-bN.fwsc (tag tide-X.Y.Z-bN) whose build is NEWER than that stable one: the version
+#           in the package name decides, the publishing time only breaks a tie (an older beta is superseded and not offered).
+#           The older names (duell-tide-stable-X.Y.Z.fwsc, duell-tide-stable-YYYY-MM-DD.fwsc, ...-beta-...) still count: the dated ones are older than any version.
+#   Both go to /install/stable/ and /install/beta/, with /install/channels.json: tag, date, commit, SHA-256 (from the release's
+#   .sha256 asset and GitHub's asset digest; the build stops if the package does not match them), release notes URL, known issues.
+#   felucca-base/web/releases.py does the choosing and the downloads.
+#   Only a build whose commit passed the tests is offered: --require-green asks, for the commit of each release's tag, whether the "Host tests" workflow
+#   has a successful run on exactly that commit. The newest release that has one is chosen for each channel; a red, missing or unreadable one is skipped
+#   (the log names it) and the next older release is looked at. This matters because the site is rebuilt from jam11's green head, but the packages it
+#   offers come from the releases, whose commits nobody else checks.
+#   tide-emulator*.zip      (or duell-emulator*.zip, the old name) the emulator, any version in the name (the contents of felucca-base/build/emu, zipped) -> /emu/, from the newest
+#                           release (pre-releases count, drafts do not), used only if the emulator build below leaves nothing.
+# The emulator is built from the committed sources (step below). With no release at all the installer page says "not released yet"
+# and keeps its install flow hidden; without the emulator zip /emu/ says the emulator is not attached. Neither fails the job.
+#
+# The site is published only after the "Host tests" workflow has passed on the same commit: this workflow starts when that one completes
+# (workflow_run) and the build job runs only if its conclusion is success, on exactly the commit it tested (not on whatever jam11 is by then).
+# A red or cancelled test run publishes nothing. To refresh release channels, run Host tests manually on jam11; its green completion publishes the site.
+# The runner uses ubuntu-24.04; every action is pinned to a full commit, with its version in the comment.
 name: Pages
 
 # No `release` trigger: a release event runs from the release tag, and the github-pages environment only allows
-# deployments from main, so that run would fail at the deploy step. After publishing or editing a release, run this
-# workflow by hand (Actions > Pages > Run workflow, branch main): it picks up the newest release's files.
+# deployments from the configured branch. After publishing or editing a release, run
+# Actions > Host tests > Run workflow on jam11: once green, Pages picks up the newest Stable and Beta releases.
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Host tests"]
+    types: [completed]
+    branches: [jam11]
 
 permissions:
   contents: read
+  actions: read      # (--require-green lists the Host tests runs of a release's commit)
   pages: write
   id-token: write
 
@@ -29,71 +46,93 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Only a successful run from this repository's publishing branch can publish.
+    # (the event check: a pull_request run of Host tests never publishes, even from a branch that happens to be named jam11)
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'jam11' && github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["push", "workflow_dispatch"]'), github.event.workflow_run.event)
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}     # (exactly the commit the tests passed on)
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0   # v7.1.0
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Emscripten SDK (cached; 6.0.13 is the pinned version)
+        id: emsdk
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9   # v6.1.0
+        with:
+          path: ~/emsdk
+          key: emsdk-6.0.13-ubuntu-24.04
 
       - name: Build the emulator from the committed sources
         run: |
-          pip install pillow fonttools
-          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
-          "$HOME/emsdk/emsdk" install 6.0.13
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libfribidi0 libraqm0      # (the same fonts as the tests and the firmware: see host-tests.yml)
+          pip install -r requirements-dev.txt      # (the pins the tests use: Pillow, fontTools; the same fonts)
+          if [ "${{ steps.emsdk.outputs.cache-hit }}" != "true" ]; then
+            git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
+            "$HOME/emsdk/emsdk" install 6.0.13
+          fi
           "$HOME/emsdk/emsdk" activate 6.0.13
-          python3 gen_only.py
+          (cd felucca-base && python3 tools/build.py --gen-only)
           . "$HOME/emsdk/emsdk_env.sh"
           cd felucca-base
           EMU_PREVIEW=0 sh web/emu/build.sh
           node web/emu/note_test.mjs build/emu/felucca.wasm
 
-      - name: Fetch the package and the emulator from the newest release
+      - name: Fetch the Stable and Beta packages and the emulator from the releases
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           mkdir -p dl/emu
-          # `gh release list` includes pre-releases; --exclude-drafts keeps unpublished drafts out
+          # the packages: releases.py picks Stable and Beta (rules in its header) and writes dl/stable.json, dl/beta.json, dl/<channel>/*.fwsc
+          python3 felucca-base/web/releases.py --repo "$GH_REPO" --out dl --require-green
+          # the emulator zip, as before: from the newest release, pre-releases included, drafts excluded
           tag=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName' || true)
           if [ -n "$tag" ]; then
-            echo "release: $tag"
-            gh release download "$tag" --pattern 'duell-*.fwsc' --dir dl || echo "no package in $tag"
-            gh release download "$tag" --pattern 'duell-emulator*.zip' --dir dl || echo "no emulator in $tag"
+            echo "newest release: $tag"
+            gh release download "$tag" --pattern '*-emulator*.zip' --dir dl || echo "no emulator in $tag"
           else
             echo "no release yet"
           fi
-          z=$(ls dl/duell-emulator*.zip 2>/dev/null | sort -V | tail -n 1 || true)   # any version; the highest wins
+          z=$(ls dl/*-emulator*.zip 2>/dev/null | sort -V | tail -n 1 || true)   # any version; the highest wins
           if [ -n "$z" ]; then unzip -q -o "$z" -d dl/emu; fi
           true
-          ls -la dl dl/emu
+          ls -la dl dl/stable dl/beta dl/emu 2>/dev/null || true
 
       - name: Build the site
         run: |
           args=""
-          # any version in the name (duell-0.2.1-beta.fwsc); if a release carries several, the highest version wins.
-          # make_site.py reads the version from the file name and writes duell-latest.fwsc and duell-version.json.
-          pkg=$(ls dl/duell-[0-9]*.fwsc 2>/dev/null | sort -V | tail -n 1 || true)
-          if [ -n "$pkg" ]; then args="$args --pkg $pkg"; fi
+          for ch in stable beta; do
+            pkg=$(ls dl/$ch/tide-$ch-*.fwsc dl/$ch/duell-tide-$ch-*.fwsc 2>/dev/null | sort -t/ -k3 | tail -n 1 || true)   # either name pattern; releases.py picked the one release and downloaded its package only
+            if [ -n "$pkg" ] && [ -f "dl/$ch.json" ]; then args="$args --${ch}-pkg $pkg --${ch}-info dl/$ch.json"; fi
+          done
           # the emulator built above from the sources wins over a release zip
           if [ -f felucca-base/build/emu/index.html ]; then args="$args --emu felucca-base/build/emu"
           elif [ -f dl/emu/index.html ]; then args="$args --emu dl/emu"; fi
-          # no --pkg: make_site.py looks for build/duell-*-beta.fwsc, which does not exist in a fresh checkout
+          # no package arguments (no release yet): the installer shows "not released yet"
           python3 felucca-base/web/make_site.py $args site
+          cat site/install/channels.json
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d   # v6.0.0
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9   # v5.0.0
         with:
           path: site
+          include-hidden-files: true      # (since v4 dot files are left out by default: the site's .nojekyll must stay)
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346   # v5.0.1

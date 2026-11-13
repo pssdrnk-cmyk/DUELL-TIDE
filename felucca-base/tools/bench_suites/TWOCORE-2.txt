@@ -39,7 +39,7 @@ end
 # ---- CHORDS
 
 test CHORDS-NEW-F1  M07 FINAL REEL, four chords; new pause rule, floor on (the BENCHT3 defaults)
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune floor 1
 ref 41.8 62.2
@@ -56,7 +56,7 @@ measure 1.0 12.0
 expect report
 
 test CHORDS-NEW-F0  M07 FINAL REEL, four chords; new pause rule, floor off
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune floor 0
 ref 41.8 62.2
@@ -73,7 +73,7 @@ measure 1.0 12.0
 expect report
 
 test CHORDS-OLD-F1  M07 FINAL REEL, four chords; old pause rule (vrun 1), floor on
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune vrun 1
 tune floor 1
@@ -91,7 +91,7 @@ measure 1.0 12.0
 expect report
 
 test CHORDS-OLD-F0  M07 FINAL REEL, four chords; old pause rule (vrun 1), floor off (= BENCHT2 S1)
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune vrun 1
 tune floor 0
@@ -109,7 +109,7 @@ measure 1.0 12.0
 expect report
 
 test CHORDS-POFF  M07 FINAL REEL, four chords; pause off, floor off (= BENCHT2 POFF)
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune pause off
 tune floor 0
@@ -129,7 +129,7 @@ expect report
 # ---- M07
 
 test M07-NEW-F1  M07 FINAL REEL cycle, 60 s; new pause rule, floor on (the BENCHT3 defaults)
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune floor 1
 ref 41.7 67.1
@@ -139,7 +139,7 @@ tail 3
 expect report
 
 test M07-NEW-F0  M07 FINAL REEL cycle, 60 s; new pause rule, floor off
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune floor 0
 ref 41.7 67.1
@@ -149,7 +149,7 @@ tail 3
 expect report
 
 test M07-OLD-F1  M07 FINAL REEL cycle, 60 s; old pause rule (vrun 1), floor on
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune vrun 1
 tune floor 1
@@ -160,7 +160,7 @@ tail 3
 expect report
 
 test M07-OLD-F0  M07 FINAL REEL cycle, 60 s; old pause rule (vrun 1), floor off (= BENCHT2 S1)
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune vrun 1
 tune floor 0
@@ -171,7 +171,7 @@ tail 3
 expect report
 
 test M07-POFF  M07 FINAL REEL cycle, 60 s; pause off, floor off (= BENCHT2 POFF)
-load multi 7 "FINAL REEL"
+load multi M09
 mode LAYER
 tune pause off
 tune floor 0

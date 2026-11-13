@@ -47,7 +47,7 @@ int main(int argc, char **argv)
                 uint8_t blk[NSHOWN][MB_N], amt[NSHOWN], set[6];
                 uint32_t cut, len, m;
                 memset(blk, 0, sizeof blk);
-                len = mu_pack(rec, &a, blk, &cut);
+                len = mu_pack(rec, &a, &cut);
                 m = 1u + rnd() % 24u;
                 for (j = 0; j < m; j++) {
                     uint32_t off = rnd() % 2u ? MU_G_AT + 2u * G_COUNT + 4u + MB_N + P_COUNT - 1u + rnd() % (4u + NX + 2u * XB_MAX) : rnd() % len;
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
                 }
                 if (rnd() % 4u == 0) len = rnd() % (len + 1u);
                 mu_tried++;
-                if (mu_unpack(&c, blk, amt, set, rec, len)) {
+                if (mu_unpack(&c, amt, set, rec, len)) {
                     mu_in++;
                     proj_bound(&c);
                     project_restore_runtime(&c);

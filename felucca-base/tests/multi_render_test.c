@@ -47,7 +47,9 @@ static const rn_t RN[] = {
     /* 0.2.25: BASILDON left M13 for the owner's COLD CHAPEL (spare data; its M13 hashes of 0.2.25) */
     {"X13_BASILDON", 12, "spare/M13_BASILDON", 1},
     /* 0.2.25: MONO DUEL left M08 for the owner's HAZY TENSOR (spare data; loaded as a test scene in its old slot, with its MODE: DUEL) */
-    {"X08_MONO_DUEL", 7, "spare/M08_MONO_DUEL", 1}};
+    {"X08_MONO_DUEL", 7, "spare/M08_MONO_DUEL", 1},
+    /* U2 B: the STRESS TEST left M16 for CELLAR TAPE (test scene, loaded into its old slot with its MODE: the hashes M16 had) */
+    {"S17_STRESS_TEST", 15, "M16_STRESS_TEST", 1}};
 #define NR (sizeof RN / sizeof *RN)
 static const uint32_t FAD[3] = {0, 63, 127};
 
@@ -75,9 +77,9 @@ static uint64_t render(const rn_t *rn, uint32_t fader)
     }
     if (rn->recall)
         ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(rn->slot);
+    project_load(rn->scene ? rn->slot : MIDX(rn->slot));      /* (a scene sits in the slot it was put into; a factory entry is a record number) */
     for (i = 0; i < 40; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
-    morph_set_target(1);
+    SEL_BOTH = 1;
     morph_set_fader(fader);
     for (i = 0; i < 3; i++) { trk_note_on(&trk[0], CH1[i], 100); trk_note_on(&trk[1], CH2[i], 100); }
     for (b = 0; b < nb + nr; b++) {
@@ -166,7 +168,20 @@ int main(int argc, char **argv)
                    "# 1.0: the owner's duell-multis-13 file (13 records, byte for byte) is the factory M01..M05 and M08..M15 (M06, M07, M16 unchanged): their 39 renders re-made once; the test scenes are unchanged.\n"
                    "# 1.0 volume check (release_drafts/VOLUME_CHECK_V1.md): the TRIM of both parts of M01 M02 M04 M05 M06 M07 M08 M13 M15 moved by the same dB (tools/multi_trim.py): their 27 renders are made again (one re-base for 1.0 in all).\n"
                    "# 1.0 MORPH B (release_drafts/MORPH_B_ROLL_V1.md): End B of M01..M15 rolled again with the firmware's ROLL B (tools/morph_b_roll.py, fixed seeds): their fader 63 and 127 renders (30) made again; fader 0 (End A) is unchanged.\n"
-                   "# 1.0 owner's answers: M04 DUB CHORD's TRIM one more step down (peak ceiling) and its seed k = 20: its three renders made again. M05 / M11 name VOICE sounds by their closed-up factory indices (CROONER left the bank): same sound, same hashes.\n");
+                   "# 1.0 owner's answers: M04 DUB CHORD's TRIM one more step down (peak ceiling) and its seed k = 20: its three renders made again. M05 / M11 name VOICE sounds by their closed-up factory indices (CROONER left the bank): same sound, same hashes.\n"
+                   "# DUELL 1.1 / jam11, on purpose, all 105 (docs/JAM11_TEST_BASELINE.md): every render changes by the 1.1 sound changes the regress golden (tests/golden.txt) traces on 1.0 and jam11 audio: the\n"
+                   "# note-start stagger (item 144: the chords start 2 voices a block), BIT DEPTH, REVERB_FIX / SHIM / delay rounding, the factory sounds' new recipes and End B as values, the multis' ROLL B;\n"
+                   "# U2 B: M16 is CELLAR TAPE (new, three hashes re-made); S17_STRESS_TEST is the former M16 record as a test scene (new baseline: scenes render with BASS MONO off, the factory multis with it on).\n"
+                   "# jam11 adds TIDE's roll changes and PHYS tuning. (Not compared audio against 1.0: the 1.0 tree does not build this test on Linux, nor does stock 1.1 (scenes.h / mu_put_rec).)\n"
+                   "# Audit P01 (2026-11-04), on purpose, 18 renders: GLIDE takes the time GLD shows (voice.c glide_set); the multis with a LEGATO part that glides between the held chord keys, M01 M08 M14 S01 S08 X08, re-made once; the others are unchanged.\n"
+                   "# Audit P01: the factory multis' own GLD migrated as the sounds' (their old 7-semitone glide: M01 26/26 -> 61/61, M08 38/28 -> 61/61, M14 21/26 -> 51/61): M01 M08 M14 re-made once more.\n"
+                   "# Audit P07 (2026-11-05), on purpose, 92 of the 108: RES's damping is exponential (voice.c UF_K); the factory multis' RES, FILTER ENV MRES and FRES depths (A and End B) moved to the step of the same damping (tools/factory_multis/*.bin), every one of M01..M16 re-made; the test scenes S, X are not migrated (they play the new law).\n"
+                   "# Audit R07 (2026-11-05), on purpose, 27 of the 108: the chorus's and the delay modulation's sweep holds its pitch swing above CRT 40 / MRATE 44 (fx_bus.c fx_swing), MDEPTH 100 = +-25 cents; M02 M04 M06 M07 (MDEPTH migrated to the same swing) and M08 (its 18 Hz chorus: CDP 127) re-made, and the scenes with a delay modulation or a fast chorus, S02 S07 S17 X07; the others are unchanged.\n"
+                   "# Audit P03 (filter precision), on purpose: the SVF keeps its precision at low cutoffs (dsp.c tsvf_coef_k): 102 of the 110 renders (the multis and scenes whose parts run a filter) are re-made once.\n"
+                   "# Audit P08 (CUT dial slewed, voice.c cut_slew), on purpose, 55 renders: the fader 63 / 127 renders of the multis and scenes whose MORPH moves the CUT dial.\n"
+                   "# Audit P09, on purpose, 9 renders: ANALOG's PW card is E4, the slot that held the old VCF's CUT; the test scenes S13, S14 and the spare X06 still store a CUT value there on a PWM part, which now sets its width.\n"
+                   "# D31 (audit G14, 2026-11-05), on purpose, 45 of the 108: the sixteen factory multis are in the curated dub / house order (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN, ORGAN SKANK, WARM ECHO, MINIMAL 12, TINE DUB, DEEP 332, then the owner's PAD SPLIT .. FINAL REEL), six of them new: every M01..M16 render but M13 COLD CHAPEL (which keeps its slot) is another record; DUB CHORD's TIDAL SUB line is an octave up and its LEVEL 4 lower. The scenes and the spare renders are unchanged.\n"
+                   "# b10 Later 19 (2026-11-12), on purpose, 8 of the 108: the MUSIC roll moves an FM6 carrier envelope once (morph_fm_shape.c), so the End B records of M02 M04 M06 M16 were rolled again (tools/factory_multis.py build): their fader 63 and 127 renders re-made; the others are unchanged.\n");
         for (m = 0; m < NR; m++)
             for (f = 0; f < 3u; f++)
                 fprintf(g, "%s f%u %016llx\n", RN[m].name, FAD[f], (unsigned long long)got[m * 3 + f]);

@@ -4,6 +4,7 @@
 """Host test of tools/bench_run.py (bench suite stage 1): the suite parser, the OWNER-1 suite, and the runner against the Mac twin
 (build/host/bench_sim --serve): a whole short run, the result files, a name that does not match, and a unit that restarts mid-test."""
 import csv
+import glob
 import os
 import re
 import subprocess
@@ -12,9 +13,14 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
+if os.name == "nt":                 # Windows: no termios; the parser checks need none (the runner, below, is not run here)
+    import types
+    sys.modules.setdefault("termios", types.ModuleType("termios"))
 import bench_run as br  # noqa: E402
 
 SIM = os.path.join(ROOT, "build", "host", "bench_sim")
+# the twin counts instructions on macOS only (bench_sim.c instr_now); elsewhere its CPU figures are audio.c's estimate (16 + 10 per voice %), which a dear STRESS test exceeds: a verdict that rests on the CPU is not compared there
+COUNTER = sys.platform == "darwin"
 bad = 0
 
 
@@ -75,7 +81,29 @@ try:
 except br.SuiteError as e:
     check("a wrong word in a suite is an error with its line", "line 2" in str(e))
 
+# ---- the multi names: one table (build/gen/multi_names.txt, tools/gen_duell_multis.py), no suite spells a factory multi's name
+TABLE = dict(ln.rstrip().split(" ", 1) for ln in open(br.MULTI_NAMES, encoding="utf-8") if " " in ln)
+check("the name table has the 24 factory multis, M06 and M04 among them", len(TABLE) >= 16 and br.multi_name(6) == TABLE["6"] and br.multi_name(4) == TABLE["4"])
+check("`load multi M06` is slot 6 with the table's name",
+      br.parse_suite("test T x" + chr(10) + "load multi M06" + chr(10) + "at 0.0 chord C4 vel 64" + chr(10) + "end" + chr(10))[1][0].setup == [("multi", 6, TABLE["6"])])
+NOT_FACTORY = {"STRESS TEST"}       # (a test scene, no factory multi)
+stale = []
+for fn in sorted(glob.glob(os.path.join(ROOT, "tools", "bench_suites", "*.txt"))):
+    for no, ln in enumerate(open(fn, encoding="utf-8"), 1):
+        m = re.match(r'load multi ([0-9]+) "([^"]*)"', ln)
+        if m and m[2] not in NOT_FACTORY:
+            stale.append(f"{os.path.basename(fn)}:{no} {ln.strip()} (write `load multi M{int(m[1]):02d}`: the name comes from the table)")
+check("no suite spells a factory multi's name (a rename would SKIP every test of it): " + (stale[0] if stale else "none"), not stale)
+for fn in sorted(glob.glob(os.path.join(ROOT, "tools", "bench_suites", "*.txt"))):
+    try:
+        br.parse_suite(open(fn, encoding="utf-8").read())
+    except br.SuiteError as e:
+        check(os.path.basename(fn) + " parses: " + str(e), False)
+
 # ---- the runner against the Mac twin
+if os.name == "nt":                 # the runner talks to the unit or the twin through termios and select() on pipes (macOS / Linux only, its docstring)
+    print("JAM: the runner needs termios and select() on pipes, which Windows does not have: skipped")
+    sys.exit(1 if bad else 77)
 if not os.path.exists(SIM):
     print("bench_run: build/host/bench_sim not built: the runner is not run against it")
     sys.exit(1 if bad else 0)
@@ -105,7 +133,7 @@ with tempfile.TemporaryDirectory() as tmp:
           by["FLASH-WRITE"]["verdict"] == "FAIL" and "CRASH" in by["FLASH-WRITE"]["why"] and by["MATRIX-SH"]["verdict"] == "PASS" and by["SOAK-SHORT"]["verdict"] == "PASS" and r.returncode == 1)
     # --only, --list, --dry-run need no unit
     r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "bench_run.py"), "--dry-run", "--only", "DUEL*,SOAK-M07"], capture_output=True, text=True)
-    check("--dry-run --only prints the console words of the tests picked, no unit", "bench load patch 1 15" in r.stdout and "bench load patch 2 27" in r.stdout and "bench mode DUEL" in r.stdout and "2 tests" in r.stdout)
+    check("--dry-run --only prints the console words of the tests picked, no unit", "bench load patch 1 15" in r.stdout and "bench load patch 2 28" in r.stdout and "bench mode DUEL" in r.stdout and "2 tests" in r.stdout)
     # ---- core 1 (the two-core build's columns): the twin plays scenarios (BENCH_SIM_TC), the runner's rules for them (BENCH_TWOCORE1.md)
     def tc_run(scn, *extra):
         o = os.path.join(tmp, "tc_" + scn + "_" + str(len(extra)))
@@ -243,7 +271,7 @@ with tempfile.TemporaryDirectory() as tmp:
     by = {x["test"]: x for x in rows}
     sm = open(os.path.join(o, "summary.txt")).read() if os.path.exists(os.path.join(o, "summary.txt")) else ""
     check("TWOCORE-3 against the twin with a pause by a run of very late blocks: the default test FAILs (a pause), the contrast test is WARN (diagnosis), exit 1; the settings come back (default: vrun 0 window 0 floor 0 'new'; contrast: vrun 4 window 8 'b3')",
-          len(rows) == 2 and by["CHORDS-DEF"]["verdict"] == "FAIL" and "pauses (fault 0, run of very late" in by["CHORDS-DEF"]["why"] and by["STRESS-RUNWIN"]["verdict"] == "WARN" and r.returncode == 1
+          len(rows) == 2 and by["CHORDS-DEF"]["verdict"] == "FAIL" and "pauses (fault 0, run of very late" in by["CHORDS-DEF"]["why"] and (by["STRESS-RUNWIN"]["verdict"] == "WARN" or not COUNTER and "pauses (fault 0, run of very late" in by["STRESS-RUNWIN"]["why"]) and r.returncode == 1
           and (by["CHORDS-DEF"]["tmvrun"], by["CHORDS-DEF"]["tmvwink"], by["CHORDS-DEF"]["tmfloor"]) == ("0", "0", "0") and (by["STRESS-RUNWIN"]["tmvrun"], by["STRESS-RUNWIN"]["tmvwink"], by["STRESS-RUNWIN"]["tmvwinms"]) == ("4", "8", "2000")
           and re.search(r"CHORDS-DEF\s+3481\s+10000\s+new\s+0", sm) and re.search(r"STRESS-RUNWIN\s+3481\s+10000\s+b3\s+0", sm))
     o = os.path.join(tmp, "t4b")

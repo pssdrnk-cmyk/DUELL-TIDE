@@ -402,8 +402,8 @@ int main(void)
             an = mod_dst_offered(&trk[0], MD_AATK) && mod_dst_offered(&trk[0], MD_AREL);
             host_preset(&trk[0], scn_eng("FM6"), 0);
             fm = !mod_dst_offered(&trk[0], MD_AATK) && !mod_dst_offered(&trk[0], MD_AREL);
-            expect("AMP ENV times: the four ids are P_ATK .. P_REL, named AMP / ATTACK .. on the unit, offered on ANALOG, not on FM6 (OWN ENV)",
-                   mod_param(MD_AATK) == P_ATK && mod_param(MD_AREL) == P_REL && str_eq(mod_dst_name(&trk[0], MD_ASUS), "AMP\nSUSTAIN") && an && fm);
+            expect("AMP ENV times: the four ids are P_ATK .. P_REL, named AMP ENV / ATTACK .. on the unit, offered on ANALOG, not on FM6 (OWN ENV)",
+                   mod_param(MD_AATK) == P_ATK && mod_param(MD_AREL) == P_REL && str_eq(mod_dst_name(&trk[0], MD_ASUS), "AMP ENV\nSUSTAIN") && an && fm);   /* (DUELL 1.1, owner 2026-10-25: the category and the item in full; 1.0: AMP / SUSTAIN) */
         }
     }
     /* hunt1: the LFOs' own depths (VIB, CUT, SHP of LFO 1 and 2) move at most MX_SLEW a block like a matrix source: LFO 2 as a SAW (the reset every cycle) or a SQUARE on the VOICE
@@ -555,18 +555,20 @@ int main(void)
         expect(line, md <= 3 && ms <= 1);
     }
     /* hunt1: REST, SPREAD: a steady SPREAD note (sends 100, PATCH LEVEL, SAT in the blend zone / above it, PAN) with the MORPH's window closed and a route that moves nothing:
-     * the hashes of the render with the code before spread_run / spread_post (git 4e7699a) */
+     * the hashes of the render with the code before spread_run / spread_post (git 4e7699a). DUELL-TIDE T0: re-made with DUELL 1.1, whose level stages keep the signal's two
+     * low bits (BIT DEPTH: ((x >> 2) * g) >> 10 became the gain's cut) and whose delay / reverb round to the nearest; against 1.0 the four renders keep level, spectrum and
+     * envelope, residual -65 dB (docs/JAM11_SOUND_REFERENCES.md). 1.0 / 4e7699a: 0x513b8b35, 0x5e00824f, 0xa25d5585, 0xccbf108b */
     {
         static const struct { const char *nm; int dst, base, send; uint32_t h; } RS[] = {
-            {"sends 100, SAT 3", MD_DIST, 3, 1, 0x513b8b35u}, {"sends 100, SAT 40", MD_DIST, 40, 1, 0x5e00824fu}, {"sends 100, PAN 20", MD_PAN, 20, 1, 0xa25d5585u},
-            {"no sends, PATCH LEVEL 88", MD_LEVEL, 88, 0, 0xccbf108bu}};
+            {"sends 100, SAT 3", MD_DIST, 3, 1, 0x4fea7d0bu}, {"sends 100, SAT 40", MD_DIST, 40, 1, 0x99a08c41u}, {"sends 100, PAN 20", MD_PAN, 20, 1, 0x33915971u},
+            {"no sends, PATCH LEVEL 88", MD_LEVEL, 88, 0, 0xdb3c1773u}};
         uint32_t k, i, h;
         sprd_ov = 38;
         for (k = 0; k < NELEM(RS); k++) {
             render(rb, RS[k].dst, 0, S_JUMP, RS[k].base, RS[k].send, O_MIX, 0);
             for (i = 0, h = 2166136261u; i < NS; i++)
                 h = (h ^ (uint32_t)rb[i]) * 16777619u;
-            snprintf(line, sizeof line, "REST: a steady SPREAD 38 note, %s: the render is bit for bit the one before spread_run (%08x)", RS[k].nm, (unsigned)RS[k].h);
+            snprintf(line, sizeof line, "REST: a steady SPREAD 38 note, %s: the render is bit for bit DUELL 1.1's (%08x; got %08x)", RS[k].nm, (unsigned)RS[k].h, (unsigned)h);
             expect(line, h == RS[k].h);
         }
         sprd_ov = 0;

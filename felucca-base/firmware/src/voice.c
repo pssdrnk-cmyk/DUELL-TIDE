@@ -4,13 +4,15 @@
  * Runs in the audio ISR.
  *
  * Each synth part has its own NVOICE voices (so MONO / LEGATO / UNISON keep using
- * v[0..]); VPOOL (DUELL 1.1: 2 x NVOICE, each part its own) of all the parts' voices sound at once: a part that starts
- * a voice while the budget is full takes one from any part (voice_victim): the oldest
- * released voice, else the oldest extra UNISON voice, else the oldest held voice of a
- * POLY part that is not its lowest note. A voice taken from another part fades out
- * over one block (stage 4: the envelope goes to 0, the block's amplitude ramp
- * declicks it); one of the part's own is restarted in place, as before. Extra UNISON
- * voices only start when there is room. */
+ * v[0..]); VPOOL (DUELL 1.1: 2 x NVOICE, each part its own) of all the parts' voices sound at once. With the two parts
+ * of the unit the pool can never be full while a part has a voice to start (the part's own voices are at most NVOICE, so
+ * the other part holds at most the rest): a part steals only within its own voices (a note over its number restarts the
+ * oldest released voice, else the oldest held one, in place: voice_alloc). Only the host rig with NPART 4 (tests/regress.c)
+ * can fill the pool, and keeps voice_victim: a part that starts a voice while the budget is full takes one from any
+ * part: the oldest released voice, else the oldest extra UNISON voice, else the oldest held voice of a POLY part that is
+ * not its lowest note. A voice taken from another part fades out over one block (stage 4: the envelope goes to 0, the
+ * block's amplitude ramp declicks it); one of the part's own is restarted in place. Extra UNISON voices only start when
+ * there is room. */
 static uint32_t vage;                                   /* voice ages: one clock for every part */
 /* an LFO's WAVE (N_LWAVE) at phase ph; rnd: its S&H value of the cycle */
 static int32_t lfo_wave_of(int32_t wave, uint32_t rnd, uint32_t ph)
@@ -55,10 +57,7 @@ static __attribute__((noinline)) uint32_t lfo_sync_inc(uint32_t sync)   /* (not 
 static uint32_t lfo2_rand(uint32_t s)
 {
     s = s ? s : 0x7F4A7C15u;
-    s ^= s << 13;
-    s ^= s >> 17;
-    s ^= s << 5;
-    return s;
+    return xs32(&s);
 }
 
 /* one control tick of an LFO l of track t (DUELL: LFO 1, t->lfo1, and LFO 2, t->lfo2, share it): r its RATE (WAVE PHS FADE
@@ -83,7 +82,7 @@ static void lfo_tick(track_t *t, lfo_t *l, uint32_t r, uint32_t s, int lfo1)
     {                                                   /* DUELL 1.1 LFO LEVEL (X_LFO1LVL / X_LFO2LVL, 0..127, 127 = full): the LFO's master depth, applied where the value is made so that every reader (the DEST depths, the matrix source, the TWIN depth, the meter) sees it; 127 skips this, the value as before */
         int32_t lv = XV(t, lfo1 ? X_LFO1LVL : X_LFO2LVL);
         if (lv < 127)
-            l->val = mulq15(l->val, lv < 0 ? 0 : lv * 258);
+            l->val = mulq15(l->val, lv < 0 ? 0 : Q15_FROM_127(lv));
     }
     if (BYP(t, lfo1 ? BY_LFO1 : BY_LFO2))               /* DUELL 1.1 BYPASS: the LFO keeps running (in step when it comes back) but sends 0 */
         l->val = 0;
@@ -94,6 +93,7 @@ static void lfo_tick(track_t *t, lfo_t *l, uint32_t r, uint32_t s, int lfo1)
 }
 static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC, 1); }
 
+#if DUELL_VCAP                                          /* (core.h: bench builds and the tests that measure it; the unit has the NOTES budget instead, budget.c) */
 /* DUELL 0.2.11 VOICE CAP (owner, 2026-10-14; SPEC 6.3): a heavy combination gets fewer voices per part, so the predicted
  * worst case of both parts stays under VC_BUDGET of the half (the loadcost scale of docs/CPU_ANALYSIS.md: model %, the device
  * reads ~10-25 % lower). The cost of a voice (0.1 % of the half): the engine's (its heaviest factory sound, 8 voices held, minus the
@@ -109,7 +109,7 @@ static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC,
  * each part gets the cap that fits it alone (VC_BUDGET - VC_IDLE over its voice, VC_MIN at least) instead of 4. Computed
  * every UI frame (vcap_poll: main loop; a load, an engine, filter or SLOPE change, a roll are seen at once), deterministic.
  * It bites only for NEW notes: voice_alloc / UNISON take at most vcap voices (a note over the cap steals within the part, as
- * at an engine's own cap); notes that sound beyond the cap keep sounding until they end. Shown only on the TEST screen */
+ * at an engine's own cap); notes that sound beyond the cap keep sounding until they end. (The unit has the NOTES budget instead and its TEST screen shows those numbers; this cap is for the bench with the budget held open.) */
 #define VC_IDLE 150u                                    /* the idle mix with power-on FX: 15 % */
 #define VC_BUDGET 850u                                  /* 85 % */
 #define VC_F12 18u                                      /* the multimode filter a voice: 12 dB */
@@ -118,15 +118,19 @@ static void track_lfo_tick(track_t *t) { lfo_tick(t, &t->lfo1, P_LRATE, P_LSYNC,
 #define VC_FADE 20u                                     /* .. an engine choice cross-faded (M04 WIRED SNAIL's ANALOG WAVE, M14 PHASE WAVE: +2..2.6 %) */
 #define VC_MIN 4u
 static uint8_t vcap[NTRK];                              /* the cap of each part, 0: none yet (all of the engine's) */
+#endif
 static uint8_t bnotes[NTRK];                            /* DUELL NOTES budget (budget.c budget_poll): the notes of each part, 0: none yet (the budget is not asked) */
 static uint8_t bnotes1[NTRK];                           /* DUELL 1.1 item 90: the one-core numbers, always (bnotes holds the two-core ones while that rule is in force) */
 static volatile uint8_t bd_one_now;                     /* DUELL 1.1 item 90: 1 = the audio plays both parts on core 0 right now (core 1 down, paused, or a flash park: twocore_run.c tcr_begin sets it
                                                          * every block): the note-on path and the counter use bnotes1. 0 in every one-core build */
 #define VPOOL (NVOICE * 2u)                             /* DUELL 1.1 item 90: the voices that may sound at once over both parts: each part its own NVOICE (was NVOICE shared); the NOTES budget holds the CPU */
+_Static_assert(NPART > 2 || NPART * NVOICE <= VPOOL, "voice.c: with two parts a part that has a voice to start must find the pool not full (the steal code is built only for NPART > 2)");
+#if DUELL_VCAP
 static const struct { const engine_t *e; uint8_t c; } VCOST[] = {   /* (tests/cpu_scenarios_test.c CPU_SCEN=P: the heaviest sound, its voices) */
     {&ENG_ANALOG, 51}, {&ENG_FM6, 61}, {&ENG_PHASE, 40}, {&ENG_LOFI, 24}, {&ENG_FORMANT, 60}, {&ENG_TRIO, 44}, {&ENG_WHEEL, 59},
     {&ENG_PHYS, 144}, {&ENG_NOISE, 47}, {&ENG_WAVE, 52},   /* (FM6: 6 voices, PHYS 3, VOICE 4; WAVE: #60 DIGITAL PAD less its 12 dB filter) */
 };
+#endif
 /* voices the engine may use (POLY and UNISON): its cap, else all of them; DUELL 0.2.11: and the part's VOICE CAP; and the part's NOTES
  * (budget.c: the stricter of the two caps and the budget; a new note over it steals within the part, as at an engine's own cap) */
 static uint32_t trk_nvoice_eng(const track_t *t)
@@ -136,13 +140,21 @@ static uint32_t trk_nvoice_eng(const track_t *t)
 }
 static uint32_t trk_nvoice(const track_t *t)
 {
-    uint32_t p = (uint32_t)(t - trk) % NTRK, c = trk_nvoice_eng(t), v = vcap[p], b = bd_one_now ? bnotes1[p] : bnotes[p];
+    uint32_t p = (uint32_t)(t - trk) % NTRK, c = trk_nvoice_eng(t), b = bd_one_now ? bnotes1[p] : bnotes[p];
     if (b)                                              /* (item 90: the NOTES budget supersedes the 0.2.11 VOICE CAP, whose table and 8-voice pool are out of date) */
         return b < c ? b : c;
-    return v && v < c ? v : c;
+#if DUELL_VCAP
+    {
+        uint32_t v = vcap[p];
+        return v && v < c ? v : c;                      /* (no budget numbers: a bench build holding the budget open, a test) */
+    }
+#else
+    return c;
+#endif
 }
 static uint32_t vc_eng_cap(const engine_t *e) { return e->poly && e->poly < NVOICE ? e->poly : NVOICE; }
-static uint32_t vcap_shown(uint32_t p)                  /* the TEST screen: the voices part p may use (its sound's engine, the cap) */
+#if DUELL_VCAP
+static uint32_t vcap_shown(uint32_t p)                  /* the voices part p may use (its sound's engine, the cap) */
 {
     uint32_t c = vc_eng_cap(ENGINES[eng_idx(trk[p].eng_req)]);
     return vcap[p] && vcap[p] < c ? vcap[p] : c;
@@ -222,6 +234,11 @@ static void vcap_poll(void)                             /* main loop, every fram
     for (p = 0; p < 2u; p++)
         vcap[p] = (uint8_t)cap[p];
 }
+#endif
+
+/* b8 ACID: an ANALOG sound with WAVE ACID / ACSQ plays its accents like a 303 (work/b8/acid/DESIGN.md): an accent shortens ENV 2's decay, bursts the level with it and pushes the cutoff through a capacitor that stacks.
+ * The slide is the sequencer's (SLIDE steps, a LEGATO sound with GLIDE in TIME mode). Every other sound never reaches the ACID code */
+static inline uint32_t acid_on(const track_t *t) { return !t->engine && t->p[P_E0] >= ACID_WAVE; }   /* (ENGINES[0] is ANALOG) */
 
 /* the part's voice mode: P_VOICE */
 static uint32_t trk_vmode(const track_t *t)
@@ -248,6 +265,7 @@ static uint32_t lowest_held(const track_t *t)           /* index of the lowest h
     return low;
 }
 
+#if NPART > 2                                           /* (the unit's two parts never fill the pool: see the top. Only the host rig with four parts) */
 /* the voice to give up for a new one (see the top); soft: only released voices and
  * extra voices of other non-POLY parts (also ones left after a mode change).
  * Returns its index, *pp its part; NVOICE = none */
@@ -282,6 +300,7 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
     }
     return best;
 }
+#endif
 
 static uint32_t voice_kills;                            /* voices given up (budget, overload): console, hostsim */
 static void voice_kill(voice_t *v)                      /* fade out over the next block (env_tick stage 4) */
@@ -333,6 +352,7 @@ static uint32_t voice_trim_now(track_t *t)
 }
 #endif
 
+#if NPART > 2
 /* the budget is full: free a voice for part t. 0 = nothing to take (soft) */
 static int voice_room(track_t *t, int soft)
 {
@@ -347,6 +367,9 @@ static int voice_room(track_t *t, int soft)
     voice_kill(&vp->v[k]);
     return 1;
 }
+#else
+#define voice_room(t, soft) 1                           /* NPART 2: each part owns NVOICE of the VPOOL, so a part with a voice to start never finds the pool full */
+#endif
 
 static voice_t *voice_reuse(track_t *t, voice_t *v)
 {
@@ -355,24 +378,48 @@ static voice_t *voice_reuse(track_t *t, voice_t *v)
     return v;
 }
 
+/* K3 ease level 2 (core.h ease, audio.c ease_step): while the part sounds np - 1 voices or more, a new note takes over the part's oldest released voice (as a note
+ * over the part's number does) instead of a free one, so the voices sounding do not grow while the audio is eased. No released voice: a free one as ever (no held
+ * note is cut, nothing sounding fades). Returns that voice, or np: none */
+static __attribute__((noinline)) uint32_t ease_tail(const track_t *t, uint32_t np)
+{
+    uint32_t i, n = 0, best = np;
+    for (i = 0; i < NVOICE; i++)
+        n += t->v[i].active && t->v[i].stage != VSTAGE_FADE;
+    if (n + 1u < np)
+        return np;
+    for (i = 0; i < np; i++)
+        if (t->v[i].active && !t->v[i].gate && t->v[i].stage != VSTAGE_FADE && (best == np || t->v[i].age < t->v[best].age))
+            best = i;
+    return best;
+}
+
 /* POLY allocation (within the engine's voice cap): the same note again reuses its voice.
  * Else a free voice: ROTATE takes
  * the next one round-robin (release tails ring out), REUSE (or any GLIDE) takes
  * the free voice whose last pitch is closest, so poly portamento moves each
  * voice the shortest way. Steal: the oldest released voice, else the oldest
- * held one, never the lowest held note (the bass). A free voice needs room in the
- * shared budget: when the voice to give up is one of this part's, it is restarted
- * in place instead. */
+ * held one, never the lowest held note (the bass). (NPART 4 host rig only: a free voice
+ * needs room in the shared budget; when the voice to give up is one of this part's, it is
+ * restarted in place instead.) */
 static voice_t *voice_alloc(track_t *t, uint32_t note)
 {
-    uint32_t i, np = trk_nvoice(t), best = np, low = np, nfree = 0;
+    uint32_t i, np = trk_nvoice(t), best = np, low = np;
+#if NPART > 2
+    uint32_t nfree = 0;
+#endif
     int32_t bd = 0x7FFFFFFF;
     voice_trim(t);
     for (i = 0; i < np; i++) {
         if (t->v[i].active && t->v[i].note == note)
             return voice_reuse(t, &t->v[i]);
+#if NPART > 2
         nfree += !t->v[i].active;
+#endif
     }
+    if (EASE >= EASE_ADMIT && (i = ease_tail(t, np)) < np)    /* (K3 ease level 2: no new voice while eased, if a released one can take the note) */
+        return voice_reuse(t, &t->v[i]);
+#if NPART > 2
     if (nfree && voices_busy() >= VPOOL) {
         track_t *vp = 0;
         uint32_t k = voice_victim(t, 0, &vp);
@@ -381,6 +428,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         if (k < NVOICE)
             voice_kill(&vp->v[k]);
     }
+#endif
     if (t->p[P_GLIDE]) {                                /* (T0227, owner: the stored VOICE ALLOCATION is ignored: ROTATE always; with GLIDE the free voice nearest in pitch, as ever) */
         for (i = 0; i < np; i++) {
             int32_t d = t->v[i].pitch_cur - (int32_t)note * 16;
@@ -417,18 +465,20 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
     return voice_reuse(t, &t->v[best == np ? 0 : best]);
 }
 
-/* glide: RATE = a fixed speed, TIME = the same time for any interval */
+/* glide (P01): RATE = 64 semitones in the time GLD shows (TIME_MS_X10; ENV_LIN is 1 << 24 in that time), so a wider jump
+ * takes longer; TIME = the whole interval in that time. Steps in 1/65536 of a 1/16 semitone (gfrac below pitch_cur) */
 static void glide_set(track_t *t, voice_t *v, int glide)
 {
     if (!glide || !v->pitch_cur) {
         v->pitch_cur = v->pitch16;
-        v->gstep = 0;
+        v->gstep = v->gfrac = 0;
         return;
     }
     if (t->p[P_GLMODE]) {
-        int32_t d = v->pitch16 - v->pitch_cur, ticks = 1 + t->p[P_GLIDE] * t->p[P_GLIDE] / 8;
-        d = d < 0 ? -d : d;
-        v->gstep = d / ticks > 0 ? d / ticks : 1;
+        int32_t d = (v->pitch16 - v->pitch_cur) * 65536 - v->gfrac;
+        uint32_t e = ENV_LIN[t->p[P_GLIDE] & 127];
+        d = ((d < 0 ? -d : d) + 32768) >> 16;           /* whole 1/16 st (0: RATE ends the last bit) */
+        v->gstep = (int32_t)((e >> 8) * (uint32_t)d + (((e & 255u) * (uint32_t)d) >> 8));   /* d * e >> 8, no overflow */
     } else {
         v->gstep = 0;
     }
@@ -493,8 +543,8 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->mrnd = t->m_rnd;
     t->m_vi = (uint8_t)(v - t->v);
     glide_set(t, v, glide);
-    v->apitch = t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch16;   /* ARP TARGET: at the arp's note now */
-    v->again = t->atg_vel * 258;
+    v->apitch = (t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch16) * 65536;   /* ARP TARGET: at the arp's note now */
+    v->again = Q15_FROM_127(t->atg_vel);
     v->stage2 = 1;                                      /* ENV 2 (DUELL): an attack, from where it is (as ENV) */
     v->offn = 0;                                        /* (hunt3: a step still being cancelled ends with the old note) */
     v->offp = (uint8_t)(sounding || ((VOICE_OWN_START >> t->engine) & 1u));
@@ -535,25 +585,29 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     }
 }
 
+#include "unison_start.c"                                /* the extra UNISON voices' start offsets (fix C) */
 /* MONO / LEGATO / UNISON: one note on one voice (eight for UNISON, or the
  * engine's voice cap, spread by DETUNE over the same width) */
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
     uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    const engine_t *en = ENGINES[t->engine];
+    uint32_t vt = en == &ENG_FM6 || en == &ENG_PHYS;    /* the velocity is timbre there (KVS, ACC): UNISON keeps it and lowers the amplitude instead (FM6: unison_gain.c; PHYS: xg below) */
     voice_trim(t);
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
         if (nv > 1u && nv < NVOICE)
             k = k * (NVOICE - 1) / (int32_t)(nv - 1u);      /* fewer voices: the outer ones as wide */
-        v->fine = nv > 1u ? k * t->p[P_DETUNE] * 56 / 889 : 0;   /* up to ~±40 cents */
+        v->fine = nv > 1u ? k * t->p[P_DETUNE] * 56 / 889 : 0;   /* up to ~±24 cents: 56/4096 of the pitch at DTUNE 127 (D18: the range stays) */
         if (retrig || !v->active || !v->gate) {
             if ((!v->active || v->stage == 4u) && !voice_room(t, i > 0))
                 continue;                                   /* no room for this extra UNISON voice */
+            int was_sounding = v->active && v->stage != 0;  /* (a sounding voice keeps its phase on a re-strike) */
             /* level: about the same sum for 8 or 4 voices at random phases */
-            voice_start(t, v, note, nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
+            voice_start(t, v, note, vt ? vel : nv >= NVOICE ? vel * 36u / 100u : nv > 1u ? vel / 2u : vel, glide);
             v->side = (uint8_t)(i & 1u);                    /* SPREAD: the detuned voices alternate */
-            if (nv > 1u && i && !ENGINES[t->engine]->sampled) {   /* random start phases: */
+            if (nv > 1u && i && !was_sounding && !ENGINES[t->engine]->sampled) {   /* random start phases: */
 #if DUELL_BENCH
 #define MONO_SEED bench_mono_seed                           /* (bench builds: at file level, so the per-test reset can put it back: bench.c) */
 #else
@@ -561,7 +615,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
 #define MONO_SEED seed
 #endif
                 MONO_SEED = MONO_SEED * 1664525u + 1013904223u;
-                v->ph[0] += MONO_SEED;
+                unison_spread(t, v, MONO_SEED);              /* (one time offset for the voice: its oscillators keep their relative timing) */
             }
         } else {                                            /* legato: new pitch, same envelope */
             v->note = (uint8_t)note;
@@ -569,10 +623,12 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
             v->mvel = t->m_vel;
             v->mrnd = t->m_rnd;
             v->xg = t->lay_xg;
-            if (vel > v->vel && nv == 1u)
+            if ((vel > v->vel || acid_on(t)) && nv == 1u)   /* (ACID: a legato note takes its own velocity: a plain note slid into after an accent is plain) */
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
         }
+        if (en == &ENG_PHYS && nv > 1u)                     /* (this note's share between the parts, times UNISON's amplitude) */
+            v->xg = (uint16_t)mulq15(t->lay_xg ? t->lay_xg : 32767, unison_amp[nv] * 11u >> 3);   /* (VOICE_FS 24000 -> Q15, 32768 / 24000 = 1.365 ~ 11 / 8) */
     }
     t->mono_note = (uint8_t)note;
 }
@@ -686,6 +742,7 @@ typedef struct { uint8_t note, vel; uint16_t xg; } vs_ent_t;
 static vs_ent_t vs_q[NTRK][VS_QN];
 static uint8_t vs_qn[NTRK], vs_n[NTRK];                 /* waiting; started this block */
 static uint32_t vs_held;                                /* note-ons held back since power-on (tests, console) */
+static uint8_t vs_busy;                                 /* b10 round 7 (FELUCCA_GUARDS): a note-on was counted or is waiting since vs_block last found nothing to do: vs_block returns at once while it is 0 */
 /* note sounds on part t already (a re-strike: voice_alloc restarts that voice in place, its states kept: no start from rest, nothing to stagger) */
 static int vs_sounding(const track_t *t, uint32_t note)
 {
@@ -705,9 +762,11 @@ static void trk_note_on_1(track_t *t, uint32_t note, uint32_t vel)
             e->vel = (uint8_t)vel;
             e->xg = t->lay_xg;                          /* (LAYER XFADE: the share it was played with) */
             vs_held++;
+            vs_busy = 1;
             return;
         }
         vs_n[p] = (uint8_t)(vs_n[p] + (trk_vmode(t) == V_UNISON ? trk_nvoice(t) : 1u));
+        vs_busy = 1;
     }
     trk_note_on_now(t, note, vel);
 }
@@ -715,6 +774,11 @@ static void trk_note_on_1(track_t *t, uint32_t note, uint32_t vel)
 static __attribute__((noinline)) void vs_block(void)
 {
     uint32_t p, i, k;
+    GD_COUNT(gd_vs_call);
+    if (FELUCCA_GUARDS && !vs_busy)
+        return;
+    GD_COUNT(gd_vs_run);                                         /* (nothing counted, nothing waiting: the loop below would only store 0 over 0) */
+    vs_busy = 0;
     for (p = 0; p < NTRK; p++) {
         track_t *t = &trk[p];
         vs_n[p] = 0;
@@ -728,6 +792,7 @@ static __attribute__((noinline)) void vs_block(void)
         for (i = 0; k + i < vs_qn[p]; i++)
             vs_q[p][i] = vs_q[p][k + i];
         vs_qn[p] = (uint8_t)i;
+        vs_busy |= (i | vs_n[p]) != 0u;                 /* (still waiting, or started this block: the next block resets the count and starts the rest) */
     }
 }
 /* a note-off: the same note waiting in part t's queue never starts */
@@ -898,6 +963,37 @@ static __attribute__((noinline)) void esync2_coef(const track_t *t)
 }
 
 #include "cycle.c"                                      /* the CYCLE envelope (cloud job F): cycle_start, cycle_tick, cycle_value */
+/* the ADSR both envelopes run (ENV 1: env_tick; ENV 2: env2_tick; U06 of the audit: two copies had drifted, only ENV 1 had stage 4): one control tick of stage 1 attack (a step k[0]), 2 decay to the
+ * sustain, 3 release (a coefficient k[2]; a slow Q16 release can round its decrement to zero above the floor, so a zero decrement ends it too), anything else 0. Returns 1 when the release ended */
+static inline __attribute__((always_inline)) uint32_t adsr_step(int32_t *env, uint8_t *stage, int32_t sus, const uint32_t *k)
+{
+    switch (*stage) {
+    case 1:
+        *env += (int32_t)k[0];                          /* ATK's step (esync_coef: the table's, or ENV SYNC's) */
+        if (*env >= (1 << 24)) {
+            *env = 1 << 24;
+            *stage = 2;
+        }
+        break;
+    case 2:
+        *env += mulq16(sus - *env, k[1]);
+        break;
+    case 3: {
+        int32_t d = mulq16(*env, k[2]);
+        *env -= d;
+        if (!d || *env < (1 << 12)) {
+            *env = 0;
+            *stage = 0;
+            return 1;
+        }
+        break;
+    }
+    default:
+        *env = 0;
+        break;
+    }
+    return 0;
+}
 /* ENV 2 (DUELL, SPEC 2.4): a second ADSR per voice, ENV 1's stages and times (ENV SYNC too: esync2_coef): the filter
  * envelope of the classic arrangement (ENV 2 DEST: FLT, SHP, track_render) and a matrix source (mod.c MS_ENV2). It follows the gate: an attack as the voice starts (voice_start; a legato note keeps it), the
  * release from its level when the key is let go; at 0 it stays there. It never ends the voice (ENV 1 does). Ticked once
@@ -905,66 +1001,21 @@ static __attribute__((noinline)) void esync2_coef(const track_t *t)
  * cost, no change to the sound */
 static void env2_tick(const track_t *t, voice_t *v)
 {
-    int32_t sus = (int32_t)t->p[P_E2SUS] << 17;         /* Q24 */
     if (!v->gate && v->stage2 && v->stage2 < 3u)
         v->stage2 = 3;
-    switch (v->stage2) {
-    case 1:
-        v->env2 += (int32_t)t->esk2[0];
-        if (v->env2 >= (1 << 24)) {
-            v->env2 = 1 << 24;
-            v->stage2 = 2;
-        }
-        break;
-    case 2:
-        v->env2 += mulq16(sus - v->env2, t->esk2[1]);
-        break;
-    case 3:
-        v->env2 -= mulq16(v->env2, t->esk2[2]);
-        if (v->env2 < (1 << 12)) {
-            v->env2 = 0;
-            v->stage2 = 0;
-        }
-        break;
-    default:
-        v->env2 = 0;
-        break;
-    }
+    adsr_step(&v->env2, &v->stage2, (int32_t)t->p[P_E2SUS] << 17, t->esk2);   /* (sustain Q24) */
 }
 
 /* one control tick (CTL samples) of the amplitude envelope; returns Q15 */
 static int32_t env_tick(track_t *t, voice_t *v)
 {
-    const int16_t *p = t->p;
-    int32_t sus = (int32_t)p[P_SUS] << 17;              /* Q24 */
-    switch (v->stage) {
-    case 1:
-        v->env += (int32_t)t->esk[0];                  /* ATK's step (esync_coef: the table's, or ENV SYNC's) */
-        if (v->env >= (1 << 24)) {
-            v->env = 1 << 24;
-            v->stage = 2;
-        }
-        break;
-    case 2:
-        v->env += mulq16(sus - v->env, t->esk[1]);
-        break;
-    case 3:
-        v->env -= mulq16(v->env, t->esk[2]);
-        if (v->env < (1 << 12)) {
-            v->env = 0;
-            v->stage = 0;
-            v->active = 0;
-        }
-        break;
-    case 4:                                             /* given up for another part: this block fades it */
+    int32_t sus = (int32_t)t->p[P_SUS] << 17;           /* Q24 */
+    if (v->stage == 4u) {                               /* given up for another part: this block fades it */
         v->env = 0;
         v->stage = 0;
         v->active = 0;
-        break;
-    default:
-        v->env = 0;
-        break;
-    }
+    } else if (adsr_step(&v->env, &v->stage, sus, t->esk))
+        v->active = 0;
     return v->env >> 9;
 }
 
@@ -986,28 +1037,26 @@ static __attribute__((noinline)) void spread_sum(int32_t *out, const int32_t *sb
 }
 
 /* ARP TARGET (SPEC 2.3, seq.c atg_fire): the voice's arp pitch towards the arp's note now (the root's while there is none),
- * with the part's GLIDE as a note's (RATE: GLD's speed; 0: a jump), as the offset adelta over the root's pitch16 (so
+ * with the part's GLIDE as a note's (RATE: GLD's speed, in 1/65536 of a 1/16 st; 0: a jump), as the offset adelta over the root's pitch16 (so
  * TUNE, bend, LFO, ENV and the matrix move both alike); its level towards the step's gate (velocity, 0 off) in ~3 ms */
 static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vmod_t *m)
 {
-    int32_t want = t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch_cur, d = want - v->apitch, g;
+    int32_t want = (t->atg_note ? (int32_t)t->atg_note * 16 : v->pitch_cur) * 65536, d = want - v->apitch, g;
     if (d && !t->p[P_GLIDE]) {
         v->apitch = want;
     } else if (d) {
-        int32_t st = (int32_t)(ENV_LIN[t->p[P_GLIDE] & 127] >> 14);
-        if (st < 1)
-            st = 1;
+        int32_t st = (int32_t)(ENV_LIN[t->p[P_GLIDE] & 127] << 2);
         v->apitch += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
     }
-    m->adelta = v->apitch - v->pitch_cur;
-    g = t->atg_vel * 258 - v->again;
+    m->adelta = (v->apitch >> 16) - v->pitch_cur;
+    g = Q15_FROM_127(t->atg_vel) - v->again;
     v->again += g > -4 && g < 4 ? g : g / 4;
     m->again = v->again;
 }
 
 /* DUELL 0.2.9 MULTIMODE FILTER (SPEC 2.5; 0.2.2's universal filter): a per-voice state-variable filter on the engines with no filter of
  * their own (engine_t.ufilt 1: all of them since cloud job J; ANALOG's VCF and NOISE's filter ARE this filter, TRIO's lives on as filter 2). FILTER page: K1 CUT (P_FREEA, 0..UF_STEPS: 30 Hz .. 16 kHz, core.h),
- * K2 RES (P_FREEB: the damping from 2.0, Q 0.5, to 0.145, Q 6.9; the 24 dB path is unchanged), K3 MODE (P_FREEC: 0 LP, 64 BP, 127 HP and every blend between:
+ * K2 RES (P_FREEB: the damping from 2.0, Q 0.5, to 0.145, Q 6.9, exponential in RES: about equal dB of peak a step; the 24 dB second stage's the same way), K3 MODE (P_FREEC: 0 LP, 64 BP, 127 HP and every blend between:
  * the SVF's low-pass, band-pass and high-pass outputs summed with weights), K4 SLOPE (P_FREED: 12 dB, or 24 dB: a second stage of
  * the same MODE, the two dampings a 4th-order Butterworth's, 1.848 and 0.765, RES narrowing the second down to 0.10).
  * The EFFECTIVE cut = CUT + every cutoff route (ENV 1 / ENV 2 / LFO 1 / LFO 2 FLT, the matrix's CUT; 1/256 dial steps, 63 steps = the
@@ -1027,14 +1076,26 @@ static __attribute__((noinline)) void atg_voice(const track_t *t, voice_t *v, vm
  * part's). It starts from rest (the integrators charged with the block's first sample: no step) when a voice starts or after a
  * bypass; the second stage starts charged with the first's low-pass state, and a SLOPE turned while it sounds fades the second stage
  * in (out) over one block */
+static int32_t ucut_sm[NLIVE];                          /* each part's CUT dial as filter 1 reads it (Q8 dial steps; track_render slews it to P_FREEA) */
+/* a part's CUT dial u (Q8) as filter 1 reads it: a quarter of the way a block (3 ms), exact landing (the dial and CC74 stepped 1.32 semitones at a block edge);
+ * a jump of 8 steps or more (a sound load) is not slewed */
+static __attribute__((noinline)) int32_t cut_slew(uint32_t ti, int32_t u)
+{
+    int32_t d = u - ucut_sm[ti], a = d < 0 ? -d : d;
+    return ucut_sm[ti] = a > 2048 ? u : ucut_sm[ti] + (d < 0 ? -((a + 3) >> 2) : (a + 3) >> 2);
+}
 #define UF_TOP (UF_STEPS << 8)                          /* the open end, Q8 dial steps */
 /* the three engines that lost their own filter (cloud job J, TWIN_FILTER_DESIGN_2 1.2): the accent (velocity over 110 opens the filter with the envelope) lifts BOTH filters on them, filter 1
  * (in its effective cutoff) and filter 2 even with LINK off (chain_f2.c f2_cut); on the other engines the lift stays the engine's own tone control and filter 2's linked cutoff */
 #define ACCENT_BOTH(e) ((e) == &ENG_ANALOG || (e) == &ENG_TRIO || (e) == &ENG_NOISE)
 #define UF_KZ (4 << 8)                                  /* the kill zones: 4 dial steps (= 1.0 in Q10, the weights' unit) */
-#define UF_K(res) (8192 - (res) * 7600 / 127)           /* damping, Q12: 12 dB. 2.0 down to 0.145 (the law of dsp.c tsvf_coef, ANALOG's VCF's: TWIN_FILTER_DESIGN_2 question 2a; until the engine filters left it was 1.414 down to 0.145: 5793 - res * 5200 / 127) */
+static uint32_t exp2_neg(uint32_t x);                 /* (fx.c: 2^-x, x Q16, Q15) */
+/* RES (audit P07): the damping falls exponentially, 2^-(RES x 3.79 / 127), so every step narrows it by the same ratio (about equal dB of peak a step;
+ * the linear law of before, 8192 - res * 7600 / 127, gave no peak at all below RES 48 and spent its resonance in the top 30 steps). The same ends: 2.0 down to
+ * 0.145 (Q 0.5 .. 6.9); the factory sounds' RES were moved to the step of the same damping (tools/duell_sounds.py) */
+#define UF_K(res) ((int32_t)(exp2_neg((uint32_t)(res) * 1956u) >> 2))   /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145) */
 #define UF_K24A 7568                                    /* 24 dB: the first stage's (1.848), the second's from 0.765 down with RES */
-#define UF_K24B(res) (3135 - (((res) * 2731) >> 7))   /* (0.765 down to 0.104) */
+#define UF_K24B(res) ((int32_t)((exp2_neg((uint32_t)(res) * 1486u) * 3135u) >> 15))   /* (0.765 down to 0.104, 3135 .. 425, the same way: 2^-(RES x 2.88 / 127)) */
 #define UF_KNEE 48000
 static __attribute__((noinline)) void uf_coef(tsvf_t *f, int32_t idx, int32_t k) { tsvf_coef_k(f, idx, k); }   /* (one copy: a divide) */
 /* one voice's block through the filter, in place: uc the effective cut (Q8 dial steps), p the part's values (RES MODE SLOPE) */
@@ -1049,7 +1110,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     int32_t gl = uc < UF_KZ ? uc : UF_KZ, gt = UF_TOP - uc < UF_KZ ? UF_TOP - uc : UF_KZ, idx = 40 + ((uc * 99) >> 6);
     int32_t cx = (wh * gt) >> 10, cb = ((((wb * gl) >> 10) * gt) >> 10) - cx, cl = ((wl * gl) >> 10) - cx;   /* the output: cx x + cb band-pass
                                                          * + cl low-pass (Q10; the kill zones in them), this block's */
-    int32_t a1 = v->uf[0], a2 = v->uf[1], b1 = v->uf[2], b2 = v->uf[3], ax, ab, al, dx, db, dl, fd = 0, xg;
+    int32_t a1 = v->uf[0], a2 = v->uf[1], b1 = v->uf[2], b2 = v->uf[3], ax, ab, al, dx, db, dl, fd = 0, xg, rf, rg = 0;
     if (v->msl) {                                        /* (v->msl: the part's MXF slope weight, bit 15 set when the other end is 24 dB; track_render sets it) */
         int32_t b24 = v->msl & 0x8000u ? 32 : 0;
         bl = s24 ? 32 : 0;
@@ -1062,7 +1123,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     if (!v->uft) {                                      /* from rest: no ramp */
         a1 = a2 = 0;
         v->ufw[0] = (int16_t)cx; v->ufw[1] = (int16_t)cb; v->ufw[2] = (int16_t)cl;
-    } else if (!blend && v->uft != 1u + s24) {
+    } else if (!blend && !v->msl && v->uft != 1u + s24) {   /* (a morph that already faded the second stage out: no second fade at its rounded end) */
         fd = s24 ? 1 : -1;                              /* SLOPE turned while sounding: the second stage fades in (out) over the block */
     }
     if (!cx && !a1 && !a2)
@@ -1075,13 +1136,14 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     run2 = s24 || blend || fd;
     xg = fd > 0 ? 0 : 32;
     uf_coef(&f, idx, k1);
+    rf = 1 << (f.sh - 1);
     if (run2)
-        uf_coef(&g, idx, k2);
-    ax = v->ufw[0] << 5; ab = v->ufw[1] << 5; al = v->ufw[2] << 5;   /* (CTL 32: the weights ramp, Q15, exactly onto this block's) */
+        uf_coef(&g, idx, k2), rg = 1 << (g.sh - 1);
+    ax = v->ufw[0] * 32; ab = v->ufw[1] * 32; al = v->ufw[2] * 32;   /* (CTL 32: the weights ramp, Q15, exactly onto this block's) */
     dx = cx - v->ufw[0]; db = cb - v->ufw[1]; dl = cl - v->ufw[2];
     lp = !(dx | db | dl | cx | cb) && cl == 1024;      /* a steady low-pass: its output is the low-pass itself (0.2.2's loop's cost) */
     for (i = 0; i < n; i++) {
-        int32_t x = buf[i] >> 1, v3 = x - a2, v1 = (f.a1 * a1 + f.a2 * v3) >> 13, v2 = a2 + ((f.a2 * a1 + f.a3 * v3) >> 13), y = v2;
+        int32_t x = buf[i] >> 1, v3 = x - a2, v1 = a1 + ((f.b1 * a1 + f.a2 * v3 + rf) >> f.sh), v2 = a2 + ((f.a2 * a1 + f.a3 * v3 + rf) >> f.sh), y = v2;
         a1 = clamp(2 * v1 - a1, -150000, 150000);
         a2 = clamp(2 * v2 - a2, -150000, 150000);
         if (!lp) {
@@ -1089,7 +1151,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
             y = ((ax >> 5) * x + (ab >> 5) * ((k1 * v1) >> 12) + (al >> 5) * v2) >> 10;
         }
         if (run2) {                                     /* 24 dB: the same MODE again */
-            int32_t z = clamp(y, -65536, 65536), u3 = z - b2, u1 = (g.a1 * b1 + g.a2 * u3) >> 13, u2 = b2 + ((g.a2 * b1 + g.a3 * u3) >> 13);
+            int32_t z = clamp(y, -65536, 65536), u3 = z - b2, u1 = b1 + ((g.b1 * b1 + g.a2 * u3 + rg) >> g.sh), u2 = b2 + ((g.a2 * b1 + g.a3 * u3 + rg) >> g.sh);
             b1 = clamp(2 * u1 - b1, -150000, 150000);
             b2 = clamp(2 * u2 - b2, -150000, 150000);
             u2 = lp ? u2 : ((ax >> 5) * z + (ab >> 5) * ((k2 * u1) >> 12) + (al >> 5) * u2) >> 10;
@@ -1101,7 +1163,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
             }
             y = u2;
         }
-        buf[i] = soft_knee(y << 1, UF_KNEE);
+        buf[i] = soft_knee(y * 2, UF_KNEE);
     }
     v->ufw[0] = (int16_t)cx; v->ufw[1] = (int16_t)cb; v->ufw[2] = (int16_t)cl;
     v->uf[0] = a1; v->uf[1] = a2; v->uf[2] = b1; v->uf[3] = b2;
@@ -1199,7 +1261,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     int32_t lfo = mulq15(t->lfo_val, t->lfo_fade);
     /* DUELL (SPEC 2.4, the classic arrangement): ENV 2 DEST / LFO 2 DEST, their own depths: either set, that one runs
      * (as when the matrix reads it); all 0, neither costs anything (every sound of before) */
-    uint32_t e2on = (mod->on && mod->e2) || p[P_E2FLT] || (p[P_TWTYPE] && XV(t, X_ENV2));   /* (TWIN FILTER: filter 2's ENV 2 amount) */
+    uint32_t acid = acid_on(t);                         /* b8 ACID */
+    uint32_t e2on = acid || (mod->on && mod->e2) || p[P_E2FLT] || (p[P_TWTYPE] && XV(t, X_ENV2));   /* (TWIN FILTER: filter 2's ENV 2 amount; ACID: its ENV 2 is the accent's sweep) */
     uint32_t l2on = (mod->on && mod->l2) || (p[P_TWTYPE] && XV(t, X_LFO2));   /* (DUELL 1.1: LFO 2 DEST's old PITCH / MULTI CUTOFF / TIMBRE cards no longer act: they reach the engine through the matrix) */   /* (.. and its LFO 2 amount) */
     int32_t tune, tune_fine;                           /* MASTER TUNE (tune_get above): whole 1/16 semitones in the pitch, the rest as a fine factor (no dead zone) */
     int32_t bend, bend16, bend_fine;
@@ -1216,7 +1279,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     bend16 = bend >= 0 ? bend / 16 : -((-bend + 15) / 16);
     bend_fine = (bend - bend16 * 16) * 2367 / 2560;
     uint32_t nr = 0, fade = t->xf_on && t->xf, abits = atgt_bits(t), uf = e->ufilt;
-    int32_t ucut0 = uf ? clamp(p[P_FREEA], 0, UF_STEPS) << 8 : 0;   /* the multimode filter's dial (Q8) */
+    int32_t ucut0 = uf ? cut_slew(ti, clamp(p[P_FREEA], 0, UF_STEPS) << 8) : 0;   /* the multimode filter's dial (Q8), slewed */
     int16_t pe_new[8];
     for (i = 0; i < n; i++)
         out[i] = 0;
@@ -1237,25 +1300,45 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     esync_coef(t);                                      /* this block's envelope steps for env_tick (ENV SYNC) */
     if (e2on)                                           /* DUELL: ENV 2, read by the matrix or ENV 2 DEST */
         esync2_coef(t);
+    if (acid) {                                         /* ACID: the accent push's capacitor y (Q15): charged from the accented note's ENV 2 through a lag that grows with RES (47 .. 147 ms), run down 4 x slower (acid.md in DESIGN.md) */
+        const voice_t *v0 = &t->v[0];
+        int32_t x = v0->gate && v0->vel > ACCENT_V0 ? v0->env2 >> 9 : 0, y = t->acid_y;
+        int32_t c = 449 - 40 * (p[P_FREEB] >> 4);       /* the charge per tick, Q15, 449 .. 169 over RES (tau 53 .. 140 ms): tau = 0.726 ms / c */
+        if (x > y) {
+            y += ((x - y) * c) >> 15;
+        } else {
+            y -= ((y * (c >> 2)) >> 15) + (y > 0);
+        }
+        t->acid_y = (int16_t)y;
+        if (v0->vel > ACCENT_V0 && ENV_EXP[ACID_ACCDEC] > t->esk2[1])   /* an accented note: ENV 2 decays in ACID's short fixed time (~200 ms), or in the sound's own Decay when that is shorter */
+            t->esk2[1] = ENV_EXP[ACID_ACCDEC];
+    }
     if (e->block)                                       /* the engine's per-part work (WHEEL: bars, rotor) */
         e->block(t);
     for (i = 0; i < NVOICE; i++) {
         voice_t *v = &t->v[i];
         vmod_t m;
-        int32_t env, pitch;
+        int32_t env, pitch, vf;
         if (!v->active)
             continue;
         {
             env = env_tick(t, v);
             if (e->ownenv && v->active) {               /* the engine's envelopes (FM6): they end the voice */
-                if (e->done(t, v)) {
+                int d = e->done(t, v);
+                if (d == 1) {
                     v->active = v->gate = 0;
                     v->stage = 0;
                     v->env = v->env_out = 0;
                     continue;
                 }
-                v->env = 1 << 24;                       /* (the ADSR's release never ends it) */
-                env = 32767;
+                if (d) {                                /* 2: the cull of an inaudible tail (fm6_core.c): fade it over this block and end it, as the one-block fade of a voice_kill */
+                    v->active = v->gate = 0;
+                    v->stage = 0;
+                    v->env = env = 0;
+                } else {
+                    v->env = 1 << 24;                   /* (the ADSR's release never ends it) */
+                    env = 32767;
+                }
             }
             if (e2on)                                   /* DUELL: ENV 2 (read by the matrix or ENV 2 DEST) */
                 env2_tick(t, v);
@@ -1264,41 +1347,51 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
             if (e->amp)                                 /* the engine's own amplitude curve */
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
-            m.amp1 = e->ownenv ? env : mulq15(env, v->vel * 258);
+            m.amp1 = e->ownenv ? env : mulq15(env, Q15_FROM_127(v->vel));
+            if (acid)                                   /* ACID: the level is fixed (ACID_BASE); an accent bursts from it up to unity with the (short) ENV 2 */
+                m.amp1 = mulq15(env, ACID_BASE + (v->vel > ACCENT_V0 ? mulq15(32767 - ACID_BASE, v->env2 >> 9) : 0));
             if (v->xg)                                  /* LAYER XFADE (core.h mix_xf): the note's share between the parts */
                 m.amp1 = mulq15(m.amp1, v->xg);
             if (p[P_LD_AMP] && !BYP(t, BY_LFO1))
-                m.amp1 = mulq15(m.amp1, 32767 - mulq15(p[P_LPOL] ? lfo : (lfo + 32768) >> 1, p[P_LD_AMP] * 258));
+                m.amp1 = mulq15(m.amp1, 32767 - mulq15(p[P_LPOL] ? lfo : (lfo + 32768) >> 1, Q15_FROM_127(p[P_LD_AMP])));
             if (fade)                                   /* linear to 0 over the fade */
                 m.amp1 = m.amp1 * (int32_t)(t->xf - 1u) / (int32_t)XF_BLOCKS;
             m.amp0 = v->env_out;
             v->env_out = m.amp1;
         }
-        if (v->pitch_cur != v->pitch16) {               /* glide */
-            int32_t d = v->pitch16 - v->pitch_cur;
-            int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] >> 14);   /* slide: ~45 ms */
-            if (st < 1)
-                st = 1;
-            v->pitch_cur += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
+        if (v->pitch_cur != v->pitch16 || v->gfrac) {   /* glide (glide_set), in 1/65536 of a 1/16 st */
+            int32_t q = v->pitch_cur * 65536 + v->gfrac, d = v->pitch16 * 65536 - q;
+            int32_t st = v->gstep ? v->gstep : (int32_t)(ENV_LIN[(p[P_GLIDE] ? p[P_GLIDE] : 40) & 127] << 2);   /* RATE (slide: GLD 40's) */
+            if (acid) {                             /* ACID: the 303's RC lag, d / 32 a tick (tau 23 ms: 90 % in 53 ms, 99 % in 106 ms, a semitone or an octave); the last bit (< 32 units) in one step */
+                st = (d < 0 ? -d : d) >> 5;
+                if (!st)
+                    st = d < 0 ? -d : d;
+            }
+            q += d > 0 ? (d < st ? d : st) : (-d < st ? d : -st);
+            v->pitch_cur = q >> 16;
+            v->gfrac = (uint16_t)q;
         }
         if (!env && !m.amp0 && v->stage == 2 && !e->sampled) {
             v->lastc = v->lastd = 0;
             continue;
         }                                   /* held at a silent sustain (SUS 0): nothing to render */
-        pitch = v->pitch_cur + tune + bend16 + ((lfo * DEP_AMT(p[P_LD_PIT]) * 3) >> 15) + ((m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3) >> 15);
-        m.pitch16 = clamp(pitch, 0, 2047);
+        pitch = (lfo * DEP_AMT(p[P_LD_PIT]) * 3 >> 11) + (m.envq15 * DEP_AMT(p[P_ED_PIT]) * 3 >> 11);   /* LFO and ENV PIT in 1/256 st: the 1/16 st below it goes to the fine factor, not lost */
+        m.pitch16 = clamp(v->pitch_cur + tune + bend16 + (pitch >> 4), 0, 2047);
         m.inc = pitch_inc(m.pitch16);
-        m.fine = v->fine + tune_fine + bend_fine;
-        if (v->fine + tune_fine + bend_fine)             /* residual below 1/16 semitone */
-            m.inc += (uint32_t)((int32_t)(m.inc >> 12) * (v->fine + tune_fine + bend_fine));
+        vf = v->fine + tune_fine + bend_fine + ((v->gfrac * 947) >> 22) + ((pitch & 15) * 947 >> 10);   /* (gfrac: 1/65536 of 1/16 st = 14.8 fine) */
+        m.fine = vf;
+        if (vf)                                         /* residual below 1/16 semitone */
+            m.inc += (uint32_t)((int32_t)(m.inc >> 12) * vf);
         m.cutoff = ((lfo * DEP_AMT(p[P_LD_FLT])) >> 7) +
                    (((E2Q(t, v)) * DEP_AMT(p[P_E2FLT])) >> 7); /* (DUELL 1.1: AMP ENV's and LFO 2's cutoff depths no longer act; FILTER ENV's MULTI CUTOFF and LFO 1's stay) */
         if (e == &ENG_NOISE)                            /* NOISE's DRFT wander of the cutoff, worked out by the block before (eng_noise.c): filter 1's, one block late */
             m.cutoff += v->s[0];
         m.acc1 = 0;
-        if (v->vel > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
+        if (acid) {                                     /* ACID: the push is the capacitor's (a 303 is a low-pass: it opens upward) */
+            m.cutoff += m.acc1 = (t->acid_y * ACID_PUSH) >> 15;
+        } else if (ACCENT_VEL(v) > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
         {
-            int32_t al = accent_lift(v->vel, m.envq15);
+            int32_t al = accent_lift(ACCENT_VEL(v), m.envq15);
             if (ACCENT_BOTH(e))
                 al = m.acc1 = accent_dir(al, accent_dir_mode(p[P_FREEC]));   /* filter 1 opens the way its MODE opens (LP up, HP down, BP none) */
             m.cutoff += al;
@@ -1308,9 +1401,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (abits)
             atg_voice(t, v, &m);
         if (mod->on) {                                   /* the modulation matrix (mod.c) */
-            mod_voice(t, v, &m, v->fine + tune_fine + bend_fine);
+            mod_voice(t, v, &m);
             if (t->cy)                                   /* its second list (cloud job B, mod.c): CYCLE's per-note routes, after mod_voice .. */
-                mod_cycle_voice(t, v, &m, v->fine + tune_fine + bend_fine);
+                mod_cycle_voice(t, v, &m);
             t->venv = m.envq15;                          /* .. and this voice's ENV for filter 2's sum (mod_f2_voice, called by the chain) */
         }
         if (e == &ENG_WAVE && p[P_E6])                  /* WAVE STEPS (eng_wave.c): POS lands on one of STEPS places; the block ramp is the cross-fade between two steps */
@@ -1330,12 +1423,12 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         v->chn = VCH_OFF;
         if (uf) {                                       /* the multimode filter: the cutoff routes are its own */
             v->msl = (uint16_t)msl;
-            int32_t kt = p[P_KTRK] ? UF_KT(p[P_KTRK], v->pitch_cur) : 0;   /* KEY TRK (0.2.21): the note's pitch around C3, an octave of cutoff per octave at +100 %; 0: nothing added, nothing computed */
-            int32_t uc = clamp(ucut0 + m.cutoff + kt, 0, UF_TOP);   /* the effective cut: the dial plus every route (and the key) */
-            int32_t ucn = clamp(ucut0 + m.cutoff - m.acc1 + kt, 0, UF_TOP);   /* the same without the accent (filter 2 LINK, NOISE's make-up) */
-            m.cutoff = accent_lift(v->vel, m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
+            int32_t ucn, uc = uc_eff(t, v, &m, ucut0, &ucn);   /* the effective cut: the dial plus every route (and the key), TIDE's crossing dip included; ucn the same without the accent (filter 2 LINK, NOISE's make-up) */
+            m.cutoff = accent_lift(ACCENT_VEL(v), m.envq15);   /* the routes are the filter's, whatever CUT is; the accent's lift stays the engine's own (its tone control, as ever) */
             m.ucut = uc;
             m.ucn = ucn;
+            if (v == &t->v[t->m_vi % NVOICE])
+                t->lvc = (uint8_t)(uc >> 7);            /* TIDE live graphs: the FILTER page's tick (ui_live.c); written only */
             if ((uc < UF_TOP || p[P_FREEC] > 0) && !BYP(t, BY_MULTI)) {   /* (the bypass: MODE LP, the effective cut at the open end; DUELL 1.1: or the BYPASS switch) */
                 if (v->uft == UF_BYP) {                 /* (0.2.25: out of the bypass while sounding: from rest, faded in over the block) */
                     v->uft = 0;

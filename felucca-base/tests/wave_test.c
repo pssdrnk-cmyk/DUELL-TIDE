@@ -6,7 +6,7 @@
  *   3  no table yet: silent; a TABLE change fades out and in (no click); POS jumps ramp (no click)
  *   4  robustness: TABLE changed every block (no crash, the last one built right); an engine switch in the middle of a build
  *      (the other engine's memory untouched); two parts building and playing at once
- *   5  MORPH: TABLE never rolls (SMART, WILD), SMART keeps SYNC 0 at 0, POS rolls
+ *   5  MORPH: TABLE never rolls (SMART, WILD), SYNC rolls from 0 (DUELL 1.1), POS rolls
  *   6  cost: host instructions per voice and sample (8 voices), a table build (main loop), the interrupts-off copy
  *   7  the tables of 0.2.7 (TABLE 14..25): the list (26 names of at most 5 letters, TABLE's range), the 14 older tables byte for
  *      byte as built before (a stored TABLE keeps its sound), a TABLE change into each new one fades (no click), their aliasing
@@ -48,7 +48,7 @@ static uint64_t instr_now(void)
 #endif
     return 0;
 }
-static uint64_t fnv(const void *p, size_t n)
+static uint64_t tfnv(const void *p, size_t n)
 {
     const uint8_t *b = p;
     uint64_t h = 0xcbf29ce484222325ull;
@@ -572,7 +572,7 @@ static void t_robust(void)
 static void t_morph(void)
 {
     int8_t o[P_COUNT], end[P_COUNT];
-    uint32_t s, i, tab_ok = 1, sync_ok = 1, pos_moved = 0, sync_moved = 0;
+    uint32_t s, i, tab_ok = 1, sync_ok = 1, pos_moved = 0, sync_moved = 0, smart_sync = 0;
     fresh();
     setup_part(0, 2, 60, 0, 0);
     for (i = 0; i < P_COUNT; i++)
@@ -581,7 +581,8 @@ static void t_morph(void)
         mrc = 0;
         morph_roll_pure(o, end, &ENG_WAVE, 60, s, 0, 1);
         tab_ok &= end[P_E0] == o[P_E0];
-        sync_ok &= end[P_E3] == 0;
+        sync_ok &= end[P_E3] >= 0;                   /* (DUELL 1.1, owner 2026-10-28: WAVE SYNC rolls also from 0, SMART too) */
+        smart_sync += end[P_E3] != 0;
         pos_moved += end[P_E1] != o[P_E1];
         mrc = MC_WILD;
         morph_roll_pure(o, end, &ENG_WAVE, 60, s, 0, 1);
@@ -589,8 +590,8 @@ static void t_morph(void)
         sync_moved += end[P_E3] != 0;
         mrc = 0;
     }
-    expect("MORPH: TABLE never rolls (200 SMART + 200 WILD rolls at AMOUNT 60); SMART keeps SYNC 0 at 0, WILD may move it; POS rolls",
-           tab_ok && sync_ok && pos_moved > 100u && sync_moved > 0u);
+    expect("MORPH: TABLE never rolls (200 SMART + 200 WILD rolls at AMOUNT 60); SYNC rolls from 0 in SMART and WILD (1.1, owner 2026-10-28); POS rolls",
+           tab_ok && sync_ok && pos_moved > 100u && sync_moved > 0u && smart_sync > 0u);
     for (tab_ok = 1, i = WV_NT_OLD; i < WV_NT; i++) {   /* the new tables: a TABLE value 14..25 stays too (SMART and WILD, AMOUNT 100) */
         uint32_t k;
         fresh();
@@ -985,7 +986,7 @@ static double z_ratio(uint32_t table, int id, int a, int b, uint32_t at, int old
             st = d > st ? d : st;
     }
     if (hash)
-        *hash = fnv(zrec, sizeof zrec);
+        *hash = tfnv(zrec, sizeof zrec);
     return (double)c / st;
 }
 static uint64_t z_hash(uint32_t table, int id, int a, int old)   /* (in a child: every state as at boot, as sub_run) */

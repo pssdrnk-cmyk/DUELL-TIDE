@@ -4,8 +4,8 @@
  *   TABLES    every slot has a descriptor (params.c XTP) and a morph tag (morph.c MTX); ranges, defaults, names as the plan has them; every label fits a card (50 px) and every name a value (49 px, the
  *             unit's own font table); the five ids' descriptors, the meanings of CUTOFF 2 (OFFSET / CUTOFF / TUNE) and RES 2 (RES / FDBK) by LINK and TYPE; F_DSEMI's text
  *   NOTHING   the values at any setting change nothing while they are not read: a two-part render with the five ids and all 15 slots off their defaults (TYPE OFF) is bit for bit the one without
- *   MORPH     the old ids' End B from a stored seed is the one cloud/base3 rolled (a hash made on cloud/base3: xvalues_ref.h), except the five; the ends and the history of the slots (XH deep: the
- *             report runs this test at 9 and at 3), the blend of the continuous ones, the switches that flip at the middle of the fader, UNDO; the rules of TWIN_FILTER_DESIGN 3.3 (TYPE never
+ *   MORPH     the old ids' End B from a stored seed is the one cloud/base3 rolled (a hash made on cloud/base3: xvalues_ref.h), except the five; the ends of the slots (1.0.0-b5: no history, a roll
+ *             replaces the end), the blend of the continuous ones, the switches that flip at the middle of the fader; the rules of TWIN_FILTER_DESIGN 3.3 (TYPE never
  *             rolled in SMART, never switched on, never COMB on WAVE / PHYS; no dead cutoff 2; RES 2 above 100 never with more DRIVE; DRIVE never far above; a sub never switched on; the amounts and
  *             TWIN stay put while TYPE is OFF), the draws of the five ids' old tags kept
  *   MATRIX    mod_voice and mod_voice_add untouched: a busy two-part matrix render is the hash cloud/base3 made (the second list empty); the new destinations 51..55 and source 15, their names,
@@ -13,7 +13,7 @@
  *             (mod_cycle_voice, t->cy, t->m_cycle), routes into the second list changing no sample of the product
  *   CHAIN     the voice chain (voice_chain.c) with the stages empty: forced on (DUELL_CHAIN_FORCE) it is the plain path within rounding on every engine, with filter 1 bypassed, SPREAD, and across the
  *             one-block cross-fade when a sounding voice enters and leaves it; v->chn; the product leaves chain_on at 0
- * Built twice by host_tests.sh (xvalues: the default XH 3, and -DXH=1), run once each */
+ * Built by host_tests.sh (xvalues; XH is 1 since 1.0.0-b5: no morph history) */
 #define DUELL_CHAIN_FORCE 1
 #define UI_TEST_NO_MAIN 1
 #include "ui_test.c"
@@ -106,7 +106,7 @@ static void t_tables(void)
         okl &= text_w(&AF_S, d->label) <= LBL_FIT;
         for (j = 0; d->fmt == F_ENUM && j <= (uint32_t)d->max; j++)
             okv &= text_w(&AF_S, d->names[j]) <= VAL_FIT;
-        okt &= g.kind == MK_CONT || g.kind == MK_HARD;
+        okt &= g.kind == MK_CONT || g.kind == MK_HARD || (k == X_SUBHARM && g.kind == MK_EX);   /* (SUB HARMONICS: no card since 0.2.31, never rolled) */
         oki &= d->min >= -128 && d->max <= 127;
         okx &= param_desc_of(0, XW_BASE + k) == d && track_desc(&trk[0], XW_BASE + k) == d;
     }
@@ -264,7 +264,7 @@ static void roll_end(uint32_t pi, uint32_t x, uint32_t seed, uint32_t amount, ui
 
 static void t_morph_old(void)
 {
-    ck("the End B of every id but the five from a stored seed: cloud/base3's hash (24 seeds x 3 AMOUNTs x SMART / WILD x PITCH / ARP x both streams x 13 engines)", hash_c(roll_child) == 0x93396a7983cefeb4ull);   /* (re-based 2026-10-28, item 154: ANALOG and TRIO give back less of a rolled ENV / ENV 2 / LFO 1 / LFO 2 -> FLT depth when the band-pass window is exceeded (morph.c morph_uf_open: together, the largest first, or the other way); only those four ids (5, 14, 114, 117) moved, the hash without them is the same as before (0x1b84c7b5a0ae32a5); was 0xa929659621e83d4f) (re-based 2026-10-28, item 152: WILD also rolls the AMOUNT of an assigned matrix route that is at 0 (morph.c morph_slot, its own stream): only matrix amounts moved, the hash without the matrix ids is the same as before (33ac50046660cb9a); was 0xf1c026d493b49c3d) (re-based again 2026-10-28: SMART also sets no LFO shape, ARP RATE, whole-number pitch value (PITCH on), the draws stay; was 0xb429a4835a7674ae) (2026-10-27: SMART no longer sets a switch (SLOPE, an engine's choice, ARP MODE / OCTAVES), the draws stay; was 0xb1e053d0900cfbc1) (re-based on purpose 2026-10-21: ANALOG and TRIO rolls keep filter 1's cutoff steering; was cloud/base3's 0x8ac190ea492b678f; re-based again for DUELL 1.1: LOFI's WAVE is one list, 0..14, and K4 is PULSE WIDTH, so the LOFI rolls change; was 0x03e34858cc8b1a21) */
+    ck("the End B of every id but the five from a stored seed: cloud/base3's hash (24 seeds x 3 AMOUNTs x SMART / WILD x PITCH / ARP x both streams x 13 engines)", hash_c(roll_child) == 0x2ba1062b7fb4b613ull /* (audit P09, re-based on purpose: ANALOG's new PW card (E4) is rolled like any card; was 0x17fbec4c3477ee76) /* (six chord types appended, 980a8bf: P_CHRD's range grew from 0..9 to 0..15 and this scenario's random Original draws CHRD from it; CHRD is never rolled (T_NEV); with its range held at 9 the hash is 0x6de4d97765dbcb0a as before) /* (audit P07, re-based on purpose: MORPH's RES ceilings in the exponential law's steps; was 0x51c5d094e26b775a) */);   /* (re-based 2026-11-03 on Linux for jam11: 1.1's reworked SMART / WILD rolls (stock 1.1 gives 0x2b371d1574e4edda), and TIDE's: a WILD roll with ARP ON keeps the arp mode, MORPH TO / MUSICAL roll, UNISON and FM6 edits; was 0x93396a7983cefeb4) /* (re-based 2026-10-28, item 154: ANALOG and TRIO give back less of a rolled ENV / ENV 2 / LFO 1 / LFO 2 -> FLT depth when the band-pass window is exceeded (morph.c morph_uf_open: together, the largest first, or the other way); only those four ids (5, 14, 114, 117) moved, the hash without them is the same as before (0x1b84c7b5a0ae32a5); was 0xa929659621e83d4f) (re-based 2026-10-28, item 152: WILD also rolls the AMOUNT of an assigned matrix route that is at 0 (morph.c morph_slot, its own stream): only matrix amounts moved, the hash without the matrix ids is the same as before (33ac50046660cb9a); was 0xf1c026d493b49c3d) (re-based again 2026-10-28: SMART also sets no LFO shape, ARP RATE, whole-number pitch value (PITCH on), the draws stay; was 0xb429a4835a7674ae) (2026-10-27: SMART no longer sets a switch (SLOPE, an engine's choice, ARP MODE / OCTAVES), the draws stay; was 0xb1e053d0900cfbc1) (re-based on purpose 2026-10-21: ANALOG and TRIO rolls keep filter 1's cutoff steering; was cloud/base3's 0x8ac190ea492b678f; re-based again for DUELL 1.1: LOFI's WAVE is one list, 0..14, and K4 is PULSE WIDTH, so the LOFI rolls change; was 0x03e34858cc8b1a21) */
     {   /* the draws of the five ids' old tags are kept: ROOT / SCALE a pitch item, ALLOC a hard switch, the TYPE a fade on ANALOG */
         uint32_t seed, ok = 1, moved = 0;
         for (seed = 1; seed <= 300u; seed++) {
@@ -300,8 +300,8 @@ static void t_morph_slots(void)
     t = &trk[pi];
     a = hx_of(pi, 0);
     b = hx_of(pi, 1);
-    ck("rebase: End A's slots are the Original (the base holds the wide ids), End B is the load's roll (two entries); the rings XH deep", !memcmp(a, mph[pi].base + XW_BASE, NX) && mph[pi].xv[0] == 1 &&
-       mph[pi].xv[1] == 2 && mph[pi].n[1] == 2 && XH <= MORPH_HIST && !memcmp(mph[pi].base, t->p, P_COUNT * 0 + 1) && mph[pi].base[XW_BASE + X_SUBLVL] == 60 && mph[pi].base[P_CUT2] == -8);
+    ck("rebase: End A's slots are the Original (the base holds the wide ids), End B is the load's roll (one entry each: no history since 1.0.0-b5)", !memcmp(a, mph[pi].base + XW_BASE, NX) &&
+       mph[pi].n[1] == 1 && XH == 1u && MORPH_HIST == 1u && !memcmp(mph[pi].base, t->p, P_COUNT * 0 + 1) && mph[pi].base[XW_BASE + X_SUBLVL] == 60 && mph[pi].base[P_CUT2] == -8);
     memcpy(h_of(pi, 1), mph[pi].base, P_COUNT);                /* End B: the Original again, then the differences set by hand */
     memcpy(b, mph[pi].base + XW_BASE, NX);
     a[X_SUBLVL] = 20; b[X_SUBLVL] = 100;                    /* continuous: blend */
@@ -367,43 +367,17 @@ static void t_morph_slots(void)
     (void)k; (void)ok2;
 }
 
-/* the History: XH deep */
+/* no history (1.0.0-b5): a roll replaces the end, the ids and the slots together */
 static void t_morph_hist(void)
 {
-    uint32_t pi = 0, n, ok = 1, i;
-    int8_t hist[12], hid[12];
+    uint32_t pi = 0, n, ok = 1, moved = 0;
     twin_part(pi, "ANALOG", TT_LP);
-    hist[0] = hx_of(pi, 1)[X_ENV2];
-    hid[0] = h_of(pi, 1)[P_DRV2];
-    for (n = 1; n <= MORPH_HIST - 1u; n++) {
+    for (n = 1; n <= 4u; n++) {
         roll_end(pi, 1, 100u + 37u * n, 60, 0);
-        hist[n] = hx_of(pi, 1)[X_ENV2];
-        hid[n] = h_of(pi, 1)[P_DRV2];
+        ok &= mph[pi].n[1] == 1u && mph[pi].top[1] == 0u && hx_of(pi, 1) == mph[pi].hx[1][0] && h_of(pi, 1) == mph[pi].h[1][0];
+        moved += hx_of(pi, 1)[X_ENV2] != 30;
     }
-    ok = mph[pi].n[1] == MORPH_HIST && mph[pi].xv[1] == XH;
-    {   /* the ends differ from the Original (SMART rolls the continuous slots) */
-        uint32_t moved = 0;
-        for (n = 1; n <= MORPH_HIST - 1u; n++)
-            moved += hist[n] != 30;
-        ok &= moved > 0u;
-    }
-    ck("rolls (SMART, AMOUNT 60) move the slots' ends (ENV 2 and the rest), kept XH deep: xv", ok);
-    for (n = MORPH_HIST - 1u; n >= 1u; n--) {
-        ok = morph_undo_part(pi, 1) == 1;
-        {
-            uint32_t depth = MORPH_HIST - n;                        /* undos so far */
-            int8_t want = depth <= XH - 1u ? hist[n - 1u] : 30;     /* beyond XH rolls: the slots at the Original (XH 3) */
-            if (hx_of(pi, 1)[X_ENV2] != want || h_of(pi, 1)[P_DRV2] != hid[n - 1u])
-                ok = 0;
-        }
-        if (!ok)
-            break;
-    }
-    ck("UNDO walks the ends back: the ids always, the slots as far as XH reaches (then the Original's)", ok && mph[pi].n[1] == 1u);
-    ck("  .. nothing more to undo", morph_undo_part(pi, 1) == 0);
-    for (i = 0; i < 10u; i++)
-        roll_end(pi, 0, 5u + i, 40, 0);
-    ck("  .. rolls past MORPH_HIST wrap the rings together (slot index = id index mod XH)", mph[pi].n[0] == MORPH_HIST && mph[pi].top[0] == 1u && mph[pi].xv[0] == XH);
+    ck("rolls (SMART, AMOUNT 60) move the slots' ends (ENV 2 and the rest), each replacing End B in place (one entry)", ok && moved > 0u);
     printf("xvalues: morph_part_t %u bytes (XH %u), mwork_t %u, track_t %u, voice_t %u\n", (unsigned)sizeof(morph_part_t), (unsigned)XH, (unsigned)sizeof(mwork_t), (unsigned)sizeof(track_t), (unsigned)sizeof(voice_t));
 }
 
@@ -482,7 +456,8 @@ static void t_morph_rules(void)
                 mrc = (uint8_t)(cfg ? MC_WILD : 0u);
                 morph_roll_full(o2, e2, en, amount, seed, 0, 1);
                 mrc = sv;
-                ok_sub &= e2[XW_BASE + X_SUBHARM] == o2[XW_BASE + X_SUBHARM] && e2[XW_BASE + X_SUBOCT] == o2[XW_BASE + X_SUBOCT] && e2[XW_BASE + X_SUBWAVE] == o2[XW_BASE + X_SUBWAVE];
+                ok_sub &= e2[XW_BASE + X_SUBHARM] == o2[XW_BASE + X_SUBHARM] &&   /* (HARMONICS never rolls; SMART keeps the sub's switches, WILD may flip them: morph.c) */
+                          (cfg || (e2[XW_BASE + X_SUBOCT] == o2[XW_BASE + X_SUBOCT] && e2[XW_BASE + X_SUBWAVE] == o2[XW_BASE + X_SUBWAVE]));
             }
             {   /* the stream does not depend on the Original (the draws of the five ids and the slots are made whether or not a value rolls) */
                 int8_t e3[EXT_P_LEN];
@@ -538,7 +513,7 @@ static void t_matrix(void)
     uint64_t base = scene_hash(0);
     track_t *t;
     uint32_t ok;
-    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0xc3a35d49b4be06fdull);   /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
+    ck("a busy two-part matrix render (every per-note destination from ENV, ENV 2, VEL, KEY, RAND, the LFOs; PAN, sends, E5, RES, FMODE) is cloud/base3's hash: mod_voice runs as it did", hash_c(matrix_child) == 0x2da648ff57512552ull /* (RE-BASED 2026-11-11, b9 G1/G2 echo: the first repeat through the loop low-pass, the loop low cut 165 -> 219 Hz; with G1/G2 put back the old 0x1f966de898837849 returns) */ /* (audit R09/R10, E2, E3, on purpose: the sends reach the new ROOM, delay low cut and pre-delay; before that 0x2be8c7d84992e1f9 from audit P02, on purpose: pitch modulation below the 1/16 semitone reaches the oscillator; was 0x00793912d67b9b7b) /* (audit P03, on purpose: the SVF keeps its precision at low cutoffs, dsp.c tsvf_coef_k; was 0xf12f1b34e77ffced) /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0xc2cc680e10ff0b9c) */);   /* (audit P07, re-based on purpose 2026-11-05: the scene routes to RES, filter 1's damping is exponential now (voice.c UF_K); was 0xf543d5abd1c7de69) (re-based 2026-11-03 on Linux for 1.1 / jam11 (stock 1.1 gives the same): item 144's note-start stagger (VS_MAX 2; the chords of the scene start 2 voices a block: -DVS_MAX=99 gives 0xd10b49bf6d83837b), BIT DEPTH and the reverb fix; was 0xc3a35d49b4be06fd) /* (re-based on purpose 2026-10-21: the click fixes of hunt1..hunt4 (LFO / matrix slew, SAT, PHASE seam); was cloud/base3's 0xec458fefd57d01b4; and for 1.0: the matrix amount +63 acts as a true 100 %, mod.c MX_AMT; was 0x4396c17e8041202e; DUELL 1.1: the smooth accent ramp (core.h accent_dir_*, voice.c, voice_chain.c) moved it from 0x8c526ee5e3c74750; with those edits put back to the 1.0 files the old hash comes out) */
     ck("CUTOFF 2 routes (ENV VEL KEY RAND ENV 2 CYCLE LFO) change no sample of the product: the second list is read by the chain only", second_hash(prep_f2routes) == base);
     ck("CYCLE to CUT, SHP, PITCH (per note) and PAN (per block): a working source since job F (cycle.c): it moves the sound (job B's stub at rest changed no sample)", second_hash(prep_cycleroutes) != base);
     /* the lists */
@@ -572,7 +547,6 @@ static void t_matrix(void)
     {
         vmod_t m0, m1;
         voice_t v;
-        int32_t fine = 5;
         track_t tt;
         memset(&tt, 0, sizeof tt);
         memset(&v, 0, sizeof v);
@@ -587,7 +561,7 @@ static void t_matrix(void)
         memset(&m0, 0, sizeof m0);
         m0.pitch16 = 960; m0.inc = pitch_inc(960); m0.cutoff = 1000; m0.shape = 64 << 8; m0.amp0 = 20000; m0.amp1 = 30000;
         m1 = m0;
-        mod_cycle_voice(&tt, &tt.v[0], &m1, fine);
+        mod_cycle_voice(&tt, &tt.v[0], &m1);
         ok = m1.cutoff == m0.cutoff && m1.shape == m0.shape && m1.pitch16 == m0.pitch16 && m1.amp1 == mulq15(m0.amp1, mulq15(32767, mod_gain(MS_CYCLE, 0, 20))) && tt.v[0].env_out == m1.amp1 && tt.m_cycle == 0;
         ck("mod_cycle_voice: a CYCLE at rest adds 0 to cutoff, shape, pitch and closes an AMP route by mod_gain; env_out follows; t->m_cycle kept", ok);
         if (!ok)
@@ -595,7 +569,7 @@ static void t_matrix(void)
         tt.cym = 0;
         m1 = m0;
         v = tt.v[0];
-        mod_cycle_voice(&tt, &tt.v[0], &m1, fine);
+        mod_cycle_voice(&tt, &tt.v[0], &m1);
         ck("  .. with the list empty it changes nothing", !memcmp(&m1, &m0, sizeof m0));
         (void)v;
     }
@@ -645,7 +619,7 @@ static void t_matrix(void)
         }
         ok2 &= !strcmp(mod_dst_name(t, MD_CUT2), "TWIN\nCUTOFF") && !strcmp(mod_dst_name(t, MD_BLEND), "FILTER\nBLEND") && !strcmp(N_MDST[MD_DRIVE], "FDRV") && !strcmp(N_MSRC[MS_CYCLE], "CYCLE");
         t->p[P_TWTYPE] = TT_COMB;
-        ok2 &= !strcmp(mod_dst_name(t, MD_CUT2), "TWIN\nTUNE") && !strcmp(mod_dst_name(t, MD_RES2), "TWIN\nFDBK");
+        ok2 &= !strcmp(mod_dst_name(t, MD_CUT2), "TWIN\nTUNE") && !strcmp(mod_dst_name(t, MD_RES2), "TWIN\nFEEDBACK");   /* (DUELL 1.1: FEEDBACK in full) */
         mod_dst_line(t, MD_CUT2, b, &more);
         ok2 &= !strcmp(b, "DEST: TWIN TUNE");
         t->p[P_TWTYPE] = TT_OFF;
@@ -660,8 +634,8 @@ static void t_matrix(void)
         }
         for (i = 0; i < MS_N; i++)
             ok4 &= MSRC_ORDER[i] < MS_N;
-        ck("the knob orders hold every destination (56) and source (16) once; CYCLE sits after ENV2; MS_VOICE counts it", ok3 && ok4 && MSRC_ORDER[3] == MS_CYCLE && MSRC_ORDER[2] == MS_ENV2 && MS_VOICE(MS_CYCLE) &&
-           MD_N == 56 && MS_N == 16 && MD_CUT2 == 51 && MD_SUBLVL == 55 && MS_CYCLE == 15);
+        ck("the knob orders hold every destination (57) and source (18) once; CYCLE sits after ENV2; MS_VOICE counts it", ok3 && ok4 && MSRC_ORDER[3] == MS_CYCLE && MSRC_ORDER[2] == MS_ENV2 && MS_VOICE(MS_CYCLE) &&
+           MD_N == 57 && MS_N == 18 && MD_CUT2 == 51 && MD_SUBLVL == 55 && MS_CYCLE == 15);
     }
 }
 

@@ -7,7 +7,7 @@
 1. the table: the 43 rows of section 1.5 are read from the design document and every row is checked against the converted sound list (the list as it was before the job, tests/fixtures/convert_twin_old/,
    converted by the tool into a scratch file): the new filter values, the depths, the matrix routes. A difference of one unit (the rounding) is listed, a larger one fails;
 2. the rules as numbers: the cutoff dial, the depth factor, filter 1's RES step (RES 0 becomes 40, the same damping), the SUB match;
-3. the committed data is what the tool makes of the old data (the sound list, the multis); the records the job did not touch are the old bytes;
+3. (reported, no longer checked: the sound list was refined by hand in 0.2.31, the multis rebuilt as MU_VER 8 by DUELL 1.1) what the tool makes of the old data;
 4. a second run is refused or does nothing (the marker, the ledger, the freed-slot test);
 5. patch records (pairs and bitmap forms) and the editor's export files convert, with a CRC that matches, and decode to the values the rules give;
 6. the cases the rules keep out: an ANALOG VCF with filter 1 in use as well (filter 2), a NOISE one (reported, not converted), a 24 dB filter 1 (RES not touched).
@@ -103,7 +103,8 @@ for row in rows:
         if m.group(1) is not None:
             check("MODE", p.get("UF MODE"), int(m.group(1)), name)
         check("CUT", p.get("UF CUT"), int(m.group(2)), name)
-        check("RES", p.get("UF RES"), int(m.group(3)), name)
+        lin_res = int(m.group(3))                       # (the table's RES is the linear law's, written before audit P07: today's step of its damping)
+        check("RES", p.get("UF RES"), ct.to_exp(lin_res), name)
         check("KEY TRK", p.get("KTRK"), int(m.group(4)), name)
         dm = re.search(r"DRV (\d+) stays", new_cell)
         if dm:
@@ -127,6 +128,8 @@ for row in rows:
         d = rm.group("dst2") or rm.group("dst")
         dst = {"CUT": "CUT2" if trio else "CUT", "CUTOFF 2": "CUT2", "RES": "FRES2" if trio else "FRES", "FILTER RES": "FRES2" if trio else "FRES"}[d]
         for sr, amt in zip(srcs, nums):
+            if dst == "FRES":                           # (audit P07: the amount whose end has the same damping on today's law)
+                amt = ct.fres_exp(lin_res, ct.to_exp(lin_res), amt, sr in ct.BIPOLAR_SRC or sr in ("LFO1", "LFO2"))
             want_routes.append((sr, dst, amt))
     got = routes_of(p)
     for sr, dst, amt in want_routes:
@@ -144,10 +147,10 @@ ok(nrows == 43 and not bad, "all 43 rows of the table are reproduced (%d roundin
 # ------------------------------------------------------------------------------------------ 2. the numbers
 ok([ct.dial(c) for c in (99, 60, 32, 95, 70, 127, 0, 117)] == [64, 39, 21, 61, 45, 82, 0, 76], "the cutoff dial: round((256 CUT - 40) / 396), 0..82")
 ok([ct.depth(d) for d in (10, 22, 7, 63, -10, 0, 8, -64)] == [6, 14, 5, 41, -6, 0, 5, -41], "depths x 256 / 396, rounded away from zero")
-ok(ct.res_new(0) == 40 and ct.res_new(127) == 127 and ct.res_new(60) == round((2399 * 127 + 5200 * 60) / 7600), "filter 1's RES: RES 0 becomes 40, 127 stays 127 (the same damping under the softer floor)")
-dmp = lambda r: 8192 - r * 7600 // 127
+ok(ct.res_new(0) == 17 and ct.res_new(127) == 127 and ct.res_new(60) == 43, "filter 1's RES: RES 0 becomes 17 (40 under the linear law of before, audit P07), 127 stays 127 (the same damping under the softer floor)")
 old_k = lambda r: 5793 - r * 5200 // 127
-ok(all(abs(dmp(ct.res_new(r)) - old_k(r)) <= 60 for r in range(128)), "  .. the damping of r' under 8192 - r' x 7600 / 127 is the old 5793 - r x 5200 / 127 within 60 / 4096 for every RES")
+ok(all(abs(ct.uf_k(ct.res_new(r)) / old_k(r) - 1) < 0.04 for r in range(128)), "  .. the damping of r' under today's law (voice.c UF_K, 8192 x 2^-(r' x 3.79 / 127)) is the old 5793 - r x 5200 / 127 within 4 % for every RES")
+ok([ct.uf_k(r) for r in (0, 64, 127)] == [8192, 2179, 592], "  .. uf_k is voice.c's UF_K (8192, 2179, 592 at RES 0, 64, 127)")
 ok(all(ct.res_new(r) <= ct.res_new(r + 1) for r in range(127)), "  .. and RES' rises with RES")
 lv = [ctx.sub_level(s) for s in range(0, 128)]
 ok(lv[0] == 0 and all(lv[i] <= lv[i + 1] for i in range(127)) and all(abs(ctx.sub_gain(lv[s]) - 200 * s) <= max(400, 200 * s // 20) for s in range(1, 128)),
@@ -157,24 +160,9 @@ ok(lv[0] == 0 and all(lv[i] <= lv[i + 1] for i in range(127)) and all(abs(ctx.su
 cur = (TOOLS / "duell_sounds.py").read_bytes()
 # 0.2.31: the factory sounds were refined by hand after the conversion (the patch pass of 2026-10-21; PATCH_REVIEW.md), so the file is no longer the tool's output: reported, not compared
 print("convert_twin: tools/duell_sounds.py is %s the tool's output (refined by hand since 0.2.31: not a check)" % ("still" if cur == sl_text else "no longer"))
-same, changed = 0, 0
-for f in sorted(FIX.glob("M*.bin")):
-    old = f.read_bytes()
-    now = (TOOLS / "factory_multis" / f.name).read_bytes()
-    new = ct.convert_multi(ctx, old, [], f.stem)
-    if new is None:
-        same += 1
-        if now != old:
-            ok(False, "%s: the tool leaves it alone but the committed record differs" % f.name)
-    else:
-        changed += 1
-        if now != new and f.name != "M15.bin":      # (0.2.31: M15 is the owner's own record now, tools/owner_multis.py)
-            ok(False, "%s: the committed record is not what the tool makes of the old one" % f.name)
-ok(same + changed == 16 and changed >= 12, "the 16 committed multi records: %d converted exactly as the tool does, %d untouched" % (changed, same))
-diffs = {}
-for f in sorted(FIX.glob("M*.bin")):
-    o, n = f.read_bytes(), (TOOLS / "factory_multis" / f.name).read_bytes()
-    ok(len(o) == len(n) and o[:20] == n[:20], "%s: same length, same header" % f.name) if o != n else None
+# DUELL 1.1 rebuilt the factory multis (MU_VER 8, other values), and the tool reads today's tables, so the committed records no longer descend from the job's output either: reported, not compared
+same = sum(ct.convert_multi(ctx, f.read_bytes(), [], f.stem) is None for f in sorted(FIX.glob("M*.bin")))
+print("convert_twin: the 16 old multi records: the tool converts %d, leaves %d alone (tools/factory_multis/ is 1.1's MU_VER 8 rebuild: not a check)" % (16 - same, same))
 
 # ------------------------------------------------------------------------------------------ 4. the guards
 try:
@@ -194,11 +182,13 @@ led = tmp / "ledger.json"
 ct.LEDGER = led
 rec = tmp / "M05.bin"
 shutil.copy(FIX / "M05.bin", rec)
-subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--out", str(tmp / "out1"), str(rec)], capture_output=True, text=True)
 real_led = TOOLS / "convert_twin_done.json"
 ok(real_led.exists() and json.loads(real_led.read_text())["outputs"], "the ledger tools/convert_twin_done.json lists the records the tool wrote (%d)" % len(json.loads(real_led.read_text())["outputs"]))
-r2 = subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--check", str(TOOLS / "factory_multis" / "M05.bin")], capture_output=True, text=True)
-ok("already converted (ledger)" in r2.stdout and r2.returncode == 0, "  .. M05.bin as committed is skipped by its ledger entry (--check exit %d)" % r2.returncode)
+shutil.copy(real_led, led)                          # (the tool runs on a scratch copy of the ledger: a run here must not rewrite the committed one)
+env = dict(os.environ, CONVERT_TWIN_LEDGER=str(led))
+subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--out", str(tmp / "out1"), str(rec)], capture_output=True, text=True, env=env)
+r2 = subprocess.run([sys.executable, str(TOOLS / "convert_twin.py"), "--check", str(tmp / "out1" / "M05.bin")], capture_output=True, text=True, env=env)
+ok("already converted (ledger)" in r2.stdout and r2.returncode == 0, "  .. the M05.bin it wrote is skipped by its ledger entry (--check exit %d)" % r2.returncode)
 
 # ------------------------------------------------------------------------------------------ 5. patch records
 ieo = ct.ieo
@@ -264,8 +254,8 @@ rep = []
 b = make_record("ANALOG", {ids["P_E2FLT"]: 22, ids["P_M1SRC"]: 7, ids["P_M1DST"]: 2, ids["P_M1AMT"]: 16, ids["P_FREED"]: 1, ids["P_FREEA"]: 82, ids["P_KTRK"]: 32})
 nb = ct.convert_patch(ctx, b, rep, "ANALOG default")
 v, x = decode(nb)
-ok(nb and v.get(ctx.FA) == 58 and v.get(ctx.FB) == 30 and v.get(ctx.KT) == 13 and v.get(ctx.E2) == 14 and v.get(ids["P_M1AMT"]) == 10 and E0 + 4 not in v and E0 + 5 not in v and E0 + 7 not in v,
-   "an ANALOG record at its defaults (ENV 2 22, AT > CUT 16): filter 1 CUT 58 RES 30 KEY TRK 13, ENV 2 14, AT > CUT 10, the three freed slots out of the record")
+ok(nb and v.get(ctx.FA) == 58 and v.get(ctx.FB) == 12 and v.get(ctx.KT) == 13 and v.get(ctx.E2) == 14 and v.get(ids["P_M1AMT"]) == 10 and E0 + 4 not in v and E0 + 5 not in v and E0 + 7 not in v,
+   "an ANALOG record at its defaults (ENV 2 22, AT > CUT 16): filter 1 CUT 58 RES 12 (30 on the linear law of before, audit P07) KEY TRK 13, ENV 2 14, AT > CUT 10, the three freed slots out of the record")
 # TRIO: MODE BP CUT 66 RES 85, ENV 2 FLT 13, AMP FLT 8 -> filter 2
 b = make_record("TRIO", {E0 + 4: 1, E0 + 5: 66, E0 + 6: 85, ids["P_E2FLT"]: 13, ids["P_ED_FLT"]: 8, ids["P_FREED"]: 1, ids["P_FREEA"]: 82, ids["P_KTRK"]: 32})
 nb = ct.convert_patch(ctx, b, rep, "TRIO")
@@ -277,7 +267,7 @@ ok(nb and v.get(ctx.TY) == 2 and v.get(ctx.C2) == 43 and v.get(ctx.R2) == 85 and
 b = make_record("NOISE", {E0 + 2: 52, E0 + 3: 28, E0 + 4: 127, ids["P_FREED"]: 1, ids["P_FREEA"]: 82, ids["P_KTRK"]: 32})
 nb = ct.convert_patch(ctx, b, rep, "NOISE")
 v, x = decode(nb)
-ok(nb and v.get(ctx.FC) == 14 and v.get(ctx.FA) == 34 and v.get(ctx.FB) == 29 and v.get(ctx.KT) == 63, "a NOISE record (FREQ 52, RES 28, TRK 127): filter 1 MODE 14 CUT 34 RES 29 KEY TRK 63")
+ok(nb and v.get(ctx.FC) == 14 and v.get(ctx.FA) == 34 and v.get(ctx.FB) == 11 and v.get(ctx.KT) == 63, "a NOISE record (FREQ 52, RES 28, TRK 127): filter 1 MODE 14 CUT 34 RES 11 (29 on the linear law, audit P07) KEY TRK 63")
 # WAVE: SUB 64 -> SUB LEVEL
 b = make_record("WAVE", {E0 + 4: 64})
 nb = ct.convert_patch(ctx, b, rep, "WAVE")
@@ -288,7 +278,7 @@ b = make_record("PHASE", {E0 + 6: 40, ids["P_FREED"]: 1, ids["P_FREEA"]: 82, ids
 ok(ct.convert_patch(ctx, b, rep, "PHASE") is None, "a PHASE record with SUB 40 and a filter 1 that cannot run: nothing to convert (its SUB slot stays as stored)")
 b = make_record("PHASE", {E0 + 6: 40, ids["P_FREED"]: 1, ids["P_FREEA"]: 82, ids["P_KTRK"]: 32})
 v, _ = decode(ct.convert_patch(ctx, b, rep, "PHASE KEY TRK"))
-ok(v.get(ctx.FB) == 40 and v.get(E0 + 6) == 40, "a PHASE record whose filter 1 runs by KEY TRK 32: RES 0 becomes 40, the stored SUB 40 stays")
+ok(v.get(ctx.FB) == 17 and v.get(E0 + 6) == 40, "a PHASE record whose filter 1 runs by KEY TRK 32: RES 0 becomes 17 (40 on the linear law of before, audit P07), the stored SUB 40 stays")
 # another engine, filter 1 in use: RES step; 24 dB: not touched
 b = make_record("FM6", {ids["P_FREEA"]: 40, ids["P_FREEB"]: 30, ids["P_FREED"]: 1})
 v, _ = decode(ct.convert_patch(ctx, b, rep, "FM6 12 dB"))
@@ -324,7 +314,7 @@ rpt = []
 out = ct.convert_json(ctx, tmp / "m.duell-multis.json", rpt, False)
 j = json.loads(out)
 nrec = base64.b64decode(j["multis"][0]["data"])
-ok(nrec == (TOOLS / "factory_multis" / "M08.bin").read_bytes() and j["multis"][0]["crc"] == zlib.crc32(nrec) and j["multis"][0]["size"] == len(nrec), "an editor export of M08: the converted record is the committed one, size and crc updated")
+ok(nrec == ct.convert_multi(ctx, mrec, [], "M08") and j["multis"][0]["crc"] == zlib.crc32(nrec) and j["multis"][0]["size"] == len(nrec), "an editor export of M08: the converted record is the tool's own, size and crc updated")
 
 # ------------------------------------------------------------------------------------------ 6. the cases kept out
 rep = []

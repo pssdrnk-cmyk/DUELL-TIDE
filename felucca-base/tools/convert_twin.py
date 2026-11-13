@@ -21,7 +21,7 @@ THE RULES (a value the table does not name stays; AMOUNTs, PATCH LEVELs, End B s
   TRIO               its filter -> filter 2: TYPE = MODE (LP BP HP NOTCH), LINK OFF, CUTOFF 2 by the dial formula, RES 2 = RES, the ENV 2 / LFO 1 / LFO 2 depths -> filter 2's own amounts, AMP FLT -> a
                      matrix route AENV to CUTOFF 2, a CUT route -> CUTOFF 2, a route to its RES slot -> RES 2; filter 1 keeps what it had, its depths 0, its KEY TRK 0 while it is open; E5 E6 E7 unused
   filter 1 RES       r' = round((2399 x 127 + 5200 r) / 7600) on every other filter 1 whose SLOPE is 12 dB and which can run (a RES above 0, a CUT below the open end, a MODE above LP, or a KEY TRK that
-                     closes the notes below C3): RES 0 becomes 40, the same damping. A FILTER RES route x 5200 / 7600. A 24 dB filter 1 is not touched (uf_run's 24 dB path did not change)
+                     closes the notes below C3): RES 0 becomes 40, the same damping. A FILTER RES route x 5200 / 7600. Audit P07: then every filter 1 RES (also ANALOG's and NOISE's, below) moves to the step of today's exponential law with that damping (to_exp: RES 40 -> 17), and each FILTER RES route to the amount whose end has the same damping (fres_exp). A 24 dB filter 1 is not touched (uf_run's 24 dB path did not change)
   WAVE               SUB (E5) -> SUB LEVEL: the level whose SUB_CURVE value is nearest 200 x SUB (both laws end in voice_amp's 24000 / 32768, so the curve of chain_sub.c against the old
                      amplitude 200 x SUB is the whole match); OCTAVE -1 and WAVE SINE are the defaults; the SUB slot unused. PHASE and WHEEL: the SUB slot stays as stored, unread (the owner retunes)
   LOFI               the label CHIP is BITS (sound lists only; the ids did not move)
@@ -40,6 +40,8 @@ import base64
 import hashlib
 import importlib.util
 import json
+import math
+import os
 import re
 import sys
 import zlib
@@ -48,7 +50,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
 SRC = ROOT / "firmware" / "src"
-LEDGER = TOOLS / "convert_twin_done.json"
+LEDGER = Path(os.environ.get("CONVERT_TWIN_LEDGER") or TOOLS / "convert_twin_done.json")   # (the test points it at a scratch copy)
 MARKER = "CONVERT_TWIN"
 
 
@@ -85,8 +87,45 @@ def depth(d):
     return clamp(rnd(d * 256, 396), -64, 63)
 
 
-def res_new(r):
+def uf_k(r):
+    """filter 1's damping (Q12) at RES r: voice.c UF_K, 8192 x 2^-(r x 3.79 / 127) (audit P07; fx.c exp2_neg, integer-exact)"""
+    x = r * 1956
+    u = 32768 - ((x & 0xFFFF) >> 1)
+    p = ((((((2579 * u) >> 15) + 7409) * u >> 15) + 22780) * u >> 15) + 32768
+    return (p >> ((x >> 16) + 1)) >> 2
+
+
+def to_exp(lin):
+    """audit P07: the RES step of today's exponential law with the damping step lin had under the linear law (8192 - lin x 7600 / 127), as
+    tools/duell_sounds.py's factory RES were moved; 0 stays 0"""
+    if lin <= 0:
+        return 0
+    k = 8192 - min(lin, 127) * 7600 // 127
+    return min(range(1, 128), key=lambda c: (abs(math.log(uf_k(c) / k)), c))
+
+
+def res_lin(r):
+    """the RES of filter 1 under the linear law with the damping of the old engine filter's RES r (the softer floor)"""
     return clamp(rnd(RES_ADD + 5200 * r, 7600), 0, 127)
+
+
+def res_new(r):
+    return to_exp(res_lin(r))
+
+
+def fres_off(a, bip):
+    """what a FILTER RES route of amount a adds at its source's full value, in RES steps (mod.c mod_begin: AMT 64 = the whole range, a bipolar source half
+    of it either way; ext.h MX_AMT)"""
+    a = a + ((a + 32) >> 6) if a > 0 else a
+    return (((32767 * a) >> (7 if bip else 6)) * 127) >> 15
+
+
+def fres_exp(lin, new, a, bip):
+    """audit P07: a FILTER RES route's amount (on the linear law, at base lin) whose end has the same damping on today's law (at base new)"""
+    if a == 0:
+        return 0
+    k = 8192 - clamp(lin + fres_off(a, bip), 0, 127) * 7600 // 127
+    return min(range(-64, 64), key=lambda c: (abs(math.log(uf_k(clamp(new + fres_off(c, bip), 0, 127)) / k)), abs(c)))
 
 
 # the old EDIT tables (labels, defaults) of the engines that changed; every other engine is read from the sources
@@ -234,6 +273,14 @@ def convert_part(ctx, part):
         else:
             part.notes.append("no free matrix slot for the route %s > %s %d" % (ctx.msrc[src], ctx.mdst[dst], amt))
 
+    def exp_fb():
+        """audit P07: filter 1's RES (and its FILTER RES routes), worked out on the linear law, to today's exponential law's steps"""
+        lin = v[ctx.FB]
+        v[ctx.FB] = to_exp(lin)
+        for r in part.routes:
+            if r[1] == md["FRES"]:
+                r[2] = fres_exp(lin, v[ctx.FB], r[2], not unipolar_src(ctx, part, r[0]))
+
     def map_routes(table, dropped, res_scale=None):
         out, org = [], []
         for n, (src, dst, amt) in enumerate(part.routes):
@@ -271,10 +318,11 @@ def convert_part(ctx, part):
             add_route(ctx.ms["AENV"], md["CUT2"], ed)
         part.notes.append("filter 1 was in use as well as the VCF: the VCF is filter 2 (LP), filter 1 is as it was")
         if not slope24:
-            v[ctx.FB] = res_new(v[ctx.FB])
+            v[ctx.FB] = res_lin(v[ctx.FB])
             for r in part.routes:
                 if r[1] == md["FRES"]:
                     r[2] = clamp(rnd(r[2] * 5200, 7600), -64, 63)
+            exp_fb()
     elif eng in ("ANALOG", "NOISE"):
         if f1_active:
             part.skip = "CONFLICT: filter 1 (CUT %d, MODE %d) was in use as well as the engine's filter; the owner decides" % (v[ctx.FA], v[ctx.FC])
@@ -283,10 +331,12 @@ def convert_part(ctx, part):
             cut, res, trk = v[E(4)], v[E(5)], rnd(v[E(7)] * 63, 299)
             v[ctx.FB], v[ctx.FC] = res, 0
             map_routes({md["CUT"]: md["CUT"], md["E5"]: md["CUT"], md["E6"]: md["FRES"]}, {md["E8"]})
+            exp_fb()
         else:
             cut, res, trk = v[E(2)], v[E(3)], rnd(v[E(4)] * 63, 127)
             v[ctx.FB], v[ctx.FC] = clamp(rnd(res * 7800, 7600), 0, 127), rnd(res * 64, 127)
             map_routes({md["CUT"]: md["CUT"], md["E3"]: md["CUT"], md["E4"]: md["FRES"]}, {md["E5"]}, (7800, 7600))
+            exp_fb()
         v[ctx.FA], v[ctx.FD], v[ctx.KT] = dial(cut), 1, trk
         for k in FREED[eng]:
             v[E(k)] = 0
@@ -310,10 +360,11 @@ def convert_part(ctx, part):
         # filter 1 as it was: the RES step (the same damping under the softer floor) and the FILTER RES routes
         if not slope24:
             if v[ctx.FB] != 0 or v[ctx.FA] < UF_STEPS or v[ctx.FC] > 0 or v[ctx.KT] != 0:   # (a filter that can run: its CUT or MODE, or KEY TRK closing the notes below C3)
-                v[ctx.FB] = res_new(v[ctx.FB])
+                v[ctx.FB] = res_lin(v[ctx.FB])
             for r in part.routes:
                 if r[1] == md["FRES"]:
                     r[2] = clamp(rnd(r[2] * 5200, 7600), -64, 63)
+            exp_fb()
         if eng == "WAVE":
             sub = v[E(4)]
             if sub > 0:

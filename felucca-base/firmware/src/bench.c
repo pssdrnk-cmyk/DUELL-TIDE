@@ -20,9 +20,9 @@
  *   SETTLE 700 ms (and until a WAVE table build is done): the engine fades, the mode's dip, the tables
  *   NOTES  the row's notes from an internal generator (USB-MIDI events into the MIDI-in ring, on the parts' own channels; LAYER: part 1's
  *          channel, both parts sound them), 500 ms for the attacks
- *   MEASURE 3 s: the audio interrupt's own time per half (audio.c fm1_alnk0_irq: TIMER4 across the half less TIMER5 nested in it, the same
- *          figure as the CPU bar, ABOUT and the TEST screen: cpu_sum / cpu_n / cpu_pk / cpu_miss), as a share of the half's time (CPU_BUDGET_US):
- *          the average, the peak, the halves missed (over the half's time or overtaken by the DMA); the voices sounding (the average); the
+ *   MEASURE 3 s: the audio interrupt's own time per half (audio.c fm1_alnk0_irq: the average is TIMER4 across the half less TIMER5 nested in it, the peak the ELAPSED time of the longest half (TIMER5 included: what the DMA
+ *          deadline sees), the same figures as ABOUT and the TEST screen: cpu_sum / cpu_n / cpu_el_pk / cpu_miss), as a share of the half's time (CPU_BUDGET_US):
+ *          the average, the peak, the DMA periods missed (K2: a half over 2 budgets counts 2); the voices sounding (the average); the
  *          voices the overload rule cut (audio.c shed_count) and the overload guard's LIGHT FX (fx.c ovl_lite): the audio path is the normal
  *          build's, nothing of it is held off for the bench. At its end the budget's numbers (part_notes_shown, part_notes_reason: what the
  *          budget gives this setting, also when it was held open) and, in RAMPLACE builds, the RAM code compared with its flash image (ramplace.c)
@@ -41,6 +41,8 @@
 #define BENCH_BSS
 #endif
 #include "bench_model.h"                               /* the host model's figure of every row, the dearest sounds (tests/bench_sim.c writes it) */
+#define BU_FN static BENCH_FN
+#include "bench_updl.c"                                /* `bench updl`: the way back from this build to the normal firmware (the update loader the normal firmware staged) */
 #ifndef BENCH_TAG
 #define BENCH_TAG "DEV"
 #endif
@@ -107,7 +109,7 @@ static const bench_scn_t BENCH_SCN[] BENCH_RO = {
     VX("WAVE 1", E_WAVE, 1, "voice/WAVE"), VX("WAVE 4", E_WAVE, 4, 0),
     /* the part stages, on one ANALOG voice */
     PT("INS SOFT CLIP", "insert/SOFT_CLIP", .ins = 1), PT("INS HARD CLIP", "insert/HARD_CLIP", .ins = 2), PT("INS FOLD", "insert/FOLD", .ins = 3),
-    PT("INS FUZZ", "insert/FUZZ", .ins = 4), PT("INS BIT CRUSHER", "insert/BIT_CRUSHER", .ins = 5), PT("INS PHASER", "insert/PHASER", .ins = 6),
+    PT("INS FUZZ", "insert/FUZZ", .ins = 4), PT("INS BIT CRUSH", "insert/BIT_CRUSHER", .ins = 5), PT("INS PHASER", "insert/PHASER", .ins = 6),
     PT("INS FLANGER", "insert/FLANGER", .ins = 7), PT("INS CHORUS", "insert/CHORUS", .ins = 8), PT("INS TAPE", "insert/TAPE", .ins = 9),
     PT("INS VINYL", "insert/VINYL", .ins = 10), PT("SAT 64", "part/SAT", .sat = 64),
     PT("EQ 1 BAND", 0, .eq = 1), PT("EQ 2 BANDS", 0, .eq = 2), PT("EQ 3 BANDS", "part/EQ", .eq = 3), PT("DUCK PUMP", "part/DUCK", .duck = 1),
@@ -205,7 +207,7 @@ static struct {
 static project_t bench_saved __attribute__((section(".pool.zbench")));
 static struct {                                        /* the audio side's words the rows set (the UI's own syncs do not run while the BENCH screen is up) */
     uint32_t cmp;
-    uint8_t wd, bm, mods, mode, xf, split;   /* (item 160: no BALANCE word: the parts' levels are in the project restored with the session) */
+    uint8_t wd, bm, mods, mode, xf, split, both;   /* (both: the part selection, 1.0.0-b7; item 160: no BALANCE word: the parts' levels are in the project restored with the session) */
     int8_t space;
 } bench_keep BENCH_BSS;
 
@@ -700,10 +702,14 @@ static BENCH_FN void bench_part(uint32_t p, const bench_scn_t *s)   /* a part fr
     else if (p == 0u && (s->flt == 12u || s->flt == 24u))
         t->p[P_FREEA] = 41, t->p[P_FREEB] = 40, t->p[P_FREEC] = 0, t->p[P_KTRK] = 0, t->p[P_FREED] = s->flt == 24u ? 2 : 1;
 }
-static BENCH_FN void bench_load_m16(void)              /* M16 STRESS TEST as a multi LOAD has it (multi.c project_load: slot 16 as stored, the factory one unless
-                                                        * the owner saved over it), then LAYER whatever MULTI LOAD says */
+#ifndef BENCH_LOAD_M16
+#define BENCH_LOAD_M16() project_load(21u)             /* (the host twin loads the STRESS TEST scene instead: U2 B, M16 is CELLAR TAPE) */
+#endif
+static BENCH_FN void bench_load_m16(void)              /* the "M16" rows: slot 16 as a multi LOAD has it (multi.c project_load: as stored, the factory one unless
+                                                        * the owner saved over it), then LAYER whatever MULTI LOAD says. Until U2 B that was the STRESS TEST; the rows
+                                                        * now measure the factory CELLAR TAPE, and the old record is tests/scenes/M16_STRESS_TEST.bin */
 {
-    project_load(15u);
+    BENCH_LOAD_M16();
 }
 static BENCH_FN void bench_set(const bench_scn_t *s)            /* the row's whole setting (main loop). The UI's per-frame syncs (ui_input.c:
                                                         * cmp_sync, ms_sync, mods_apply, mode_settings) are not running while the BENCH screen is up, so
@@ -732,6 +738,9 @@ static BENCH_FN void bench_set(const bench_scn_t *s)            /* the row's who
     wd_sel = (uint8_t)(s->width ? s->width : 100u);
     bm_sel = s->bm;
     duell_mode_req = s->mode;
+#if TIDE_PLAYSEL
+    song.both = s->mode == DM_LAYER;                    /* (1.0.0-b7: LAYER plays in ALGORITHM's middle only, both parts selected; seq.c MODE_WANT) */
+#endif
     ui.force = 1;
 }
 static BENCH_FN void bench_notes_on(const bench_scn_t *s)
@@ -764,11 +773,14 @@ static BENCH_FN void bench_notes_off(void)
 /* A console session runs the UI's frame (ui_input.c: mods_apply, cmp_sync, ms_sync, the sense settings are read every frame), so the audio side's words (mods_off, cmp_cfg, wd_sel,
  * bm_sel, sense_enable) cannot be written here: the settings they come from are. The session's own values are kept at its start and put back by `bench reset` and at its end. The
  * BYPASS switches (byp_m, byp_sh) are plain RAM flags (editor_bypass.c): they start every test at 0. */
-static struct { uint8_t mods, ks; int16_t cp1, ms0, bm; } bench_xk BENCH_BSS;
+static struct { uint8_t mods, ks, wash, mp1, mp2, route; int16_t cp1, ms0, bm; } bench_xk BENCH_BSS;   /* (mp1, mp2, route: GLO > MIDI as the owner has it: the console tests play on channels 1 and 2, see bench_midi_std) */
+static struct { uint8_t pending, time; uint32_t after_h; } bench_tg BENCH_BSS;   /* `tide glide on TIME AFTER_MS`: GLIDE starts that long after the run's start (the held notes have been heard a while: the wash has learnt its level) */
 static BENCH_FN void bench_extras_keep(void)
 {
     bench_xk.mods = (uint8_t)mods_get();
     bench_xk.cp1 = song.cp[1], bench_xk.ms0 = song.ms[0], bench_xk.bm = song.bm;
+    bench_xk.mp1 = ui_midi_p1, bench_xk.mp2 = ui_midi_p2, bench_xk.route = (uint8_t)song.g[G_ROUTE];
+    bench_xk.wash = morph_wlvl;
 #if DUELL_VELO
     bench_xk.ks = (uint8_t)(ui_idle & (KEYVEL_ON_BIT | AFTERT_OFF_BIT));
 #endif
@@ -779,11 +791,34 @@ static BENCH_FN void bench_extras_back(void)
     for (b = 0; b < 4u; b++)
         mods_put(1u << b, (uint32_t)(bench_xk.mods >> b) & 1u);
     song.cp[1] = bench_xk.cp1, song.ms[0] = bench_xk.ms0, song.bm = bench_xk.bm;
+    ui_midi_p1 = bench_xk.mp1, ui_midi_p2 = bench_xk.mp2, song.g[G_ROUTE] = bench_xk.route;   /* (the owner's MIDI channels and MIDI IN back) */
+    midi_ch_sync();
     byp_m[0] = byp_m[1] = 0;
     byp_sh = 0;
+    if (tide_drone_on) {                               /* (a built-in drone multi (M17, M18) had TIDE on STYLE DRONE: the rows it kept come back, as when another multi is loaded; a reset leaves no multi, and a drone multi loaded next
+                                                        * then plays DRONE again, not as the one before it left things: WASH 3 for M17 after M16, 0 after M18: the note cap, the repeat check) */
+        tide_rows_set(tide_drone_keep);
+        tide_style = tide_drone_keep[8];
+        tide_drone_on = 0;
+    }
+    morph_wlvl = bench_xk.wash;                        /* (TIDE: WASH as the session began; GLIDE stopped; the forced valley off, the stage timers cleared: `tide` words) */
+    glide_stop();
+    memset(mxf, 0, sizeof mxf);
+    memset(mxt, 0, sizeof mxt);
+    bench_tg.pending = 0;
 #if DUELL_VELO
     ui_idle = (uint8_t)((ui_idle & ~(KEYVEL_ON_BIT | AFTERT_OFF_BIT)) | bench_xk.ks);
 #endif
+}
+/* A console test plays its notes on channels 1 and 2 (`ev .. on 1 ..`, the suites: part 1, part 2) and the unit's MIDI IN listens only to the channels GLO > MIDI gives the parts (ROUT PARTS; in LAYER
+ * only part 1's): on a unit whose parts are on other channels (the owner's: 3 and 4) not one note of a test sounded, and every cost, stage timer and PHYS figure of the first measurement
+ * (2026-11-05) was the idle unit's. A session (`bench reset`) puts the parts on channels 1 and 2 and MIDI IN on PARTS; the owner's settings come back with bench_extras_back (a
+ * session's end, the next `bench reset` first). Nothing here reaches the flash: the settings' save is held while a session runs (bench_tl_tick) */
+static BENCH_FN void bench_midi_std(void)
+{
+    ui_midi_p1 = ui_midi_p2 = 0;                       /* (0 = the default: channel 1 for part 1, 2 for part 2) */
+    song.g[G_ROUTE] = 0;
+    midi_ch_sync();
 }
 /* ------------------------------------------------------------------ the run --- */
 static BENCH_FN void bench_keep_session(void)
@@ -793,6 +828,9 @@ static BENCH_FN void bench_keep_session(void)
     bench_keep.cmp = cmp_cfg;
     bench_keep.wd = wd_sel, bench_keep.bm = bm_sel, bench_keep.mods = mods_off;
     bench_keep.mode = duell_mode_req;
+#if TIDE_PLAYSEL
+    bench_keep.both = song.both;
+#endif
     bench_keep.xf = mix_xf, bench_keep.split = mix_split;
     bench_keep.space = perf_space;
     bench_extras_keep();
@@ -805,6 +843,9 @@ static BENCH_FN void bench_restore_session(void)
     cmp_cfg = bench_keep.cmp;
     wd_sel = bench_keep.wd, bm_sel = bench_keep.bm, mods_off = bench_keep.mods;
     duell_mode_req = bench_keep.mode;
+#if TIDE_PLAYSEL
+    song.both = bench_keep.both;
+#endif
     mix_xf = bench_keep.xf, mix_split = bench_keep.split;
     perf_space = bench_keep.space;
     bench_extras_back();
@@ -871,27 +912,21 @@ static BENCH_FN uint32_t bench_voices(void)
 }
 static BENCH_FN void bench_measure_begin(void)
 {
-    do {
-        bench.n0 = cpu_n;
-        bench.s0 = cpu_sum;
-    } while (bench.n0 != cpu_n);
-    bench.m0 = cpu_miss;
+    (void)cpu_win_take(CPU_W_BENCH);                    /* (K2: the bench's own peak window starts; the snapshot's counters are the window's start) */
+    bench.n0 = cpu_snap.n;
+    bench.s0 = cpu_snap.sum;
+    bench.m0 = cpu_snap.miss;
     bench.shed0 = shed_count;
-    cpu_pk = 0;
     bench.vsum = bench.vn = bench.lfn = 0;
 }
 static BENCH_FN void bench_measure_end(bench_res_t *r)
 {
-    uint32_t n, sum;
-    do {
-        n = cpu_n;
-        sum = cpu_sum;
-    } while (n != cpu_n);
-    n -= bench.n0;
-    sum -= bench.s0;
+    uint32_t n, sum, pk = cpu_win_take(CPU_W_BENCH);   /* (the elapsed peak: the figure ABOUT and TEST show) */
+    n = cpu_snap.n - bench.n0;
+    sum = cpu_snap.sum - bench.s0;
     r->avg = (uint16_t)(n ? bench_clamp((int32_t)((uint64_t)sum * 1000u / ((uint64_t)n * CPU_BUDGET_US)), 0, 9999) : 0);
-    r->pk = (uint16_t)bench_clamp((int32_t)((uint64_t)cpu_pk * 1000u / CPU_BUDGET_US), 0, 9999);
-    r->miss = (uint16_t)bench_clamp((int32_t)(cpu_miss - bench.m0), 0, 65535);
+    r->pk = (uint16_t)bench_clamp((int32_t)((uint64_t)pk * 1000u / CPU_BUDGET_US), 0, 9999);
+    r->miss = (uint16_t)bench_clamp((int32_t)(cpu_snap.miss - bench.m0), 0, 65535);
     r->shed = (uint16_t)bench_clamp((int32_t)(shed_count - bench.shed0), 0, 65535);
     r->vox = (uint16_t)(bench.vn ? bench.vsum * 10u / bench.vn : 0u);
     r->lfx = (uint8_t)(bench.vn ? bench.lfn * 100u / bench.vn : 0u);
@@ -1147,23 +1182,25 @@ static BENCH_FN void bench_draw(void)
     ui.force = 0;
     for (band = 0; band < 2u; band++) {
         int32_t y0 = (int32_t)band * 120;
-        cv_begin(240, 120, T_BG);
-        if (band == 0u) {
-            cv_text_on(4, 2, &AF_S, "BENCH " BENCH_TAG, T_THEME, T_BG);
-            bench_put(t, "PAGE ");
-            bench_num(t + 5, bench.page + 1);
-            bench_put(t + str_len(t), "/");
-            bench_num(t + str_len(t), (int32_t)bench_pages());
-            cv_text_r(236, 2, &AF_S, t, T_MID, T_BG);
-            cv_rect(0, 17, 240, 1, T_RAISE);
+        CV_BANDS(120) {
+            cv_begin(240, 120, T_BG);
+            if (band == 0u) {
+                cv_text_on(4, 2, &AF_S, "BENCH " BENCH_TAG, T_THEME, T_BG);
+                bench_put(t, "PAGE ");
+                bench_num(t + 5, bench.page + 1);
+                bench_put(t + str_len(t), "/");
+                bench_num(t + str_len(t), (int32_t)bench_pages());
+                cv_text_r(236, 2, &AF_S, t, T_MID, T_BG);
+                cv_rect(0, 17, 240, 1, T_RAISE);
+            }
+            if (bench.page == 0u)
+                bench_draw_state(y0);
+            else
+                bench_draw_table(bench.page, y0);
+            if (band == 1u)
+                cv_text_on(4, 224 - y0, &AF_S, bench.on ? "K1 PAGE   OCT - STOP" : "K1 PAGE   K4/OCT + START   OCT - BACK", T_DIM, T_BG);
+            cv_blit(0, (uint32_t)y0);
         }
-        if (bench.page == 0u)
-            bench_draw_state(y0);
-        else
-            bench_draw_table(bench.page, y0);
-        if (band == 1u)
-            cv_text_on(4, 224 - y0, &AF_S, bench.on ? "K1 PAGE   OCT - STOP" : "K1 PAGE   K4/OCT + START   OCT - BACK", T_DIM, T_BG);
-        cv_blit(0, (uint32_t)y0);
     }
 }
 
@@ -1295,9 +1332,11 @@ static BENCH_FN uint32_t bench_ms_to_h(uint32_t ms) { return (ms * 441u * 2u + 1
 static BENCH_FN void bench_reset_phases(void)
 {
     uint32_t p, i;
+    dly_lfo_s = 0;                                     /* fx.c: the delay colour's LFO (CLFO) phase */
     rng_state = 0x1234567u;                            /* libc.c: the shared generator (events, the arp, note-on seeds, part 1's voice stage) */
     mod_seed = 0x2545F491u;                            /* mod.c: RAND of a note-on */
     bench_mono_seed = 0x1234567u;                      /* voice.c mono_play: the random start phases of a UNISON note */
+    fm6_oks_seed = 0x2545F491u;                        /* fm6_core.c fm6_note_init: the free-running start phases of an OKS OFF patch */
     for (p = 0; p < NLIVE; p++) {
         track_t *t = &trk[p];
         memset(&t->lfo1, 0, sizeof t->lfo1);           /* LFO 1 and LFO 2: phase, value, fade, S&H, previous */
@@ -1355,7 +1394,7 @@ static BENCH_FN void bench_reset_phases(void)
                                                        * M08 after it did not repeat (benchsim); found by clearing the fx fields one at a time, join0233 */
     dlyev_clear();                                     /* the delay's RANDOM / OCT UP voices and generator */
     for (p = 0; p < NLIVE; p++)
-        memset(eqs[p].s, 0, sizeof eqs[p].s);
+        memset(&eqs[p], 0, sizeof eqs[p]);             /* the EQ whole, not only its states: a band left 'running' made the next test's first design glide from the test before's coefficients (R15, benchsim) */
     lim_env = lim_env_r = LIM_T;                       /* the master: limiters, SPACE's width, BASS MONO, the compressor, WIDTH, the DC blockers, PERFORM's lines */
     sw_a = 4096, sw_b = 0, sw_em = sw_es = 0, sw_g = 4096;
     memset(&bm, 0, sizeof bm);
@@ -1403,9 +1442,11 @@ static BENCH_FN void bench_half(void)
     } else
         btl.h++;
     h = btl.h;
+    if (btl.win && cpu_el_last > btl.pk1)              /* (K2: the window's longest elapsed half is kept here from the last half's own time: the peaks belong to the snapshot's owner, which clears them; read inside the interrupt, so no window of its own) */
+        btl.pk1 = cpu_el_last;
     if (h == btl.m0) {                                  /* the CPU window opens: the meter's counters as they are at the start of this half */
         btl.n0 = cpu_n, btl.s0 = cpu_sum, btl.c0 = cpu_miss, btl.d0 = shed_count;
-        cpu_pk = 0;
+        btl.pk1 = 0;
         btl.vsum = btl.vn = btl.lfn = 0;
         btl.win = 1;
     }
@@ -1454,7 +1495,7 @@ static BENCH_FN void bench_half(void)
         btl.lfn += ovl_lite != 0u;
     }
     if (btl.win && (h >= btl.m1 || h >= btl.dur)) {      /* the window closes: the counters as they are at the start of this half */
-        btl.n1 = cpu_n, btl.s1 = cpu_sum, btl.c1 = cpu_miss, btl.d1 = shed_count, btl.pk1 = cpu_pk;
+        btl.n1 = cpu_n, btl.s1 = cpu_sum, btl.c1 = cpu_miss, btl.d1 = shed_count;
         btl.win = 0;
     }
     if (h >= btl.dur) {
@@ -1645,6 +1686,11 @@ static BENCH_FN void bench_tl_tick(void)  /* every ui_input pass (bench_main_tic
 {
     if (!btl.sess)
         return;
+    if (bench_tg.pending && btl.state == TS_RUN && btl.h >= bench_tg.after_h) {
+        bench_tg.pending = 0;
+        gl.mode = GM_ONCE, gl.target = GT_SOUND, gl.wait = 0, gl.time = bench_tg.time;
+        glide_launch(1u, 3u, 0u);
+    }
     kb_boot_hold = 1;                                  /* (as a row: the keys silent, the screen awake, nothing reaches the flash) */
     scrn.idle = fm1_ms;
     ui.mset_dirty = 0;
@@ -1685,16 +1731,21 @@ static BENCH_FN int bench_tok(const char **pp, char *out, uint32_t max)   /* the
 }
 static BENCH_FN int bench_int(const char *s, int32_t *v)               /* a decimal number, signed */
 {
-    int32_t x = 0, neg = 0;
+    uint32_t x = 0, lim = 0x7FFFFFFFu;                                  /* (checked: a token out of the int32 range is no number) */
+    int32_t neg = 0;
     if (*s == '-')
-        neg = 1, s++;
+        neg = 1, lim++, s++;
     if (*s < '0' || *s > '9')
         return 0;
-    for (; *s >= '0' && *s <= '9'; s++)
-        x = x * 10 + (*s - '0');
+    for (; *s >= '0' && *s <= '9'; s++) {
+        uint32_t d = (uint32_t)(*s - '0');
+        if (x > (lim - d) / 10u)
+            return 0;
+        x = x * 10u + d;
+    }
     if (*s)
         return 0;
-    *v = neg ? -x : x;
+    *v = neg ? (int32_t)(0u - x) : (int32_t)x;
     return 1;
 }
 static BENCH_FN int bench_arg(const char **pp, int32_t *v)             /* the next word as a number */
@@ -2043,13 +2094,171 @@ static BENCH_FN void bench_con_cal(const char *w, const char *p)   /* mods, bypa
 #endif
     }
 }
+/* tide wash 0..3 | glide on [TIME 0..6 [AFTER_MS]] | glide off | force PART VALLEY MOTION | force off | reset | state     (TIDE's audio DSP: tools/tide_measure.py, tools/bench_suites/TIDE-DSP.txt)
+ *   wash        TIDE LIST's WASH (0 OFF, 1 LOW, 2 MID, 3 HIGH): the session's value is put back by `bench reset` and `bench end`
+ *   glide on    GLIDE once from End A to End B on both parts, the sound lane (TIME: 0 = 1 bar .. 6 = 64 bars; the transport starts with it); with AFTER_MS it starts that long after the
+ *               next run's start, from the main loop; glide off stops it
+ *   force       holds part PART's valley depth (VALLEY %) and GLIDE's movement (MOTION %) at those values, whatever the plan says, and lets the wash learn a high level at rest so it
+ *               makes its noise (the stages' cost at a fixed load: a real crossing needs two sounds that differ in the right values); `force off` ends it
+ *   reset       the stage timers cleared (the run's start does it through `bench reset`)
+ *   state       BENCH,TIDE,... one line, then BENCH,TIDEP,... a line a part: calls, calls that did the work, the work's ticks (sum, longest) of the valley (with the wash in it), the wash and FM6's bridge
+ *               block (fm6_xblock), and the plan (need, valley depth, movement, place) */
+static BENCH_FN void bench_con_tide(const char *p)
+{
+    char x[16], b[320], *d;
+    int32_t n = 0, v = 0, m = 0;
+    uint32_t i;
+    if (!bench_tok(&p, x, sizeof x)) {
+        bench_err("usage: tide wash 0..3 | glide on [0..6] | glide off | force PART VALLEY% MOTION% | force off | reset | state");
+        return;
+    }
+    if (bench_ieq(x, "wash")) {
+        if (!bench_arg(&p, &n) || n < 0 || n > 3) {
+            bench_err("usage: tide wash 0..3");
+            return;
+        }
+        morph_wlvl = (uint8_t)n;
+        bench_say("OK tide wash", 0, 0);
+    } else if (bench_ieq(x, "glide")) {
+        char y[8];
+        if (!bench_tok(&p, y, sizeof y) || !(bench_ieq(y, "on") || bench_ieq(y, "off"))) {
+            bench_err("usage: tide glide on [0..6] | off");
+            return;
+        }
+        if (bench_ieq(y, "off")) {
+            glide_stop();
+            bench_tg.pending = 0;
+            bench_say("OK tide glide off", 0, 0);
+            return;
+        }
+        n = 0;
+        if (bench_arg(&p, &n) && (n < 0 || n > 6)) {
+            bench_err("tide glide on: TIME 0..6 [AFTER_MS]");
+            return;
+        }
+        if (bench_arg(&p, &m) && m > 0) {              /* (AFTER_MS: from the next run's start) */
+            bench_tg.pending = 1, bench_tg.time = (uint8_t)n, bench_tg.after_h = bench_ms_to_h((uint32_t)m);
+            bench_say("OK tide glide armed", 0, 0);
+            return;
+        }
+        gl.mode = GM_ONCE, gl.target = GT_SOUND, gl.wait = 0, gl.time = (uint8_t)n;
+        glide_launch(1u, 3u, 0u);
+        bench_say("OK tide glide on", 0, 0);
+    } else if (bench_ieq(x, "force")) {
+        char y[8];
+        if (bench_tok(&p, y, sizeof y) && bench_ieq(y, "off")) {
+            memset(mxf, 0, sizeof mxf);
+            bench_say("OK tide force off", 0, 0);
+            return;
+        }
+        if (!bench_int(y, &n) || !bench_arg(&p, &v) || !bench_arg(&p, &m) || n < 1 || n > 2 || v < 0 || v > 100 || m < 0 || m > 100) {
+            bench_err("usage: tide force PART VALLEY% MOTION% | force off");
+            return;
+        }
+        i = (uint32_t)n - 1u;
+        mxf[i].d = (uint16_t)(v * 32767 / 100), mxf[i].motion = (uint16_t)(m * 32767 / 100), mxf[i].on = 1;
+        mxv[i].wref = (int64_t)1 << 40;                /* (a high level at rest: the wash has something to fill, so its whole path runs) */
+        bench_say("OK tide force", 0, 0);
+    } else if (bench_ieq(x, "reset")) {
+        memset(mxt, 0, sizeof mxt);
+        bench_say("OK tide reset", 0, 0);
+    } else if (bench_ieq(x, "state")) {
+        d = bench_put(b, "BENCH,TIDE,ticks_per_us ");
+        d = bench_num(d, 24);
+        d = bench_put(d, ",wash ");
+        d = bench_num(d, morph_wlvl & 3u);
+        d = bench_put(d, ",glide ");
+        d = bench_num(d, gl.on);
+        d = bench_put(d, ",two ");
+        d = bench_num(d, bd_two_now());
+        bench_put(d, "\r\n");
+        BENCH_REPLY(b);
+        for (i = 0; i < NSHOWN; i++) {
+            const mxt_stage_t *s[3] = {&mxt[i].valley, &mxt[i].wash, &mxt[i].fm6};
+            uint32_t k;
+            d = bench_put(b, "BENCH,TIDEP,");
+            d = bench_num(d, (int32_t)i + 1);
+            for (k = 0; k < 3u; k++) {
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->n);
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->act);
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->sum);
+                d = bench_put(d, ",");
+                d = bench_num(d, (int32_t)s[k]->max);
+            }
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].need);
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].d);
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].motion);
+            d = bench_put(d, ",");
+            d = bench_num(d, mxs[i].tp);
+            bench_put(d, "\r\n");
+            BENCH_REPLY(b);
+        }
+        bench_say("OK tide state", 0, 0);
+    } else
+        bench_err("tide: wash glide force reset state");
+}
+/* updl CRC16 yes     the way back (bench_updl.c): the update loader the normal firmware staged at 0xE0000 (the bench build has no updater of its own, and never erases it) is checked against CRC16, the data
+ *                    CRC of the package's loader (tools/tide_measure.py sends it; the unit needs the loader of the package that was just installed), the same UPDATA_PARM record ota.c writes goes
+ *                    to the flash (when its place is blank) and the RAM, and the core resets into the loader: fm1_install.py then finishes the install of the normal package ("in update mode: the write
+ *                    will be finished"). Refused (ERR, nothing changed) when the loader is not whole. This is the ONLY word that leaves the bench build, and unlike `uboot yes` (the chip's mask ROM,
+ *                    which only fm1_unbrick.py, an Administrator PowerShell and the unit's USB disk can talk to) it ends in the update loader */
+#if FELUCCA_FLASH && FELUCCA_CDC && !defined(BENCH_HOST)
+static BENCH_FN int bench_updl_read(uint32_t off, void *p, uint32_t n) { return st_read(off, p, n); }
+static BENCH_FN void bench_con_updl(const char *p)
+{
+    int32_t crc = 0;
+    char y[8];
+    uint8_t parm[BU_PARM_LEN], back[BU_PARM_LEN];
+    uint32_t i, blank = 1;
+    int rc;
+    if (!bench_arg(&p, &crc) || crc < 0 || crc > 0xFFFF || !bench_tok(&p, y, sizeof y) || !bench_ieq(y, "yes")) {
+        bench_err("usage: updl CRC16 yes   (decimal: the data CRC16 of the package's update loader; this leaves the bench build for the update loader)");
+        return;
+    }
+    rc = bu_check(bench_updl_read, (uint32_t)crc);
+    if (rc) {
+        bench_err(rc == BU_E_READ ? "updl: the flash did not read; nothing changed" : rc == BU_E_HEAD ? "updl: no LOADER.BIN head at 0xE0000 (the loader is not staged); nothing changed" :
+                  rc == BU_E_LEN ? "updl: the staged loader's length is wrong; nothing changed" : rc == BU_E_CRC ? "updl: the staged loader is not the package's (CRC16 differs); nothing changed" :
+                  "updl: the staged loader is not Felucca's own; nothing changed");
+        return;
+    }
+    bu_parm(parm);
+    bench_say("OK updl the loader is whole, entering it (USB goes away; the install finishes the write)", 0, 0);
+    fm1_delay_ms(300);                                 /* (the reply leaves) */
+#if DUELL_TWOCORE
+    tc_hold_clean();                                   /* (core 1 held before an update, as main.c does) */
+#endif
+    if (!bench_updl_read(BU_RES, back, BU_PARM_LEN))   /* the flash copy of the record (the loader resumes from it after a power loss), as ota_session writes it: only into a blank place */
+        for (i = 0; i < BU_PARM_LEN; i++)
+            blank &= back[i] == 0xFFu;
+    else
+        blank = 0;
+    if (blank) {
+        audio_silence();
+        if (!fl_write(BU_RES, parm, BU_PARM_LEN) && !bench_updl_read(BU_RES, back, BU_PARM_LEN))
+            for (i = 0; i < BU_PARM_LEN; i++)
+                if (back[i] != parm[i])
+                    blank = 0;                         /* (a record that did not verify has a bad CRC: the SPL ignores it, the RAM record starts the loader) */
+    }
+    bootguard.pending = 0;                             /* intentional reset */
+    usb_detach();
+    fm1_delay_ms(30);
+    fm1_enter_update(parm);                            /* the record into RAM, core reset (never returns) */
+}
+#endif
 static BENCH_FN void bench_con(const char *p)
 {
     char w[16], x[24];
     int32_t n = 0, m = 0;
     btl.last_cmd = fm1_ms;
     if (!bench_tok(&p, w, sizeof w)) {
-        bench_say("ERR", "bench info reset end load mode set sound mods bypass master morph keysense scene budget ev measure run stop save-test slack calm pause lrun vrun vwin floor tcm", 0);
+        bench_say("ERR", "bench info reset end load mode set sound mods bypass master morph keysense tide scene budget ev measure run stop save-test slack calm pause lrun vrun vwin floor tcm updl", 0);
         return;
     }
     if (bench_ieq(w, "info") || bench_ieq(w, "state")) {
@@ -2081,6 +2290,14 @@ static BENCH_FN void bench_con(const char *p)
         bench_err("a BENCH run is going (OCT - stops it)");
         return;
     }
+    if (bench_ieq(w, "updl")) {
+#if FELUCCA_FLASH && FELUCCA_CDC && !defined(BENCH_HOST)
+        bench_con_updl(p);
+#else
+        bench_err("this build has no way into the update loader");
+#endif
+        return;
+    }
     if (bench_ieq(w, "reset")) {
         bench_tl_on = 0;
         btl.state = TS_IDLE;
@@ -2095,6 +2312,7 @@ static BENCH_FN void bench_con(const char *p)
         bench_set(&BENCH_SCN[0]);
         bench_bopen = 0;                               /* (the NOTES budget as the owner plays it; `scene` and `budget` hold it open) */
         bench_extras_back();                           /* (item 105: MODULES, COMP, WIDTH, BASS MONO, KEY SENSE as the session began, the BYPASS switches off) */
+        bench_midi_std();                              /* (.. and the parts on MIDI channels 1 and 2, MIDI IN on PARTS: what the tests play on) */
 #if BENCH_TM
         for (n = 0; n < 8; n++)                        /* (the margin settings back to the build's: slack, calm, late run, very late run, window K and ms, floor, core 1 on) */
             bench_tm_set((uint32_t)n, 0xFFFFFFFFu);
@@ -2218,7 +2436,7 @@ static BENCH_FN void bench_con(const char *p)
             return;
         }
         if (bench_ieq(w, "multi")) {
-            if (!bench_arg(&p, &n) || n < 1 || n > (int32_t)MU_SLOTS || !project_used((uint32_t)n - 1u)) {
+            if (!bench_arg(&p, &n) || n < 1 || n > (int32_t)MU_SHOWN || !project_used((uint32_t)n - 1u)) {
                 bench_err("no such multi");
                 return;
             }
@@ -2246,6 +2464,9 @@ static BENCH_FN void bench_con(const char *p)
             for (i = 0; i < 3u; i++)
                 if (bench_ieq(MN[i], x)) {
                     duell_mode_req = (uint8_t)i;       /* (DM_SPLIT 0, DM_STEREO 1, DM_LAYER 2: the order of the log's MN) */
+#if TIDE_PLAYSEL
+                    song.both = i == DM_LAYER;         /* (1.0.0-b7: LAYER plays with both parts selected, seq.c MODE_WANT) */
+#endif
                     bench_say("OK mode", MN[i], 0);
                     return;
                 }
@@ -2258,6 +2479,10 @@ static BENCH_FN void bench_con(const char *p)
     }
     if (bench_ieq(w, "mods") || bench_ieq(w, "bypass") || bench_ieq(w, "master") || bench_ieq(w, "morph") || bench_ieq(w, "keysense")) {
         bench_con_cal(w, p);
+        return;
+    }
+    if (bench_ieq(w, "tide")) {
+        bench_con_tide(p);
         return;
     }
     if (bench_ieq(w, "set")) {

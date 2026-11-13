@@ -44,7 +44,7 @@ static const uint8_t WRAM[11][16] = {
 static const char *const N_DCY[] = {"CONST", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10",
                                     "D11", "D12", "D13", "D14", "D15", "L1", "L2", "L3", "L4", "L5", "L6", "L7",
                                     "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15", 0};
-static const param_desc_t LOFI_DCY = {"DCY", F_INT, 0, 127, 0, N_DCY, 0};        /* = edit[3] but the names */
+static const param_desc_t LOFI_DCY = {"DCY", F_INT, 0, 0, 127, 0, N_DCY};        /* = edit[3] but the names */
 
 static const param_desc_t *lofi_desc(const track_t *t, uint32_t k)
 {
@@ -159,6 +159,8 @@ static inline __attribute__((always_inline)) void lofi_body(track_t *t, voice_t 
     v->s[5]++;
     pitch = m->pitch16 - v->s[3] + ARPS[ar & 3][(v->s[5] / 28) % 3] * 16;   /* ~50 Hz, chip-style */
     inc = pitch_inc(clamp(pitch, 0, 2047));
+    if (v->fine)                                        /* b9: UNISON DETUNE (voice.c mono_play: the voice's own fine offset, 0 in every other mode) was left out here, so DTUNE did nothing on LOFI */
+        inc += (uint32_t)((int32_t)(inc >> 12) * v->fine);
     if (p[P_E5])
         inc += (uint32_t)(((int32_t)(inc >> 12) * (((osc_sine(v->ph[1]) >> 8) * p[P_E5]) >> 4)) >> 4);   /* no overflow */
     v->ph[1] += 0x01000000u;
@@ -206,7 +208,7 @@ static inline __attribute__((always_inline)) void lofi_body(track_t *t, voice_t 
                                                         /* (64 bit: a narrow pulse minus its mean against a saw is up to ~90000 apart, x the weight
                                                          * overflowed 32 bits from a weight of ~0.73: the cliff the owner heard near 80 %) */
             if (q)                                      /* rounded, not floored (floor = DC) */
-                s = ((s + (1 << (15 - bits))) >> (16 - bits)) << (16 - bits);
+                s = (int32_t)((uint32_t)((s + (1 << (15 - bits))) >> (16 - bits)) << (16 - bits));
             if (crush > 64)
                 s = (s >> 12) << 12;
             held = s;
@@ -233,6 +235,7 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
         lofi_body(t, v, out, n, m, 0);
 }
 
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t LOFI_PRESETS[] = {
     {"PULSE LD", {0, 0, 32, 0, 0, 20, 0, 127}, {0, 60, 90, 30}, 0, 1, FX(0, 0, 40, 20), PAT(4)},
     {"WAVE BASS", {1, 1, 0, 0, 0, 0, 0, 90}, {0, 50, 70, 20}, 0, 1, FX(0, 0, 10, 0), PAT(2)},
@@ -242,22 +245,25 @@ static const preset_t LOFI_PRESETS[] = {
     /* STEP: 25 % pulse, DCY 34 = D7 (a 15-step decay over 0.5 s), REL ~54 ms of staircase after note-off */
     {"STEP LEAD", {4, 0, 40, 34, 0, 16, 0, 127}, {0, 64, 127, 55}, 0, 1, FX(0, 0, 40, 20), PAT(4)},
 };
+#endif
 
 static const engine_t ENG_LOFI = {
     .name = "LOFI",
     .page_title = {"LOFI", "MOTN"},
     .edit = {
-        {"BITS", F_ENUM, 0, 4, 0, N_BITS, 0},
-        {"WAVE", F_ENUM, 0, RW_NWAVE - 1, 0, N_RWAVE, 0},
-        {"PULSE WIDTH", F_INT, 0, 127, 64, 0, 0},       /* PLS only (ui_draw.c card_hidden_vp); in STEP 12.5 / 25 / 50 / 75 % */
-        {"CRSH", F_PCT, 0, 127, 0, 0, 0},               /* STEP: the envelope (lofi_desc) */
-        {"SWP", F_PCT, 0, 127, 0, 0, 0},
-        {"VIB", F_PCT, 0, 127, 0, 0, 0},
-        {"ARP", F_ENUM, 0, 3, 0, N_RARP, 0},
-        {"TONE", F_PCT, 0, 127, 127, 0, 0},
+        {"BITS", F_ENUM, 0, 0, 4, 0, N_BITS},
+        {"WAVE", F_ENUM, 0, 0, RW_NWAVE - 1, 0, N_RWAVE},
+        {"PULSE WIDTH", F_INT, 0, 0, 127, 64, 0},       /* PLS only (ui_draw.c card_hidden_vp); in STEP 12.5 / 25 / 50 / 75 % */
+        {"CRSH", F_PCT, 0, 0, 127, 0, 0},               /* STEP: the envelope (lofi_desc) */
+        {"SWP", F_PCT, 0, 0, 127, 0, 0},
+        {"VIB", F_PCT, 0, 0, 127, 0, 0},
+        {"ARP", F_ENUM, 0, 0, 3, 0, N_RARP},
+        {"TONE", F_PCT, 0, 0, 127, 127, 0},
     },
+#if DUELL_PRESETS
     .presets = LOFI_PRESETS,
     .npresets = NELEM(LOFI_PRESETS),
+#endif
     .note_on = lofi_note_on,
     .render = lofi_render,
     .knob = {P_E1, P_E2, P_E3, P_REL},

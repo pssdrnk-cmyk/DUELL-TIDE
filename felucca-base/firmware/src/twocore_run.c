@@ -138,6 +138,7 @@ typedef struct {
 #endif
 } tcr_t;
 static tcr_t tcr TC_BSS;
+static uint32_t tcr_core1_holds(void) { return tcr.open != 0u; }   /* (morph_xfer.c morph_xreset: part 2's notes may be rendered by core 1 still) */
 
 #if TC_MEAS
 /* ---------------------------------------------------------------- BENCHT2: what the jobs measure (core 0 collects; developer bench builds only) ---
@@ -320,12 +321,24 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
 {
     uint32_t k = tcr.blk, c1, c2, need, dl, cap, a1, a2;
     if (k == 0 || !tcr.cost_ok) {
-        part_dl(&trk[0], &tcr.c1f, &tcr.c1v);           /* (item 142: one bd_part a part, was two) */
-        part_dl(&trk[1], &tcr.c2f, &tcr.c2v);
-        tcr.g = global_cost_dl();
+#if DUELL_PROBE_STAGES
+        uint32_t pb0 = fm1_ticks();                     /* (probe, test-mode builds: st_budget_us of the console `cpu`; ROADMAP Later 22, finding 6) */
+#endif
+        const bd_dl_t *d = &bd_dl_buf[bd_dl_i];
+        if (bd_dl_ok && (uint32_t)(fm1_ms - d->ms) < BD_DL_AGE_MS) {   /* b11 (from DUELL 1.2 by OSCILL/R, GPL-3.0: tcr_costs): the copy the main loop handed over (budget.h bd_dl_publish): five words */
+            tcr.c1f = d->c1f, tcr.c1v = d->c1v, tcr.c2f = d->c2f, tcr.c2v = d->c2v, tcr.g = d->g;
+        } else {                                        /* (before the first publish, after a load until the next one, a copy BD_DL_AGE_MS old: worked out here, as before) */
+            part_dl(&trk[0], &tcr.c1f, &tcr.c1v);       /* (item 142: one bd_part a part, was two) */
+            part_dl(&trk[1], &tcr.c2f, &tcr.c2v);
+            tcr.g = global_cost_dl();
+        }
         tcr.two = (uint8_t)bd_two_now();
         tcr.t1f = TCR_TRUE(tcr.c1f), tcr.t1v = TCR_TRUE(tcr.c1v), tcr.t2f = TCR_TRUE(tcr.c2f), tcr.t2v = TCR_TRUE(tcr.c2v), tcr.tg = TCR_TRUE(tcr.g);
         tcr.cost_ok = 1;
+#if DUELL_PROBE_STAGES
+        pb0 = fm1_ticks() - pb0;
+        if (pb0 > prb_stage_pk[5]) prb_stage_pk[5] = pb0;
+#endif
     }
 #if TC_MEAS
     tcj.a1 = tcr_active(&trk[0]);
@@ -348,7 +361,7 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
          * is useful until the half's end less exactly that (= cap + part 2's own cost). Never later than the half's end (the globals are >= 0).
          * DUELL 1.1 item 142 (HANDOFF_V2 item 139): the later of that (the 1.15 table) and the same rest at TRUE cost (the items brought back as tcr_deadline_true does, rounded up) less
          * TCR_SLACK: the cushion is a flat 0.2 block instead of 15 % of the rest. Measured on the unit (item 139, 312 clean setups) the true rest covered core 0's real post-wait need
-         * at the half's peak in every case; core 1's block-0 job then fits the caps of BUDGET_LIMIT 84 (tests/deadline_test.c CORE 1). Never after the half's end */
+         * at the half's peak in every case; core 1's block-0 job then fits the caps of BUDGET_LIMIT (84 until wave 14, 72 now: more slack; tests/deadline_test.c CORE 1). Never after the half's end */
         uint32_t rest = need > c2 ? need - c2 : 0u, rt, c1t = tcr.t1f + a1 * tcr.t1v;
         int32_t lo, lt;
         rt = tcr.tg + (TCR_BLOCKS - 1u - k) * (tcr.two ? c1t + tcr.tg : c1t + tcr.t2f + a2 * tcr.t2v + tcr.tg);
@@ -409,8 +422,12 @@ static uint32_t tcr_deadline_true(uint32_t now, uint32_t dl)
         }
     }
 #endif
-    if ((int32_t)(dt - now) > 0 && (int32_t)(dt - tcr.lim) < 0)
+    if ((int32_t)(dt - now) > 0 && (int32_t)(dt - tcr.lim) < 0) {
+#if TC_MEAS
+        tcr.cap = cap;                                  /* (bench measurement: the posted deadline is this true-cost one, so its ceiling is this cap (item 142: later than the 1.15 table's)) */
+#endif
         return dt;
+    }
     return dl;
 }
 /* the deadline a job is posted with (tcr_begin; tests/deadline_test.c checks it for every setup): tcr_deadline, and under the two-core rule, when that is already past, the true-cost one */

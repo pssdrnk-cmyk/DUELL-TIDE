@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL 0.2.25: the OVERLOAD GUARD (fx.c ovl_step, audio.c shed_check; SPEC 6.3). When the audio is near its limit (the 85 % rule of the voice
  * shedding: two halves in a row over 85 % of their time), the dearest effect fades to its lighter version through its own crossfade: the
- * delay's RANDOM / OCT UP plays as the plain delay (its ~11.6 ms crossfade); after the meter's load (the CPU bar's figure) has stayed under 70 %
+ * delay's RANDOM / OCT UP plays as the plain delay (its ~11.6 ms crossfade); after the meter's load (the meter's average) has stayed under 70 %
  * for ~3 s it comes back the same way. Automatic, always on, nothing stored. (Built for SHIM's PITCH BOTH too, which the owner removed in 0.2.25.)
  * The real audio ISR with a simulated clock (as tests/audio_test.c), the measure forced by the render time it reports (host_us):
  *   MEASURE   one slow half does not engage it, two in a row do; a load between 70 and 85 % holds it (hysteresis); under 70 % it lets go after
@@ -30,6 +30,7 @@
 static uint32_t host_clock, host_us, host_nest;
 static volatile uint32_t t5_nested_ticks;
 static uint32_t fm1_ticks(void) { t5_nested_ticks = host_nest; host_clock += host_us; return host_clock; }
+#define AUDIO_BLK_TICKS() (host_clock)                 /* (b11: the guard's block clock reads without a step: this test's half is one step at its end) */
 static uint8_t fm1_audio_pending(void) { return FM1_AUDIO_HALF; }
 static void fm1_audio_ack_aux(uint8_t p) { (void)p; }
 static uint32_t fm1_audio_free_half(void) { return 0u; }
@@ -100,9 +101,8 @@ static void scene(uint32_t mode, int pitch, int smod, int dm)
     audio_cpu_rem = 0;
     host_clock = host_nest = 0;
     host_us = US_OF(30u);
-#ifndef OVL_NOGUARD
-    ovl_lite = 0, ovl_calm = 0, ovl_count = 0;
-#endif
+    ovl_lite = 0, ease = 0, ease_calm = 0;              /* (TIDE 1.0.0-b4, K3: the guard is the ease ladder's level 3; ovl_count is its entry count) */
+    memset(ease_n, 0, sizeof ease_n);
     song.g[G_BPM] = 120;
     song.g[G_CLOCK] = 0;
     song.g[G_DTIME] = 1;                                /* 1/8: 250 ms */
@@ -199,8 +199,9 @@ static const uint32_t MODES[3] = {DM_STEREO, DM_LAYER, DM_SPLIT};
 static const char *const MNAME[3] = {"STEREO", "LAYER", "DUEL"};
 
 #ifndef OVL_NOGUARD
-static void engage(void) { ovl_step(1u, 255u); }      /* the test hook: the load measure as two halves over 85 % report it */
-static void release(void) { uint32_t i; for (i = 0; i < OVL_CALM_HALVES; i++) ovl_step(0u, 0u); }   /* .. and 3 s under 70 % */
+static void engage(void) { ease_set(EASE_LIGHT); }             /* the test hook: the ease ladder at LIGHT FX's level (K3: levels 1 and 2 with it, as on the unit) */
+static void release(void) { ease_set(0u); }
+#define OVL_HALVES_ON 4u                                /* (K3: two halves over 85 % are level 1; LIGHT FX is level 3: the fourth half in a row) */
 #endif
 
 int main(void)
@@ -213,28 +214,29 @@ int main(void)
         uint32_t ok1, ok2, held, n, rel;
         scene(DM_STEREO, SHP_DOWN, 0, DMD_RAND);
         halves(HALVES_OF_MS(500), 30u);
-        halves(1, 93u);
+        halves(OVL_HALVES_ON - 1u, 93u);
         ok1 = !ovl_lite;
         halves(1, 93u);
         ok2 = ovl_lite && ovl_count == 1u;
-        expect("MEASURE: one half over 85 % does not engage the guard, the second in a row does (the voice shedding's rule)", ok1 && ok2);
-        halves(HALVES_OF_MS(6000), 76u);
+        expect("MEASURE: three halves over 85 % do not engage the guard, the fourth in a row does (K3: the ease ladder's level 3)", ok1 && ok2);
+        halves(HALVES_OF_MS(6000), 82u);
         held = ovl_lite;
-        expect("  .. 6 s at 76 % (between 70 and 85 %): it stays engaged (hysteresis)", held);
+        expect("  .. 6 s at 82 % (between 80 and 85 %): it stays engaged (hysteresis; K3)", held);
         for (n = 0, rel = 0; n < HALVES_OF_MS(5000) && !rel; n++) {
             halves(1, 20u);
             rel = !ovl_lite;
         }
-        printf("ovlguard: MEASURE released %u halves (%.2f s) after the load fell from 76 to 20 %%\n", n, n * (double)HALF_FRAMES / FS);
-        expect("  .. at 20 %: released after 3 s under 70 % (the meter's ~93 ms average included: 3.0 .. 3.3 s), not before", rel && n >= OVL_CALM_HALVES && n <= OVL_CALM_HALVES + HALVES_OF_MS(300));
-        halves(1, 93u), halves(1, 93u);
-        halves(HALVES_OF_MS(2000), 20u);
-        halves(HALVES_OF_MS(500), 76u);                 /* the meter's figure over 70 %: the 3 s start again */
-        for (n = 0, rel = 0; n < HALVES_OF_MS(5000) && !rel; n++) {
+        printf("ovlguard: MEASURE released %u halves (%.2f s) after the load fell from 82 to 20 %%\n", n, n * (double)HALF_FRAMES / FS);
+        expect("  .. at 20 %: released after 3 s with no half over 80 % (EASE_DOWN_HALVES_FX, K3), not before", rel && n == EASE_DOWN_HALVES_FX);
+        halves(1, 93u), halves(1, 93u);                 /* (from level 2: two halves over 85 % are level 3 again, at once: its peak release now waits 9 s) */
+        halves(HALVES_OF_MS(600), 20u);
+        halves(HALVES_OF_MS(500), 76u);                 /* the meter's figure over 70 %: the average rule's count starts again */
+        for (n = 0, rel = 0; n < HALVES_OF_MS(12000) && !rel; n++) {
             halves(1, 20u);
             rel = !ovl_lite;
         }
-        expect("  .. 2 s calm, then 0.5 s at 76 %, then 20 %: released only 3 s after the 76 % ended (the count starts again)", rel && n >= OVL_CALM_HALVES - HALVES_OF_MS(100) && ovl_count == 2u);
+        expect("  .. back at once, 0.6 s calm, 0.5 s at 76 %, then 20 %: not released by the plain 3 s average (the back-off holds it too): the 9 s peak hold from the quick return ends it, 9 s after it (7.9 s after the 76 %)",
+               rel && n > OVL_CALM_HALVES + HALVES_OF_MS(300) && n >= 3u * EASE_DOWN_HALVES_FX - HALVES_OF_MS(1100) - 2u && n <= 3u * EASE_DOWN_HALVES_FX - HALVES_OF_MS(1100) + 2u && ovl_count == 2u);
         for (i = 0; i < 40u; i++) {
             halves(1, 97u);
             halves(HALVES_OF_MS(50), 30u);

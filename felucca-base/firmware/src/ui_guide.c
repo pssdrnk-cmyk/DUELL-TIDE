@@ -114,7 +114,7 @@ static int guide_input(uint32_t pressed, uint32_t rec, uint32_t now)
     if ((pressed >> panel.btn[B_PLAY]) & 1u)            /* PLAY/STOP as on HOME (twice: STOP ALL); its hold: play_hold */
         play_press(now);
     if (rec == BT_TAP && !ui.menu)                      /* REC: the HOLD switch (rec_tap: rec_is_hold on HOME) */
-        rec_tap();
+        rec_tap(0);
     song.grid = (uint8_t)keys_mode();                   /* (the keys play) */
     if ((pressed >> panel.btn[B_OCTUP]) & 1u) {
         guide_apply(ui.guide);
@@ -247,20 +247,17 @@ static void guide_option(const t6_opt_t *g, const char *name, const char *d1, co
         if (d[i][0])
             cv_text_on(GD_X, UT_TY(S, g->dbase + (int32_t)i * UT_T6_LINE), &AF_S, d[i], picked ? lilac : grey, fill);
 }
-/* a thin line from (x, y0) down to y and right to x1 (the AVAILABLE VOICES notes' leaders) */
-static void guide_leader(int32_t x, int32_t y0, int32_t y, int32_t x1)
-{
-    cv_rect(x, y0, 1, y - y0 + 1, T_MID);
-    if (x1 < x)
-        cv_rect(x1, y, x - x1 + 1, 1, T_MID);
-    else
-        cv_rect(x, y, x1 - x, 1, T_MID);
-}
 /* from (x, y) right to xc, then up to y1 (the leader of a note to its item in the capsule) */
 static void guide_leader2(int32_t x, int32_t y, int32_t xc, int32_t y1)
 {
     cv_rect(x, y, xc - x + 1, 1, T_MID);
     cv_rect(xc, y1, 1, y - y1 + 1, T_MID);
+}
+/* a heading (L) with its sentence (M, keycaps in it) under it from the baseline y; -> the baseline of the next heading */
+static int32_t guide_item(int32_t y, const char *head, const char *s)
+{
+    cv_text_on(GD_X, UT_TY(L, y), &AF_L, head, T_TEXT, T_BG);
+    return guide_rich(GD_X, y + UT_T6_G_HT, GD_W, s) + UT_T6_G_TH;
 }
 /* one page's content into the current canvas (the caller sets cv_oy for the strip; everything is drawn at its SCREEN row) */
 static void guide_content(uint32_t pg)
@@ -273,36 +270,29 @@ static void guide_content(uint32_t pg)
         guide_option(&O1[0], "LAYER", "BOTH PARTS COMBINED:", "VELOCITY CROSSFADE, KEY SPLIT", "", "RECOMMENDED", guide_pick[0] == 0u);
         guide_option(&O1[1], "STEREO", "BOTH PARTS IN ONE STEREO FIELD", "", "", "", guide_pick[0] == 1u);
         guide_option(&O1[2], "DUEL", "DUAL MONO, FOR EXTERNAL EFFECTS", "", "", "", guide_pick[0] == 2u);
-    } else if (pg == 2u) {                              /* FIRST_RUN_SETUP_V2_A.png: PART MARKER, the capsule at the right, three short notes (part number, morph end, voices), each joined to its cell by a thin line */
+    } else if (pg == 2u) {                              /* FIRST_RUN_SETUP_V2_A.png: PART MARKER, the capsule at the right, two short notes (part number, morph end; b10: the voices cell is gone), each joined to its cell by a thin line */
         const int32_t cx = 240 - 12 - CAP_W, tw = 172, my = AF_M_CAP_Y + AF_M_CAP_H / 2;
-        static const char *const NOTE[3] = {"The number marks part 1 or part 2.", "The letter shows which morph end you edit, A or B.", "In POLY the number is the voices still free. M, L, U in MONO, LEGATO, UNISON."};
-        static const int32_t NY[3] = {72, 108, 142};
+        static const char *const NOTE[2] = {"Number: part 1 or 2.", "Letter: morph end A or B."};
+        static const int32_t NY[2] = {62, 81};
         uint32_t i;
         cv_text_on(GD_X, UT_TY(L, UT_T6_G_HEAD0), &AF_L, "PART MARKER", T_TEXT, T_BG);
         cv_oy += 50;                                    /* (head_capsule draws at the header's rows) */
-        head_capsule(cx, 0, 1u, 0u, 8, 0u);
+        head_capsule(cx, 0, 1u, 0u, 0u);
         cv_oy -= 50;
-        for (i = 0; i < 3u; i++) {                      /* each leader starts 3 px after the end of its own text's last line, runs right, then up to its item in the capsule */
-            int32_t xc = cx + (int32_t)i * CAP_NUM_W + (i == 0u ? CAP_NUM_W : i == 1u ? CAP_LET_W : CAP_VOI_W) / 2;
-            y = guide_wrap(GD_X, NY[i], i == 2u ? tw + 24 : tw, &AF_M, NOTE[i], T_TEXT, UT_T6_G_LINE + 1);
+        for (i = 0; i < 2u; i++) {                      /* each leader starts 3 px after the end of its own text's last line, runs right, then up to its item in the capsule */
+            int32_t xc = cx + (int32_t)i * CAP_NUM_W + (i == 0u ? CAP_NUM_W : CAP_LET_W) / 2;
+            y = guide_wrap(GD_X, NY[i], tw, &AF_M, NOTE[i], T_TEXT, UT_T6_G_LINE + 1);
             guide_leader2(guide_last_x + 3, y - (UT_T6_G_LINE + 1) + my, xc, 65);
         }
+        guide_item(140, "SOUNDS AND MORPH", "PRESETS picks a sound, ALGORITHM a part. [HOME] morphs; hold for MENU.");
     } else if (pg == 3u) {                              /* outcome as a heading (L), the how-sentence under it with its keycaps in the sentence */
-        y = UT_T6_G_HEAD0;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "PERFORM MODE", T_TEXT, T_BG);
-        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Hold [FX] and the white keys turn into effects.") + UT_T6_G_TH;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "QUICK EDIT", T_TEXT, T_BG);
-        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Keep [SEL] [ENV] [LFO] [EDIT] [GLO] [ARP] [SEQ] or [REC] pressed to show its main knobs over the page.") + UT_T6_G_TH;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "STOP ALL", T_TEXT, T_BG);
-        guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Tap [PLAY] twice.");
+        y = guide_item(UT_T6_G_HEAD0, "PERFORM MODE", "Hold [FX] and the white keys turn into effects.");
+        y = guide_item(y, "QUICK EDIT", "Keep [ENV] [LFO] [EDIT] [GLO] [ARP] [SEQ] or [REC] down for its knobs.");
+        guide_item(y, "STOP ALL", "Tap [PLAY] twice.");
     } else if (pg == 4u) {
-        y = UT_T6_G_HEAD0;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "RESET A KNOB", T_TEXT, T_BG);
-        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Hold [OCT-] and turn the knob.") + UT_T6_G_TH;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "SAVE OVER A PATCH", T_TEXT, T_BG);
-        y = guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "Keep [SAVE] pressed.") + UT_T6_G_TH;
-        cv_text_on(GD_X, UT_TY(L, y), &AF_L, "PARAMETER LOCK", T_TEXT, T_BG);
-        guide_rich(GD_X, y + UT_T6_G_HT, GD_W, "One step gets its own value for the knob you turn. With a note key down, press [OCT+] and turn a knob.");
+        y = guide_item(UT_T6_G_HEAD0, "RESET A KNOB", "Hold [OCT-] and turn the knob.");
+        y = guide_item(y, "SAVE OVER A PATCH", "Keep [SAVE] pressed.");
+        guide_item(y, "PARAMETER LOCK", "Arm [REC] on the STEP page, turn a knob: the step keeps it.");
     } else {                                            /* 5: SETUP 5/5 */
         cv_text_on(GD_X, UT_TY(M, UT_T6_Q_BASE), &AF_M, "Set up MIDI now?", T_TEXT, T_BG);
         guide_option(&O5[0], "LATER", "GLO > MIDI HAS IT AT ANY TIME", "", "", "DEFAULT", guide_pick[1] == 0u);
@@ -359,13 +349,15 @@ static void guide_draw(void)
         guide_kh = kh;
         for (band = 0; band < 2u; band++) {             /* two strips: the canvas holds 124 rows (the legend row is in the last one) */
             int32_t y0 = EDGE[band];
-            cv_begin(240, (uint32_t)(EDGE[band + 1] - y0), T_BG);
-            cv_oy = -y0;
-            guide_content(pg);
-            if (band == 1u)
-                guide_legend(kh, guide_ask(pg) && !ui.guide_menu ? 2u : 3u);
-            cv_oy = 0;
-            cv_blit(0, (uint32_t)y0);
+            CV_BANDS(EDGE[band + 1] - y0) {
+                cv_begin(240, (uint32_t)(EDGE[band + 1] - y0), T_BG);
+                cv_oy = -y0;
+                guide_content(pg);
+                if (band == 1u)
+                    guide_legend(kh, guide_ask(pg) && !ui.guide_menu ? 2u : 3u);
+                cv_oy = 0;
+                cv_blit(0, (uint32_t)y0);
+            }
         }
     }
     draw_head();                                        /* SETUP or GUIDE (ui_draw.c head_page_title), or a message (STOP ALL) */

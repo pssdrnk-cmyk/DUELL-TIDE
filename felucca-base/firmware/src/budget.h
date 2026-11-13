@@ -7,7 +7,24 @@
 #ifndef DUELL_BUDGET_H
 #define DUELL_BUDGET_H
 
-#define BUDGET_LIMIT 84u        /* the share of the time budget the worst case may use (percent), the margin below applied to every cost (DUELL 1.1 item 132, owner: 80 -> 90; item 133: 88 with the
+/* TIDE 1.0.0-b6 N1, "give the notes back" (owner, 9 November: in steps, each kept only if the unit's GLIDE sweep stays clean: 0 missed, 0 voices cut). Since b4 the ease
+ * ladder (audio.c, K3) backs off before it cuts sound, and the b4 / b5 sweeps at 72 were clean (worst per-second peak 84 .. 85 % render, 90 .. 91 % elapsed). The limit is a
+ * step, DUELL_NOTES_STEP: 72 (b1 .. b5), 76, 80 or 84 (the b0 value, where the factory multis missed and shed before the ladder existed). A test-mode build picks one
+ * (tools/build.py: env DUELL_NOTES_STEP, test-mode builds only; work/measure/b6-notes/UNIT_PLAN.md); every other build has the default, 72 (b6: 76 was tried on the unit, 9 November, and cut one voice on M14 EERIE SIGNAL at 90 %; b6 keeps b5's 72).
+ * BUDGET_PEAK stays 90 - BUDGET_LIMIT: the room up to 90 % for the real peak over the model (the unit's fit, below: peak = 30 + 0.74 x the
+ * model, i.e. 83 % at 72, 86 at 76, 89 at 80, 92 at 84; the GLIDE sweep at 72 ran 1 .. 2 points over the fit, 85 %, and 6 more elapsed, 91 %) */
+#ifndef DUELL_NOTES_STEP
+#define DUELL_NOTES_STEP 72     /* b6 default: b5's 72 (the unit's GLIDE sweep at 76 cut a voice on M14: work/measure/b6-integ-aefe5c0); the step stays for a later finer try */
+#endif
+_Static_assert(DUELL_NOTES_STEP == 72 || DUELL_NOTES_STEP == 76 || DUELL_NOTES_STEP == 80 || DUELL_NOTES_STEP == 84, "budget.h: DUELL_NOTES_STEP is 72, 76, 80 or 84");
+#define BUDGET_PEAK (90u - BUDGET_LIMIT)   /* (b6 N1: 90 - the step; 18 at 72) CPU fix (wave 14, 2026-11-05; owner: "gotta conserve the cpu"): the points of a half's time the real per-second PEAK runs above the model's worst case, so that the peak stays under
+                                 * about 90 % (BUDGET_LIMIT + BUDGET_PEAK = 90; it was 6). Calibration, the unit's own numbers (work/measure/cpu-multis/sweep_k0.jsonl and sweep_k1.jsonl: the 16 factory multis of
+                                 * bb730b0, PLAY alone and a held Cm7, the console's `cpu` = the longest half of each second, 12 s each) against this model at the same voices (the busier core): the per-second peak
+                                 * max = 30 + 0.74 x the model's peak, rms 9 points over 23 runs (the model's voices cost 0.74, the rest of the audio interrupt 30 more); the one outlier is FM6 BIG STAB (DUB CHORD, +24:
+                                 * a chord hit costs its voices a second time, the note-on and the attack). At the old limit (84) the multis whose voices filled caps of 76 .. 80 ran peaks of 85 .. 109 % with 1 .. 8
+                                 * missed halves and 2 .. 33 voices shed in 15 s (DUB CHORD, WHISPER TIDE, FINAL REEL, EERIE SIGNAL, DEAD BUFFER). At 72 the fitted peak of every factory multi is 83 or less. A part has
+                                 * 1 or 2 notes fewer than at 84 (tests/budget_test.c prints them) */
+#define BUDGET_LIMIT ((uint32_t)DUELL_NOTES_STEP)   /* (b6 N1: the step above; 72 in b1 .. b5, was 84, with an allowance of 6; 81 and 88 before) the share of the time budget the worst case may use (percent), the margin below applied to every cost (DUELL 1.1 item 132, owner: 80 -> 90; item 133: 88 with the
                                  * margin 1.15). DUELL 1.1 item 137 (owner: the model charges the true measured cost, margin 1.00; cap = the most notes whose true model load + 6 points of measured
                                  * steady peak over the average (HANDOFF_V2 item 130) fits, for core 0 and core 1): core 0 / one core: 90 - 6 = 84; core 1: block 0's job (posted ~0.27 block into
                                  * the half, the part's true cost) + 6 points must end before the runner's wait limit, which keeps its 1.15 table (BUDGET_DL_MARGIN): over the 19,472 setups of
@@ -28,7 +45,7 @@
 
 /* what limits a part's number (part_notes_reason): the item whose removal would give the part the most notes */
 enum { NR_NONE,                 /* nothing: the part has all it can have (NOTES_MAX, the pool) */
-       NR_ENGINE,               /* the engine itself: its voice cost, or its own voice limit (PHYS 3, VOICE 4, FM6 6) */
+       NR_ENGINE,               /* the engine itself: its voice cost, or its own voice limit (PHYS 3, VOICE 4) */
        NR_FILTER,               /* the multimode filter's 24 dB slope (a voice) */
        NR_INSERT,               /* the part's INSERT */
        NR_SAT,                  /* the part's SAT */
@@ -49,5 +66,22 @@ static uint8_t part_notes_shown(int part);      /* what the UI shows: the same n
 static uint8_t part_notes_reason(int part);     /* NR_*: what limits it */
 static void budget_poll(void);                  /* main loop, every frame: hands the numbers to the note-on path (voice.c trk_nvoice) */
 static uint32_t bd_two_now(void);               /* DUELL 1.1 item 90: 1 = the two-core rule is in force (core 1 up, no fault, jobs not paused), 0 = the one-core rule */
+
+/* THE DEADLINE'S COST ITEMS, HANDED OVER BY THE MAIN LOOP (b11, ported from DUELL 1.2 by OSCILL/R, GPL-3.0: budget.h / budget.c bd_dl_publish, twocore_run.c tcr_costs). Working them out in the
+ * audio interrupt at every half's first block cost 113 to 127 us there on this firmware (the b11 sweep's st_budget_us, all 26 multis; 1.2 measured 171 to 188 us on its own), the largest single
+ * piece of the block that starts a half late. budget_poll (main loop, every frame) calls bd_dl_publish: the five items (part_dl of both parts, global_cost_dl) into the copy the audio side is NOT
+ * reading, then one byte says which copy is the new one. The runner (twocore_run.c tcr_deadline) reads the copy that byte names: the main loop never interrupts the audio interrupt, so it always
+ * reads a whole copy. The items are an estimate for the deadline (a 15 % margin in them); after a knob or a fader moves they are at most one main-loop pass old (the old way: one half).
+ * A LOAD (a sound, an engine, a multi, a project: ui.c load_begin, project.c project_restore_runtime) clears bd_dl_ok, so the runner works the items out itself, as before, until the next
+ * publish: a load can change them by more than the margin, and the main loop's next pass may be up to a frame and a redraw away (ui_input and the editor also run in the frame's wait).
+ * Before the first publish (and in host tests that never run the main loop's pass) the runner works them out itself too. And when the copy is BD_DL_AGE_MS old or more (ms: fm1_ms at
+ * the publish): the main loop stalled (a flash write, a long redraw) while the audio side may still change what costs (the sequencer's locks, the motion), so the runner works them out
+ * itself until the main loop runs again. Only core 0 reads the copy (twocore_run.c tcr_deadline, from tcr_begin in the audio interrupt); core 1 never does, so a compiler barrier is
+ * enough between the copy's stores and the byte */
+typedef struct { uint32_t c1f, c1v, c2f, c2v, g, ms; } bd_dl_t;
+#define BD_DL_AGE_MS 100u                       /* a copy this old is not used (about 6 frames: a normal pass is one frame and its redraw) */
+static bd_dl_t bd_dl_buf[2];
+static volatile uint8_t bd_dl_i, bd_dl_ok;
+static void bd_dl_publish(void);
 
 #endif

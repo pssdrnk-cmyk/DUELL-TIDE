@@ -294,7 +294,7 @@ def main():
         out.append("")
         cost[s] = (len(offs), len(data) + 2 * len(offs) + len(idx) + ib)
     cost[0] = (0, len(hc))
-    Path(a.out).write_text("\n".join(out))
+    Path(a.out).write_text("\n".join(out), encoding="utf-8")
     tot = sum(c[1] for c in cost.values())
     for s, (n, b) in cost.items():
         print(f"icons {s}px: {n} cells, {b} B" if s else f"icons code: {b} B")

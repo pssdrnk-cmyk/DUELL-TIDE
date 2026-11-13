@@ -147,23 +147,23 @@ int main(void)
         project_t q;
         memset(blk, 0, sizeof blk);
         project_capture(&q);
-        len = mu_pack(rec, &q, blk, &cut);
+        len = mu_pack(rec, &q, &cut);
         sc_put(0, 15); sc_put(1, 7); sc_put(2, 9); sc_put(3, 99);
         project_capture(&q);
-        len2 = mu_pack(rec2, &q, blk, &cut);
+        len2 = mu_pack(rec2, &q, &cut);
         expect("a multi record is bit for bit the same whatever the setup is (nothing of it is stored in it)", len == len2 && !memcmp(rec, rec2, len));
         ok = 1;
         for (k = 0; k < 16u; k++) {
             if (df_of(k) >= DF_N)
                 continue;
-            project_load(k);
+            project_load(MIDX(k));
             frame();
             ok &= is(15, 7, 9, 99);
         }
         expect("a multi load (every factory multi) leaves the setup as it is", ok);
         project_save_as(10, "SC TEST");
         sc_put(0, 1);
-        project_load(10);
+        project_load(MIDX(10));
         frame();
         expect("  .. nor does a saved multi", is(1, 7, 9, 99));
         (void)amt; (void)set;

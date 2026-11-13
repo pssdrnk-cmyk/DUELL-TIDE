@@ -8,43 +8,65 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DUELL editor: Backup</title>
+<title>TIDE for FM-1: Backup</title>
 <style>
-  :root { --bg: #fff; --fg: #000; --dim: #666; --line: #ccc; --warn: #b00020; --ok: #0a6b2d; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #000; --fg: #fff; --dim: #999; --line: #444; --warn: #ff6b81; --ok: #62d98a; } }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
-  main { max-width: 640px; margin: 0 auto; padding: 40px 16px 64px; }
-  h1 { font-size: 30px; font-weight: 700; margin: 0; letter-spacing: .02em; }
-  .tag { margin: 0 0 4px; color: var(--dim); }
-  h2 { font-size: 18px; margin: 0 0 8px; }
+  /* b11: TIDE's night sea (the unit's palette), Barlow Semi Condensed from ../assets/fonts, dark only */
+  @font-face { font-family: "Barlow Semi Condensed"; font-weight: 400; font-display: swap; src: url("../assets/fonts/BarlowSemiCondensed-Regular.woff") format("woff"); }
+  @font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; font-display: swap; src: url("../assets/fonts/BarlowSemiCondensed-Medium.woff") format("woff"); }
+  @font-face { font-family: "Barlow Semi Condensed"; font-weight: 600; font-display: swap; src: url("../assets/fonts/BarlowSemiCondensed-SemiBold.woff") format("woff"); }
+  @font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; font-display: swap; src: url("../assets/fonts/BarlowSemiCondensed-Bold.woff") format("woff"); }
+  :root { color-scheme: dark; --bg: #040B13; --surface: #0A1824; --raised: #102A3C; --fg: #F2FBFF; --dim: #9CC2D3; --line: #1D5E77; --accent: #3BE8D6; --ink: #02070D; --warn: #FF5A5A; --ok: #3BE8D6; --amber: #FFB547; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 500 18px/1.55 "Barlow Semi Condensed", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 40px 16px 64px; }
+  header.site { border-bottom: 1px solid var(--line); }
+  header.site .bar { max-width: 680px; margin: 0 auto; padding: 6px 16px; min-height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap; }
+  header.site .brand { display: inline-flex; margin-right: auto; }
+  header.site .brand img { display: block; height: 26px; width: auto; }
+  header.site nav { display: flex; gap: 4px 16px; flex-wrap: wrap; }
+  header.site nav a { color: var(--fg); text-decoration: none; padding: 8px 2px; font-weight: 500; }
+  header.site nav a:hover { color: var(--accent); text-decoration: underline; }
+  main { padding-top: 24px; }
+  h1 { font-size: 36px; font-weight: 700; margin: 0; letter-spacing: .01em; }
+  .tag { margin: 4px 0 8px; color: var(--dim); }
+  h2 { font-size: 20px; font-weight: 700; margin: 0 0 8px; letter-spacing: .06em; text-transform: uppercase; }
   p { margin: 0 0 12px; }
   section { border-top: 1px solid var(--line); padding: 20px 0 8px; margin-top: 20px; }
-  .n { display: inline-block; width: 1.6em; height: 1.6em; line-height: 1.6em; text-align: center; border: 1px solid var(--fg); border-radius: 50%; margin-right: 8px; font-size: 14px; }
-  button { font: inherit; background: var(--fg); color: var(--bg); border: 0; padding: 8px 20px; cursor: pointer; }
-  button:disabled { opacity: .3; cursor: default; }
+  .n { display: inline-block; width: 1.6em; height: 1.6em; line-height: 1.6em; text-align: center; border: 1px solid var(--accent); color: var(--accent); border-radius: 50%; margin-right: 8px; font-size: 14px; letter-spacing: 0; }
+  button { font: inherit; font-weight: 600; background: var(--accent); color: var(--ink); border: 0; border-radius: 10px; padding: 9px 22px; cursor: pointer; }
+  button:hover:not(:disabled) { filter: brightness(1.1); }
+  button:disabled { opacity: .35; cursor: default; }
+  :focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; border-radius: 4px; }
   label { display: block; margin: 4px 0; }
   label.off { color: var(--dim); }
-  .small { color: var(--dim); font-size: 13px; }
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+  input[type="file"] { font: inherit; font-size: 16px; max-width: 100%; }
+  .small { color: var(--dim); font-size: 15px; }
   .warn { color: var(--warn); }
   .good { color: var(--ok); }
-  .box { border: 1px solid var(--warn); padding: 10px 14px; margin: 16px 0; }
-  .mockbar { background: #ffb347; color: #000; font-weight: 700; padding: 8px 16px; }
-  progress { width: 100%; height: 8px; margin: 8px 0; }
+  .box { border: 1px solid var(--warn); border-radius: 10px; padding: 10px 14px; margin: 16px 0; }
+  .mockbar { background: var(--amber); color: var(--ink); font-weight: 700; padding: 8px 16px; }
+  progress { width: 100%; height: 8px; margin: 8px 0; accent-color: var(--accent); }
   .status { min-height: 1.6em; margin: 4px 0; font-weight: 700; }
   .result { min-height: 1.2em; margin: 4px 0 8px; white-space: pre-line; }
   details { margin: 8px 0; }
   summary { cursor: pointer; }
-  ul.names { columns: 2; padding-left: 20px; margin: 6px 0; font-size: 14px; }
-  a { color: inherit; }
-  code { font-size: 14px; }
+  summary::marker { color: var(--accent); }
+  ul.names { columns: 2; padding-left: 20px; margin: 6px 0; font-size: 16px; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  code { font-size: .85em; }
+  footer.credit { margin-top: 32px; border-top: 1px solid var(--line); padding-top: 14px; color: var(--dim); font-size: 14px; }
 </style>
 </head>
 <body>
 <div id="mockbar" class="mockbar" hidden>SIMULATED UNIT: nothing on this page touches a real FM-1.</div>
+<header class="site"><div class="bar">
+  <a class="brand" href="../" aria-label="TIDE, home"><img src="../assets/tide-wordmark.svg" alt="" width="87" height="26"></a>
+  <nav aria-label="Main"><a href="./">Sound editor</a><a href="../install/">Install</a><a href="../emu/">Emulator</a></nav>
+</div></header>
 <main>
-  <h1>DUELL</h1>
-  <p class="tag">MultiMorphing Bitimbral Synthesizer<br>by OSCILL/R</p>
-  <p><b>Editor: Backup</b> for the M-VAVE FM-1 running DUELL. <a id="tosound" href="./">Back to the sound editor</a></p>
+  <h1>Backup</h1>
+  <p class="tag">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0.<br>The TIDE pages are not editable here; their settings are in the backup.</p>
+  <p><b>Editor: Backup</b> for the M-VAVE FM-1 running TIDE. <a id="tosound" href="./">Back to the sound editor</a></p>
 
   <p class="small" id="browser"></p>
 
@@ -68,7 +90,7 @@
 
   <section>
     <h2><span class="n">3</span>Restore</h2>
-    <p>Choose a backup file made by this page (or the installer's backup file of a DUELL unit). The file is checked completely before anything is sent.</p>
+    <p>Choose a backup file made by this page (or the installer's backup file of a TIDE or DUELL unit). The file is checked completely before anything is sent.</p>
     <p><input type="file" id="file" accept=".json,application/json"></p>
     <p class="status" id="filestate"></p>
     <details id="contents" hidden><summary>What is in this file</summary><div id="contents-list"></div></details>
@@ -87,6 +109,7 @@
   </section>
 
   <p class="small" id="foot">Firmware before DUELL 0.2.14 cannot back up or restore multis and pattern slots; update with the <a href="../install/">installer</a>. This page never updates the firmware. DUELL is released under the GPL-3.0 with no warranty; see <a href="https://github.com/oscillr/DUELL/blob/main/NOTICE.md">NOTICE</a>.</p>
+  <footer class="credit">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.</footer>
 </main>
 <script>{ const q = location.search; if (q) document.getElementById("tosound").href = "./" + q; }</script>
 <script type="module" src="./backup.js"></script>

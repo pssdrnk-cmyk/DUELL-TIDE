@@ -4,59 +4,63 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>DUELL cheat sheet</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Krona+One&family=Oswald:wght@600&display=swap" rel="stylesheet">
+<title>TIDE cheat sheet</title>
 <style>
-:root{--bg:#0e0c1b;--panel:#1e1330;--fg:#f2eefa;--mute:#b9b0d0;--line:#2e1b4e;--pink:#fe8cc1;--vio:#8a3ebf;--vio2:#6545b7;--acc:#fe8cc1;--chip:#2e1b4e;--chipfg:#f2eefa}
+@font-face{font-family:"Barlow Semi Condensed";font-weight:400;font-style:normal;font-display:swap;src:url("../assets/fonts/BarlowSemiCondensed-Regular.woff") format("woff")}
+@font-face{font-family:"Barlow Semi Condensed";font-weight:600;font-style:normal;font-display:swap;src:url("../assets/fonts/BarlowSemiCondensed-SemiBold.woff") format("woff")}
+@font-face{font-family:"Barlow Semi Condensed";font-weight:700;font-style:normal;font-display:swap;src:url("../assets/fonts/BarlowSemiCondensed-Bold.woff") format("woff")}
+:root{--bg:#040B13;--panel:#0A1824;--fg:#F2FBFF;--mute:#9CC2D3;--line:#1D5E77;--a1:#3BE8D6;--a2:#FF8A5E;--ink:#02070D;--chip:#102A3C;--chipfg:#F2FBFF}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1200px 600px at 85% -10%,#2a1650 0,transparent 60%),var(--bg);color:var(--fg);font:14px/1.45 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 "Barlow Semi Condensed",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:1100px;margin:0 auto;padding:20px 16px}
-header{padding:18px 0 10px;border-bottom:2px solid var(--vio2)}
-header h1{margin:0;font:400 clamp(40px,9vw,72px)/1 "Krona One","DM Sans",sans-serif;letter-spacing:.01em;color:var(--fg)}
-header .tag{margin:10px 0 0;font-size:clamp(16px,3.4vw,22px);text-transform:uppercase;color:var(--fg)}
+header{padding:18px 0 10px;border-bottom:2px solid var(--line)}
+header h1{margin:0;font:700 clamp(40px,9vw,72px)/1 "Barlow Semi Condensed",sans-serif;letter-spacing:.01em;color:var(--fg)}
+header .tag{margin:10px 0 0;font-size:clamp(18px,3.4vw,24px);font-weight:600;color:var(--fg)}
+header h1 .wm{display:block;width:clamp(180px,30vw,260px);height:auto}header h1 .pt{display:none}
 header .tag i{font-weight:400}header .tag b{font-weight:700}
-header .by{margin:6px 0 0;font-size:clamp(15px,3vw,18px);letter-spacing:.22em;color:var(--pink)}
+header .by{margin:6px 0 0;font-size:clamp(15px,3vw,18px);letter-spacing:.03em;color:var(--mute)}
 header .sub{margin:8px 0 0;color:var(--mute)}
 header .stamp{margin:4px 0 0;font-size:12px;color:var(--mute)}
 .bar{margin:12px 0 4px}
-button{font:inherit;font-family:"Oswald","DM Sans",sans-serif;font-weight:600;letter-spacing:.08em;padding:6px 18px;border:0;background:var(--pink);color:#0e0c1b;border-radius:10px;cursor:pointer}
-button:hover{background:#ffa6d0}
+button{font:inherit;font-family:"Barlow Semi Condensed",sans-serif;font-weight:600;letter-spacing:.08em;padding:6px 18px;border:0;background:var(--a1);color:var(--ink);border-radius:10px;cursor:pointer}
+button:hover{filter:brightness(1.1)}
 .cols{columns:2 420px;column-gap:24px}
 section{break-inside:avoid;margin:0 0 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px 14px 10px}
-h2{font:600 16px/1.2 "Oswald","DM Sans",sans-serif;margin:10px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--vio);color:var(--pink);text-transform:uppercase;letter-spacing:.1em}
+h2{font:600 16px/1.2 "Barlow Semi Condensed",sans-serif;margin:10px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--line);color:var(--a1);text-transform:uppercase;letter-spacing:.1em}
 .row{display:grid;grid-template-columns:42% 1fr;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);break-inside:avoid}
 .g{font-weight:600}
-.g b{display:inline-block;padding:0 6px;border-radius:5px;background:var(--chip);color:var(--chipfg);border:1px solid var(--vio2);font-size:.92em}
+.g b{display:inline-block;padding:0 6px;border-radius:5px;background:var(--chip);color:var(--chipfg);border:1px solid var(--line);font-size:.92em}
 .e{color:var(--fg)}
 ul{margin:4px 0 0;padding-left:18px}
 li{margin:3px 0;break-inside:avoid}
-li::marker{color:var(--pink)}
+li::marker{color:var(--a1)}
 .dg{display:grid;gap:5px;margin:6px 0 4px;font-size:.85em;text-align:center}
 .dg .r{display:flex;gap:5px;align-items:stretch}
-.dg .r>div{flex:1;border:1px solid var(--vio2);border-radius:6px;padding:3px 2px;background:var(--chip)}
+.dg .r>div{flex:1;border:1px solid var(--line);border-radius:6px;padding:3px 2px;background:var(--chip)}
 .dg .scr{flex:1.6;color:var(--mute)}
 .dg .keys{border-style:dashed}
 footer{margin-top:10px;font-size:12px;color:var(--mute)}
 @media (max-width:560px){.row{grid-template-columns:1fr;gap:2px}section{padding:4px 12px 10px}}
 @media print{
  @page{size:A4;margin:8mm}
- :root{--bg:#fff;--panel:#fff;--fg:#000;--mute:#333;--line:#bbb;--acc:#b0206a;--pink:#d6247f;--vio:#6a2c9a;--vio2:#6a2c9a;--chip:#fff;--chipfg:#000}
+ :root{--bg:#fff;--panel:#fff;--fg:#000;--mute:#333;--line:#bbb;--a1:#08756E;--a2:#B4441C;--ink:#fff;--chip:#fff;--chipfg:#000}
  body{font-size:9pt;line-height:1.15;background:#fff;color:#000}
  main{max-width:none;padding:0}
- header{padding:0 0 1.5mm;border-bottom:1.5px solid var(--vio)}
+ header{padding:0 0 1.5mm;border-bottom:1.5px solid var(--a1)}
  header h1{font-size:20pt;color:#000}
+ header h1 .wm{display:none}
+ header h1 .pt{display:inline}
  header .tag{font-size:10pt;margin-top:1mm;color:#000}
- header .by{font-size:9pt;margin-top:.5mm;color:var(--pink)}
+ header .by{font-size:9pt;margin-top:.5mm;color:var(--mute)}
  header .sub{margin-top:1mm}
  header .sub,header .stamp,footer{font-size:9pt}
  .bar{display:none}
  footer{display:none}
  .cols{columns:2;column-gap:5mm}
  section{break-inside:auto;margin:0 0 1.2mm;border:0;border-radius:0;padding:0;background:#fff}
- h2{font-size:10pt;margin:2mm 0 1mm;color:var(--vio);border-bottom-color:var(--pink)}
+ h2{font-size:10pt;margin:2mm 0 1mm;color:var(--a1);border-bottom-color:var(--a1)}
  .row{padding:.3px 0;gap:4px;grid-template-columns:34% 1fr}
- .g b{border-color:var(--vio)}
+ .g b{border-color:var(--a1)}
  li{margin:0}
 }
 </style>
@@ -64,11 +68,11 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <body>
 <main>
 <header>
- <h1>DUELL</h1>
- <p class="tag"><i>Multi</i><b>Morphing</b> Bitimbral Synthesizer</p>
- <p class="by">by OSCILL/R</p>
+ <h1><img class="wm" src="../assets/tide-wordmark.svg" alt="TIDE" width="260" height="79"><span class="pt">TIDE</span></h1>
+ <p class="tag">A morph that plays and evolves by itself.</p>
+ <p class="by">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</p>
  <p class="sub">cheat sheet for the M-VAVE FM-1</p>
- <p class="stamp">checked against DUELL 1.1 &middot; community-style quick reference; full details in SPEC.md and docs/QUICKSTART.md</p>
+ <p class="stamp">The gestures first, TIDE's pages at the end &middot; a quick reference, not by OSCILL/R; full details in docs/QUICKSTART.md and docs/TIDE_GUIDE.md</p>
  <p class="bar"><button type="button" onclick="window.print()">Print</button></p>
 </header>
 
@@ -78,10 +82,10 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <h2>Part marker</h2>
 <svg viewBox="0 0 440 150" width="100%" role="img" aria-label="The part marker at the top of a page: part number, morph end letter, voices" style="display:block;max-width:440px;color:var(--fg);font:12px/1.2 sans-serif">
 <g fill="none" stroke="var(--mute)" stroke-width="1"><path d="M160 46V70H205"/><path d="M100 46V96H205"/><path d="M40 46V122H205"/></g>
-<rect x="10" y="10" width="180" height="36" rx="18" fill="var(--pink)"/>
-<rect x="70" y="11" width="119" height="34" rx="17" fill="var(--chip)" stroke="var(--pink)"/>
+<rect x="10" y="10" width="180" height="36" rx="18" fill="var(--a1)"/>
+<rect x="70" y="11" width="119" height="34" rx="17" fill="var(--chip)" stroke="var(--a1)"/>
 <rect x="70" y="11" width="10" height="34" fill="var(--chip)"/>
-<g text-anchor="middle" font-size="18" font-weight="700"><text x="40" y="35" fill="#fff">1</text><text x="100" y="35" fill="currentColor">A</text><text x="160" y="35" fill="currentColor">8</text></g>
+<g text-anchor="middle" font-size="18" font-weight="700"><text x="40" y="35" fill="var(--ink)">1</text><text x="100" y="35" fill="currentColor">A</text><text x="160" y="35" fill="currentColor">8</text></g>
 <g fill="currentColor"><text x="212" y="66">In POLY the number is the voices still free.</text><text x="212" y="82">M, L, U in MONO, LEGATO, UNISON.</text>
 <text x="212" y="100">The letter shows which morph end you edit, A or B.</text>
 <text x="212" y="126">The number marks part 1 or part 2.</text></g>
@@ -92,9 +96,9 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <h2>Getting around</h2>
 <div class="row"><div class="g">Turn <b>SELECT</b></div><div class="e">Switches between the pages of a module; in lists and the menu it moves the row.</div></div>
 <div class="row"><div class="g">Tap <b>FX</b> / <b>SEL</b> / <b>ENV</b> / <b>LFO</b> / <b>EDIT</b> / <b>GLO</b> / <b>ARP</b> / <b>SEQ</b></div><div class="e">Switches between the modules.</div></div>
-<div class="row"><div class="g">Tap <b>HOME</b></div><div class="e">MORPH page; turn <b>SELECT</b> for MORPH SET and MODE.</div></div>
+<div class="row"><div class="g">Tap <b>HOME</b></div><div class="e">MORPH page. Tap again for TIDE SETTINGS and AUTO TIDE (the TIDE sections below).</div></div>
 <div class="row"><div class="g">Hold <b>HOME</b></div><div class="e">Opens the menu. <b>HOME</b> closes it.</div></div>
-<div class="row"><div class="g">Press <b>ALGORITHM</b></div><div class="e">Selects the part you edit. On the MORPH page and on PERFORM: PART 1, BOTH, PART 2.</div></div>
+<div class="row"><div class="g">Press <b>ALGORITHM</b></div><div class="e">Selects the part you edit. On the MORPH page and on PERFORM: PART 1, the middle (both parts, in the PLAY MODE row's mode), PART 2.</div></div>
 <div class="row"><div class="g">Hold <b>EDIT</b> / <b>LFO</b> / <b>ENV</b> / <b>ARP</b> / <b>GLO</b> / <b>SEQ</b> / <b>REC</b></div><div class="e">Quick page: the four knobs become performance controls. Let go to go back.</div></div>
 <div class="row"><div class="g">Hold <b>FX</b></div><div class="e">PERFORM page. Tap <b>FX</b> to leave.</div></div>
 <div class="row"><div class="g">Hold <b>OCT-</b> + turn a knob</div><div class="e">Resets that knob's card to its default. In a dialog or menu <b>OCT-</b> means back / no, <b>OCT+</b> do it / yes.</div></div>
@@ -103,7 +107,7 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <section>
 <h2>Playing</h2>
 <div class="row"><div class="g">Tap <b>OCT-</b> / <b>OCT+</b></div><div class="e">Octave down / up of the keys. Both together reset the octave to 0.</div></div>
-<div class="row"><div class="g">Tap <b>REC</b> (not on sequencer pages)</div><div class="e">HOLD for the part(s) the keys play. Tap again to release.</div></div>
+<div class="row"><div class="g">Tap <b>REC</b></div><div class="e">Not armed: HOLD for the part(s) the keys play (on HOME too; to record from HOME, hold SEQ and tap REC). Once a part is armed, a REC tap disarms it on every page, HOME included, and leaves HOLD alone.</div></div>
 <div class="row"><div class="g">Tap <b>PLAY/STOP</b></div><div class="e">Stopped: starts when you let go. Running: stops at once.</div></div>
 <div class="row"><div class="g">Hold <b>PLAY/STOP</b>, or press it twice</div><div class="e">STOP ALL: silences everything, delay, chorus and reverb tails too.</div></div>
 <div class="row"><div class="g">Hold <b>GLO</b> + <b>OCT-</b> / <b>OCT+</b></div><div class="e">Mutes / unmutes part 1 / part 2.</div></div>
@@ -112,7 +116,7 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 
 <section>
 <h2>Sound</h2>
-<div class="row"><div class="g">MORPH page</div><div class="e">Knob 1 glides from End A to End B. Knob 2 ROLL: turn left to roll End A, right to roll End B. Knob 3 UNDO goes back up to 2 rolls. End B is saved exactly as it sounds, with the patch.</div></div>
+<div class="row"><div class="g">MORPH page</div><div class="e">Knob 1 glides from End A to End B. Hold OCT+ and click knob 1 to roll a new End B; a roll replaces that end (no UNDO). Knobs 2 to 4: FILTER, RESONANCE, ECHO for a single sound; on a multi the set of its genre (the KNOBS row below). End B is saved exactly as it sounds, with the patch.</div></div>
 </section>
 
 <section>
@@ -125,7 +129,7 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <h2>Saving &amp; loading</h2>
 <div class="row"><div class="g">Tap <b>SAVE</b></div><div class="e">Opens the page that fits: PATTERNS on a sequencer page, otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. <b>SELECT</b> moves between PATCHES, PATTERNS, MULTIS, TOOLS.</div></div>
 <div class="row"><div class="g">Hold <b>SAVE</b></div><div class="e">Overwrites the slot your sound came from; <b>OCT+</b> yes, <b>OCT-</b> no. On the MORPH page with TARGET BOTH, each part goes over its own slot.</div></div>
-<div class="row"><div class="g">MIDI program change</div><div class="e">LAYER: program 0 to 15 on part 1's channel loads multis M01 to M16 (bank 0). DUEL and STEREO: bank 0, program n loads entry n of the PATCHES list; bank 1, program n loads patch slot n.</div></div>
+<div class="row"><div class="g">MIDI program change</div><div class="e">LAYER: program 0 to 25 on part 1's channel loads multis M01 to M26 (bank 0 only; 0 to 15 and M01 to M16 on plain DUELL). DUEL and STEREO: bank 0, program n loads entry n of the PATCHES list; bank 1, program n loads patch slot n.</div></div>
 <div class="row"><div class="g">Backup (installer page or editor Backup page)</div><div class="e">Saves patches, multis, patterns, user wavetables and settings. A flash keeps your saved data; back up before every flash. Room for 128 patches, 16 multis (M01 to M16), 32 patterns (P01 to P32).</div></div>
 </section>
 
@@ -138,8 +142,42 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 </ul>
 </section>
 
+<section>
+<h2>TIDE: the round on HOME</h2>
+<div class="row"><div class="g">Tap <b>HOME</b></div><div class="e">MORPH, then TIDE SETTINGS, then AUTO TIDE, one tap each. <b>ALGORITHM</b> picks PART 1, the middle or PART 2 on all of them: the middle is both parts, playing the PLAY MODE row's LAYER, STEREO or DUEL (the header names it).</div></div>
+<div class="row"><div class="g">Pills beside the capsules</div><div class="e">Dim pill by part 1: busiest audio block of the last 4 s, in % of its time. Red badge by part 2 (only after a miss): audio blocks missed recently; it goes away after a minute with no new miss.</div></div>
+<div class="row"><div class="g">MORPH page</div><div class="e">The hands-on page: K1 the fader A to B (two steps a click), K2 FILTER, K3 RESONANCE, K4 ECHO (a multi with a genre tag in its name, such as DUB or ACID, gets that genre's macros instead: the KNOBS row). With both parts selected every knob moves each part by the same amount. Hold OCT+ and click K1: a new End B (no UNDO). OCT- + a knob: K1 back to the original sound, K2 to K4 back to the loaded sound's value.</div></div>
+</section>
+
+<section>
+<h2>TIDE: AUTO TIDE</h2>
+<div class="row"><div class="g"><b>K1</b> GLIDE</div><div class="e">Twist right to go to B, left to go to A; it starts on the next bar. Twist two detents while it runs and it stops where it is.</div></div>
+<div class="row"><div class="g"><b>K2</b> MODE (AUTO TIDE mode)</div><div class="e">What happens at each arrival: EVOLVE or TRAVEL.</div></div>
+<div class="row"><div class="g"><b>K3</b> TIME</div><div class="e">Bars for one trip: 1, 2, 4, 8, 16, 32, 64.</div></div>
+<div class="row"><div class="g"><b>K4</b> WAIT</div><div class="e">Bars to hold at each arrival: OFF, 1, 2, 4, 8, 16.</div></div>
+<div class="row"><div class="g">Hold <b>OCT-</b> + <b>K1</b> / <b>K2</b> / <b>K3</b> / <b>K4</b></div><div class="e">K1: back HOME to your original sound and pattern. K2: drops the ARC at the next 4-bar phrase (a second turn cancels it). K3 and K4: TIME and WAIT go back to the STYLE's values (DUB: 16 bars and 2 bars).</div></div>
+<ul>
+<li><b>TRAVEL</b> travels through factory sounds of the part's own engine and stays in the starting sound's role (pads and keys, bass, lead and pluck, hits, FX); it never changes engine.</li>
+<li><b>EVOLVE</b> walks every dial on from your original, one step per trip, the step growing with the phrase length (2 to 8 sixteenths of AMOUNT); a dial turns round at the edge of AMOUNT, and some dials wait for longer phrases.</li>
+</ul>
+</section>
+
+<section>
+<h2>TIDE: TIDE SETTINGS</h2>
+<div class="row"><div class="g"><b>K1</b> picks the row</div><div class="e"><b>OCT+</b> the next value, <b>OCT-</b> the one before. Saved after about two seconds, while stopped.</div></div>
+<div class="row"><div class="g"><b>STYLE</b></div><div class="e">DUB (the default), DEEP, MINIMAL, AMBIENT, PEAK, DRONE, CUSTOM. One pick sets MODE, TIME, WAIT and ARC, and how the pattern varies, takes turns, drifts against the beat and breathes; changing MODE, TIME, WAIT or ARC by hand makes it CUSTOM.</div></div>
+<div class="row"><div class="g"><b>MODE</b></div><div class="e">The AUTO TIDE mode, as K2 there: EVOLVE or TRAVEL.</div></div>
+<div class="row"><div class="g"><b>TARGET</b></div><div class="e">BOTH, SOUND or SEQ: what the glide moves.</div></div>
+<div class="row"><div class="g"><b>ARC</b></div><div class="e">OFF, RISE or DROP: the long shape of rise, peak and breakdown. Acts in automatic EVOLVE and TRAVEL.</div></div>
+<div class="row"><div class="g"><b>KNOBS</b></div><div class="e">Which set K2, K3 and K4 play on HOME page 1 (K1 is always MORPH): AUTO (reads the first word of the multi's name), STD, DUB, HSE, TECH, ACID, ELEC, AMB. Every new End B is rolled MUSIC.</div></div>
+<div class="row"><div class="g"><b>AMOUNT</b></div><div class="e">0 to 100 %: how far a roll may go (the MORPH page's knob 4 until 1.0.0-b7). Not part of a STYLE.</div></div>
+<div class="row"><div class="g"><b>ANSWER</b> / <b>ANSWER ON</b></div><div class="e">When a recording pass closes, the other part is given a bass line in the key (BASS LINE, the default) or your notes a third above (DOUBLE), or a REPLY that ends on the tonic, or an ECHO of your last note (the last two double the loop: a call of 2 bars at most); OFF keeps nothing. ANSWER ON: OTHER (the other part) or OFF. OCT- held + a PRESETS turn goes back along the last 2 takes (left) or forward (right); ROLL on the part that holds the answer writes it again.</div></div>
+<div class="row"><div class="g"><b>REC</b></div><div class="e">ADD (the default) or REPLACE: when you record live into a step that holds notes, a new note is added to them, or the first note of the pass takes their place (a chord played together is kept). On an ARP SEQ part a key sets the step's note (one note a step). Not part of a STYLE.</div></div>
+<div class="row"><div class="g"><b>PLAY MODE</b> / <b>XFADE</b> / <b>SPLIT</b></div><div class="e">The last three rows: LAYER, STEREO or DUEL; the velocity crossfade; the key split (OFF, MIDDLE, then a note). PLAY MODE is what ALGORITHM's middle plays (changing it moves ALGORITHM there). XFADE acts in the middle in LAYER; SPLIT in the middle in any mode. Knobs 2 to 4 move them by the clicks you turn; OCT+ / OCT- step XFADE 10 % and SPLIT an octave.</div></div>
+</section>
+
 </div>
-<footer>DUELL &middot; MultiMorphing Bitimbral Synthesizer &middot; by OSCILL/R &middot; checked against DUELL 1.1.</footer>
+<footer>TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE. <a href="../">TIDE</a></footer>
 </main>
 </body>
 </html>

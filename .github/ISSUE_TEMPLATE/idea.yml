@@ -1,22 +1,35 @@
 name: Idea or request
-description: A feature idea, a request or a suggestion for DUELL (no promise it will be added)
+description: A feature idea, a request or a suggestion for TIDE (no promise it will be added)
 title: "[idea] "
-labels: ["idea"]
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        **DUELL** - MultiMorphing Bitimbral Synthesizer by OSCILL/R.
-        Thanks for the idea. One idea per issue, please. Bugs go in the bug report form instead.
+        **TIDE** is pssdrnk's fork of DUELL 1.1 by OSCILL/R. One idea per issue, please. Bugs go in the bug report form instead.
+        An idea for plain DUELL (nothing to do with TIDE or this fork's pages) belongs with [OSCILL/R](https://github.com/oscillr/DUELL/issues/new/choose).
+        The [roadmap](https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/ROADMAP.md) shows what is planned.
   - type: textarea
     id: idea
     attributes:
       label: What would you like?
-      description: Say what you would like DUELL to do, and what you are trying to play or make.
+      description: Say what you would like to happen, and what you are trying to play or make.
     validations:
       required: true
-  - type: input
-    id: version
+  - type: dropdown
+    id: area
     attributes:
-      label: Firmware version (optional)
-      description: Hold HOME and open ABOUT, or the emulator page footer.
+      label: Which part?
+      options:
+        - TIDE (AUTO TIDE, TIDE SETTINGS, how a tide plays)
+        - Sounds, patterns or multis
+        - Sequencer or arp
+        - MIDI
+        - Installer, emulator or editor
+        - Documents
+        - Something else
+  - type: input
+    id: build
+    attributes:
+      label: Build (optional)
+      description: The TIDE version you use (MENU > SYSTEM > ABOUT, for example 1.0.0 or 1.0.0-b2).

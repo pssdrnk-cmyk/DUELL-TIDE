@@ -42,7 +42,7 @@ static void multis(void)
     uint32_t m, i;
     for (m = 0; m < 16u; m++) {
         power();
-        project_load(m);
+        project_load(MIDX(m));
         for (i = 0; i < 8; i++) {
             frame();
             budget_poll();

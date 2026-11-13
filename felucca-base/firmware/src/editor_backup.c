@@ -15,16 +15,21 @@
  *   GET 40 off count slot     (9 bytes: id, offset u32, count lo, count hi, slot) a piece of the record; the reply is the usual one with id 40
  *   PUT begin 40 size crc slot (13 bytes) / data / commit / abort as every object; the record goes in through up_put_raw (refused at commit, rc 2, when the store would not
  *                             read it: pt_rec_ok, the extension block's lengths included); size 0 = the slot's record removed (its factory sound is back, as RESTORE)
+ * DUELL with TIDE (INFO 44 01 bit 1): id 41 = FM6's voice bank B1..B32 (fm6_vbank.c), READ ONLY here: the stored payload (header and the 32 voices as stored, FVB_LEN bytes) and its CRC-32 after
+ *                             it (u32, little endian), 3620 bytes. It is NOT in the plain LIST (an older tool knows no such id): GET 41 off count reads it (rc 1 when the unit holds no bank: probe with count 1).
+ *                             A restore writes it with the editor's FM6B_BEGIN / WRITE / END (cmds 74..76), voice by voice; a PUT of 41 answers rc 1
  * Id 8 (the FM6 patch bank of 1.0..1.0.2) is listed empty and a PUT of it is accepted and dropped.
  * Ids 2..5 (Felucca's project slots A..D) are listed empty since DUELL's MULTI store took their flash (project.c multi.c);
  * a PUT of one from an older archive is accepted (whatever its length) and dropped.
  * DUELL 0.2.14: what a PUT restores must be of this firmware's formats (project.c, multi.c, upreset.c): a project of another format
  * or revision (2), a multi object whose record is not MU_VER with P_COUNT values (2), a patch chunk with a record without PTF_CB (2) are
  * refused; nothing is written or changed then.
+ * b10 U4 (INFO 42 01 caps bit 6, value 64): ids 42..46 = OBJ_MULTIX0..4 (M17-18 .. M25-26, the same object format as 13..20; "version 6"; the flash holds exactly M26: a build with fewer slots lists the last
+ * object empty and a restore of it is kept as it is). A version 5 archive has none of them: its restore leaves M17 and up as they are.
  * DUELL 0.2.14 (INFO 42 01 caps bit 2): ids 13..20 = OBJ_MULTI0..7 (M01-02 .. M15-16, two multis an object, magic MUL1, multi.c) and ids
  * 21..23 = OBJ_PATSLOT0..2 (P01-11, P12-22, P23-32, 11 / 11 / 10 slots an object, magic PTS3, a compact variable-length object, patslot.c) are in the
  * archive (27 ids). They are read
- * where they live (a multi object from flash through st_current, a pattern object from the RAM mirror ps_bank, which is the truth while a
+ * where they live (a multi object from flash through st_current, a pattern object from RAM (patslot.c ps_obj), which is the truth while a
  * pattern write is pending), never from the staging RAM (the runtime snapshot of id 0 sits there). An object with no multi record is listed
  * with length 0, and a PUT of length 0 writes that empty object (the factory multis show again). A pattern object is never empty (every
  * slot holds a pattern): a PUT of length 0 gives its slots their defaults again.
@@ -37,12 +42,19 @@
 #define ED_BK_PAT0 21u
 #define ED_BK_WT0 24u
 #define ED_BK_PATCH 40u                         /* a patch record, with its slot (see the top) */
+#define ED_BK_MULX0 42u                         /* ids 42..46: the multi objects 8..12 (M17..M26, b10 U4, INFO 42 01 caps bit 6): always all five, the flash has room for M26 (MU_OBJ_ALL); the ones past MU_SLOTS read empty; 41 is the voice bank */
+#define ED_BK_FVB 41u                           /* TIDE: FM6's voice bank, read only (see the top) */
 #define ED_BK_PPAGE 32u                         /* patch records a LIST page lists (32 x 11 bytes fit the reply) */
-static const uint8_t ED_BK_IDS[24] = {0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 32, 33, 34};
+static const uint8_t ED_BK_IDS[29] = {0, 1, 2, 3, 4, 5, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 32, 33, 34, 42, 43, 44, 45, 46};
 static uint8_t ed_bk_slot;                      /* the slot of the patch record a PUT is staging */
 static uint8_t ed_wt_put;                       /* a user wavetable upload is staging (editor_wtab.c): they share ED_BK_RAW */
 static int ed_bk_wt(uint32_t id) { return id >= ED_BK_WT0 && id < ED_BK_WT0 + WV_NU ? (int)(id - ED_BK_WT0) : -1; }
-static int ed_bk_multi(uint32_t id) { return id >= ED_BK_MUL0 && id < ED_BK_MUL0 + MU_NOBJ ? (int)(id - ED_BK_MUL0) : -1; }
+static int ed_bk_multi(uint32_t id)             /* the multi object of a wire id, -1 none */
+{
+    if (id >= ED_BK_MUL0 && id < ED_BK_MUL0 + MU_NOBJ0)
+        return (int)(id - ED_BK_MUL0);
+    return id >= ED_BK_MULX0 && id < ED_BK_MULX0 + (MU_OBJ_ALL - MU_NOBJ0) ? (int)(MU_NOBJ0 + id - ED_BK_MULX0) : -1;
+}
 static int ed_bk_pat(uint32_t id) { return id >= ED_BK_PAT0 && id < ED_BK_PAT0 + PS_NOBJ ? (int)(id - ED_BK_PAT0) : -1; }
 #define ED_BK_N ((uint32_t)sizeof ED_BK_IDS)
 #define ED_BK_MAX ((uint32_t)sizeof proj_wire_u.raw)
@@ -113,7 +125,7 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         const uint8_t *p;
 #if FELUCCA_FLASH
         st_hdr_t h;
-        if (!flash_ok || st_current(OBJ_MULTI0 + o, &h) < 0)
+        if (!flash_ok || st_current(mu_oid(o), &h) < 0)
             return ED_BK_RAW;
         n = h.len;
         p = st_buf;                                 /* (st_current left the payload there) */
@@ -133,10 +145,19 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         *len = sizeof wt_ram[u];
         return (const uint8_t *)&wt_ram[u];
     }
-    if (ed_bk_pat(id) >= 0) {                       /* the pattern slots: the RAM mirror is the truth (a write may be pending) */
+    if (ed_bk_pat(id) >= 0) {                       /* the pattern slots: RAM is the truth (a write may be pending; S0a: ps_obj brings the object in) */
         uint32_t o = (uint32_t)ed_bk_pat(id);
-        *len = ps_used_len(o);                      /* (no slot is empty: the object is always there, defaults included) */
-        return ps_bank[o];
+        const uint8_t *b = ps_obj(o);
+        *len = b ? ps_used_len(o) : 0u;             /* (no slot is empty: the object is always there, defaults included; 0: the flash failed) */
+        return b;
+    }
+    if (id == ED_BK_FVB) {                          /* the voice bank as stored (st_buf, which fvb_info fills) and its CRC after it; no bank: length 0 */
+        uint32_t c;
+        if (!fvb_info()) return ED_BK_RAW;
+        c = st_crc32(st_buf, FVB_LEN);
+        memcpy(st_buf + FVB_LEN, &c, 4);
+        *len = FVB_LEN + 4u;
+        return st_buf;
     }
     if (id == 0u) { *len = sizeof(project_store_t); return ED_BK_RAW; }
     if (id == 1u) { *len = sizeof(persist_t); return ed_bk_settings_rec(); }
@@ -209,7 +230,8 @@ static uint32_t ed_bk_commit(void)
         } else if (!ed_bk_mul_ok(raw, ed_bk_len)) return 2;
         if (mu_obj_write(o, ed_bk_len)) return 4;   /* (mu_buf is the staging RAM; host builds: mu_ram) */
         mu_obj_read(o);                             /* what the unit holds now (flash, checked); its names and used mask */
-        mu_note(o);
+        if (o < MU_NOBJ)                            /* (b10 U4: the objects past the slots in use hold what the archive carried: M25, M26 come with MR9) */
+            mu_note(o);
         sync_reload = 1; ui.force = 1;
         return 0;
     } else if (ed_bk_wt(ed_bk_id) >= 0) {      /* DUELL 0.2.14: a user wavetable; length 0 = EMPTY */
@@ -220,6 +242,7 @@ static uint32_t ed_bk_commit(void)
     } else if (ed_bk_pat(ed_bk_id) >= 0) {     /* DUELL: a PATTERN object (11 or 10 slots, PTS3); length 0 = the defaults of its slots again */
         uint32_t o = (uint32_t)ed_bk_pat(ed_bk_id);
         if (!ed_bk_len) {
+            if (ps_take(o)) return 4;               /* (S0a: the object into RAM first) */
             ps_reset_obj(o);                        /* (marks the object dirty: the flash follows; a failed write is retried) */
             sync_reload = 1; ui.force = 1;
             return 0;
@@ -228,15 +251,13 @@ static uint32_t ed_bk_commit(void)
 #if FELUCCA_FLASH
         if (!flash_ok || st_save(OBJ_PATSLOT0 + o, raw, ed_bk_len)) return 4;
 #endif
-        memcpy(ps_bank[o], raw, ed_bk_len);         /* the mirror is the restored object; no write of the old one is pending */
-        ps_obj_check(o, (int)ed_bk_len);
-        ps_dirty &= (uint8_t)~(1u << o);
+        ps_restored(o, raw, ed_bk_len);             /* RAM is the restored object; no write of the old one is pending */
         sync_reload = 1; ui.force = 1;
         return 0;
     } else if (ed_bk_id == ED_BK_PATCH) {     /* one patch record into its slot (the store places it); length 0: the slot's record removed */
         int r = ed_bk_len ? up_put_raw(ed_bk_slot, raw, ed_bk_len) : sl_restore(ed_bk_slot);
         sync_reload = 1; ui.force = 1;
-        return r == 0 || r == 3 ? 0u : r == 1 ? 2u : song.playing ? 3u : 4u;   /* (3: no flash, kept in RAM; 1: no record the store would read; 2: the flash failed) */
+        return r == 0 || r == 3 ? 0u : r == 1 ? 2u : r == PT_FULL ? 6u : song.playing ? 3u : 4u;   /* (3: no flash, kept in RAM; 1: no record the store would read; 2: the flash failed; 6: STORE FULL, TIDE's 126 records) */
     } else return 1;
 #if FELUCCA_FLASH
     if (!flash_ok || st_save(obj, raw, ed_bk_len)) return 4;
@@ -249,7 +270,7 @@ static uint32_t ed_bk_commit(void)
         settings_import(q, sizeof *q);
         panel_init(); settings_init(); palette_set(settings.palette);
 #if FELUCCA_FLASH
-        persist_note(q); persist_pending = 0;
+        persist_note(q); persist_pending = 1;   /* (TIDE: a backup without its fields keeps the unit's; the settings are saved again so the flash holds them too) */
 #endif
     }
     sync_reload = 1; ui.force = 1;
@@ -323,7 +344,7 @@ static int ed_backup_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         if (!rc) for (uint32_t i = 0; i < ED_BK_N; i++) {
             uint32_t len;
             const uint8_t *p = ed_bk_object(ED_BK_IDS[i], &len);
-            ed_b(ED_BK_IDS[i]); ed_bk_u32(len); ed_bk_u32(st_crc32(p, len));
+            ed_b(ED_BK_IDS[i]); ed_bk_u32(len); ed_bk_u32(p ? st_crc32(p, len) : 0u);
             fm1_wdt_feed();
         }
         return 1;

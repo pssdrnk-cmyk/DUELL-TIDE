@@ -260,7 +260,7 @@ int main(int argc, char **argv)
                     multi_boot();
                     frame();
                     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-                    project_load(m);
+                    project_load(MIDX(m));
                     frame();
                     trk[!p].p[P_MUTE] = 1;
                     trk[p].p[P_VOICE] = V_POLY;

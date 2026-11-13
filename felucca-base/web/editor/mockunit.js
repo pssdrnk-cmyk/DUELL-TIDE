@@ -4,7 +4,7 @@
 // editor/?mock=1 (try the page without a unit). It is NOT the firmware: the C tests (tests/backup_test.c) cover that.
 import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc } from "../fm1backup.js";
 import { PS as PATS, buildPatObject, nslotOf } from "./patslot.js";
-import { checkObject, DUELL_IDS, decodeMultis, OLD_PATCH_IDS, CAPS_PATCH_RECORDS, PATCH_ID, PATCH_PAGE, PATCH_PAGES, PATCH_MAX } from "./duellbackup.js";
+import { checkObject, DUELL_IDS, decodeMultis, multiObjId, OLD_PATCH_IDS, CAPS_PATCH_RECORDS, PATCH_ID, PATCH_PAGE, PATCH_PAGES, PATCH_MAX, FVB_ID, FVB_LEN, FVB_OBJ, FVB_N, FVB_REC, FVB_PK, FVB_HEAD, FM6B_CMD, packVoice } from "./duellbackup.js";
 import { WT, buildObject, parseObject, cleanName, ampToByte } from "./wavetable.js";
 import { CMD, v14, rv14, cstr, rstr } from "./proto.js";
 import { L, ID, X, NX, descOf, xdescOf, xDefaults, clampTo, P_E0 } from "./layout.js";
@@ -49,10 +49,10 @@ export function buildMultiObject(names) {              // [nameA | null, nameB |
 }
 // The unit's 32 default patterns (engines.c PATTERNS[]: name, LEN, DIV; PATTERNS_PROPOSAL.md) as the objects 21..23 hold them (PTS3, patslot.js). The steps here are simple stand-ins (the
 // unit's own notes are in the firmware); the format, the names and the 11 + 11 + 10 split are the unit's.
-const DEFAULT_PATTERNS = [["MORODER OCT", 16, 2], ["ACID LINE", 16, 2], ["OFFBEAT", 16, 2], ["TECHNO RUMBL", 16, 2], ["TRANCE ROLL", 16, 2], ["8TH PULSE", 16, 2], ["GLASS LOOP", 16, 2], ["BERLIN RUN", 16, 2],
-  ["DETROIT STAB", 16, 2], ["FUNK 16TH", 16, 2], ["DUB HALFTIME", 16, 2], ["SKANK", 16, 2], ["GALLOP", 16, 2], ["PENTA RIFF", 16, 2], ["BOOGIE BASS", 16, 2], ["DOTTED HOOK", 16, 2], ["SUB DROP", 16, 2],
-  ["TUMBAO", 16, 2], ["MOTORIK", 16, 2], ["WALK LINE", 8, 1], ["2-STEP SUB", 16, 2], ["GHOST FUNK", 16, 2], ["TRIPLET SWAY", 12, 4], ["TRANCE GATE", 16, 2], ["RAVE STABS", 16, 2], ["EP COMP", 16, 2],
-  ["NEON HOOK", 16, 2], ["NIGHT CALL", 32, 2], ["PAD BREATH", 16, 2], ["DX OSTINATO", 16, 2], ["DX BELLS", 16, 2], ["SEVEN EIGHT", 14, 2]];
+const DEFAULT_PATTERNS = [["DUB CHORD", 16, 2], ["DEEP SHUFFLE", 16, 2], ["DUB OFFBEAT", 16, 2], ["HOUSE STAB", 16, 2], ["DOT DELAY", 16, 2], ["8TH PULSE", 16, 2], ["GLASS LOOP", 16, 2], ["BERLIN RUN", 16, 2],
+  ["DETROIT STAB", 16, 2], ["MINIMAL 12", 12, 2], ["DUB HALFTIME", 16, 2], ["SKANK", 16, 2], ["DEEP 332", 16, 2], ["PENTA RIFF", 16, 2], ["PAD BREATH", 16, 2], ["DOTTED HOOK", 16, 2], ["HALF PAD", 32, 2],
+  ["TUMBAO", 16, 2], ["MOTORIK", 16, 2], ["WALK LINE", 8, 1], ["2-STEP SUB", 16, 2], ["GHOST FUNK", 16, 2], ["TRIPLET SWAY", 12, 4], ["DUB PROG", 32, 2], ["RAVE STABS", 16, 2], ["EP COMP", 16, 2],
+  ["NEON HOOK", 16, 2], ["NIGHT CALL", 32, 2], ["TIED ROOTS", 16, 2], ["DX OSTINATO", 16, 2], ["DX BELLS", 16, 2], ["SEVEN EIGHT", 14, 2]];
 export function mockPatternRecord({ name, len = 16, div = 2, changed = 0 }) {      // one slot as the editor's 596-byte record
   const r = new Uint8Array(PATS.REC); r.set([PATS.USED, PATS.VER, len, div, 0, 64, 1, changed]); putName(r, 8, name);
   for (let k = 0; k < 64; k++) { const t = 20 + k * 9; if (k < len && k % 4 === 0) { r[t] = 48 + (k % 12); r[t + 4] = 1; r[t + 5] = 100; } else r[t + 4] = 2 << 3; }
@@ -71,7 +71,7 @@ const MENU = [   // MENU_DESC items, DUELL 0.2.14 (EDITOR_PROTOCOL.md "MENU sett
   [13, "CLICK LEVEL", 0, ["LOW", "MID", "HIGH"], 0, 2, 1, 2], [14, "COUNT-IN", 0, ["OFF", "1 BAR", "2 BARS"], 0, 2, 0, 2],
   [15, "RESTORE LAST", 0, ["ON", "OFF"], 0, 1, 0, 3], [16, "SCALE LEDS", 0, ["AUTO", "OFF"], 0, 1, 0, 0],
   [17, "SCREEN OFF", 0, ["NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"], 0, 4, 0, 0], [19, "STEP PREVIEW", 0, ["OFF", "ON"], 0, 1, 0, 1],
-  [20, "STEP KEYS", 0, ["WRITE", "ADD"], 0, 1, 0, 1], [22, "TUNE", 2, "Hz", 4153, 4662, 4400, 2],   // 0.2.22: kind 2, A4 in 0.1 Hz (415.3 .. 466.2 Hz)
+  [20, "STEP KEYS", 0, ["REPLACE", "ADD"], 0, 1, 0, 1], [22, "TUNE", 2, "Hz", 4153, 4662, 4400, 2],   // 0.2.22: kind 2, A4 in 0.1 Hz (415.3 .. 466.2 Hz)
   [25, "HOME OPENS", 0, ["MORPH", "MODE"], 0, 1, 0, 1],
   [27, "MULTI LOAD", 0, ["KEEPS MODE", "SETS MODE"], 0, 1, 0, 1],
   [28, "ARP", 0, ["OFF", "FOLLOWS PATCH", "KEEPS RUNNING"], 0, 2, 1, 4], [29, "SEQ", 0, ["OFF", "FOLLOWS PATCH", "KEEPS RUNNING"], 0, 2, 1, 4],   // DEMO ONLY: the three values OFF / FOLLOWS PATCH / KEEPS RUNNING (owner, 2026-10-25) on the ids 28 and 29 until the firmware names its two menu ids; FOLLOWS PATCH is the old ON      // GLO > MODULES (ids 28..31, tab 4 "MODULES": no MENU tab on the unit)
@@ -113,15 +113,32 @@ export function preselectMatrix(p) {
 const storedDesc = (q, id) => (id === ID.P_CUT2 || id === ID.P_RES2 ? L.TP[id] : descOf(q, id));
 
 // DUELL 0.2.17: slot i holds its saved record or else the factory sound at browse position i. The browse order is the firmware's (layout.json BROWSE, from
-// sounds.c DS_LIST: category, then engine in the order of L.ORDER, then name; the numbers of docs/PATCH_NUMBERS.md are position + 1)
+// sounds.c DS_LIST: category, then engine in the order of L.ORDER, then name; the numbers of docs/PATCH_NUMBERS.md are position + 1). A TIDE build's last four slots are USER slots
+// (U1; layout.json BROWSE null): "USER EMPTY" until saved; the places after the 128 slots are the factory sounds they displace and the ones past the bank's 128 (read-only, not slots here)
 export function factoryBrowse() {
-  return L.BROWSE.map(([eng, idx]) => ({ eng, idx, name: L.ENG[eng].sounds[idx][0], cat: L.ENG[eng].sounds[idx][1] }));
+  return L.BROWSE.map((b) => (b ? { eng: b[0], idx: b[1], name: L.ENG[b[0]].sounds[b[1]][0], cat: L.ENG[b[0]].sounds[b[1]][1] } : { eng: 0, idx: 0, name: "USER EMPTY", cat: 0, user: true }));
 }
 const BROWSE = factoryBrowse();
 
+// an FM6 voice bank object as the unit's GET 41 gives it: voices = Map index -> the 128 7-bit bytes of a record
+export function buildBankObject(name, voices) {
+  const b = new Uint8Array(FVB_OBJ).fill(0xff), dv = new DataView(b.buffer);
+  b.fill(0, 0, FVB_HEAD);
+  dv.setUint32(0, 0x56364D46, true); dv.setUint16(4, 1, true); dv.setUint16(6, FVB_N, true);
+  let used = 0; for (const k of voices.keys()) used |= 1 << k;
+  dv.setUint32(8, used >>> 0, true);
+  for (let i = 0; i < 12; i++) b[12 + i] = i < 10 ? name.padEnd(10, " ").charCodeAt(i) : 0;
+  for (const [k, pk] of voices) b.set(packVoice(pk), FVB_HEAD + k * FVB_REC);
+  dv.setUint32(FVB_LEN, bkCrc(b.subarray(0, FVB_LEN)), true);
+  return b;
+}
 const twRound = (x) => (x < 0 ? -Math.floor(-x + 0.5) : Math.floor(x + 0.5));   // C's (x * m + 2048) / 4096 for the sign-symmetric rounding
 export class MockUnit {
-  constructor({ caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false } = {}) {
+  constructor({ plainTag = false, caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = 128, tide = false, fvBank = false } = {}) {
+    this.plainTag = plainTag;                      // INFO 44 01 with bit 0 clear: the unit says it is plain DUELL (no firmware sends it yet)
+    this.fvBank = fvBank; this.bank = null; this.bankTx = null;   // INFO 44 01 bit 1: GET 41 and FM6B_BEGIN / WRITE / END (the FM6 voice bank, this.bank: the object as the unit stores it, or null)
+    this.tide = tide || fvBank;                    // INFO 44 01 bit 0: the unit is TIDE
+    this.storeMax = storeMax;            // the patch records the store takes (INFO 58 01): 126 on TIDE; a new record past it is rc 6 (STORE FULL)
     this.morphView = morphView; this.shift = [new Map(), new Map()];   // item 159 (INFO 4F 01): the values read AS SHOWN at the MORPH fader; shift: a part's fader offset per id (shown = stored + offset)
     this.locksCap = locksCap; this.motion = []; this.bypassCap = bypassCap; this.pat32 = pat32; this.scope2 = scope2; this.savedFlags = savedFlags; this.patchRaw = patchRaw; this.prStage = null; this.version = version; this.caps = caps; this.playing = playing;
     this.tables = [null, null, null]; this.wtStage = null;    // the user wavetables {name, data} (caps bit 3, cmds 81..83)
@@ -129,14 +146,15 @@ export class MockUnit {
     this.parts = [defaultPart(0), defaultPart(12)];
     this.parts[1].p[ID.P_PAN] = 20;
     this.g = L.GP.map((d) => d.def); this.selected = 0; this.watching = false; this.onpush = null; this.watchTime = 0;
-    this.patches = new Map(); this.multiStored = Array(16).fill(null); this.multiUsedExtra = new Set();
+    this.patches = new Map(); this.multiStored = Array(26).fill(null); this.multiUsedExtra = new Set();
     this.menu = MENU.map((m) => m.slice()); this.learn = []; this.steps = [0, 1].map(() => Array.from({ length: 64 }, (_, i) => ({ index: i, n: i % 4 === 0 ? 1 : 0, notes: [i % 4 === 0 ? 48 + (i % 12) : 0, 0, 0, 0], time: i % 4 === 0 ? 0 : 2, flags: 0, vel: 100, hits: [0, 0, 0], chance: 100, ratchet: 1, nudge: 8 })));
     for (const st of this.steps) {      // a few things to look at: a chord held over two TIEs, a SLIDE, a RATCHET, a CHANCE, an accent
       Object.assign(st[8], { n: 2, notes: [55, 59, 0, 0], time: 0, vel: 90 }); Object.assign(st[9], { n: 0, notes: [0, 0, 0, 0], time: 1 }); Object.assign(st[10], { n: 0, notes: [0, 0, 0, 0], time: 1 });
       Object.assign(st[12], { flags: 2, notes: [52, 0, 0, 0] }); Object.assign(st[13], { n: 1, notes: [57, 0, 0, 0], time: 0, vel: 70 });
       Object.assign(st[4], { notes: [50, 0, 0, 0], flags: 1, vel: 127 }); Object.assign(st[14], { n: 1, notes: [60, 0, 0, 0], time: 0, ratchet: 3, chance: 60, vel: 80 });
     }
-    this.objs.set(0, filler(3840, 1, [0x42, 0x4E, 0x55, 0x46])); { const o = this.objs.get(0); o[63] = 2; o[66] = 127; o[67] = 8; }   // (the music: 2 parts, 127 values, revision 8)
+    this.objs.set(0, filler(3840, 1, [0x42, 0x4E, 0x55, 0x46])); { const o = this.objs.get(0); o[63] = 2; o[66] = 127; o[67] = 8; o[4] = 3840 & 255; o[5] = 3840 >> 8; o[6] = o[7] = 0; o[64] = 2; o.fill(0, 68, 3836);
+      let h = 0x811C9DC5; for (let i = 0; i < 3836; i++) h = Math.imul(h ^ o[i], 16777619) >>> 0; for (let i = 0; i < 4; i++) o[3836 + i] = (h >>> (8 * i)) & 255; }   // (project.c proj_unpack: the size at 4, 2 parts at 64, the FNV hash in the last 4 bytes)   // (the music: 2 parts, 127 values, revision 8)
     this.objs.set(1, filler(this.settingsSize, 2, [0x34, 0x52, 0x45, 0x50]));
     if (seed) {
       for (const [slot, name, eng, cat] of [[0, "WARM PAD", 0, 3], [1, "SUB BASS", 0, 1], [5, "BELL", 12, 5], [64, "WAVE LEAD", 14, 2]])
@@ -158,9 +176,9 @@ export class MockUnit {
       for (const [id, r] of chunks) if (r.length) this.objs.set(id, buildLegacyPatchChunk(r)); else this.objs.delete(id);
     }
     if (this.caps & 8) this.tables.forEach((t, u) => { if (t) this.objs.set(24 + u, buildObject(t.name, t.data)); else this.objs.delete(24 + u); });
-    if (this.caps & 4) for (let o = 0; o < 8; o++) {
+    if (this.caps & 4) for (let o = 0; o < ((this.caps & 64) ? 13 : 8); o++) {
       const n = [this.multiStored[2 * o], this.multiStored[2 * o + 1]];
-      if (n[0] == null && n[1] == null) this.objs.delete(13 + o); else this.objs.set(13 + o, buildMultiObject(n));
+      if (n[0] == null && n[1] == null) this.objs.delete(multiObjId(o)); else this.objs.set(multiObjId(o), buildMultiObject(n));
     }
   }
   // the stored record of a saved slot (built from the entry when it has none yet), as the unit holds it: slot and revision set
@@ -179,15 +197,15 @@ export class MockUnit {
   // a BACKUP_PUT committed object id: take the multis / wavetables from the objects
   fromObjects(id) {
     if (id >= 24 && id <= 26) { const b = this.objs.get(id); this.tables[id - 24] = b && b.length ? parseObject(b) : null; }
-    if (id >= 13 && id <= 20) {
-      this.multiStored = Array(16).fill(null);
-      for (const m of decodeMultis([...Array(8).keys()].map((o) => this.objs.get(13 + o) || null))) this.multiStored[+m.label.slice(1) - 1] = m.name;
+    if (id >= 13 && id <= 20 || id >= 42 && id <= 46) {
+      this.multiStored = Array(26).fill(null);
+      for (const m of decodeMultis([...Array(13).keys()].map((o) => this.objs.get(multiObjId(o)) || null))) this.multiStored[+m.label.slice(1) - 1] = m.name;
     }
   }
   info() {
     const s = (t) => [...t].map((c) => c.charCodeAt(0)).concat(0);
     return [...s(this.version), MOCK_ENGINES.length, L.P_COUNT, L.G_COUNT, L.NSTEP, L.P_E0, ...MOCK_ENGINES.flatMap(s), 4, 0, 0x55, 1, 9, 0x4d, 1, 64, 1, 0x42, 1, this.caps,
-      0x46, 1, 8, 0, 0x53, 1, 3, 0x50, 1, 3, 0x4e, 1, this.menu.length, 0x43, 1, 16, ...(this.caps & 16 ? [0x58, 1, this.capacity & 127, this.capacity >> 7] : []), ...(this.patchRaw ? [0x5a, 1, 1] : []), ...(this.scope2 ? [0x59, 1, NX] : []), ...(this.locksCap ? [0x4c, 1, 3, 0x41, 1, 0, 1] : []), ...(this.bypassCap ? [0x5b, 1, 1] : []), ...(this.morphView ? [0x4f, 1, 1] : [])];
+      0x46, 1, 8, 0, 0x53, 1, 3, 0x50, 1, 3, 0x4e, 1, this.menu.length, 0x43, 1, 16, ...(this.caps & 16 ? [0x58, 1, this.capacity & 127, this.capacity >> 7] : []), ...(this.patchRaw ? [0x5a, 1, 1] : []), ...(this.scope2 ? [0x59, 1, NX] : []), ...(this.locksCap ? [0x4c, 1, 3, 0x41, 1, 0, 1] : []), ...(this.bypassCap ? [0x5b, 1, 1] : []), ...(this.morphView ? [0x4f, 1, 1] : []), ...(this.tide ? [0x44, 1, 1 | (this.fvBank ? 2 : 0)] : this.plainTag ? [0x44, 1, 0] : [])];
   }
   shown(t, id) { return this.parts[t].p[id] + (this.morphView ? this.shift[t].get(id) ?? 0 : 0); }   // part t's value as its card shows it (item 159)
   // the unit's MORPH fader moved (item 159): part t's shown values are its stored ones + offs ({id: offset}); pushed as the unit does (CHANGED for the selected part, TRACK_CHANGED with WATCH bit 2 for the other)
@@ -199,9 +217,9 @@ export class MockUnit {
       else if (this.watchBits & 4) this.push(CMD.TRACK_CHANGED, [t, id, ...v14(this.shown(t, id))]);
     }
   }
-  get capacity() { return this.caps & 16 ? 128 : 48; }                // the patches the unit holds (INFO tag 58 01 with caps bit 4)
+  get capacity() { return this.caps & 16 ? this.storeMax : 48; }                // the patches the unit holds (INFO tag 58 01 with caps bit 4)
   get records() { return (this.caps & CAPS_PATCH_RECORDS) !== 0; }    // caps bit 5: the patches go one at a time as records (editor_backup.c); without it the unit is an older firmware: no pages, GET / PUT of 40 answer rc 1
-  has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0); }
+  has(id) { return [0, 1, 2, 3, 4, 5, 8, 32, 33, 34].includes(id) || (OLD_PATCH_IDS.includes(id) ? !this.records && (id < 27 || (this.caps & 16) !== 0) : id >= 24 ? (this.caps & 8) !== 0 && id <= 26 : id >= 13 && id <= 23 && (this.caps & 4) !== 0) || (id >= 42 && id <= 46 && (this.caps & 64) !== 0); }
   patchBytes(slot) { const v = slot < 128 ? this.patches.get(slot) : null; return v ? this.recordOf(v).slice().fill(0, 2, 4) : null; }   // the saved record as the store gives it out (up_raw_get): slot and revision 0
   push(cmd, args) { if (this.watching && this.onpush) this.onpush(cmd, args); }
   // ---- what the unit's panel does (tests and the page's "turn a knob on the unit" button)
@@ -227,6 +245,7 @@ export class MockUnit {
   async request([cmd, a], opt = {}) {
     this.log.push(`cmd ${cmd}`);
     if (cmd >= WT.CMD.LIST && cmd <= WT.CMD.PUT && (this.caps & 8)) return this.wavetable(cmd, a);
+    if (this.fvBank && cmd >= FM6B_CMD.BEGIN && cmd <= FM6B_CMD.END) return this.bankCmd(cmd, a);
     if (cmd <= 100 && cmd !== 65 && cmd !== 66 && cmd !== 67) { const r = this.edit(cmd, a); if (r !== undefined) return r; }
     if (cmd === 1) return this.info();
     if (cmd === BACKUP_CMD.LIST && a.length === 1) {   // a page of the saved patches (caps bit 5); the plain LIST before, else rc 5
@@ -238,19 +257,35 @@ export class MockUnit {
       if (a.length) return [1, 1, 0];
       if (this.playing) return [1, 3, 0];
       this.listed = true;
-      const ids = this.records ? [0, 1, 2, 3, 4, 5, 8, ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), 32, 33, 34]   // (24 in all with caps 63)
+      const ids = this.records ? [0, 1, 2, 3, 4, 5, 8, ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), 32, 33, 34, ...(this.caps & 64 ? [42, 43, 44, 45, 46] : [])]   // (24 in all with caps 63; 29 with 127, b10 U4)
         : [...Array(13).keys(), ...(this.caps & 4 ? [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] : []), ...(this.caps & 8 ? [24, 25, 26] : []), ...(this.caps & 16 ? [27, 28, 29, 30, 31] : []), 32, 33, 34, ...(this.caps & 16 ? [35, 36, 37, 38, 39] : [])];   // an older firmware lists its patch chunks
       return [1, 0, ids.length, ...ids.flatMap((id) => { const v = this.objs.get(id); return [id, ...bkU32(v ? v.length : 0), ...bkU32(v && v.length ? bkCrc(v) : 0)]; })];
     }
     if (cmd === BACKUP_CMD.GET) {
       const patch = a[0] === PATCH_ID, id = a[0], off = bkR32(a, 1), n = a[6] | a[7] << 7;
-      const v = patch ? (a.length === 9 && this.records ? this.patchBytes(a[8]) : null) ?? new Uint8Array(0) : this.objs.get(id) || new Uint8Array(0);
-      const rc = !this.listed ? 5 : this.playing ? 3 : a.length !== (patch ? 9 : 8) || (patch ? !this.records : !this.has(id)) || !n || n > 256 || off > v.length || n > v.length - off ? 1 : 0;
+      const v = patch ? (a.length === 9 && this.records ? this.patchBytes(a[8]) : null) ?? new Uint8Array(0) : id === FVB_ID ? this.bank ?? new Uint8Array(0) : this.objs.get(id) || new Uint8Array(0);
+      const rc = !this.listed ? 5 : this.playing ? 3 : a.length !== (patch ? 9 : 8) || (patch ? !this.records : id === FVB_ID ? !this.fvBank : !this.has(id)) || !n || n > 256 || off > v.length || n > v.length - off ? 1 : 0;
       return [id, rc, ...bkU32(off), rc ? 0 : n & 127, rc ? 0 : n >> 7, ...(rc ? [] : bkPack(v.subarray(off, off + n)))];
     }
     if (cmd === BACKUP_CMD.PUT) return this.put(a);
     if (cmd >= 11 && cmd <= 14) return cmd === 12 ? [a[0], a[1], a[2], a[3], 6] : [a[0], cmd === 14 ? 0 : 6];   // the retired sample slots (editor.c: ERASE rc 0, BEGIN / WRITE / END rc 6)
     throw new Error(`mock unit: unexpected command ${cmd}`);
+  }
+  // FM6B_BEGIN / WRITE / END (editor_fm6.c, fm6_vbank.c): a bank written whole; the stored object is built as fvb_end builds it (voices packed 112 bytes each, unused ones erased 0xFF)
+  bankCmd(cmd, a) {
+    if (this.playing) return cmd === FM6B_CMD.WRITE ? [a[0], 3] : [3];
+    if (cmd === FM6B_CMD.BEGIN) { this.bankTx = new Map(); return [0]; }
+    if (cmd === FM6B_CMD.WRITE) {
+      if (!this.bankTx) return [a[0], 5];
+      if (a.length !== 1 + FVB_PK || a[0] >= FVB_N || this.bankTx.has(a[0])) return [a[0], 1];
+      this.bankTx.set(a[0], Uint8Array.from(a.slice(1))); return [a[0], 0];
+    }
+    if (!this.bankTx) return [5, 0];
+    const voices = [...this.bankTx].sort((x, y) => x[0] - y[0]); this.bankTx = null;
+    const recs = new Uint8Array(voices.length * FVB_PK); voices.forEach(([, pk], i) => recs.set(pk, i * FVB_PK));
+    if (a.length !== 15 || bkR32(a, 10) !== (recs.length ? bkCrc(recs) : 0)) return [2, 0];
+    this.bank = buildBankObject(String.fromCharCode(...a.slice(0, 10)), new Map(voices));
+    return [0, voices.length];
   }
   // MOTION (64), the parameter locks (EDITOR_PROTOCOL.md "Parameter locks", "LOCK TARGETS past 127"): this.motion = [{ track, step, tid, v, lock }], 128 records shared by the tracks (rc 2 when they are used).
   // Ops 1 (play on / off), 2 (clear), 3 / 5 / 9 / 11 (set an event / a lock), 4 / 10 (delete), 6 (clear a step's locks), 7 (query with the kinds, the first 64), 8 (every record). The set ops answer as op 7.
@@ -329,6 +364,7 @@ export class MockUnit {
       case CMD.UP_LOAD: {                              // the slot's record, else its factory sound
         if (a[0] > 127) return [a[0], 1];
         const v = this.patches.get(a[0]);
+        if (!v && BROWSE[a[0]].user) return [a[0], 0];   // (an empty USER slot loads nothing: the sound stays)
         if (!v) { const f = BROWSE[a[0]], q = defaultPart(f.eng, part()); q.preset = f.idx; this.demoTwinOn(q); this.parts[this.selected] = q; return [a[0], 0]; }
         // a record: every parameter but the part's own (ui.c param_kept: the mixer LEVEL (0.2.19), PAN, MUTE, the arp and sequencer ids 17..32, CHRD, VOIC, QNT); the sound's loudness is its TRIM
         const cur = part(), kept = (i) => i === 0 || i === 39 || i === 40 || (i >= 17 && i <= 32 && i !== 28) || i === 81 || i === 82 || i === 94;   // (DUELL 1.1: TRANSPOSE, id 28, comes with the patch)
@@ -372,8 +408,8 @@ export class MockUnit {
         q.fm6 = Uint8Array.from(a.slice(2)); q.p[P_E0 + 7] = 8; return [a[0], a[1], 0];
       }
       case CMD.PROJECT: {
-        if (a[1] > 15) return undefined;
-        const used = this.multiStored[a[1]] != null || a[1] < 16 || this.multiUsedExtra.has(a[1]);   // (DUELL 0.2.23: all sixteen slots hold a factory multi)
+        if (a[1] > ((this.caps & 64) ? 25 : 15)) return undefined;
+        const used = this.multiStored[a[1]] != null || a[1] < ((this.caps & 64) ? 26 : 16) || this.multiUsedExtra.has(a[1]);   // (DUELL 0.2.23: all sixteen slots hold a factory multi)
         if (a[0] === 2) return [2, a[1], used ? 1 : 0];
         if (a[0] === 1) {
           if (this.playing) throw new Error("mock unit: no reply (playing)");
@@ -590,7 +626,7 @@ export class MockUnit {
       if (!RETIRED_IDS.includes(id) && ((!DUELL_IDS.includes(id) && !OLD_PATCH_IDS.includes(id)) || !this.has(id))) return ret(1);   // (the retired ids 2..5 and 8 are accepted and dropped, as editor_backup.c does for an older archive)
       const size = bkR32(a, 2), crc = bkR32(a, 7);
       const bad = size > 3840 || (id === 0 && size !== 3840) || (id === 1 && size !== this.settingsSize) ||
-        (id >= 13 && id <= 20 && size && size < 8) || (id >= 21 && id <= 23 && size && (size < 8 || size > 3584)) || (id >= 24 && id <= 26 && size && size !== WT.OBJ);
+        ((id >= 13 && id <= 20 || id >= 42 && id <= 46) && size && size < 8) || (id >= 21 && id <= 23 && size && (size < 8 || size > 3584)) || (id >= 24 && id <= 26 && size && size !== WT.OBJ);
       if (bad) return ret(1);
       if (this.playing) return ret(3);
       this.staged = { id, size, crc, bytes: new Uint8Array(size), pos: 0 };
@@ -613,6 +649,7 @@ export class MockUnit {
       if (RETIRED_IDS.includes(id)) { this.listed = false; return ret(0); }   // (dropped)
       if (id === PATCH_ID) {                            // the store's own check (pt_rec_ok, up_put_raw): the slot and revision bytes of the record are not looked at
         if (st.size && recordProblem(st.bytes)) return ret(2);
+        if (st.size && !this.patches.has(st.slot) && this.patches.size >= this.storeMax) return ret(6);   // STORE FULL: nothing written
         if (st.size) { this.setRecord(st.slot, st.bytes); this.log.push(`write patch ${st.slot}`); } else { this.patches.delete(st.slot); this.log.push(`remove patch ${st.slot}`); }
         this.listed = false;
         return ret(0);

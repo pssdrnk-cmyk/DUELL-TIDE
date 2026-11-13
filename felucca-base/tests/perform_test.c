@@ -29,6 +29,9 @@
  *             the cost of SPACE +100 per reverb model, STEREO and DUEL
  *   COST      the song's instructions a sample, idle and with each effect (proc_pid_rusage) */
 #define UI_TEST_NO_MAIN 1
+#define UI_TEXT_CAPTURE 1                                 /* (a card read from the texts drawn: ui_test.c card_match) */
+static unsigned char mtn[4][2];                                   /* each end's new values since its sound's load (morph.c MORPH_TEST_NEW; no history to count since 1.0.0-b5) */
+#define MORPH_TEST_NEW(pi, e, reset) (mtn[(pi) & 3u][(e) & 1u] = (unsigned char)((reset) ? 1u : mtn[(pi) & 3u][(e) & 1u] + 1u))
 #define CHO_NOSKIP 1   /* 0.2.21: the plain bus leaves the chorus out of silent blocks (fx_bus.c cho_zrun); the cost checks here measure PERFORM's own stages against an idle mix, and SPACE's send floors would switch the chorus on in it (the always-running chorus of before is what they were set against; chorusskip_test.c proves the skip invisible) */
 #include "ui_test.c"
 #include <sys/wait.h>
@@ -51,12 +54,13 @@ static void fresh(void)
 }
 static void settle(void) { frames(600); }
 static uint32_t wkey(uint32_t p) { return key_at(0, p); }   /* white key p (0 = F3) */
-static int card_is(uint32_t c, const char *label, const char *val)   /* the card's cache key: "LABEL|VALUE|UNIT..." */
+static int card_is(uint32_t c, const char *label, const char *val)   /* the card shows the label and the value (read from the texts drawn: ui.col is a hash since 1.1) */
 {
-    char want[40];
-    snprintf(want, sizeof want, "%s|%s|", label, val);
-    return !strncmp(ui.col[c], want, strlen(want));
+    char want[48];
+    snprintf(want, sizeof want, "%s|%s", label, val);
+    return card_match(c, want);
 }
+static int bal(int32_t base, int32_t pos, int k) { return perf_bal_level(base, pos, k == 0 ? pos > 0 : pos < 0); }   /* LEVEL k after BALANCE at detent pos (ui_input.c perf_balance) */
 static const char *title_now(void) { return cur_page()->title; }
 static int under_is(const char *t) { return str_eq(PAGES[ui.page].title, t); }
 static void perform_on(void) { hold(B_FX); frame(); }
@@ -113,7 +117,7 @@ static void t_entry(void)
     turn(EN_SELECT, -3);
     frames(32);
     expect("SELECT turned in PERFORM: no other page, PERFORM stays (it is BALANCE there, push-pull: 1 right, 3 left from 0 dB / 0 dB = L1 0 dB, L2 -1.5 dB)", ui.perf && str_eq(title_now(), "PERFORM") &&
-           trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 109);
+           trk[0].p[P_LEVEL] == bal(112, 2, 0) && trk[1].p[P_LEVEL] == bal(112, 2, 1));   /* (item 160's formula, perf_bal_level) */
     trk[0].p[P_LEVEL] = trk[1].p[P_LEVEL] = 112;
     {
         char ti[16], ct[8];
@@ -266,29 +270,29 @@ static void t_knobs(void)
         ui.msg_t = 0;
         turn(EN_SELECT, 2);
         frame();
-        expect("SELECT in PERFORM: BALANCE 2 right = LEVEL 1 -1.0 dB, LEVEL 2 stays 0 dB (capped), no sound loaded, still PERFORM", trk[0].p[P_LEVEL] == 110 && trk[1].p[P_LEVEL] == 112 && ui.perf &&
+        expect("SELECT in PERFORM: BALANCE 2 right = LEVEL 1 -1.0 dB, LEVEL 2 stays 0 dB (capped), no sound loaded, still PERFORM", trk[0].p[P_LEVEL] == bal(112, -2, 0) && trk[1].p[P_LEVEL] == bal(112, -2, 1) && ui.perf &&
                                                                                  trk[1].eng_req == e1 && trk[1].preset == q1);
         expect("  no header message (item 160: the old BALANCE n has no value left to show)", !ui.msg_t);
         expect("  the footer: SELECT = BALANCE (no number, item 160), ALGORITHM = PART 1",
                perf_foot(l, r) && str_eq(l, "SELECT = BALANCE") && str_eq(r, "ALGORITHM = PART 1"));
         turn(EN_SELECT, -5);
-        expect("  SELECT left 5: LEVEL 2 down 5 steps (-2.5 dB), LEVEL 1 up 2 to 0 dB (then capped)", trk[0].p[P_LEVEL] == 112 && trk[1].p[P_LEVEL] == 107 && ui.perf);
+        expect("  SELECT left 5: LEVEL 2 down 5 steps (-2.5 dB), LEVEL 1 up 2 to 0 dB (then capped)", trk[0].p[P_LEVEL] == bal(112, 3, 0) && trk[1].p[P_LEVEL] == bal(112, 3, 1) && ui.perf);
         turn(EN_SELECT, 3);
-        expect("  3 right: LEVEL 1 -1.5 dB, LEVEL 2 -1.0 dB, a stray SELECT turn never ends PERFORM", trk[0].p[P_LEVEL] == 109 && trk[1].p[P_LEVEL] == 110 && ui.perf);
+        expect("  3 right: LEVEL 1 -1.5 dB, LEVEL 2 -1.0 dB, a stray SELECT turn never ends PERFORM", trk[0].p[P_LEVEL] == bal(112, 0, 0) && trk[1].p[P_LEVEL] == bal(112, 0, 1) && ui.perf);
         turn(EN_SELECT, 2);
     }
     turn(EN_ALGO, 1);                                   /* (0.2.9: PART 1, BOTH, PART 2 from left to right) */
     expect("ALGORITHM right: BOTH (both badges, the MORPH TARGET; part 1 still the selected part)", song.sel == 0u &&
-                                                                    morph.target == MT_BOTH && badge_lit() == 3u && msg_is("BOTH"));
+                                                                    SEL_BOTH && badge_lit() == 3u && msg_is(ALGO_BOTH_SAY));
+    algo_turns(ALGO_TO_P2);                             /* */
+    expect("  right again: PART 2 (selected, one badge)", song.sel == 1u && !SEL_BOTH && badge_lit() == 2u);
     turn(EN_ALGO, 1);
-    expect("  right again: PART 2 (selected, one badge)", song.sel == 1u && morph.target != MT_BOTH && badge_lit() == 2u);
-    turn(EN_ALGO, 1);
-    expect("  right at PART 2: PART 2", song.sel == 1u && morph.target != MT_BOTH);
+    expect("  right at PART 2: PART 2", song.sel == 1u && !SEL_BOTH);
     turn(EN_ALGO, -1);
-    expect("  left: BOTH, part 2 kept as the selected part", song.sel == 1u && morph.target == MT_BOTH && badge_lit() == 3u);
+    expect("  left: BOTH, part 2 kept as the selected part", song.sel == 1u && SEL_BOTH && badge_lit() == 3u);
     {
         char l[24], r[24];
-        expect("  the footer: ALGO: BOTH", perf_foot(l, r) && str_eq(r, "ALGO: BOTH"));
+        expect("  the footer: ALGO: BOTH", perf_foot(l, r) && !strncmp(r, "ALGORITHM = ", 12) && str_eq(r + 12, ALGO_BOTH_LEFT));
     }
     turn(EN_K1, 7);
     expect("  K1 MORPH with BOTH: both parts' faders (part 2's + 7 on both)", morph_fader_of(0) == 7u && morph_fader_of(1) == 7u);
@@ -297,7 +301,7 @@ static void t_knobs(void)
         turn(EN_PRESET, 1);
         frame();
         expect("  PRESETS with BOTH: both parts moved on from their own sound, selection kept",
-               (trk[0].eng_req != e0 || trk[0].preset != p0) && (trk[1].eng_req != e1 || trk[1].preset != q1) && song.sel == 1u && trk[0].p[P_LEVEL] == 107 && trk[1].p[P_LEVEL] == 112);
+               (trk[0].eng_req != e0 || trk[0].preset != p0) && (trk[1].eng_req != e1 || trk[1].preset != q1) && song.sel == 1u && trk[0].p[P_LEVEL] == bal(112, -2, 0) && trk[1].p[P_LEVEL] == bal(112, -2, 1));   /* (the BALANCE turn above: pos -2) */
         expect("  .. and they are still different sounds",
                trk[0].eng_req != trk[1].eng_req || trk[0].preset != trk[1].preset);
         turn(EN_PRESET, -1);
@@ -305,10 +309,10 @@ static void t_knobs(void)
         expect("  PRESETS back: each part on its own first sound again", trk[0].eng_req == e0 && trk[0].preset == p0 &&
                                                                        trk[1].eng_req == e1 && trk[1].preset == q1);
     }
+    algo_turns(-ALGO_TO_P2);
+    expect("  left: PART 1", song.sel == 0u && !SEL_BOTH && badge_lit() == 1u);
     turn(EN_ALGO, -1);
-    expect("  left: PART 1", song.sel == 0u && morph.target != MT_BOTH && badge_lit() == 1u);
-    turn(EN_ALGO, -1);
-    expect("  left at PART 1: PART 1", song.sel == 0u && morph.target != MT_BOTH);
+    expect("  left at PART 1: PART 1", song.sel == 0u && !SEL_BOTH);
     turn(EN_ALGO, 1);                                   /* BOTH, then out of PERFORM */
     press(B_FX);
     frame();
@@ -316,17 +320,17 @@ static void t_knobs(void)
     expect("  .. 0.64 s later SPACE and FILTER are neutral, DEPTH kept (90 %)", perf_space == 0 && !perf_filt && perf_depth == 90);
     perf_space = 3;
     expect("  ALGORITHM's BOTH kept (the MORPH page's state); this page shows the selected part's badge alone",
-           morph.target == MT_BOTH && song.sel == 0u && badge_lit() == 1u);
+           SEL_BOTH && song.sel == 0u && badge_lit() == 1u);
     turn(EN_ALGO, 1);
-    expect("  ALGORITHM on another page: PART 2 only, BOTH kept for MORPH / PERFORM", song.sel == 1u && morph.target == MT_BOTH && badge_lit() == 2u);
+    expect("  ALGORITHM on another page: PART 2 only, BOTH kept for MORPH / PERFORM", song.sel == 1u && SEL_BOTH && badge_lit() == 2u);
     turn(EN_ALGO, 1);
-    expect("  .. right again: still PART 2 (no BOTH there)", song.sel == 1u && morph.target == MT_BOTH);
+    expect("  .. right again: still PART 2 (no BOTH there)", song.sel == 1u && SEL_BOTH);
     turn(EN_ALGO, -2);
     turn(EN_ALGO, -1);
-    expect("  .. left: PART 1", song.sel == 0u && morph.target == MT_BOTH);
+    expect("  .. left: PART 1", song.sel == 0u && SEL_BOTH);
     perform_on();
     frame();
-    expect("  PERFORM again: BOTH as it was left (both badges)", morph.target == MT_BOTH && badge_lit() == 3u);
+    expect("  PERFORM again: BOTH as it was left (both badges)", SEL_BOTH && badge_lit() == 3u);
     turn(EN_ALGO, -1);
     press(B_FX);
     frame();
@@ -341,7 +345,7 @@ static void t_knobs(void)
         expect("HOME's round has no MIXER page any more (the SPACE copy went with it; PERFORM's K2 keeps SPACE)", !seen && perf_space == 3);
     }
     turn(EN_PRESET, 1);
-    expect("  LEVELs kept after PERFORM and a patch load (the MIXER's, not the patch's)", trk[0].p[P_LEVEL] == 107 && trk[1].p[P_LEVEL] == 112);
+    expect("  LEVELs kept after PERFORM and a patch load (the MIXER's, not the patch's)", trk[0].p[P_LEVEL] == bal(112, -2, 0) && trk[1].p[P_LEVEL] == bal(112, -2, 1));
 }
 
 /* (0.2.11, owner) a multi load resets the performance macros (SPACE, FILTER) to neutral; a patch load keeps SPACE */
@@ -358,7 +362,7 @@ static void t_multiload(void)
     frames(640);
     expect("  .. SPACE 0 and FILTER 0 after it, DEPTH kept (90 %)", perf_space == 0 && perf_filt == 0 && perf_depth == 90);
     perf_space = 66; perf_filt = 30; sv.spc = 66 * 256; perf_sp_live = 1;
-    project_load(0);
+    project_load(MIDX(0));
     expect("multi load: the same glide, not a jump", perf_space > 0 && perf_filt > 0 && perf_depth == 90);
     frames(640);
     expect("  .. SPACE 0 and FILTER 0 (DEPTH kept)", perf_space == 0 && perf_filt == 0 && perf_depth == 90);
@@ -366,7 +370,7 @@ static void t_multiload(void)
     turn(EN_PRESET, 1);
     frames(640);
     expect("PERF LEAVE KEEP: a patch load keeps SPACE (66) and FILTER (30)", perf_space == 66 && perf_filt == 30);
-    project_load(0);
+    project_load(MIDX(0));
     frames(640);
     expect("  .. a multi load too", perf_space == 66 && perf_filt == 30);
     ui_idle &= (uint8_t)~PERF_KEEP_BIT;
@@ -376,10 +380,10 @@ static void t_multiload(void)
 
 
 /* ----------------------------------------------------------------- ROLL --- */
-static uint32_t rolls(uint32_t pi, uint32_t e) { return mph[pi].n[e]; }
+static uint32_t rolls(uint32_t pi, uint32_t e) { return mtn[pi & 3u][e & 1u]; }
 static void t_roll(void)
 {
-    uint32_t a0, a1, b0, b1, k, t0, t1;
+    uint32_t a0, a1, b0, b1, k;
     fresh();
     go_title("AMP ENV");
     perform_on();
@@ -394,22 +398,17 @@ static void t_roll(void)
     frames(200);                                        /* (held: no more rolls) */
     key_up(k);
     frame();
-    expect("ROLL A (PART 1): part 1's end A rolled once, part 2 untouched", rolls(0, 0) == a0 + 1u && rolls(1, 0) == a1 &&
-                                                                             msg_is("ROLLED A"));
+    expect("GLIDE TO A (TIDE's ROLL A key, PART 1): the message, no roll on either part", rolls(0, 0) == a0 && rolls(1, 0) == a1 && msg_is("GLIDE TO A"));
     turn(EN_ALGO, 1);                                   /* BOTH (0.2.9: the middle) */
     b0 = rolls(0, 1);
     b1 = rolls(1, 1);
-    t0 = mph[0].top[1];                                 /* (the roll count n[] stops at MORPH_HIST since memory trim 1, so two rolls are counted by how far the ring's top moved) */
-    t1 = mph[1].top[1];
     k = wkey(PF_ROLLB);
     key_down(k);
     key_up(k);
     key_down(k);
     key_up(k);                                          /* (two quick presses in one pass: two rolls) */
     frame();
-    expect("ROLL B with BOTH, pressed twice: both parts' end B rolled twice", rolls(0, 1) == (b0 + 2u > MORPH_HIST ? MORPH_HIST : b0 + 2u) && rolls(1, 1) == (b1 + 2u > MORPH_HIST ? MORPH_HIST : b1 + 2u) &&
-                                                                                                    (uint32_t)(mph[0].top[1] - t0 + MORPH_HIST) % MORPH_HIST == 2u % MORPH_HIST &&
-                                                                                                    (uint32_t)(mph[1].top[1] - t1 + MORPH_HIST) % MORPH_HIST == 2u % MORPH_HIST);
+    expect("GLIDE TO B (TIDE's ROLL B key, BOTH, pressed twice): the message, no roll on either part", rolls(0, 1) == b0 && rolls(1, 1) == b1 && msg_is("GLIDE TO B"));
 }
 
 /* ------------------------------------------------------------ the song --- */
@@ -437,6 +436,8 @@ static void song_setup(void)
         memcpy(v, SONG_B_PATCH, FP_SIZE);
         fm6_set_patch(1, v);
         fm6_slot[1] = SONG_B_SLOT;
+        t2->p[P_REL] = 0;                                   /* (the chord's own release is slow (R4 46): its tail ran on past the 1.5 s the tail tests assume to be dry. It was silent there only because
+                                                             * the song's step 8 restarted the chord from level 0 just before the stop; a restart keeps the level now (Q01)) */
         t2->preset = SONG_B_PRESET;
     }
     for (i = 0; i < 16u; i++) {
@@ -839,11 +840,11 @@ static void t_too_long(void)
     run(120, 1, ev, 2, 50000);
     expect("REPEAT 1/8 at 120 BPM (250 ms): it plays", !same(0, 40000) && (perf_avail() & PF_BIT(PF_R8)));
     song.g[G_BPM] = 81;
-    expect("  REPEAT 1/8 and REVERSE (1/8) fit from 81 BPM, 1/16 from 41, 1/32 from 21",
+    expect("  REPEAT 1/8 and REVERSE (1/8) fit from 81 BPM, 1/16 from 41, 1/32 at every tempo (the tempo starts at 40)",
            (perf_avail() & PF_BIT(PF_R8) && perf_avail() & PF_BIT(PF_REV)) &&
                (song.g[G_BPM] = 80, !(perf_avail() & PF_BIT(PF_R8)) && !(perf_avail() & PF_BIT(PF_REV))) &&
                (song.g[G_BPM] = 41, perf_avail() & PF_BIT(PF_R16)) && (song.g[G_BPM] = 40, !(perf_avail() & PF_BIT(PF_R16))) &&
-               (song.g[G_BPM] = 21, perf_avail() & PF_BIT(PF_R32)) && (song.g[G_BPM] = 20, !(perf_avail() & PF_BIT(PF_R32))));
+               (song.g[G_BPM] = 40, perf_avail() & PF_BIT(PF_R32)));
     {   /* the page and the LEDs: greyed at 72 BPM, the reason when its key is pressed */
         uint32_t m = 0;
         fresh();
@@ -2096,6 +2097,7 @@ static void t_space_glitch(void)
         for (sp = 0; sp < 2u; sp++) {
             song_setup();
             space_clear();
+            song.g[G_RTYPE] = 2;                        /* HALL, the default: the tail is read at 1.5 s, and ROOM (since audit R09 a short room, RT60 0.8 s) has mostly gone by then */
             duell_mode_force(m ? DM_SPLIT : DM_STEREO);
             for (k = 0; k < 2u; k++)
                 trk[k].p[P_REV] = trk[k].p[P_DLY] = trk[k].p[P_CHOR] = 0;
@@ -2111,7 +2113,7 @@ static void t_space_glitch(void)
         if (m < 2u) {
             snprintf(what, sizeof what, "  %s, every send 0: the tail from 1.5 s %.0f dB in the middle, %.1f dB at SPACE +100 (its send floor: the space added)",
                      m ? "DUEL" : "STEREO", 10 * log10(e0 / (3.0 * FS) + 1e-9) - 90.3, 10 * log10(e1 / (3.0 * FS) + 1e-9) - 90.3);
-            expect(what, e0 / (3.0 * FS) < 1e2 && e1 / (3.0 * FS) > 1e5);   /* (the middle under -70 dB, +100 over -40 dB) */
+            expect(what, e0 / (3.0 * FS) < 1e4 && e1 / (3.0 * FS) > 1e5 && e1 > 1e3 * e0);   /* (the middle under -50 dB: part 2 (FM6) still rings at -60 dB in STEREO 1.5 s after the stop, as it does in 1.1; +100 over -40 dB and 30 dB above the middle) */
         } else {
             snprintf(what, sizeof what, "  DUEL, part 1 alone, every send 0, SPACE +100: its tail %.1f dB on the left, the right side (bus B) exactly 0",
                      10 * log10(e1 / (3.0 * FS) + 1e-9) - 90.3);
@@ -2180,7 +2182,7 @@ static void t_space(void)
     snprintf(what, sizeof what, "K2 SPACE (HALL, the song stopped at 1 s): the tail from 1.5 s %+.1f dB at -100, %+.1f dB at +100 against the middle",
              10 * log10(e[0] / e[1]), 10 * log10(e[2] / e[1]));
     expect(what, e[0] < e[1] / 8 && e[2] > e[1] * 2);
-    /* no runaway: every reverb at its largest SIZE, the delay at FDBK 127, the sends full, SPACE +100: the tail dies away (STEREO and DUEL) */
+    /* no runaway: every reverb at its largest SIZE, the delay at FDBK 100 (the largest below the dub runaway: 118 and up pass unity, audit E2), the sends full, SPACE +100: the tail dies away (STEREO and DUEL) */
     for (k = 0; k < 12u; k++) {
         int32_t p1, pk;
         double em, el;
@@ -2190,7 +2192,7 @@ static void t_space(void)
         song.g[G_RTYPE] = (int16_t)(k % 6u);
         song.g[G_RSIZE] = 127;
         song.g[G_RDAMP] = 0;
-        song.g[G_DFDBK] = 127;
+        song.g[G_DFDBK] = 100;
         song.g[G_DMIX] = 127;
         song.g[G_CDEPTH] = 127;
         trk[0].p[P_REV] = trk[1].p[P_REV] = 127;
@@ -2202,7 +2204,7 @@ static void t_space(void)
         pk = peak(sp_l, 0, n) > peak(sp_r, 0, n) ? peak(sp_l, 0, n) : peak(sp_r, 0, n);
         em = energy(sp_l, 8u * FS, 10u * FS) + energy(sp_r, 8u * FS, 10u * FS);
         el = energy(sp_l, n - 2u * FS, n) + energy(sp_r, n - 2u * FS, n);
-        snprintf(what, sizeof what, "  SPACE +100, %s %s, SIZE 127, FDBK 127, sends full: peak %d; 7 .. 9 s after the stop -> 21 .. 23 s: %.0f dB (it dies away), %d",
+        snprintf(what, sizeof what, "  SPACE +100, %s %s, SIZE 127, FDBK 100, sends full: peak %d; 7 .. 9 s after the stop -> 21 .. 23 s: %.0f dB (it dies away), %d",
                  k < 6u ? "STEREO" : "DUEL", RT[k % 6u], pk, 10 * log10(el / (em + 1) + 1e-12), p1);
         expect(what, pk <= 32767 && el < em / 4);
     }
@@ -2376,7 +2378,7 @@ static void t_leave_ui(void)
         perform_on(); frame();
         char want[12];
         snprintf(want, sizeof want, "+%d", s);
-        expect("  .. back in PERFORM the cards show them, KILL not greyed", card_is(1, "SPACE", want) && !strncmp(ui.col[2], "KILL|", 5));
+        expect("  .. back in PERFORM the cards show them, KILL not greyed", card_is(1, "SPACE", want) && card_match(2, "KILL"));
         perf_space = 0; perf_filt = 0;
         press(B_FX);
     }

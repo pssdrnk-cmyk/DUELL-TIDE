@@ -23,9 +23,9 @@ static const char *const N_NOISE_MODE[] = {"ANALOG", "DUST", "DIGITAL", "METAL"}
 enum { NZ_ANLG, NZ_DUST, NZ_LFSR, NZ_META };
 static const char *const N_NOISE_LONG[] = {"23 BIT", "20 BIT", "17 BIT", "15 BIT", "13 BIT", "11 BIT", "9 BIT", "7 BIT", 0};
 static const char *const N_NOISE_META[] = {"127 A", "127 B", "93", "63 A", "63 B", "31", "15", "7", 0};
-static const param_desc_t NOISE_LONG = {"LENGTH", F_INT, 0, 127, 0, N_NOISE_LONG, 0};   /* = edit[5] but the names */
-static const param_desc_t NOISE_META = {"LENGTH", F_INT, 0, 127, 0, N_NOISE_META, 0};
-static const param_desc_t NOISE_CLK = {"PITCH", F_INT, 0, 127, 0, 0, "st"};           /* = edit[7]: above the key */
+static const param_desc_t NOISE_LONG = {"LENGTH", F_INT, 0, 0, 127, 0, N_NOISE_LONG};   /* = edit[5] but the names */
+static const param_desc_t NOISE_META = {"LENGTH", F_INT, 0, 0, 127, 0, N_NOISE_META};
+static const param_desc_t NOISE_CLK = {"PITCH", F_INT, U_ST, 0, 127, 0, 0};           /* = edit[7]: above the key */
 
 /* Galois taps of the long registers (maximal length: 2^n - 1 clocks) */
 static const uint32_t NOISE_TAPS[8] = {0x420000u, 0x90000u, 1u << 16 | 1u << 13, 0x6000u, 0x100Du, 0x500u, 0x110u, 0x60u};
@@ -66,23 +66,6 @@ static uint32_t noise_inc(int32_t p)
     return sh && inc >= 0x80000000u >> (sh - 1u) ? 0xFFFFFFFFu : inc << sh;
 }
 
-static uint32_t isqrt32(uint32_t x)
-{
-    uint32_t r = 0, b = 1u << 30;
-    while (b > x)
-        b >>= 2;
-    while (b) {
-        if (x >= r + b) {
-            x -= r + b;
-            r = (r >> 1) + b;
-        } else {
-            r >>= 1;
-        }
-        b >>= 2;
-    }
-    return r;
-}
-
 static void noise_note_on(track_t *t, voice_t *v)
 {
     uint32_t seed = (v->note + 1u) * 0x9E3779B9u ^ (uint32_t)v->fine * 0x85EBCA6Bu;   /* UNISON: each its own */
@@ -114,7 +97,7 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
             cnt = 1024 + (int32_t)(r & 3071u);
         }
         v->s[3] = (int32_t)((uint32_t)tg << 16 | (uint32_t)cnt);
-        drift += ((tg << 4) - drift) >> 10;           /* Q19 */
+        drift += (tg * 16 - drift) >> 10;             /* Q19 */
         d16 = ((drift >> 11) * drft * drft) >> 14;    /* up to about +-16 semitones */
         gain = 32767 - ((((32767 - (drift >> 4)) >> 1) * drft) >> 8);   /* down to -6 dB as it falls */
     }
@@ -189,30 +172,30 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         x = w;
         if (colr) {                                   /* pink: three leaky poles (Kellet), brown: a leaky integrator */
             int32_t pk;
-            b0 = ((b0 * 32690) >> 15) + ((w * 3245) >> 15);
-            b1 = ((b1 * 31555) >> 15) + ((w * 9716) >> 15);
-            b2 = ((b2 * 18678) >> 15) + ((w * 17247) >> 14);
+            b0 = b0 + ((-b0 * 78) >> 15) + ((w * 3245) >> 15);      /* b * k >> 15 written as b + (-b * (32768 - k) >> 15): the same value, */
+            b1 = b1 + ((-b1 * 1213) >> 15) + ((w * 9716) >> 15);    /* but b * k overflowed 32 bits once a loud, lopsided input drove b0 */
+            b2 = b2 + ((-b2 * 14090) >> 15) + ((w * 17247) >> 14);  /* past ~65700 (br past ~65900): the pole wrapped to the other sign */
             pk = (b0 + b1 + b2 + ((w * 6055) >> 15)) >> 2;
             if (colr <= (64 << 8)) {
                 x = w + mulq15(pk - w, cf);
             } else {
-                br = ((br * 32580) >> 15) + ((w * 3480) >> 15);
+                br = br + ((-br * 188) >> 15) + ((w * 3480) >> 15);
                 x = pk + mulq15(br - pk, cf);
             }
         }
         y = soft_knee(((x >> 4) * gq) >> 8, 48000);   /* the make-up (a bound for mulq15 too: 64383 at the most) */
         if (mode == NZ_META) {                        /* the knee bends a lopsided tone: a DC blocker, ~14 Hz */
-            reg += (uint32_t)(((y << 8) - (int32_t)reg) >> 9);
+            reg += (uint32_t)((y * 256 - (int32_t)reg) >> 9);
             y -= (int32_t)reg >> 8;
         }
         if (crsh) {                                   /* hold 1..16 samples, 16 .. 4 bits */
             if ((int32_t)--ph <= 0 || ph > 16u) {
                 ph = 1u + (uint32_t)crsh / 8u;
-                reg = (uint32_t)(y >> (crsh / 11) << (crsh / 11));
+                reg = (uint32_t)((y >> (crsh / 11)) * (1 << (crsh / 11)));
             }
             y = (int32_t)reg;
         }
-        out[i] += voice_amp(y, m, i) << sh;
+        out[i] += voice_amp(y, m, i) * (1 << sh);
     }
     v->s[0] = wand;
     v->s[2] = rng;
@@ -226,6 +209,7 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 }
 
 /* {MODE, COLR, -, -, -, DENS, DRFT, CRSH / CLK} (FREQ RES TRK are filter 1's since cloud job J) */
+#if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t NOISE_PRESETS[] = {
     {"WIND", {NZ_ANLG, 64, 0, 0, 0, 0, 70, 0}, {90, 90, 110, 90}, 0, 0, FX(0, 30, 20, 80), PAT(5)},
     {"RAIN", {NZ_DUST, 30, 0, 0, 0, 105, 40, 0}, {10, 90, 127, 70}, 0, 0, FX(0, 0, 20, 70), PAT(5)},
@@ -234,6 +218,7 @@ static const preset_t NOISE_PRESETS[] = {
     {"ARCADE", {NZ_LFSR, 0, 0, 0, 0, 112, 0, 84}, {0, 80, 0, 50}, 0, 0, FX(0, 0, 10, 20), PAT(3)},
     {"METAL", {NZ_META, 0, 0, 0, 0, 32, 0, 0}, {0, 75, 40, 60}, 10, 0, FX(0, 20, 30, 45), PAT(7)},
 };
+#endif
 
 static const uint8_t NOISE_UIORD[8] = {0, 1, 5, 6, 7, 2, 3, 4};   /* card position -> E index: ENGINE MODE COLR DENS; EDIT 1 DRFT CRSH (FREQ RES TRK are unused slots, hidden); the stored ids never move */
 
@@ -241,17 +226,19 @@ static const engine_t ENG_NOISE = {
     .name = "NOISE",
     .page_title = {"SRC", "MOVE"},
     .edit = {
-        {"MODE", F_ENUM, 0, 3, 0, N_NOISE_MODE, 0},
-        {"COLR", F_PCT, 0, 127, 64, 0, 0},
+        {"MODE", F_ENUM, 0, 0, 3, 0, N_NOISE_MODE},
+        {"COLR", F_PCT, 0, 0, 127, 64, 0},
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was FREQ: filter 1's CUT */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES: filter 1's RES and MODE */
         {"-", F_INT, 0, 0, 0, 0, 0},                 /* was TRK: filter 1's KEY TRK */
-        {"DENS", F_PCT, 0, 127, 0, 0, 0},           /* LFSR, META: the register (noise_desc) */
-        {"DRFT", F_PCT, 0, 127, 0, 0, 0},
-        {"CRSH", F_PCT, 0, 127, 0, 0, 0},           /* LFSR, META: the clock above the key */
+        {"DENS", F_PCT, 0, 0, 127, 0, 0},           /* LFSR, META: the register (noise_desc) */
+        {"DRFT", F_PCT, 0, 0, 127, 0, 0},
+        {"CRSH", F_PCT, 0, 0, 127, 0, 0},           /* LFSR, META: the clock above the key */
     },
+#if DUELL_PRESETS
     .presets = NOISE_PRESETS,
     .npresets = NELEM(NOISE_PRESETS),
+#endif
     .note_on = noise_note_on,
     .render = noise_render,
     .knob = {P_FREEA, P_FREEB, P_E1, P_REL},   /* filter 1's CUT and RES (FREQ and RES were here) */

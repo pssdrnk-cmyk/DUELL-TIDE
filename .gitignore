@@ -42,3 +42,10 @@ tmp/
 .env.*
 *.pem
 *.key
+
+# local logs and probe outputs of the test scripts
+/jam/size_log.csv
+/felucca-base/nul.exe
+
+# Claude Code per-machine permissions (may hold approved commands): never commit
+.claude/settings.local.json

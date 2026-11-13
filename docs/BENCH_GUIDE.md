@@ -1,6 +1,8 @@
-# DUELL developer bench: how to use it (private)
+# DUELL developer bench: how to use it
 
-> **Bench suite stage 1 (BENCHC1 and newer):** the automatic runner `felucca-base/tools/bench_run.py` drives the unit over the USB serial console (`bench ...` words; the console is on whatever MENU > USB SERIAL says), plays the tests of `tools/bench_suites/OWNER-1.txt` on the unit's own audio clock and writes the results. Read release_drafts/BENCH_STAGE1.md (in the DUELL folder). The K4 run of this guide still works.
+> Developer reference, historical. The guide to the developer bench builds (BENCH-A and BENCH-B), which are not distributed; the local addresses it names are not reachable. Kept at this path because source and test comments cite it.
+
+> **Bench suite stage 1 (BENCHC1 and newer):** the automatic runner `felucca-base/tools/bench_run.py` drives the unit over the USB serial console (`bench ...` words; the console is on whatever MENU > USB SERIAL says), plays the tests of `tools/bench_suites/OWNER-1.txt` on the unit's own audio clock and writes the results. Read a workspace file outside this repository (in the DUELL folder). The K4 run of this guide still works.
 
 Two developer packages, built from branch `wip/bench0226` (= the 0.2.25 test build T0225 plus the bench). Both say **DEVELOPER BENCH BUILD: not for normal use**.
 
@@ -15,7 +17,7 @@ Two developer packages, built from branch `wip/bench0226` (= the 0.2.25 test bui
 - BENCH-B3 installer (B2 + the flash-write fix, below): <http://127.0.0.1:8792/bench/BENCH-B3/install/>
 - Back to the normal test build T0225: <http://127.0.0.1:8792/bench/latest/install/>
 
-**This branch (`bench1`, the two-core line: stage1a + the bench, bench suite stage 0):** the package is **BENCHC0** (DUELL 0.2.25 bench BENCHC0, RAM placement on, one core): <http://127.0.0.1:8792/bench/BENCHC0/install/>. The same BENCH screen and the same 88 rows as BENCH-A2; K3 runs STRESS 10M (one core, no core 1 load); BENCH-B's core 1 rows are not in this line (two-core stage 1 brings core 1). The cost rows hold the NOTES budget open, the M16 rows play with it. The log has seven more columns at the end: notes1, notes2, why1, why2, budget, ramcode, boots. Details: release_drafts/BENCH_STAGE0.md.
+**This branch (`bench1`, the two-core line: stage1a + the bench, bench suite stage 0):** the package is **BENCHC0** (DUELL 0.2.25 bench BENCHC0, RAM placement on, one core): <http://127.0.0.1:8792/bench/BENCHC0/install/>. The same BENCH screen and the same 88 rows as BENCH-A2; K3 runs STRESS 10M (one core, no core 1 load); BENCH-B's core 1 rows are not in this line (two-core stage 1 brings core 1). The cost rows hold the NOTES budget open, the M16 rows play with it. The log has seven more columns at the end: notes1, notes2, why1, why2, budget, ramcode, boots. Details: a workspace file outside this repository.
 
 Install exactly as for a test build (same installer page). Make a backup first on the installer page if you care about your saves.
 
@@ -58,8 +60,8 @@ It finds the unit, then listens. Either start it before the bench (it records th
 | Column | Meaning |
 |---|---|
 | ROW | the setting (list below) |
-| AVG | the audio's average time per half buffer (2.9 ms) over the 3 s of the row, in %: the same figure as the CPU bar and ABOUT |
-| PEAK | the longest single half of those 3 s, in %. Above 100 a half was late |
+| AVG | the audio's average time per half buffer (2.9 ms) over the 3 s of the row, in %: the same figure as ABOUT |
+| PEAK | the longest single half of those 3 s, in %, as its elapsed time (the same figure as ABOUT's PEAK). Above 100 a half was late |
 | MISS | halves that were late (a click or a dropout is possible) |
 | MDL | what the host model (the Mac) predicts for exactly this row |
 | X | AVG / MDL: the unit against the model (1.12 = the unit needs 12 % more than the model says) |
@@ -79,15 +81,15 @@ The CSV has more: the voices that sounded (`vox`), the voices cut (`shed`), the 
 - **BUS OFF / BUS ON / CHORUS / DL DIGI, PING, RAND, OCT+ / RV ROOM .. PLATE / SHIM DN**, each in STEREO (ST) and DUEL (DU): both parts one ANALOG voice, one effect fed at 100 (compare with BUS OFF). RV SHIM is SHIM with PITCH UP.
 - **COMP 4:1, WIDTH 150, BASS MONO**: the master stages (STEREO).
 - **TYP / HVY, LAY / ST / DUEL, 4+4 / 8+8**: both parts ANALOG GLASS SHARDS. Typical: PHASR insert, SAT, one EQ band, chorus, DIGITAL delay, HALL, COMP. Heavy: the same with RANDOM delay, SHIM PITCH DOWN with MOD 50, WIDTH and BASS MONO. **The voice pool has 8 voices**: 8 + 8 asked for plays 8 at most (the `vox` column says how many sounded); in LAYER 4 notes are 8 voices.
-- **M16 1 / 2 / 3 KEYS**: the multi in slot 16 (M16 STRESS TEST unless you saved over it), LAYER, the keys C4, E4, G4 played as MIDI notes.
+- **M16 1 / 2 / 3 KEYS**: the multi in slot 16 (FINAL REEL since D31, unless you saved over it; the host twin loads the old STRESS TEST scene, tests/scenes/M16_STRESS_TEST.bin, so its figures keep their meaning; on the unit these rows now measure FINAL REEL), LAYER, the keys C4, E4, G4 played as MIDI notes.
 - BENCH-B1 only, **IDL / TYP / HVY + C1 IDLE, TIGHT 50, SRAM 50, FL8K 50, FL40K 50, FL40K 90**: core 0 plays IDLE ST, TYP ST 4+4 or HVY DUEL 8+8 while core 1 runs a test load for 50 % (or 90 %) of each half: TIGHT = a small loop that stays in the cache (pure computing), SRAM = reading and writing 8 KB of memory, FL8K / FL40K = running 8 KB / 40 KB of code from the flash (the 40 KB one cannot stay in the 32 KB cache that both cores share). Compare each with its C1 IDLE row: how much the cores slow each other.
 - BENCH-B1 only, **STRESS 10M** (K3, not in the automatic run): HVY DUEL 8+8 for 10 minutes with core 1 at FL40K 90.
 
 ## What the numbers are (and are not)
 
-- AVG / PEAK / MISS are measured on your unit, by the audio interrupt itself, exactly as the CPU bar does it. Nothing of the audio is held off for the bench: if the unit cuts voices or engages LIGHT FX, that is what it really does (the name turns amber).
+- AVG / PEAK / MISS are measured on your unit, by the audio interrupt itself, as ABOUT does it (the average is the render time, the peak the elapsed time of the longest half, a miss a missed DMA period). Nothing of the audio is held off for the bench: if the unit cuts voices or engages LIGHT FX, that is what it really does (the name turns amber).
 - MDL is the Mac's instruction count for the same row (the scale of `./host_tests.sh bench`: 33 instructions a sample = 1 %). X is the calibration you asked for.
-- The bench build is not byte-identical to T0225 (it cannot be: it has the bench in it). The audio code is the same code, the hot RAM block is identical, every audio function has the same size; in BENCH-A1 the engines' render code sits 18 to 96 bytes later in the flash than in T0225 (the bench's two hooks in the UI code). That can move the readings by a little (a cache effect, expected small, not measured); the differences between rows (a stage's cost) are not affected. BENCH-B1 moves the code a little more (its safety hooks), so compare B1's rows with B1's own C1 IDLE rows, not with BENCH-A1.
+- The bench build is not byte-identical to T0225 (it cannot be: it has the bench in it). The audio code is the same code, the hot code is identical, every audio function has the same size; in BENCH-A1 the engines' render code sits 18 to 96 bytes later in the flash than in T0225 (the bench's two hooks in the UI code). That can move the readings by a little (a cache effect, expected small, not measured); the differences between rows (a stage's cost) are not affected. BENCH-B1 moves the code a little more (its safety hooks), so compare B1's rows with B1's own C1 IDLE rows, not with BENCH-A1.
 
 ## Back to the normal build
 

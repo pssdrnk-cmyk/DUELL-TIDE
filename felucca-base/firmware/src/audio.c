@@ -25,10 +25,11 @@ static volatile uint32_t audio_halves, audio_max_us;
 static volatile uint32_t t5_nested_ticks;              /* TIMER4 ticks TIMER5 spent nested in this ISR (main.c) */
 static uint32_t audio_cpu_rem;                         /* keep the fractional IIR step: no low-load bias */
 
-/* DUELL CPU load meter (MENU > SYSTEM > TEST, ABOUT: ui_menu.c cpu_meter): what the audio ISR keeps per I2S half, three adds and
+/* DUELL CPU load meter (MENU > SYSTEM > TEST, ABOUT: ui_menu.c cpu_meter_poll): what the audio ISR keeps per I2S half, three adds and
  * a compare, no division. cpu_sum/cpu_n: the sum of the halves' render times (us) and how many; cpu_pk: the longest half
- * (us, the UI reads and clears it); cpu_miss: halves that took longer than the half's time (HALF_FRAMES / FS) or that the DMA
- * overtook, counted since power-on. The time is fm1_ticks() across the half minus TIMER5's nested ticks (the key scan),
+ * (us; ui_menu.c cpu_snap_poll reads and clears it) and cpu_el_pk: the longest half's ELAPSED time (us, TIMER5's nested work included: the
+ * DMA deadline); cpu_miss: DMA periods missed (a half's elapsed time over 1, 2 or 3 periods = 1, 2, 3; a half the DMA overtook that was
+ * not over its time = 1), counted since power-on. The time is fm1_ticks() across the half minus TIMER5's nested ticks (the key scan),
  * i.e. the audio's own work. Emulator and host: FELUCCA_METER_EST replaces it by a model (below): there is no clock there */
 /* (the counters and CPU_BUDGET_US: core.h) */
 #ifdef FELUCCA_METER_EST
@@ -93,15 +94,16 @@ static __attribute__((noinline)) void master_dac(int32_t *out, uint32_t n)   /* 
 
 static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 -> 24 bit */
 {
-    uint32_t i;
     mix_block(out, n);
 #if FELUCCA_UAC
     uac_tap(out, n);                                    /* the USB audio input: the same master output, at the fixed level */
 #endif
     master_dac(out, n);                                 /* MASTER's volume for the DAC (speaker, headphones): out is Q15 x 2^OUT_SHIFT from here */
-    if (!scope_mix)                                     /* the HOME scope (SCOPE OUT): the music, before the click */
-        for (i = 1; i < n; i += 2u)                     /* (MIX: fx.c mix_block took it) */
+#if defined(FELUCCA_HOST_SCOPE) && FELUCCA_HOST_SCOPE
+    if (!scope_mix)                                     /* host OUT capture: music before the click */
+        for (uint32_t i = 1; i < n; i += 2u)             /* (MIX: fx.c mix_block took it) */
             scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)(out[2u * i] >> OUT_SHIFT);
+#endif
     click_render(out, n, OUT_SHIFT);                    /* the metronome (click.c): the DAC only, not USB */
 }
 
@@ -158,16 +160,71 @@ static uint8_t shed_over;                              /* bit k: the half k halv
 #define SHED_FULL_TICKS ((HALF_FRAMES * 1000000u / FS) * FM1_TICKS_PER_US)                 /* the whole half */
 static uint32_t shed_count;
 
-/* end of a half: all = its ticks, TIMER5 nested in it included -> the render alone in us. The deadline sees
- * both; shed after 2 overloaded halves in a row (out of line: keeps the ISR's render loops as they were) */
-static __attribute__((noinline)) uint32_t shed_check(uint32_t all)
+/* K3 THE EASE LADDER (TIDE 1.0.0-b4, CPU audit K3; core.h ease, EASE_*): in place of the two rules below (kill a voice after two halves over 85 %, LIGHT FX the
+ * same), one level that eases the cheapest, least audible work first and cuts sound only when a half really missed. Driven by the ELAPSED half (all: TIMER5's
+ * nested work included, what the DMA deadline sees):
+ *  - up: two halves in a row over EASE_UP_PCT (85 %): one level up (at most one a half); a half over its whole time (a miss): to EASE_TAILS at least;
+ *  - down, one level, the first of two rules to hold (both counts then start again; an up step restarts them too):
+ *    a) PEAK: no half over EASE_DOWN_PCT (80 %) for EASE_DOWN_HALVES (~1 s) below LIGHT FX, for EASE_DOWN_HALVES_FX (~3 s) from LIGHT FX up. The meter's
+ *       average alone would not do: the NOTES budget plans up to BUDGET_LIMIT on average (72 % in b1 .. b5; b6 N1's steps 76 / 80 / 84, budget.h DUELL_NOTES_STEP),
+ *       so a scene that sits at 70 .. 85 % would never step down. (b6 N1: at 72 the busiest factory multis of the unit's GLIDE sweep already average 69 .. 70 % with a
+ *       per-second elapsed peak of 86 .. 91 %; at a higher step neither release may hold in those scenes, so the ladder can stay at level 1 or 2 there: nothing is
+ *       cut, but at level 2 a new note takes over a fading tail instead of a free voice while it lasts. The console's `cpu` shows the entries per level,
+ *       ease_n1 .. ease_n5.) LIGHT FX saves
+ *       5.5 .. 8.8 points, more than the 5-point gap between 85 and 80 %, so leaving it takes longer; and if level 3 is entered again within those 3 s
+ *       of leaving it (a scene that needs it: 87 % without, 78 % with), the next release from 3 up waits 3 x as long (ease_fxl): at most one LIGHT FX
+ *       blip in ~10 s instead of one every 3 s;
+ *    b) AVERAGE: the meter's load (song.cpu_q8) under 70 % for ~3 s (OVL_CALM_HALVES, 0.2.25's LIGHT FX rule): a single half over 80 % every second
+ *       would otherwise hold a level for good at a 50 % average;
+ *  - EASE_TAILS fades the SHED_FAST_N oldest released tails on the half it is entered from below and on each half the overload lasts; EASE_HELD fades a held
+ *    note (shed_voice) only on a half that missed. Levels 1 .. 3 fade nothing. The ISR's own shedding code (shed_req) is unchanged.
+ * ease_step runs every half (range Z: tools/ram_fns_z.py); ease_set, a level change, is in the flash */
+#define EASE_UP_PCT 85u
+#define EASE_DOWN_PCT 80u
+#define EASE_DOWN_HALVES ((FS + HALF_FRAMES / 2u) / HALF_FRAMES)   /* ~1 s of halves (345) */
+#define EASE_DOWN_HALVES_FX OVL_CALM_HALVES            /* ~3 s (1034): from LIGHT FX up */
+#define EASE_UP_TICKS SHED_TICKS                       /* (= EASE_UP_PCT of a half: the shedding rule's own threshold) */
+#define EASE_DOWN_TICKS ((HALF_FRAMES * 1000000u / FS) * EASE_DOWN_PCT / 100u * FM1_TICKS_PER_US)
+_Static_assert(EASE_UP_PCT == 85u, "audio.c: SHED_TICKS is 85 % of a half");
+static uint16_t ease_calm, ease_avg;                   /* halves in a row with no half over EASE_DOWN_PCT, and with the meter under 70 %, while eased */
+static uint16_t ease_since = 0xFFFFu;                  /* halves since the level last fell below LIGHT FX (saturating) */
+static uint8_t ease_fxl;                               /* LIGHT FX was entered again within EASE_DOWN_HALVES_FX of leaving it: its peak release waits 3 x */
+static uint32_t ease_n[EASE_MAX];                      /* entries into levels 1 .. 5 since power-on (the console's `cpu`); [EASE_LIGHT - 1] is LIGHT FX's count */
+static __attribute__((noinline)) void ease_set(uint32_t n)
 {
-    shed_over = (uint8_t)(shed_over << 1 | (all > SHED_TICKS));
-    if ((shed_over & 3u) == 3u)
-        shed_req |= SHED_HELD;
-    if (all > SHED_FULL_TICKS)
-        shed_req |= SHED_FAST;
-    ovl_step((shed_over & 3u) == 3u, song.cpu_q8);     /* (0.2.25: the overload guard, fx.c: the same rule; the meter's load lets it go) */
+    uint32_t e;
+    if (n >= EASE_LIGHT && ease < EASE_LIGHT)
+        ease_fxl = ease_since < EASE_DOWN_HALVES_FX;
+    if (n < EASE_LIGHT && ease >= EASE_LIGHT)
+        ease_since = 0;
+    for (e = ease; e < n; e++)                          /* (each level includes the ones below it: a jump enters each) */
+        ease_n[e]++;
+    ovl_lite = n >= EASE_LIGHT;
+    ease = (uint8_t)n;
+    ease_calm = ease_avg = 0;
+}
+static __attribute__((noinline)) uint32_t ease_step(uint32_t all)
+{
+    uint32_t e = ease, n = e, miss = all > SHED_FULL_TICKS, over;
+    shed_over = (uint8_t)(shed_over << 1 | (all > EASE_UP_TICKS));
+    over = (shed_over & 3u) == 3u;
+    ease_since += ease_since != 0xFFFFu;
+    if (over | miss) {
+        ease_calm = ease_avg = 0;
+        n += over && n < EASE_MAX;
+        n = miss && n < EASE_TAILS ? EASE_TAILS : n;
+        if (n >= EASE_TAILS)
+            shed_req |= SHED_FAST;
+        if (miss && n == EASE_HELD)
+            shed_req |= SHED_HELD;
+    } else if (n) {
+        ease_calm = all > EASE_DOWN_TICKS ? 0u : (uint16_t)(ease_calm + 1u);
+        ease_avg = song.cpu_q8 >= OVL_CALM_Q8 ? 0u : (uint16_t)(ease_avg + 1u);
+        if (ease_calm >= (n < EASE_LIGHT ? EASE_DOWN_HALVES : ease_fxl ? 3u * EASE_DOWN_HALVES_FX : EASE_DOWN_HALVES_FX) || ease_avg >= (n >= EASE_LIGHT && ease_fxl ? 3u * OVL_CALM_HALVES : OVL_CALM_HALVES))   /* the quick-return back-off holds the average rule too */
+            n--;
+    }
+    if (n != e)
+        ease_set(n);
     return (all - t5_nested_ticks) / FM1_TICKS_PER_US;
 }
 
@@ -190,15 +247,48 @@ static uint32_t shed_released(uint32_t n)             /* the n oldest released v
     return k;
 }
 
+/* THE IN-BUFFER GUARD (b11, ported from DUELL 1.2 by OSCILL/R, GPL-3.0: audio.c guard_block). 1.2's bench: the missed halves at a chord's start ran only 10 to 30 us over (the half's
+ * first block runs slow: its code reloads after the main loop), and the ladder above acts only after two halves over 85 % or after a miss: the first half over is already lost (TIDE's
+ * 13 Nov sweep: 9 of the 14 seconds over 100 % were the first second after a load, PLAY or a glide's start). Here, after every block but the last: the time used so far (TIMER5's nested
+ * work included, as the DMA deadline sees it) plus the blocks still to come at the running mean of a later block; when that would end past GUARD_TICKS, the GUARD_N oldest released
+ * voices (keys let go: their tails; shed_released) fade now (voice_kill: over the next block), so the half's later blocks have them no more. A held note is never touched. Nothing
+ * happens below the limit, so the sound changes only where a half would have been missed. A guard fade is not an ease-ladder step: the ladder (ease_step) reads only the halves'
+ * elapsed times, as before; the fades count in shed_count (the console's) and guard_count */
+#define GUARD_TICKS (SHED_FULL_TICKS * 96u / 100u)       /* 96 %: room for the interrupt's own late start */
+#define GUARD_N 2u                                      /* tails faded at one check */
+#ifndef AUDIO_BLK_TICKS
+#define AUDIO_BLK_TICKS() fm1_ticks()                   /* (the block clock; host tests that model a half's time as one step at its end read it without a step: tests/audio_test.c) */
+#endif
+static uint32_t guard_q;                                /* the running mean of a later block (blocks 1 .. 3 of a half), ticks x 8 */
+static uint32_t guard_count;                            /* checks that faded tails */
+static inline void guard_block(uint32_t t0, uint32_t tb, uint32_t k)
+{
+    const uint32_t te = AUDIO_BLK_TICKS(), left = HALF_FRAMES / CTL - 1u - k;
+    if (k)
+        guard_q += (te - tb) - (guard_q >> 3);
+    if (left && (te - t0) + left * (guard_q >> 3) > GUARD_TICKS && shed_released(GUARD_N))
+        guard_count++;
+}
+
+/* the level a released voice is ranked by: its envelope, or on an engine with its own envelopes (FM6: v->env is forced to full) the loudest carrier as the block left it */
+static int32_t shed_level(track_t *t, voice_t *v)
+{
+    return ENGINES[t->engine]->ownenv ? fm6_sub_follow(t, v) << 9 : v->env;
+}
+
 static void shed_voice(void)
 {
     uint32_t p, i;
     voice_t *best = 0;
+    int32_t low = 0;
     for (p = 0; p < NPART; p++)
         for (i = 0; i < NVOICE; i++) {
             voice_t *v = &trk[p].v[i];
-            if (v->active && !v->gate && v->stage != 4u && (!best || v->env < best->env))
-                best = v;
+            if (v->active && !v->gate && v->stage != 4u) {
+                int32_t l = shed_level(&trk[p], v);
+                if (!best || l < low)
+                    best = v, low = l;
+            }
         }
     if (best) {
         voice_kill(best);
@@ -237,7 +327,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
     t5_nested_ticks = 0;
     fm1_audio_ack_aux(p);
     if (p & FM1_AUDIO_HALF) {
-        uint32_t half = fm1_audio_free_half(), b, us, late;
+        uint32_t half = fm1_audio_free_half(), b, us, late, all, el, mp;
         int32_t *o = &abuf[half * HALF_WORDS];
         if (shed_req) {
             uint32_t r = shed_req;
@@ -252,16 +342,25 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         tc_half_begin(t0);                              /* (the half's clock for core 0's deadlines: twocore_run.c) */
 #endif
         for (b = 0; b < HALF_FRAMES; b += CTL) {
+            const uint32_t tb = AUDIO_BLK_TICKS();
 #ifdef FM1_INPUT_LAT
             kb_out_tick = t0 + (HALF_FRAMES + b) * DAC_TICKS;   /* when this block plays (seq.c kb_lat) */
 #endif
             audio_block(o + 2u * b, CTL);
+            guard_block(t0, tb, b / CTL);               /* b11: the in-buffer guard (above) */
         }
         if (duck_on || duck_g < 32768u)                 /* (the flash duck: only around a flash write) */
             duck_half(o);
         fm1_audio_ack_half();
         audio_halves++;
-        us = shed_check(fm1_ticks() - t0);
+        all = fm1_ticks() - t0;
+        us = ease_step(all);
+        el = all / FM1_TICKS_PER_US;                    /* (K2: what the deadline saw, TIMER5 nested in it included) */
+#if DUELL_BENCH
+        cpu_el_last = el;                               /* (the bench's timeline window) */
+#endif
+        if (el > cpu_el_pk)
+            cpu_el_pk = el;
 #ifdef FELUCCA_METER_EST
         us = meter_est_us();
 #endif
@@ -269,15 +368,18 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             audio_max_us = us;
         cpu_sum += us;                                  /* the meter: no division here */
         cpu_n++;
-        if (us > cpu_pk)
+#if DUELL_TEST_MODE
+        if (us > cpu_pk)                                /* (the console's probe only) */
             cpu_pk = us;
+#endif
         {
             uint32_t load = song.cpu_q8 * (CPU_AVG - 1u) + (us * 256u) / (HALF_FRAMES * 1000000u / FS) + audio_cpu_rem;
             song.cpu_q8 = load / CPU_AVG;
             audio_cpu_rem = load % CPU_AVG;
         }
         late = fm1_audio_free_half() != half;
-        cpu_miss += (us > CPU_BUDGET_US) | late;        /* (the meter's: over the half's time, or overtaken) */
+        mp = (el > CPU_BUDGET_US) + (el > 2u * CPU_BUDGET_US) + (el > 3u * CPU_BUDGET_US);   /* (K2: DMA periods missed: the half's elapsed time over 1, 2, 3 periods; the chip has no period counter, only the half selector) */
+        cpu_miss += mp ? mp : late;                     /* (or one period: the DMA moved on while a half no longer than its time was rendered: a late entry) */
         if (late)
             felucca_dbg.late++;                         /* the DMA moved on while we rendered */
         felucca_dbg.halves++;

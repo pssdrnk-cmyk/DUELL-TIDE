@@ -40,6 +40,24 @@ static int32_t ref_level(int32_t base, int32_t detents, int32_t up)
     }
     return g <= 0.0 ? 0 : bi;
 }
+/* the firmware works in the Q12 gain (integers: g' rounded to the nearest unit before the nearest index): where the exact g' lies within 1 unit of the midpoint between
+ * two table entries either of them is the formula's answer */
+static int ref_ok(int32_t got, int32_t base, int32_t detents, int32_t up)
+{
+    double p = (detents < 0 ? -detents : detents) / 32.0, g = LEVEL_Q12[base & 127], g0 = LEVEL_Q12[112];
+    int32_t r = ref_level(base, detents, up), f;
+    if (got == r)
+        return 1;
+    if (detents == 0 || got < 0 || got > 127)
+        return 0;
+    for (f = 0; LEVEL_Q12[f] != LEVEL_Q12[got]; f++)
+        ;
+    if (f != got)                                        /* (equal table entries: the first index, as the nearest search gives) */
+        return 0;
+    g = up ? g + (g0 - g) * p : g * (1.0 - p);
+    return fabs(g - (LEVEL_Q12[got] + LEVEL_Q12[r]) / 2.0) <= 1.0 &&   /* (the two neighbouring gains around g: g within 1 unit of their midpoint) */
+           ((LEVEL_Q12[got] <= g && g <= LEVEL_Q12[r]) || (LEVEL_Q12[r] <= g && g <= LEVEL_Q12[got]));
+}
 
 /* ------------------------------------------------------------------ the audio --- */
 static uint32_t pl_eng(const char *n)
@@ -143,7 +161,7 @@ static uint64_t pl_child(uint32_t m, uint32_t how, int32_t steps, int32_t l1, in
 }
 /* the renders of the tree BEFORE item 160 (old balance 0, the shipped state), how 0, by mode: built with -DPL_RECORD=1 against that tree */
 static const uint64_t PL_HASH[PM_N] = {
-    0xD60A01CCF705A4B9ull, 0x1FD88D10F5B987DAull, 0xF49F6F3CADC3896Full, 0x88D3570D3A4EC29Eull, 0x73B251DCBB68F496ull,   /* (item 160: the tree before it, 2026-10-28) */
+    0xCDDEC676B041158Dull, 0x1E195A8B3C012F87ull, 0xC9F7BE519A92D705ull, 0xB79A1F9AA83B6641ull, 0xA9F05B17C13995D9ull,   /* (RE-BASED 2026-11-11, b9 G1/G2 echo: the delay's first repeat through the loop low-pass, the loop low cut 165 -> 219 Hz; were 0x895CE8A03A366F4E, 0xBF33CC568290F6E8, 0x08D638A559B56213, 0x74FD1E781F01A47D, 0xB03262537719E68A) */   /* (audit R09 / E2 / E3, on purpose: the scene runs HALL and the delay: ROOM on the HALL code, the delay loop's low cut and soft knee, HALL's pre-delay from SIZE (fx-extend merge 793f41f); were 0xC2F503A14B289389, 0xA337016B36C39A2A, 0xAB136CD077A628B1, 0x7F460E543C3B2773, 0x80DDA616C1A1C1CF); (audit R08, on purpose: the loops' dead bands closed; were 0x14F3B1973E0CBF3C, 0x849A20FED5E27553, 0xE0E12BF2823EE61C, 0xB7C26D36BEF222DB, 0x0DAE6363315F15FA)  (item 160: the tree before it, 2026-10-28; re-based on purpose for the master soft knee, audit R05 / D22: was 0xD60A01CCF705A4B9, 0x1FD88D10F5B987DA, 0xF49F6F3CADC3896F, 0x88D3570D3A4EC29E, 0x73B251DCBB68F496) */
 };
 static void t_audio(void)
 {
@@ -184,7 +202,7 @@ static void perform_on(void) { hold(B_FX); frame(); }
 /* the levels the reference gives for the position pos (detents, plus = part 1 louder) from the base levels */
 static int lv_ref(int32_t b1, int32_t b2, int32_t pos)
 {
-    return lv_is(ref_level(b1, pos, pos > 0), ref_level(b2, pos, pos < 0));
+    return ref_ok(trk[0].p[P_LEVEL], b1, pos, pos > 0) && ref_ok(trk[1].p[P_LEVEL], b2, pos, pos < 0);
 }
 static void t_rule(void)
 {
@@ -218,18 +236,18 @@ static void t_rule(void)
     ok = 1;
     for (n = 0; n < sizeof BASE / sizeof BASE[0]; n++) {
         lv_set(BASE[n][0], BASE[n][1]);
-        turn(EN_SELECT, -32);                             /* to the right end: part 2 only */
+        turn(EN_SELECT, 32);                              /* to the right end: part 2 only (a step right = +1, as the walks below) */
         ok &= lv_is(0, 112);
-        turn(EN_SELECT, -5);
-        ok &= lv_is(0, 112);                              /* (no further) */
-        turn(EN_SELECT, 64);                              /* to the left end: part 1 only */
-        ok &= lv_is(112, 0);
         turn(EN_SELECT, 5);
+        ok &= lv_is(0, 112);                              /* (no further) */
+        turn(EN_SELECT, -64);                             /* to the left end: part 1 only */
         ok &= lv_is(112, 0);
-        turn(EN_SELECT, -32);
+        turn(EN_SELECT, -5);
+        ok &= lv_is(112, 0);
+        turn(EN_SELECT, 32);
         ok &= lv_is(BASE[n][0], BASE[n][1]);
     }
-    expect("the ends: p = +1 (32 detents left): LEVEL 1 at 0 dB (112), LEVEL 2 OFF; p = -1 (32 right): the mirror; more turning stays; back to the middle = the base levels", ok);
+    expect("the ends: p = -1 (32 detents right): LEVEL 1 OFF, LEVEL 2 at 0 dB (112); p = +1 (32 left): the mirror; more turning stays; back to the middle = the base levels", ok);
     /* no level above index 112 (unless the base itself is above and then it is not raised) and the direction of each part */
     {
         uint32_t above = 0, wrongway = 0;
@@ -327,7 +345,9 @@ static void t_rule(void)
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+#ifndef PL_RULE_ONLY                                    /* (perflevelmut: its mutants break the rule only; no fork needed) */
     t_audio();                                          /* (first: each child from the process's power-on state) */
+#endif
 #ifndef PL_RECORD
     t_rule();
 #endif

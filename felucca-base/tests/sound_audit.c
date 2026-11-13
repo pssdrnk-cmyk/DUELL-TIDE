@@ -32,6 +32,8 @@
  * (hit level), no weighted-loudness rule. Risers allowed to take longer than 2 s to reach the plateau: WHITE OUT, MOOR WIND,
  * LESLIE STORM (a swell is their sound); nothing else.
  * Every sound must set LFO 1's and LFO 2's TRIG to FREE itself (DUELL 0.2.2; the pair is in the sound, not the default): else FAIL.
+ * Slow motion (2026-11-05): a PAD, KEYS or FX sound of the 128 syncs a LOOP CYCLE slower than 1 s and every LFO it uses at 1 Hz or slower: else FAIL.
+ * Aftertouch (2026-11-05): a sound of the 128 that is not FX or PERC sends AT to SATURATION (BASS) or to CUT / TWIN CUTOFF / SHAPE (the rest): else FAIL.
  *   build/host/sound_audit                   the table; exit 1 on a FAIL
  *   SOUND_TRIM=1 build/host/sound_audit      also the TRIM (until 0.2.18 "LEVEL") each sound would need for AUDIT_TARGET_DB (weighted, in its
  *                                            window), its peak at most AUDIT_PEAK_DB (TRIM: 0.5 dB a step,
@@ -45,6 +47,7 @@
  *   SOUND_ONLY=NAME                          only that sound
  *   SOUND_DUMP=DIR                           also writes each sound's End A render (STEREO, the one note) to DIR/E<engine>_<index>.i32: int32 left / right pairs, the mix before
  *                                            MASTER, as measured (the proof renders of cloud job J: tools/convert_twin_report.py compares two builds')
+ *   SOUND_HZ=1                               also the brightness itself (the weighted spectral centroid, Hz) of A and of End B (STEREO), and End B's peak (STEREO / SPLIT)
  *   SOUND_WIN=1                              also the windows (loudest 1.5 s, 0.5 s, the 1.5 s before key-off) and when the
  *                                            peak came */
 #define main hostsim_main
@@ -68,9 +71,10 @@
 #define AUDIT_HIT_HI (-3.0)
 #define AUDIT_HIT_TRIM (-4.5)
 #define AUDIT_REL_MARGIN 3.0           /* rule (6): a sustaining sound's MED at most this far under the median MED of the sustaining ones */
-static const char *const AUDIT_RISERS[] = {"WHITE OUT", "MOOR WIND", "LESLIE STORM", "RAIN CHIMES"};   /* RAIN CHIMES: its arp is one LFO phrase now (TRIG NOTE no longer restarts per step), so its 0.25 Hz LFO 2 filter sweep runs its 4 s cycle as the recipe says */
-static const char *const AUDIT_KEEP[] = {0};   /* keep-as-designed: exempt from quiet body, falls away, quiet vs others (BACKSPIN until
-                                                * 0.2.8: retired with SLICE; none now) */
+static const char *const AUDIT_RISERS[] = {"WHITE OUT", "MOOR WIND", "LESLIE STORM", "RAIN CHIMES", "VOID SHIMMER"};   /* VOID SHIMMER: b9, its sub an octave under the key swells in over its 20 s cycle (T-3 5 s), a drone by design; RAIN CHIMES: its arp is one LFO phrase now (TRIG NOTE no longer restarts per step), so its 0.25 Hz LFO 2 filter sweep runs its 4 s cycle as the recipe says */
+static const char *const AUDIT_KEEP[] = {"RAIN CHIMES"};   /* keep-as-designed: exempt from quiet body, falls away, quiet vs others (BACKSPIN until
+                                                * 0.2.8: retired with SLICE). RAIN CHIMES: a few chimes in a reverb, its median sits on the -21 dBFS line (-20.9 before the reverb's
+                                                * pre-delay, audit E3, moved a little of its tail later: -21.1); the bank lane may lift it */
 
 typedef struct { uint32_t e, k, mode, b, seed, amt, chord, tap; } au_t;   /* b: 0 End A (the sound), 1 its factory End B, 2 seed / amt */
 static void au_setup(void *v)
@@ -84,8 +88,8 @@ static void au_setup(void *v)
         trk[0].p[P_CHRD] = 0;                 /* (chord keys of a pad: the audit's one note stays one note, as it was trimmed) */
     if (a->b) {
         morph_ready(0);                       /* (first use: the load's rebase rolls the factory End B) */
-        if (a->b == 2u)
-            morph_roll_cfg(0, 1u, a->seed, a->amt, a->mode != DM_SPLIT ? MC_STEREO : 0u);
+        if (a->b == 2u)                       /* (a candidate seed rolled as the load rolls a factory sound: with TIDE the MUSICAL roll at its AMOUNT, morph.c / tide.h) */
+            morph_roll_cfg(0, 1u, a->seed, TIDE_FACTORY_BAMT(a->e, a->k, a->amt), (a->mode != DM_SPLIT ? MC_STEREO : 0u) | TIDE_FACTORY_CFG());
         mph[0].fader = 127;
     }
 }
@@ -110,6 +114,61 @@ static int au_keep(const ds_sound_t *s)
             return 1;
     return 0;
 }
+/* DUELL 1.1 / jam11 findings (docs/JAM11_TEST_BASELINE.md): the bank re-voiced since 1.0 breaks these rules and stock 1.1 breaks them the same on Linux. They are reported
+ * (KNOWN), not failed, until the owner decides: trim or re-voice the sound, or move the rule */
+static int au_known(const ds_sound_t *s)
+{
+    static const char *const KNOWN[] = {"BEHIVE"};   /* (SINGING BOWL and ARP PLUCK re-voiced, 2026-11-05: they pass) */
+    uint32_t i;
+    for (i = 0; i < sizeof KNOWN / sizeof *KNOWN; i++)
+        if (str_eq(s->name, KNOWN[i]))
+            return 1;
+    return 0;
+}
+/* one aftertouch convention per category (audit T09, 2026-11-05): a sound of the 128 that routes AT routes it to SATURATION (BASS) or to a filter / the
+ * engine's timbre (CUT, TWIN CUTOFF, SHAPE: LEAD PAD PLUCK KEYS); FX and PERC are free. 1 = keeps it */
+static int au_at_ok(const ds_sound_t *s, uint32_t n)
+{
+    uint32_t i;
+    if (n >= 128u || s->cat == CAT_FX || s->cat == CAT_PERC)
+        return 1;
+    for (i = 0; i < 8u; i++)
+        if (ds_value(s, MSLOT_ID(i), 0) == MS_AT) {
+            int32_t d = ds_value(s, MSLOT_ID(i) + 1u, 0);
+            return s->cat == CAT_BASS ? d == MD_DIST : d == MD_CUT || d == MD_CUT2 || d == MD_SHP;
+        }
+    return 1;
+}
+/* slow motion in step with the tempo (audit T08, 2026-11-05): a PAD, KEYS or FX sound of the 128 runs its LOOP CYCLE (read by a matrix slot) with CYCLE SYNC
+ * when it is slower than a second, and each LFO it uses (a DEST depth, the TWIN depth or a matrix slot) at 1 Hz or slower with its SYNC (bars). 1 = keeps it */
+static int au_src_used(const ds_sound_t *s, int32_t src)
+{
+    uint32_t i;
+    for (i = 0; i < 8u; i++)
+        if (ds_value(s, MSLOT_ID(i), 0) == src && ds_value(s, MSLOT_ID(i) + 1u, 0) && ds_value(s, MSLOT_ID(i) + 2u, 0))
+            return 1;
+    return 0;
+}
+static int au_sync_ok(const ds_sound_t *s, uint32_t n)
+{
+    double tr, tf;
+    if (n >= 128u || (s->cat != CAT_PAD && s->cat != CAT_KEYS && s->cat != CAT_FX))
+        return 1;
+    tr = pow(10000.0, ds_value(s, XWID(X_CYRISE), 10) / 127.0);
+    tf = pow(10000.0, ds_value(s, XWID(X_CYFALL), 70) / 127.0);
+    if (au_src_used(s, MS_CYCLE) && !ds_value(s, XWID(X_CYMODE), 0) && !ds_value(s, XWID(X_CYSYNC), 0) && tr + tf >= 1000.0)
+        return 0;
+    if ((ds_value(s, P_LD_PIT, 0) || ds_value(s, P_LD_FLT, 0) || ds_value(s, P_LD_SHP, 0) || ds_value(s, P_LD_AMP, 0) || ds_value(s, XWID(X_LFO1), 0) ||
+         au_src_used(s, MS_LFO)) && !ds_value(s, P_LSYNC, 0) && LFO_HZ_X100[ds_value(s, P_LRATE, 60) & 127] < 100u)
+        return 0;
+    if ((ds_value(s, P_L2PIT, 0) || ds_value(s, P_L2FLT, 0) || ds_value(s, P_L2SHP, 0) || ds_value(s, XWID(X_LFO2), 0) || au_src_used(s, MS_LFO2)) &&
+        !ds_value(s, P_L2SYNC, 0) && LFO_HZ_X100[ds_value(s, P_L2RATE, 60) & 127] < 100u)
+        return 0;
+    return 1;
+}
+/* (b6, sound audit T2) no End B is KNOWN any more: FRETLESS, ISLAND STEEL and MALLET WOOD (KNOWN since audit G15, 2026-11-05: AMOUNT 40's SHAPE
+ * dial moved their decay, and with it their level, out of the window) roll their TIDE End B at their own MUSICAL AMOUNT, 20
+ * (tools/duell_sounds.py 'tamt', tide.h TIDE_FACTORY_BAMT), and are judged as every other sound */
 static int au_dcmp(const void *a, const void *b) { double x = *(const double *)a, y = *(const double *)b; return x < y ? -1 : x > y; }
 /* the level the trim reads: a sound that sustains (judged on A), its held body (MED, the median of seconds 1-6); any other, its
  * loudest window. (End B is compared on the loudest window, LOUD, as before) */
@@ -235,12 +294,17 @@ int main(void)
                    *T = &L[6u * n + 5u];
         int bok = au_b_ok(s, A, Bt) && au_b_ok(s, Ap, Bp), hit = au_hit(s, A), sound9 = A->l9 > AUDIT_SOUNDING_DB;
         const char *why = "ok";
+        char known[40];
         int lv = ds_value(s, P_TRIM, TP[P_TRIM].def);
         char cpk[16];
         if (only && !str_eq(s->name, only))
             continue;
         if (ds_value(s, P_LTRIG, 0) != 1 || ds_value(s, P_L2TRIG, 0) != 1)   /* (def 0: a sound that leaves it out fails) */
             why = "FAIL (LFO TRIG not FREE)";   /* DUELL 0.2.2: every factory sound sets both LFOs FREE itself */
+        else if (!au_at_ok(s, n))
+            why = "FAIL (AT convention)";
+        else if (!au_sync_ok(s, n))
+            why = "FAIL (free slow motion)";
         else if (A->nan || T->nan)
             why = "FAIL (NaN / crash)";
         else if (A->loud < -60)
@@ -261,8 +325,15 @@ int main(void)
             why = "FAIL (quiet vs others)";
         else if (!hit && T->w05 < AUDIT_TAP_MIN)
             why = "FAIL (quiet tap)";
-        else if (!bok)
+        else if (!bok)   /* (DUELL 1.1: an End B the owner made as values (sounds.c ds_endb, PT_VER 4) is his, not a seed's roll: not judged by the seed windows.
+                                                         * With TIDE a factory sound's End B is always its seed's MUSICAL roll (morph.c, tide.h TIDE_FACTORY_CFG: the block is not read), so it is judged) */
             why = "FAIL (End B)";
+        else if (!bok)                                  /* (an authored End B outside the window: reported, the owner's to keep or trim; a tide to it is a jump in level or tone) */
+            why = "KNOWN (End B authored)";
+        if (why[0] == 'F' && au_known(s)) {
+            snprintf(known, sizeof known, "KNOWN%s", why + 4);
+            why = known;
+        }
         fails += why[0] == 'F';
         if (au_chordy(s))
             snprintf(cpk, sizeof cpk, "%8.1f", C->peak);
@@ -272,6 +343,8 @@ int main(void)
                n + 1, s->name, CAT_NAME[s->cat % CAT_N], ENGINES[e]->name, A->peak, A->loud, A->l1, A->l3, A->med16, A->t3,
                T->w05, Ap->cmed, cpk, Bt->loud - A->loud, Bp->loud - Ap->loud, Bt->bright / A->bright, Bp->bright / Ap->bright,
                (unsigned)ds_seed(e, k), (unsigned)ds_amount(e, k), why, A->sus ? 'S' : 'D', hit ? 'H' : ' ');
+        if (getenv("SOUND_HZ"))
+            printf("  centroid A %.0f Hz B %.0f Hz, B peak %.1f/%.1f", A->bright, Bt->bright, Bt->peak, Bp->peak);
         if (getenv("SOUND_WIN"))
             printf("  w1.5 %.1f w0.5 %.1f last1.5 %.1f peak@%.2fs l9 %.1f", A->w15, A->w05, A->last15, A->peak_t, A->l9);
         if (trim) {

@@ -10,7 +10,7 @@ felucca.fwsc (package). A release build (--release; the version is always the VE
 and a folder release-<VERSION>-beta/ with the package, the app, SHA256SUMS and the licence files (DUELL 0.2.9: no sample data, no sample
 attribution any more); the device
 shows the version of the VERSION file at the DUELL root ("DUELL 0.2.1 beta"); the package is duell-<VERSION>-beta.fwsc
-(identity FM-1_901). Every build also writes duell-latest.fwsc (the same bytes) and duell-version.json {"version": "0.2.1"}.
+(identity FM-1_901; on a TIDE build, the default, ABOUT shows the TIDE version from TIDE_VERSION, or DUELL_TIDE_ID). Every build also writes duell-latest.fwsc (the same bytes) and duell-version.json {"version": "0.2.1"}.
 See BUILDING.md for the toolchain and the SDK.
 
 The JieLi toolchain is Linux x86-64 only. JIELI_TOOLCHAIN points at it; on
@@ -36,8 +36,9 @@ DUELL_RAMPLACE=1 (two-core stage 1a; needs a BENCH_TAG and DUELL_HOTRAM 3): part
 the wider PC window (hal/fm1_guard.h) and ABOUT's RAM CODE line. tools/elfcheck.py check_ramplace checks the result. Unset: nothing of it.
 
 Every build (device, test, bench, release) ends with the start-up layout check (tools/elfcheck.py: the .noinit objects
-whole and of their C size, no LTO-split "bootguard.0", the .noinit size, the entry point, the app slot); it only
-reads the ELF, the package bytes are unchanged.
+whole and of their C size, no LTO-split "bootguard.0", the .noinit size, the entry point, the app slot) and the reach of
+every direct call of the link (ram_place.call_sites, elfcheck.check_calls); it only reads the ELF and the objects, the package
+bytes are unchanged.
 """
 import argparse
 import hashlib
@@ -63,7 +64,9 @@ OUT = SRC / "build"
 GEN = OUT / "gen"
 LDR = OUT / "loader"
 sys.path.insert(0, str(SRC / "tools"))
+import bootpack  # noqa: E402
 import elfcheck  # noqa: E402
+import hot_reach  # noqa: E402
 import hot_fns  # noqa: E402
 import ram_place  # noqa: E402
 import fm1pkg_make  # noqa: E402
@@ -75,6 +78,8 @@ LOADER_LOAD = 0x01C0A800
 LOADER_NAME = b"usb_hid_ota.bin"    # the file name the SPL looks for
 DOCKER_IMAGE = os.environ.get("JIELI_DOCKER_IMAGE", "debian:bookworm-slim")
 CFLAGS = ["-Os", "-ffunction-sections", "-fno-builtin", "-Wall", "-Wno-unused-function"]
+if os.environ.get("DUELL_WERROR") == "1":   # DUELL_WERROR=1: a compiler warning fails the build (a gate for CI; the default build only prints them)
+    CFLAGS.append("-Werror")
 LINE = re.compile(r"^\s*([0-9a-f]+):\s+((?:[0-9a-f]{2} )+)\s*\t(.*)$")
 
 # SDK files of AC79NN_SDK_V1.2.1_2023-12-13 (the tested version)
@@ -96,16 +101,58 @@ def read_version():
     return v
 
 
+def tide_version():
+    """TIDE's own version: the one line of TIDE_VERSION at the repository root (1.0.0-b1 = a beta; 1.0.0 = a release)"""
+    p = SRC.parent / "TIDE_VERSION"
+    v = p.read_text().strip() if p.is_file() else ""
+    if not re.fullmatch(r"\d{1,2}\.\d{1,2}\.\d{1,2}(?:-b\d{1,2})?", v):
+        raise SystemExit(f"build: {p} must hold MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-bN (1.0.0, 1.0.0-b1), found {v!r}")
+    return v
+
+
+def tide_is_release(v):
+    """True when this tree is exactly the release v: clean tracked files, and HEAD is the commit of the tag tide-<v>.
+    Anything else (changes, other commit, tag not made yet, no git, a snapshot inside another repository) is not."""
+    try:
+        git = lambda *c: subprocess.run(["git", *c], cwd=SRC, capture_output=True, text=True, check=True).stdout.strip()
+        if (Path(git("rev-parse", "--show-toplevel")) / "felucca-base").resolve() != SRC:
+            return False
+        return git("rev-parse", "HEAD") == git("rev-parse", "--verify", "-q", f"refs/tags/tide-{v}^{{commit}}") and not git("status", "--porcelain", "--untracked-files=no")
+    except Exception:
+        return False
+
+
+def tide_id():
+    """the build id ABOUT shows next to the version: DUELL_TIDE_ID (any text), else TIDE_VERSION, with a trailing "+" unless the tree is exactly that release"""
+    v = os.environ.get("DUELL_TIDE_ID")
+    if v is None:
+        v = tide_version()
+        if not tide_is_release(v):
+            v += "+"
+    if not re.fullmatch(r"[A-Za-z0-9.+-]{1,10}", v):
+        raise SystemExit(f"build: the TIDE build id must be 1 to 10 of A-Z a-z 0-9 . + - (ABOUT has room for that), found {v!r}")
+    return v
+
+
 def toolchain():
     tc = os.environ.get("JIELI_TOOLCHAIN")
-    if not tc or not (Path(tc) / "pi32v2" / "bin" / "clang").exists():
-        raise SystemExit("JIELI_TOOLCHAIN must point at the JieLi Linux toolchain "
-                         "(the directory with pi32v2/ and common/; see tools/get_toolchain.sh)")
+    if not tc or not ((Path(tc) / "pi32v2" / "bin" / "clang").exists() or (Path(tc) / "bin" / "clang.exe").exists()):
+        raise SystemExit("JIELI_TOOLCHAIN must point at the JieLi Linux toolchain (the directory with pi32v2/ and common/; "
+                         "see tools/get_toolchain.sh) or at the Windows toolchain's pi32 directory (bin/clang.exe)")
     return Path(tc).resolve()
 
 
+# JAM: the Windows toolchain keeps every tool in one bin/ directory, under its own names
+WIN_TOOLS = {"pi32v2/bin/clang": "clang.exe", "pi32v2/bin/ld": "pi32v2-ld.exe",
+             "common/bin/objcopy": "llvm-objcopy.exe", "common/bin/objdump": "llvm-objdump.exe"}
+
+
+def windows_toolchain():
+    return platform.system() == "Windows" and (toolchain() / "bin" / "clang.exe").exists()
+
+
 def use_docker():
-    native = platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64")
+    native = (platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64")) or windows_toolchain()
     return os.environ.get("JIELI_DOCKER", "0" if native else "1") == "1"
 
 
@@ -117,6 +164,8 @@ def tc(tool, *args):
     if use_docker():
         cmd = ["docker", "run", "--rm", "--platform", "linux/amd64", "-v", f"{SRC}:/work",
                "-v", f"{toolchain()}:/opt/jieli:ro", "-w", "/work", DOCKER_IMAGE, f"/opt/jieli/{tool}", *rel]
+    elif windows_toolchain():
+        cmd = [str(toolchain() / "bin" / WIN_TOOLS[tool]), *rel]
     else:
         cmd = [str(toolchain() / tool), *rel]
     r = subprocess.run(cmd, cwd=SRC, capture_output=True, text=True)
@@ -252,6 +301,12 @@ def app_ld():
     return FW / ("app_hot.ld" if hotram() else "app.ld")
 
 
+def app_objs():
+    """the app link's objects (build_app): crt0, the vectors, the interrupt entries and felucca.o as placed (hot set, ranges X / Z)"""
+    main = "felucca_ram.o" if ramplace() else "felucca_hot.o" if hotram() else "felucca.o"
+    return [OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o", OUT / main]
+
+
 def ld_regions():
     """the app linker script's MEMORY regions (app_ld()): name -> (origin, length)"""
     regs = {}
@@ -305,6 +360,22 @@ def build_app():
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c (DUELL_TEST_MODE: core.h, 0 = release: no TEST screen, no M13..M16)
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
+    v = os.environ.get("DUELL_NOTES_STEP")    # TIDE 1.0.0-b6 N1 (firmware/src/budget.h): the NOTES limit step of a unit-sweep build; every other build keeps the branch's default
+    if v:
+        if v not in ("72", "76", "80", "84"):
+            raise SystemExit(f"build: DUELL_NOTES_STEP={v}: one of 72, 76, 80, 84")
+        if os.environ.get("DUELL_TEST_MODE") != "1":
+            raise SystemExit("build: DUELL_NOTES_STEP is for test-mode builds (DUELL_TEST_MODE=1): a release build has the branch's default step")
+        flags.append(f"-DDUELL_NOTES_STEP={v}")
+    v = os.environ.get("DUELL_LCD_BAUD")    # TIDE 1.0.0-b6 (lcdspeed): the LCD's SPI1 divider, src/lcd.c LCD_BAUD (lsb 60 MHz / (BAUD + 1): 4 = 12 MHz; 2 = 20 MHz, the default since b6; 1 = 30 MHz;
+    if v:                                       # the ST7789V takes a serial write clock up to ~62 MHz, tSCYCW 16 ns). For test-mode builds tried on the unit; a release keeps lcd.c's default
+        if v not in ("1", "2", "3", "4"):
+            raise SystemExit(f"build: DUELL_LCD_BAUD={v}: one of 1 (30 MHz), 2 (20 MHz), 3 (15 MHz), 4 (12 MHz)")
+        if os.environ.get("DUELL_TEST_MODE") != "1":
+            raise SystemExit("build: DUELL_LCD_BAUD is for test-mode builds (DUELL_TEST_MODE=1): a release has lcd.c's default")
+        flags.append(f"-DLCD_BAUD={v}u")
+    if os.environ.get("DUELL_PRESETS") != "1":   # Felucca's engine preset tables (engine_t.presets): no firmware code reads them (sounds.c's factory sounds replaced them), only the host tests do
+        flags.append("-DDUELL_PRESETS=0")
     v = os.environ.get("DUELL_VELO", "1")   # KEY SENSE (key velocity and aftertouch, sense.c): ON in every build since 0.2.30 (owner, 2026-10-21; before: developer builds only, build.py passed nothing and felucca.c's default 0 held).
     if v in ("0", "1"):                     # DUELL_VELO=0 in the environment builds the old velocity-free shape (host tests compile without the switch: felucca.c's default stays 0)
         flags.append(f"-DDUELL_VELO={v}")
@@ -312,9 +383,32 @@ def build_app():
         if os.environ.get("FELUCCA_CDC") != "1" or os.environ.get("DUELL_VELO", "1") != "1" or "--release" in sys.argv:
             raise SystemExit("build: DUELL_VELO_CAPTURE=1 is a developer build: FELUCCA_CDC=1 (the USB serial console) and DUELL_VELO on, never --release")
         flags.append("-DDUELL_VELO_CAPTURE=1")
+    v = os.environ.get("FELUCCA_HANDSKIP", "1")     # firmware/src/morph.c (Later 9): 1 = a hand- or MIDI-moved morph fader blends every other block, as a GLIDE's does; unset or 1: every other block (ON in the rc3.1 package, 0 turns it off; host tests compile without it)  [was: unset or 0: every block (the default until the unit sweep)
+    if v in ("0", "1"):
+        flags.append(f"-DFELUCCA_HANDSKIP={v}")
+    if os.environ.get("DUELL_WAVE_ROWS", "1") == "1":   # ROADMAP Later 21: the wave page sends only the screen rows that changed (ui_scope.c wl_rows); OFF unless asked, +164 B
+        flags.append("-DWL_ROWS_DIFF=1")
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
         flags.append(f"-DFELUCCA_USB_LAYOUT={v}")
+    v = os.environ.get("FELUCCA_MOVECOST", "1")     # firmware/src/core.h (Later 10 + 13): 1 = a part's morph costs charged only while a transition moves, the INSERT dip's blend in 1/256 steps; unset or 0: as before (the default until the unit sweep)
+    if v in ("0", "1"):
+        flags.append(f"-DFELUCCA_MOVECOST={v}")
+    v = os.environ.get("FELUCCA_GUARDS", "1")     # firmware/src/core.h (b10 round 7): 1 = morph_xrest and vs_block run only when their inputs are live (same sound, bit for bit); 0 = every block as before
+    if v in ("0", "1"):
+        flags.append(f"-DFELUCCA_GUARDS={v}")
+    v = os.environ.get("DUELL_BUILD_DATE")   # ABOUT's date ("Nov  1 2026", __DATE__'s form): unset, the day of the build
+    if not v and "--release" in sys.argv:    # a release carries the date of its commit, so a rebuild of the same commit is byte-identical
+        try:
+            d = subprocess.run(["git", "log", "-1", "--format=%cd", "--date=format:%Y %m %d"], cwd=SRC, capture_output=True, text=True, check=True).stdout.split()
+            v = "%s %2d %s" % ("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()[int(d[1]) - 1], int(d[2]), d[0])
+        except Exception:
+            v = None                          # (no git: the day of the build, as before)
+    if v and re.fullmatch(r"[A-Z][a-z]{2} [ 123]\d \d{4}", v):
+        flags.append(f'-DDUELL_BUILD_DATE="{v}"')
+    v = tide_id()                            # ABOUT's build id: DUELL_TIDE_ID, else the TIDE version ("+" when the tree is not exactly the tagged release)
+    if v:
+        flags.append(f'-DDUELL_TIDE_ID="{v}"')
     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')
     # felucca.c goes to LLVM IR without the optimizer, the main-loop functions (UI, stores, editor) are
     # marked minsize (tools/size_fns.py), then the IR is compiled at -Os. FELUCCA_SIZE=0: -Os everywhere
@@ -360,8 +454,9 @@ def build_app():
             plugin.append(f"-plugin-opt=mcpu={opt_cpu(opt)}")
         plugin += [f"-plugin-opt={o}" for o in llvm]
     pad = [f"--defsym=_hot_pad={hot_fns.PAD[hotram()]}"] if hotram() in hot_fns.PAD else []   # R7: the hot block padded to R3's size
-    tc("pi32v2/bin/ld", *plugin, *pad, "-T", app_ld(), OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o",
-       obj, "-o", elf)
+    if app_objs()[-1] != obj:
+        raise SystemExit(f"build: app_objs() does not name {obj.name}")
+    tc("pi32v2/bin/ld", *plugin, *pad, "-T", app_ld(), *app_objs(), "-o", elf)
     for sect in ("text.bin", "data.bin", "ramtext.bin", "ramx.bin", "ramz.bin"):
         (OUT / sect).unlink(missing_ok=True)
     dcpu = [f"-mcpu={opt_cpu(opt)}"] if opt_cpu(opt) else []   # (the disassembler knows that core's instructions only when told)
@@ -379,10 +474,12 @@ def build_app():
     def symv(name):
         return int(re.search(r"^([0-9a-f]+) .*\s" + name + r"$", syms, re.M).group(1), 16)
     img = bytearray((OUT / "text.bin").read_bytes())
-    # .ram_text and .data follow .text at their load addresses; crt0 copies them by words (DUELL_RAMPLACE: then .ramz and .ramx, main.c)
+    if ramplace():                  # the boot pack (src/ramplace.c): one LZMA stream instead of the four load images
+        img = boot_pack(img, symv)
+        (OUT / "felucca.bin").write_bytes(img)
+        return bytes(img), syms, dis, rt
+    # .ram_text and .data follow .text at their load addresses; crt0 copies them by words
     loads = [("ramtext.bin", "_rt_load"), ("data.bin", "_data_load")]
-    if ramplace():
-        loads = sorted(loads + [("ramz.bin", "_rz_load"), ("ramx.bin", "_rx_load")], key=lambda sl: symv(sl[1]))
     for sect, lname in loads:
         load = symv(lname)
         if load % 4:
@@ -398,14 +495,49 @@ def build_app():
     return bytes(img), syms, dis, rt
 
 
+BOOT_BINS = {".ram_text": "ramtext.bin", ".data": "data.bin", ".ramz": "ramz.bin", ".ramx": "ramx.bin"}   # (build_app's objcopy files)
+
+
+def boot_pack(img, symv):
+    """the app image with the boot pack (tools/bootpack.py) from _boot_pack on (the four load images are linked after .text, the first
+    at _boot_pack)"""
+    at = symv("_boot_pack")
+    if at - APP_XIP < len(img) or at % 4:
+        raise SystemExit(f"_boot_pack {at:#x} overlaps .text or is not word aligned")
+    blobs = [(symv(tag + "_start"), (OUT / BOOT_BINS[name]).read_bytes() if (OUT / BOOT_BINS[name]).exists() else b"")
+             for name, tag in bootpack.SECTIONS]
+    try:
+        img += b"\xff" * (at - APP_XIP - len(img)) + bootpack.pack(blobs)
+    except ValueError as e:
+        raise SystemExit(str(e))
+    img += b"\xff" * (-len(img) % 4)
+    return img
+
+
 POOL_TAIL_MIN = 8192        # the pool-tail rule: pool end (or range Z's end) to the stack guard keeps this much spare
 POOL_TAIL_MIN_BENCH = 4096  # 4,096 B again (owner, 2026-10-19; it was 2,816 B for BENCHM1 until the T0229 ramp code was shrunk and mix_ramp moved to range X, join0234) ... in a DUELL_BENCH developer build ONLY (owner's decision 2026-10-19: the bench's 4.4 KB session copy and the
                             # two-core RAM code share the pool; BENCHT1 keeps 4,788 B). A normal or non-bench build keeps POOL_TAIL_MIN.
 
 
+POOL_TAIL_MIN_TEST = 7936  # a DUELL_TEST_MODE=1 measurement build (unit sweeps, never released): 256 B under the rule, for the test-mode code in the
+                            # range-Z functions (b5: +44 B; the release build kept 8,208 B, the test build 8,164 B). Release and normal builds keep POOL_TAIL_MIN.
+
+
+RAM_HEADROOM_MIN = 4096      # the RAM rule: .data + .bss keep this much of RAM spare (state the audio side touches)
+RAM_HEADROOM_MIN_TEST = 3840  # a DUELL_TEST_MODE=1 measurement build (unit sweeps, never released): 256 B under the rule, as POOL_TAIL_MIN_TEST, for the
+                              # test-mode console's 264 B of .bss (TIDE b6: the release build keeps 4,104 B, the test build 3,840 B). Release and normal builds keep RAM_HEADROOM_MIN.
+
+
+def ram_headroom_min(env=None):
+    env = os.environ if env is None else env
+    return RAM_HEADROOM_MIN_TEST if env.get("DUELL_TEST_MODE") == "1" else RAM_HEADROOM_MIN
+
+
 def pool_tail_min(env=None):
     env = os.environ if env is None else env
-    return POOL_TAIL_MIN_BENCH if env.get("DUELL_BENCH") == "1" and env.get("BENCH_TAG") else POOL_TAIL_MIN
+    if env.get("DUELL_BENCH") == "1" and env.get("BENCH_TAG"):
+        return POOL_TAIL_MIN_BENCH
+    return POOL_TAIL_MIN_TEST if env.get("DUELL_TEST_MODE") == "1" else POOL_TAIL_MIN
 
 
 def check(img, syms, dis, rt):
@@ -446,7 +578,9 @@ def check(img, syms, dis, rt):
     notes.append(f"image {len(img)} B; RAM .data+.bss {bss} B of {ram_len}; pool {pool} B of {pool_len}")
     if region["RAM"][0] + ram_len != region["POOL"][0]:
         errors.append("app.ld: POOL does not start where RAM ends")
-    bss_min = 4096
+    bss_min = ram_headroom_min()
+    if bss_min != RAM_HEADROOM_MIN:
+        notes.append(f"RAM headroom rule lowered to {bss_min} B for this DUELL_TEST_MODE measurement build (normal builds keep {RAM_HEADROOM_MIN} B)")
     if os.environ.get("DUELL_BENCH") == "1" and os.environ.get("BENCH_BSS_MIN"):   # HANDOFF_V2 item 107: OPT-IN, a DUELL_BENCH developer build only; unset = the 4,096 B rule as ever
         bss_min = int(os.environ["BENCH_BSS_MIN"])
         notes.append(f".bss headroom rule lowered to {bss_min} B by BENCH_BSS_MIN for this DUELL_BENCH developer build (normal builds keep 4096 B)")
@@ -459,7 +593,7 @@ def check(img, syms, dis, rt):
     if pool_len - pool < need:                    # keep >= 8 KiB of the pool spare (4 KiB in a DUELL_BENCH developer build)
         errors.append(f"pool headroom {pool_len - pool} B < {need} B")
     elif need != POOL_TAIL_MIN:
-        notes.append(f"pool tail rule lowered to {need} B for this DUELL_BENCH developer build (normal builds keep {POOL_TAIL_MIN} B)")
+        notes.append(f"pool tail rule lowered to {need} B for this DUELL_BENCH or DUELL_TEST_MODE developer build (normal builds keep {POOL_TAIL_MIN} B)")
     return errors, notes
 
 
@@ -507,12 +641,30 @@ def mmio_check():
     return errors
 
 
+DEV_SWITCHES = ("FELUCCA_CDC", "DUELL_TEST_MODE", "DUELL_BENCH", "FELUCCA_OTA_DRYRUN", "FELUCCA_OTA_RAMONLY")
+
+
+def release_guard(argv, env):
+    """TIDE b7 (review E5): a --release build stops when a developer switch is set to 1 in the environment (the serial console, the TEST screen,
+    the bench, the update dry runs): a release is never built with them"""
+    if "--release" not in argv:
+        return
+    on = [f for f in DEV_SWITCHES if env.get(f) == "1"]
+    if on:
+        raise SystemExit(f"build: --release with {', '.join(f + '=1' for f in on)} set: a release is built without the developer switches")
+
+
 def main():
     global PRODUCT
+    release_guard(sys.argv, os.environ)
     ap = argparse.ArgumentParser()
     ap.add_argument("--release", nargs="?", const="", metavar="X.Y", help="release build: a folder release-<VERSION>-beta/ too. The version is always the VERSION file; an X.Y given here is ignored")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
+    ap.add_argument("--gen-only", action="store_true", help="only the generated headers (build/gen): what the host tests need, no toolchain or SDK")
     a = ap.parse_args()
+    if a.gen_only:
+        generate()
+        return
     ver = read_version()
     tag = f"{ver}-beta" if ver.startswith("0.") else ver    # 1.0 and later: duell-1.0.fwsc, no -beta
     if a.release:
@@ -538,14 +690,22 @@ def main():
     elf = elfcheck.read_elf((OUT / "felucca.elf").read_bytes())     # the start-up layout (tools/elfcheck.py)
     lay_err = elfcheck.check(elf, elfcheck.source_noinit(FW), "1" in (os.environ.get("DUELL_CORE1_PROBE"), os.environ.get("DUELL_TWOCORE")), len(img),
                              ld_regions()["NOINIT"])
-    ram_err, ram_notes = elfcheck.check_ramcode(elf, bool(hotram()), ramplace())
+    exact = "-flto" not in opt_flags()[0]   # the reach of every call (an LTO build's felucca.o is bitcode: the conservative bound instead)
+    ram_err, ram_notes = elfcheck.check_ramcode(elf, bool(hotram()), ramplace(), exact)
     lay_err += ram_err
     notes += ram_notes
-    if ramplace():                  # the RAM ranges X and Z (tools/elfcheck.py check_ramplace; the reach of every call: tools/ram_place.py)
+    if ramplace():                  # the RAM ranges X and Z (tools/elfcheck.py check_ramplace)
         rp_err, rp_notes = elfcheck.check_ramplace(elf, img, dis, APP_XIP)
-        r_err, r_note = ram_place.reach_check((OUT / "felucca_ram.o").read_bytes(), elf)
-        lay_err += rp_err + r_err
-        notes += rp_notes + [r_note]
+        lay_err += rp_err
+        notes += rp_notes
+        hp_err, hp_notes = hot_reach.check(dis, elf=elf)   # the audio path runs from RAM, not the flash, unless tools/ram_allow.py says why (CPU audit K6)
+        lay_err += hp_err
+        notes += hp_notes
+    if exact:                       # every call / goto relocation of the link at its address (tools/ram_place.py, elfcheck.py check_calls)
+        sites, s_err = ram_place.call_sites([(o.name, o.read_bytes()) for o in app_objs()], elf)
+        c_err, c_note = elfcheck.check_calls(elf, sites, dis, APP_SLOT - len(img))
+        lay_err += s_err + c_err
+        notes.append(c_note)
     errors += lay_err
     if not lay_err:
         nsect = elf["sections"][".noinit"]

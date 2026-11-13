@@ -87,7 +87,7 @@ static int compact_project(void)
     corrupt = packed; corrupt.raw[68] = 255; uint32_t sum = proj_hash(corrupt.raw, sizeof corrupt - 4u);
     memcpy(corrupt.raw + sizeof corrupt - 4u, &sum, 4);
     bad += check("compact parameter range is validated even with a correct hash", !proj_import(&after, &corrupt, sizeof corrupt));
-    corrupt = packed; uint32_t probability_byte = 68u + P_COUNT + 1u + NX + 1u + 7u + 2u + 8u;   /* (PROJ_REV 7: End B block 7 bytes; REV 6: the slots and the edit list sit after the values) */ corrupt.raw[probability_byte] = 127;
+    corrupt = packed; uint32_t probability_byte = 68u + P_COUNT + 1u + NX + 1u + packed.raw[68u + P_COUNT + 1u + NX] + 2u + 8u;   /* (PROJ_REV 8: part A's End B as values, its length byte after the slots; then engine, preset, step 1's chance byte) */ corrupt.raw[probability_byte] = 127;
     sum = proj_hash(corrupt.raw, sizeof corrupt - 4u); memcpy(corrupt.raw + sizeof corrupt - 4u, &sum, 4);
     bad += check("invalid probability is refused even with a correct hash", !proj_import(&after, &corrupt, sizeof corrupt));
     project_save(1); motion_clear(t); t->p[P_M5AMT] = 0; step_set_chance(&t->step[3], 100);
@@ -537,6 +537,7 @@ static int lock_project(void)
 /* the UI: hold a step, turn a knob (ui_input.c lock_*) */
 static void lk_down(uint32_t k) { fm1_in.notes |= 1u << k; host_notes |= 1u << k; frame(); }
 static void lk_up(uint32_t k) { fm1_in.notes &= ~(1u << k); frame(); }
+#ifdef MOTION_TEST_STALE                                 /* (the held-step lock gesture went in 1.0 with lock_held: parked with its caller below) */
 static int lock_ui(void)
 {
     int bad = 0, ok;
@@ -577,6 +578,7 @@ static int lock_ui(void)
     bad += check("from FX: the knobs lock DIST CHO DLY REV", lock_id(0) == P_DIST && lock_id(3) == P_REV);
     return bad;
 }
+#endif
 /* 1.1.5: lock edits by hand are one undo (SAVE held), redo too */
 static int lock_undo(void)
 {
@@ -712,11 +714,46 @@ static int auto_list(void)
     }
     return bad;
 }
+/* audit F06: a knob turn on a part that records, the 128 records used: FULL takes no undo copy and records no hit (the copy from before stays);
+ * a turn that fits, or one that overwrites a record already there, does */
+static int knob_undos;
+static void knob_undo_count(track_t *t) { (void)t; knob_undos++; }
+static int knob_full_undo(void)
+{
+    int bad = 0;
+    uint32_t i, hit;
+    track_t *t;
+    ui_power_on();
+    t = TSEL;
+    track_defaults_steps(t);
+    t->p[P_SLEN] = 16;
+    song.playing = 0;
+    song.rec = (uint8_t)(1u << trk_index(t));
+    knob_undos = 0;
+    motion_knob_begin(0, knob_undo_count);
+    hit = (uint32_t)motion_capture(t, P_REV, 40);
+    bad += check("knob lock, room left: recorded, one undo copy, a hit", hit == 1u && knob_undos == 1 && motion_lock_count(t) == 1u && motion_knob_end() == 1);
+    for (i = 0; motion.count < MOTION_MAX; i++)          /* the 128 used (another track) */
+        motion_set_event(&trk[1], i % NSTEP, i < NSTEP ? P_REV : P_DLY, 10);
+    knob_undos = 0;
+    motion_full = 0;
+    motion_knob_begin(1, knob_undo_count);
+    hit = (uint32_t)motion_capture(t, P_REV, 50);
+    bad += check("knob lock, the 128 used: FULL, no undo copy, no hit", hit == 0u && knob_undos == 0 && motion_full == 1u && motion.count == MOTION_MAX && motion_knob_end() == 0);
+    knob_undos = 0;
+    motion_knob_begin(0, knob_undo_count);
+    hit = (uint32_t)motion_capture(t, P_REV, 60);
+    bad += check("knob lock, the 128 used, the record there: overwritten, an undo copy, a hit", hit == 1u && knob_undos == 1 && motion_knob_end() == 1);
+    motion_clear(&trk[1]);
+    motion_clear(t);
+    song.rec = 0;
+    return bad;
+}
 int main(void)
 {
     int bad = motion_recording() + motion_capacity() + probability_playback() + compact_project() + fun7_89() + loads() + repeat_mode();
     bad += arp_new_modes();
-    bad += lock_playback() + lock_edit() + lock_project() + auto_list();
+    bad += lock_playback() + lock_edit() + lock_project() + auto_list() + knob_full_undo();
 #ifdef MOTION_TEST_STALE
     /* Felucca-era groups that need the DRUM grid (track 4) or SAVE held = undo, both gone in DUELL: compiled, not run. Port, then move up. */
     bad += lock_ui() + lock_undo();

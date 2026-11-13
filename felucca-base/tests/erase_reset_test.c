@@ -170,7 +170,8 @@ int main(int argc, char **argv)
         !stored(OBJ_MULTI0 + 2u) && !stored(OBJ_MULTI0 + 5u) && project_factory(4u) && project_factory(11u));
     for (i = 0; i < DF_N; i++) {
         uint8_t blk[NSHOWN][MB_N], amt[NSHOWN], set[6];
-        if (!mu_unpack(&proj_scratch, blk, amt, set, DM_REC + DM_AT[i], DM_LEN[i])) damaged++;
+        static uint8_t dmb[2048];
+        if (!mu_unpack(&proj_scratch, amt, set, dm_rec(i, dmb), DM_LEN[i])) damaged++;
     }
     {
         uint32_t fact = 0;

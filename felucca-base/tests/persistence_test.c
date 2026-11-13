@@ -5,6 +5,7 @@
 #define FELUCCA_CDC 1                                    /* (the developer builds' MENU: USB SERIAL is a row there; the product has none, tests/release_test.c) */
 #endif
 #define main hostsim_main
+#include "multi_names.h"      /* (MIDX: a test names a multi by its record number) */
 #include "hostsim.c"
 #undef main
 
@@ -230,7 +231,7 @@ static int autosave_test(void)
     bad += check("autosave: power-on restores it (steps, tempo, name; RESTORED); no write after (unchanged)",
                  ok && !as.writes && as_erases == b0);
     bad += check("autosave: MASTER TUNE (A4 in 0.1 Hz) comes back with it (432.1 Hz)", song.g[G_TUNE] == 4321);
-    bad += check("autosave: BASS MONO (a master effect, project byte 65) comes back with it (5); a multi load (M01) leaves it as it is", song.bm == 5 && (project_load(0), song.bm == 5));
+    bad += check("autosave: BASS MONO (a master effect, project byte 65) comes back with it (5); a multi load (M01) leaves it as it is", song.bm == 5 && (project_load(MIDX(0)), song.bm == 5));
     as_power_on();
     ok = autosave_boot(0) == 0 && song.g[G_BPM] != 97;
     as_run(60000u);
@@ -507,7 +508,7 @@ static int editb_power_test(void)
     memset(mph, 0, sizeof mph);
     memset(&morph, 0, sizeof morph);
     song.sel = 0;
-    morph_set_target(0);
+    SEL_BOTH = 0;
     trk[0].user = 3;                                        /* a loaded user patch: slot 3, preset 0 (up_load) */
     trk[0].preset = 0;
     morph_rebase_all();
@@ -528,8 +529,9 @@ static int editb_power_test(void)
     as_power_on();
     ok &= autosave_boot(1) == 1;
     morph_ready(0);                                         /* (the first use of the morph) */
-    bad += check("EDITABLE B: a power cycle (autosave): End B comes back as it was (the seed, the whole end)",
-                 ok && morph_seed_of(0, 1) == seed0 && endb_same(b0, morph_cur(&mph[0], 1)) && !memcmp(bx0, morph_curx(&mph[0], 1), NX) && mph[0].fader == 0u);
+    (void)seed0;                                            /* (PROJ_REV 8 keeps End B as its values: no seed comes back) */
+    bad += check("EDITABLE B: a power cycle (autosave): End B comes back as it was (the whole end; PROJ_REV 8: values, not the seed)",
+                 ok && endb_same(b0, morph_cur(&mph[0], 1)) && !memcmp(bx0, morph_curx(&mph[0], 1), NX) && mph[0].fader == 0u);
     ok = morph_edits(0, ed) == 2u && ed[0].wid == ed0[0].wid && ed[0].val == ed0[0].val && ed[1].wid == ed0[1].wid && ed[1].val == ed0[1].val;
     bad += check("  .. and the two values set by hand with it", ok);
     as_run(300000u);

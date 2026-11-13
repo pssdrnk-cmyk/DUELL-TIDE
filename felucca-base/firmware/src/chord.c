@@ -7,10 +7,11 @@
  *        in the scale (stacked scale degrees); with OFF-SCALE PLAY and a root outside the scale the root stays as
  *        played and the shape is the scale note's below it (C# = C#-F-G#). With the scale CHROMATIC there is no scale
  *        to stack: they play the plain MAJ triad / MAJ7 (the CHORD page says so: NEEDS SCALE);
- *        MAJ MIN DOM7 MAJ7 MIN7 SUS4 POW: that shape from the (snapped) root, whatever the scale: its tones are
- *        the user's explicit choice and are NOT snapped again.
+ *        DIA9: 1-3-7-9 of the scale (Cm9, Ebmaj9, Fm9 in C minor; the fifth is left out), the plain MAJ9 with the scale CHROMATIC;
+ *        MAJ MIN DOM7 MAJ7 MIN7 SUS4 POW, MIN9 MAJ9 SUS2 ADD9 MIN11 (the house / dub shapes: MIN11 is the quartal 1-4-b7-b3, no fifth): that shape from the (snapped) root,
+ *        whatever the scale: its tones are the user's explicit choice and are NOT snapped again.
  *   VOIC CLOSE (root position); OPEN (the second tone an octave up: 1-5-3); INV1 / INV2 (the lowest tone, then
- *        the next, an octave up); +OCT (the root an octave down added; a seventh drops its fifth). At most
+ *        the next, an octave up); +OCT (the root an octave down added; a seventh drops its fifth, a ninth or eleventh its top tone). At most
  *        CHORD_MAX notes, notes outside 0..127 left out.
  * The key is mapped first (kb_map: the octave, TRN, OFF-SCALE SNAP), the chord is built on the note it gives.
  * MONO / LEGATO / UNISON parts play the chord's root only. Every source keeps the notes it started (kb_chord for a
@@ -22,13 +23,14 @@
  * MONO / LEGATO / UNISON play the root alone). The lowest tone starts with the key, as before; seq.c strum_block starts the next ones. A key or MIDI
  * note let go before a tone's turn cancels it (the source's count, kb_chn / mchord_t.n, is the tones STARTED, so its release ends exactly those);
  * a panic, a MODE change, STOP ALL forget what waits. Sequencer steps play their stored notes together (no strum: they are notes, not a chord key) */
-enum { CH_OFF, CH_DIA3, CH_DIA7, CH_MAJ, CH_MIN, CH_DOM7, CH_MAJ7, CH_MIN7, CH_SUS4, CH_POW };
+enum { CH_OFF, CH_DIA3, CH_DIA7, CH_MAJ, CH_MIN, CH_DOM7, CH_MAJ7, CH_MIN7, CH_SUS4, CH_POW, CH_MIN9, CH_MAJ9, CH_SUS2, CH_ADD9, CH_MIN11, CH_DIA9 };
 enum { VC_CLOSE, VC_OPEN, VC_INV1, VC_INV2, VC_BASS };
 #define CHORD_MAX 4u
 #define MCHORD_N 24u                     /* MIDI notes held as chords at once (more: their root alone) */
 
-static const int8_t CHORD_SHAPE[CH_POW - CH_MAJ + 1][CHORD_MAX] = {
+static const int8_t CHORD_SHAPE[CH_MIN11 - CH_MAJ + 1][CHORD_MAX] = {
     {0, 4, 7, -1}, {0, 3, 7, -1}, {0, 4, 7, 10}, {0, 4, 7, 11}, {0, 3, 7, 10}, {0, 5, 7, -1}, {0, 7, 12, -1},
+    {0, 3, 10, 14}, {0, 4, 11, 14}, {0, 2, 7, -1}, {0, 4, 7, 14}, {0, 5, 10, 15},   /* the house / dub shapes (audit, lane S extend): MIN9 MAJ9 SUS2 ADD9 and the quartal MIN11 (no fifth) */
 };
 
 static uint8_t kb_chord[27][CHORD_MAX], kb_chn[27];   /* the notes key k started (kb_chn 0: none) */
@@ -49,7 +51,7 @@ static struct { uint8_t root, n, note[CHORD_MAX]; uint16_t mask; uint8_t gen; } 
 static uint32_t chord_tones(const track_t *t, uint32_t mode, int32_t *root, int32_t *iv)
 {
     uint32_t n = 0, i;
-    if (mode >= CH_MAJ) {
+    if (mode >= CH_MAJ && mode != CH_DIA9) {
         for (i = 0; i < CHORD_MAX && CHORD_SHAPE[mode - CH_MAJ][i] >= 0; i++)
             iv[n++] = CHORD_SHAPE[mode - CH_MAJ][i];
         return n;
@@ -58,7 +60,7 @@ static uint32_t chord_tones(const track_t *t, uint32_t mode, int32_t *root, int3
         uint32_t mask = scale_mask(t), deg[12], c = 0, at = 0, guard = 12;
         int32_t r = root_of(t), b = *root;            /* b: the scale note at or below the root (its shape is used) */
         if (mask == 0xFFFu) {                           /* CHROMATIC: no scale to stack, the plain MAJ triad / MAJ7 */
-            const int8_t *sh = CHORD_SHAPE[(mode == CH_DIA7 ? CH_MAJ7 : CH_MAJ) - CH_MAJ];
+            const int8_t *sh = CHORD_SHAPE[(mode == CH_DIA9 ? CH_MAJ9 : mode == CH_DIA7 ? CH_MAJ7 : CH_MAJ) - CH_MAJ];
             for (i = 0; i < CHORD_MAX && sh[i] >= 0; i++)
                 iv[n++] = sh[i];
             return n;
@@ -71,8 +73,9 @@ static uint32_t chord_tones(const track_t *t, uint32_t mode, int32_t *root, int3
                     at = c;
                 deg[c++] = i;
             }
-        for (i = 0; i < (mode == CH_DIA7 ? 4u : 3u); i++) {   /* every other note of the scale */
-            uint32_t k = at + 2u * i;
+        /* every other note of the scale (a 6-note scale: a triad, the 7th would double the root); DIA9: 1-3-7-9, the fifth left out (an 8-note scale: 1-3-7, the 9th would double the root) */
+        for (i = 0; i < (mode == CH_DIA7 ? (c != 6u ? 4u : 3u) : mode == CH_DIA9 ? (c == 6u || c == 8u ? 3u : 4u) : 3u); i++) {
+            uint32_t k = at + 2u * i + (mode == CH_DIA9 && i > 1u && c != 6u ? 2u : 0u);
             iv[n++] = (int32_t)deg[k % c] + 12 * (int32_t)(k / c) - (int32_t)deg[at];
         }
         return n;
@@ -93,7 +96,7 @@ static uint32_t chord_make(const track_t *t, uint32_t root, uint8_t *out, int32_
     }
     *rp = r;
     *maskp = 0;
-    if (!mode || mode > CH_POW) {
+    if (!mode || mode > CH_DIA9) {
         out[0] = (uint8_t)root;
         return 1;
     }
@@ -122,7 +125,8 @@ static uint32_t chord_make(const track_t *t, uint32_t root, uint8_t *out, int32_
         break;
     case VC_BASS:                                       /* the root an octave down; a seventh drops its fifth */
         if (n == CHORD_MAX) {
-            iv[2] = iv[3];
+            if (iv[3] < 12)                             /* (a 9th or 11th on top goes instead: the seventh and the third stay) */
+                iv[2] = iv[3];
             n--;
         }
         for (i = n; i > 0; i--)
@@ -169,22 +173,37 @@ static uint32_t chord_build(track_t *t, uint32_t root, uint8_t *out)
     return m;
 }
 
+/* the name of pitch class pc into b (3 bytes): flats in a flat key (the scale's relative major, or ROOT for a scale that has none: F Bb Eb Ab Db),
+ * else sharps (audit S13: C minor's Eb Ab Bb were D# G# A#) */
+static void note_str(char *b, uint32_t pc)
+{
+    uint32_t m = scale_mask(&trk[0]), k = 0, r = (uint32_t)root_of(&trk[0]) % 12u;
+    str_cpy(b, N_NOTE[pc % 12u], 3);
+    while (k < 12u && (((m >> k) | (m << (12u - k))) & 0xFFFu) != 0xAB5u)
+        k++;
+    if (b[1] && ((0x52Au >> ((r + (k < 12u ? k : 0u)) % 12u)) & 1u)) {
+        b[0] = b[0] == 'G' ? 'A' : (char)(b[0] + 1);
+        b[1] = 'b';
+    }
+}
 /* a chord's name from its root and tones (bit i: i semitones above the root): "C", "Cm7", "F#m7b5", "Gsus4",
  * "A5" -> b (12 bytes) */
 static void chord_name(char *b, uint32_t root, uint32_t mask)
 {
     uint32_t mi = (mask >> 3) & 1u, ma = (mask >> 4) & 1u, b5 = (mask >> 6) & 1u, p5 = (mask >> 7) & 1u;
-    uint32_t s5 = (mask >> 8) & 1u, d7 = (mask >> 9) & 1u, m7 = (mask >> 10) & 1u, M7 = (mask >> 11) & 1u;
+    uint32_t s5 = (mask >> 8) & 1u, d7 = (mask >> 9) & 1u, m7 = (mask >> 10) & 1u, M7 = (mask >> 11) & 1u, n9 = (mask >> 2) & 1u;
     const char *q, *x = "";
-    str_cpy(b, N_NOTE[root % 12u], 12);
+    note_str(b, root);
     if (mi && !ma && b5 && !p5)
         q = d7 ? "dim7" : m7 ? "m7b5" : "dim";
     else if (ma && !mi && s5 && !p5)
         q = m7 ? "+7" : M7 ? "+M7" : "aug";
     else if (ma && !mi)
-        q = m7 ? "7" : M7 ? "maj7" : d7 ? "6" : "";
+        q = m7 ? (n9 ? "9" : "7") : M7 ? (n9 ? "maj9" : "maj7") : d7 ? "6" : n9 ? "add9" : "";
+    else if (mi && ((mask >> 5) & 1u) && !p5)           /* a stack of 4ths (A D G C): no fifth, the fourth */
+        q = m7 ? "m7" : "m", x = "sus";
     else if (mi)
-        q = m7 ? "m7" : M7 ? "mM7" : d7 ? "m6" : "m";
+        q = m7 ? (n9 ? "m9" : "m7") : M7 ? "mM7" : d7 ? "m6" : "m";
     else if ((mask >> 5) & 1u) {                        /* no third: suspended */
         q = m7 ? "7" : "";
         x = "sus4";

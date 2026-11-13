@@ -61,9 +61,20 @@ static int expect(const char *what, int ok)
  * hunt4, on purpose: PHASE's moving DCW no longer steps at the block seams (eng_phase.c phase_render_0; part 2 plays a PHASE preset in every scene but 7, which is VOICE, and 4, where it is silent): scenes 0, 1, 2, 3, 5, 6, 8 re-made. Were: 0x30990c9d0364261d, 0xe12760713fbd74c9, 0xac583d0d32b8789e, 0x68e070f9f3a10cc9, -, 0x73bd71f5bd2850ae, 0x5e8c1fa40e774a01, -, 0x1dba4f8a604d00e7. */
 /* 0.2.32, on purpose: scenes 3, 5, 6 re-made (the direct depth cards reach 100 % at +63: DEP_AMT in voice.c / chain_f2.c; with DEP_AMT(a) = (a) the old pins hold). */
 /* 1.0 (job F1), on purpose: scenes 0, 2, 3, 5, 6, 7, 8, 9, 11 re-made (TWIN OFFSET in whole semitones, the matrix amount +63 acts as 64). */
+/* DUELL 1.1 (lx-parts), on purpose: all 12 scenes re-made. 1.1's DSP changes since 1.0 are in the old path (tests/mixsplit_ref.h: BIT_DEPTH's LV4 level stages, item 135's tail, item 160's BALANCE gone, the SPACE matrix offset) and in the helpers it calls (SAT's drive, DUCK, REVERB, ...). The paths still equal each other bit for bit in every scene. */
+/* audit P08 (CUT dial slewed, voice.c cut_slew), on purpose: scenes 3, 4, 5 re-made again (their MORPH fader moves the CUT dial); they were 0x62c27d30fa7faaf4, 0xc02e7f3ce083226e, 0xea6f4025b291c912. */
+/* audit P03 (filter precision), on purpose: scenes 3, 4, 5 re-made (the SVF keeps its precision at low cutoffs, dsp.c tsvf_coef_k); they were 0xd3a928aa44ee293e, 0xb4ae75f1f096399b, 0x65fc43887280e3c0. */
+/* audit P03 + P08 (filter precision, CUT dial slewed), on purpose: scenes 3, 4, 5 re-made on top of the RES law (their filters; the MORPH fader moves the CUT dial); they were 0xfe41050db7b9c15a, 0xad558b64ed584b09, 0xfedca3ba20a904ca. */
+/* audit P01 (2026-11-04), on purpose: scenes 9, 10, 11 re-made (part 2 glides, GLIDE 30 in UNISON / LEGATO: voice.c glide_set now takes the time GLD shows);
+ * they were 0x10031248d54636c9, 0x00ba6a225b5a3f8f, 0xc6c4863685dfc21c. */
+/* audit P07 (2026-11-05), on purpose: scenes 3, 4, 5 re-made (MORPH on both parts: the rolled End B moves filter 1's RES, whose damping is exponential now, voice.c UF_K);
+ * they were 0xd3a928aa44ee293e, 0xb4ae75f1f096399b, 0x65fc43887280e3c0; and again for MORPH's RES ceilings in the new law's steps (morph.c MORPH_UF_RES 28, MORPH_UF_RESBP 17,
+ * morph_music.c MM_BAND), were 0x6053b27ccd4ca6eb, 0x1527808e8a7232d1, 0xacaf5351d569d877. */
+/* audit P03 + P08 (filter precision, CUT dial slewed), on purpose: scenes 3, 4, 5 re-made on top of the RES law and the master soft knee (their filters; the MORPH fader moves the CUT dial); they were 0x75d39aecdc6ba3c0, 0xdc93ed691e3cdb94, 0xa731ee2b791c3072. */
+/* RE-BASED 2026-11-11 (b9 G1/G2 echo, fork/b9-sound: the first repeat through the loop low-pass, the loop low cut 165 -> 219 Hz; every scene has the delay); were 0x9fae548c51dad1b1, 0xc19677e0bb481284, 0x321bcd236050f770, 0xb27403229af07cd7, 0xe12b52bbff7ca8d9, 0x13df83376957aa38, 0x80666a8ea26dba59, 0x55bc485358552c42, 0x9d7d86e58f2b485d, 0xfb51a137b4ae57c1, 0xc1d23d106b43da58, 0x08dc7348add5b5d7 */
 static const uint64_t OLD_HASH[NSCENE] = {
-    0xabba23f00aee3ed6ull, 0x7fa9bda50c85b0dbull, 0xdcff3a6b5145f5ecull, 0x80a2f6749bf5f4e8ull, 0x1944ec41f483add5ull, 0x2af9f9ff2df82c86ull, 0x7c45166298417266ull, 0xdcc9597a423fea0dull, 0xa96361ed8013e0a3ull,
-    0xa5f0c865fc37f4d4ull, 0x77259f9e9e14f727ull, 0xe2610882d86b2590ull};   /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
+    0x1991b9590aa9ab74ull, 0xd28e81d260c8e1f0ull, 0xbd5d8ce4304260faull, 0x37f2a0719ce725b8ull, 0x8c391c2257f47ffeull, 0xf633cd86d28653daull, 0xf9710bbe62fc928eull, 0xa5d80d74ae0e06e1ull,
+    0x68f43c00060ce7d5ull, 0x27e5a2ff7d354216ull, 0xa1711bb79d1a7e5dull, 0x98f871d0fc3e8033ull};   /* (audit R09/R10, E2, E3, on purpose: ROOM on the HALL code, the delay loop low cut, HALL/PLATE pre-delay move every scene; before them, audit B16, on purpose: one session seed for the morph draws (morph.c morph_new_seed: fm1_ms | 1 at the first draw, then fixed), so the fader moves of MORPH on both parts draw other ends; scenes 3, 4, 5 re-made, were 0xb784777d3882b350, 0x7cc5d367eddbca3c, 0x7635bd16a2348e4c) */   /* (audit P02, on purpose: pitch modulation below the 1/16 semitone, scene 6 was 0xc9ea3ddf035374bf) /* (audit R05 / R08, on purpose: the master soft knee and the loops' dead bands closed; were 0xf0d0572743238854, 0x1c363ab4f36aa258, 0x1152deb454944111, 0xfe41050db7b9c15a, 0xad558b64ed584b09, 0xfedca3ba20a904ca, 0xebc9d9e8cfc07603, 0x1c310e660d84eb87, 0x4373d86bea4d679f, 0x2c5bc2c71a3c612d, 0xd4b7de585e4eccb4, 0x675cf3b5383f9d0b) */   /* 0.2.31: re-based on purpose (SUB HARMONICS is disabled: the scenes' HARM values play as 0), were 0x57241fc736950a76, 0xae179d4cb7f62068, 0x653c0c9666564fdf. Scenes 9, 10, 11 (cloud job F: SUB, CYCLE, STEPS) have no commit before: pinned at the commit that made them, from the old combined path (the feature is in track_render, which it shares) */
 
 /* ---- the schedules */
 enum { SV, SF, SM, SE };                                /* the steps: voice (+ morph_begin), effects / silent way out, mix + end, morph_end */
@@ -122,6 +133,9 @@ static void sched_block(int32_t *out, uint32_t n)
         perf = perf_begin(n);
     }
     blk_snap(&bs, sp_tap);
+    wv_blk++;                                           /* (mix_block's own lines: the scope tap's block count and gate) */
+    bs.wv_blk = wv_blk;
+    bs.wv_on = (uint32_t)((int32_t)(wv_want - wv_blk) > 0);
     for (i = 0; i < 8u; i++)
         do_step(&SCHED[cur][i], n);
     mix_gather(n, &bs);
@@ -141,6 +155,45 @@ static uint64_t sched_run(uint32_t id, uint32_t sc)
 {
     cur = sc;
     return scene_run(id, sched_block);
+}
+
+/* the MORPH page's scope tap (fx.c wv_tap): after a scene the part's rings, counters, gap marks and silent flags must be the same in every schedule and in mix_block (the tap is as part-independent as the sound) */
+static uint64_t ring_hash(void)
+{
+    uint64_t h = 1469598103934665603ull;
+    const uint8_t *p;
+    uint32_t k, i;
+    for (k = 0; k < NLIVE; k++) {
+        uint32_t w[4] = {wv_cnt[k], wv_gap[k], wv_sil[k], wv_last[k]};
+        for (i = 0; i < sizeof w; i++)
+            h = (h ^ ((const uint8_t *)w)[i]) * 1099511628211ull;
+        for (p = (const uint8_t *)wv_m[k], i = 0; i < sizeof wv_m[k]; i++)
+            h = (h ^ p[i]) * 1099511628211ull;
+    }
+    return h;
+}
+static uint64_t ring_run(uint32_t id, blk_t blk)
+{
+    int fd[2];
+    pid_t pid;
+    uint64_t h = 0;
+    int st = 0;
+    fflush(stdout);
+    if (pipe(fd))
+        return 0;
+    pid = fork();
+    if (pid == 0) {
+        uint64_t r;
+        scene(id, blk);
+        r = ring_hash();
+        _exit(write(fd[1], &r, sizeof r) == (ssize_t)sizeof r ? 0 : 3);
+    }
+    close(fd[1]);
+    if (read(fd[0], &h, sizeof h) != (ssize_t)sizeof h)
+        h = 0;
+    close(fd[0]);
+    waitpid(pid, &st, 0);
+    return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? h : 0;
 }
 
 /* the scenes must exercise what they claim: each scene runs once more through mix_block with a probe that records, after every block, which of the paths
@@ -202,6 +255,7 @@ static uint32_t probe(uint32_t id)
 int main(void)
 {
     uint32_t s, k, got;
+    wv_want = 0x40000000u;                              /* (the gate open for every block of every scene, in the children too) */
     for (s = 0; s < NSCENE; s++) {
         uint64_t hr = scene_run(s, ref_mix_block), hf = scene_run(s, mix_block), hs[6];
         char what[200];
@@ -220,6 +274,18 @@ int main(void)
         for (k = 0; k < 6u; k++) {
             snprintf(what, sizeof what, "scene %u: schedule %c equals the old combined path (%016llx)", s, SNAME[k], (unsigned long long)hs[k]);
             expect(what, hs[k] == hr);
+        }
+        {
+            uint64_t rf = ring_run(s, mix_block);
+            snprintf(what, sizeof what, "scene %u: the scope rings are written (not the empty ones)", s);
+            expect(what, rf != 0 && rf != ring_hash());   /* (the parent never taps: its rings are the empty ones) */
+            for (k = 0; k < 6u; k++) {
+                uint64_t rk;
+                cur = k;
+                rk = ring_run(s, sched_block);
+                snprintf(what, sizeof what, "scene %u: schedule %c leaves the scope rings of mix_block (%016llx)", s, SNAME[k], (unsigned long long)rf);
+                expect(what, rk == rf);
+            }
         }
     }
     printf("partindep: %d checks, %d failed\n", ncheck, bad);

@@ -2,8 +2,8 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* The firmware's parameter and engine tables as JSON, from the same sources (through hostsim.c):
  * TP, GP, every engine's page titles, EDIT descriptors and presets, their display order, the factory patterns, the
- * power-on sounds and the protocol constants. web/test_web.mjs compares the editor's mock device
- * (web/editor.html makeMockDevice) with it, so the mock cannot drift from the firmware.
+ * power-on sounds and the protocol constants. web/test_layout.mjs compares the editor's layout
+ * (web/editor/layout.json, made from this dump) with it, so the editor cannot drift from the firmware.
  *   build/host/descdump > build/host/desc.json      (run_tests.sh) */
 #define main hostsim_main
 #include "hostsim.c"
@@ -53,7 +53,7 @@ static void js_desc(const param_desc_t *d)
         printf("null");
     }
     printf(",\"unit\":");
-    js_str(d->unit ? d->unit : "");
+    js_str(UNIT_STR[d->unit]);
     putchar('}');
 }
 
@@ -121,11 +121,11 @@ int main(void)
     for (k = 0; k < NPATTERNS; k++) {
         printf("%s\n [", k ? "," : "");
         for (i = 0; i < NPAT_STEPS; i++)
-            v[i] = PATTERNS[k].note[i];
+            v[i] = pat_note(k, i);
         js_ints(v, NPAT_STEPS);
         putchar(',');
         for (i = 0; i < NPAT_STEPS; i++)
-            v[i] = PATTERNS[k].flags[i];
+            v[i] = pat_fl(k, i);
         js_ints(v, NPAT_STEPS);
         printf(",%u,%u]", (unsigned)PATTERNS[k].len, (unsigned)PATTERNS[k].div);
     }

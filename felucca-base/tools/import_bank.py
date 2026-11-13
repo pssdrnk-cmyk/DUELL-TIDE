@@ -13,7 +13,8 @@ the arp / keys block) and writes
                                    it (tools/factory_bank_trims.json, the level balance; else the record's own); tests/bank_test.c
                                    loads each factory slot through the firmware, saves it and compares the bytes with these lines
 Nothing of a patch is changed: values are copied, not tuned. A patch the sound list cannot hold is REPORTED (exit 1), never bent.
-Without --write it only reports what it would do.
+Without --write it only reports what it would do. --write is switched off (main): tools/duell_sounds.py is edited by hand now, holds End B
+as exact values and the sounds after the 128 (#129 on), none of which this file can give back.
 """
 import argparse
 import base64
@@ -276,7 +277,7 @@ def main(argv):
     if a.write:
         sys.exit("import_bank: --write is switched off. tools/duell_sounds.py holds the pre-loaded patches' End B as exact values now (bend / bpin / bfm, tools/endb.py), "
                  "which the old bank file (PT_VER 3 records) cannot give; writing it again would erase them. Change a pre-loaded patch with tools/import_owner_edits.py "
-                 "(the editor's exports). Without --write this tool only reports.")
+                 "(the editor's exports). Without --write this tool only reports. (Nor does the file hold the sounds past #128: a rewrite from it would drop them.)")
     ctx = Ctx()
     j = json.loads(Path(a.file).read_text())
     if j.get("format") != "duell-patches" or j.get("version") != 1:

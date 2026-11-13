@@ -72,7 +72,7 @@ static uint32_t sounding(const track_t *t) { uint32_t i, n = 0; for (i = 0; i < 
 int main(void)
 {
     static const char *const VN[V_N] = {"MULTI off", "MULTI 12 dB", "MULTI + TWIN LP"};
-    uint32_t t, va, one[2], two[2], k, okt = 1, okho = 1, st;
+    uint32_t t, va, one[2], two[2], k, okt = 1, okho = 1, st, fm6_two = 0;
     int32_t o[2 * CTL];
     printf("polylimits: notes a part in LAYER (both parts the same engine, its first factory sound cleaned), KEY SENSE on: one core / two cores%s\n",
 #ifdef OLD
@@ -100,6 +100,8 @@ int main(void)
             frame();
             mods_off = st ? MODS_SENDS : 0;   /* (after the frame: it puts the module state back) */
             numbers(one, two);
+            if (st == 1u && va == 0u && e == ENGI_FM6)
+                fm6_two = two[0];
 #ifndef OLD
             {   /* item 132: the two-core number is the most notes with globals + the part's stages + its voices <= BUDGET_LIMIT, no hand-over charged (item 137: 81 %, margin 1.00) */
                 bd_t b;
@@ -109,7 +111,7 @@ int main(void)
                 c = BD_U(b.p[0].eng + b.p[0].filt + b.p[0].ext), f = BD_U(b.p[0].ins + b.p[0].sat + b.p[0].eq + b.p[0].misc + b.p[0].base), g = BD_U(b.idle + b.fx);
                 for (n = b.p[0].cap; n > 1u && g + f + n * c > BUDGET_LIMIT * 100u; n--)
                     ;
-                okho &= BUDGET_LIMIT == 84u && BUDGET_MARGIN == 100u && two[0] == n;
+                okho &= BUDGET_LIMIT + BUDGET_PEAK == 90u && BUDGET_MARGIN == 100u && two[0] == n;
             }
 #endif
             if (two[0])
@@ -168,7 +170,10 @@ int main(void)
     }
 #ifndef OLD
     chk("two cores give every engine at least the one-core number", okt);
-    chk("(item 132/137/142) the two-core number = the most notes within BUDGET_LIMIT 84 % at margin 1.00 with no hand-over charged (every cell of both tables)", okho);
+#ifndef OLD
+    chk("(D18) FM6's own cap is 8: with the budget open (state B, MULTI off) two cores give it 8 notes, 2 more than the cap of 6 it had", ENG_FM6.poly == 8u && fm6_two == 8u);
+#endif
+    chk("(item 132/137/142) the two-core number = the most notes within BUDGET_LIMIT (72 %, wave 14; 84 before) at margin 1.00 with no hand-over charged (every cell of both tables)", okho);
 #endif
     /* (a) erased unit, WAVE both, POLY, LAYER */
     boot();
@@ -189,14 +194,8 @@ int main(void)
         uint32_t c, i;
         fm1_in.notes |= 1u << 12; host_notes |= 1u << 12;  /* one key down, through the key path (LAYER: both parts) */
         for (i = 0; i < 6; i++) { mix_block(o, CTL); frame(); for (k = 0; k < 2; k++) bnotes1[k] = (uint8_t)one[k], bnotes[k] = (uint8_t)two[k]; }
-        c = head_notes(n);
-        printf("polylimits: counter, two cores, one key down: %u capsules, %u + %u (numbers %u + %u, keys held %u + %u)\n", c, n[0], n[1], two[0], two[1], held(&trk[0]), held(&trk[1]));
-        chk("(b) counter with one key down on two cores = each capsule its OWN part's number less its one key (UT_CAP_VOICES_OWN: two numbers in LAYER too; not 0)",
-            c == 2u && held(&trk[0]) == 1u && held(&trk[1]) == 1u && n[0] == two[0] - 1u && n[1] == two[1] - 1u);
-        bd_one_now = 1;
-        c = head_notes(n);
-        printf("polylimits: counter, jobs paused (one core), one key down: %u + %u\n", n[0], n[1]);
-        chk("(b) .. with the jobs paused each capsule follows its own part's one-core number at once", c == 2u && n[0] == one[0] - 1u && n[1] == one[1] - 1u);
+        /* ((b), the capsule's free-voices counter: gone in b10 ui-b, owner 2026-11-12: the capsule is [number | letter]) */
+        (void)n; (void)c;
         bd_one_now = 0;
         for (i = 1; i < 8u; i++) {
             fm1_in.notes |= 1u << (12 + i); host_notes |= 1u << (12 + i);
@@ -223,7 +222,7 @@ int main(void)
     /* (d) M02 NIGHT ORGAN as stored */
     boot();
     ui_prefs2 |= PREF_MODE_RECALL >> 16;
-    project_load(2);
+    project_load(MIDX(2));
     frame();
     numbers(one, two);
     printf("polylimits: M02 as stored (%s / %s, voice modes %d / %d): one core %u + %u, two cores %u + %u\n", ENGINES[eng_idx(trk[0].eng_req)]->name, ENGINES[eng_idx(trk[1].eng_req)]->name,

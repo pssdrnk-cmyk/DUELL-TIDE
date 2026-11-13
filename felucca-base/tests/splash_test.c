@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* DUELL: the power-on splash, the VIOLET default, the version name and the CPU load meter's window maths.
- *   VIOLET     a fresh unit's theme is VIOLET (UI_DEFAULT_INDEX = 0, the first palette)
+ *   TIDE       a fresh unit's theme is TIDE (b10 TIDE identity: UI_DEFAULT_INDEX, an appended palette); a unit with a saved colour keeps it
  *   VERSION    the shown version is "DUELL <VERSION> beta" (the VERSION file -> build/gen/duell_version.h)
  *   SPLASH     begun at once, it lasts SPLASH_MS (1.2 s) and then the UI is drawn again; any button, key or knob ends it and is
  *              used up by that (the page does not change); a MIDI note does not end it and sounds; ANIM OFF: one still frame
@@ -25,7 +25,7 @@ static void window(uint32_t halves, uint32_t pct, uint32_t peak_pct, uint32_t mi
 {
     cpu_n += halves;
     cpu_sum += halves * (CPU_BUDGET_US * pct / 100u);
-    cpu_pk = CPU_BUDGET_US * peak_pct / 100u;
+    cpu_pk = cpu_el_pk = CPU_BUDGET_US * peak_pct / 100u;
     cpu_miss += miss;
     fm1_ms += CPU_WIN_MS;
     cpu_meter_poll();
@@ -34,8 +34,16 @@ int main(void)
 {
     uint32_t i, p0, page0;
     setvbuf(stdout, NULL, _IONBF, 0);
-    expect("the default theme is VIOLET", UI_DEFAULT_INDEX == 0u && !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "VIOLET"));
-    expect("a fresh unit (settings blank) starts in VIOLET", (settings.magic = 0, settings_init(), settings.palette == UI_DEFAULT_INDEX));
+    expect("MENU > COLOR has four themes, TIDE (the default) PAPER GREY MONO (b10, owner 2026-11-12)", !strcmp(UI_PALETTES[UI_DEFAULT_INDEX].name, "TIDE") && NPALETTES == 4u &&
+           UI_DEFAULT_INDEX == 0u && !strcmp(UI_PALETTES[1].name, "PAPER") && UI_GREY_INDEX == 2u && UI_BW_INDEX == 3u);
+    expect("a fresh unit (settings blank) starts in TIDE", (settings.magic = 0, settings_init(), settings.palette == UI_DEFAULT_INDEX));
+    expect("a unit with GREY saved keeps GREY", palette_from_stored(palette_to_stored(UI_GREY_INDEX)) == UI_GREY_INDEX);
+    expect("the ten themes of before (stored as UI_PAL_TAG_OLD + index): GREY, MONO and TIDE keep their place, every removed theme is TIDE",
+           palette_from_stored(UI_PAL_TAG_OLD + 7u) == UI_GREY_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 8u) == UI_BW_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 9u) == UI_DEFAULT_INDEX &&
+           palette_from_stored(UI_PAL_TAG_OLD + 0u) == UI_DEFAULT_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 4u) == UI_DEFAULT_INDEX && palette_from_stored(UI_PAL_TAG_OLD + 6u) == UI_DEFAULT_INDEX &&
+           palette_from_stored(UI_PAL_TAG_OLD + 10u) == UI_DEFAULT_INDEX && palette_from_stored(13u) == UI_DEFAULT_INDEX);
+    expect("a backup with a removed theme still restores (its id is valid), a made-up id does not", palette_stored_ok(UI_PAL_TAG_OLD + 3u) && palette_stored_ok(UI_PAL_TAG_OLD + 9u) &&
+           !palette_stored_ok(UI_PAL_TAG_OLD + 10u) && !palette_stored_ok(UI_PAL_TAG + 4u) && palette_stored_ok(UI_PAL_TAG + 3u));
     expect("the version is DUELL " DUELL_VERSION " (the VERSION file)", !strcmp(FELUCCA_VERSION, DUELL_VERSION_STR) && !strcmp(FELUCCA_VERSION, DUELL_VERSION_STR));
 
     ui_power_on();
@@ -72,7 +80,7 @@ int main(void)
     (void)page0;
 
     /* the meter */
-    cpu_n = cpu_sum = cpu_pk = cpu_miss = 0;
+    cpu_n = cpu_sum = cpu_pk = cpu_el_pk = cpu_miss = 0;
     cpu_meter_open();
     window(344, 50, 70, 0);
     expect("meter: 50 % average, 70 % peak after one window", near(cpum.avg, 50) && near(cpum.peak, 70) && near(cpum.hold, 70) && cpu_level() == 0);

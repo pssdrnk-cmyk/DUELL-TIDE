@@ -42,7 +42,7 @@ int main(void)
             frame();
             song.master_q12 = 4096;
             ui_prefs2 |= PREF_MODE_RECALL >> 16;
-            project_load(slot);
+            project_load(MIDX(slot));
             for (i = 0; i < 40; i++) { memset(o, 0, sizeof o); mix_block(o, CTL); while (wave_service()) ; }
             morph.gen = 1717u + 7u * (slot + 1u);
             fm1_ms = 0;

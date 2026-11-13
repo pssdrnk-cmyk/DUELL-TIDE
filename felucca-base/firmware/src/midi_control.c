@@ -66,13 +66,29 @@ static void midi_expression_channel(uint32_t ch)
             midi_expression(&trk[i], midi_channel(ch));
 }
 
+/* review FR8 (A6): MIDI IN = SEL, the selected part changed (events_block): the part left keeps no bend or channel pressure its channel can no longer
+ * reach (the centring bend and the pressure going to 0 go to the new part); a part still holding a MIDI note keeps them (its channel reaches it:
+ * midi_targets). The mod wheel stays: it is a position, not a gesture that springs back */
+static uint8_t midi_sel_was;
+static void midi_sel_change(void)
+{
+    uint32_t o = midi_sel_was;
+    midi_sel_was = song.sel;
+    if (song.g[G_ROUTE] == 1 && duell_mode != DM_LAYER && o < NPART && o != song.sel && !midi_owners[o]) {
+        midi_bend_target[o] = 0;
+        trk[o].at = 0;
+    }
+}
+
 /* a MIDI note of track t sounds note: one played as itself, or a tone of one played as a chord (chord.c) */
 static int midi_note_held(const track_t *t, uint32_t note)
 {
     uint32_t ch, id = trk_index(t) + 1u, own = duell_mode == DM_LAYER && id == 2u ? 1u : id;   /* (LAYER: part 2's copy of part 1's) */
-    for (ch = 0; ch < 16u; ch++)
-        if (MIDI_OWNER(midi_note_get(ch, note)) == own && !mchord_of(ch, note, id))
+    for (ch = 0; ch < 16u; ch++) {
+        uint32_t o = MIDI_OWNER(midi_note_get(ch, note));
+        if ((o == own || o == id) && !mchord_of(ch, note, id))   /* (review FR8: LAYER, a note part 2 plays alone is part 2's own: midi_note_event) */
             return 1;
+    }
     return mchord_held(id, note);
 }
 
@@ -141,12 +157,14 @@ static void mchord_tone(mchord_t *m, uint32_t i)
 {
     track_t *t = &trk[(m->id - 1u) % NTRK];
     uint32_t x = m->note[i];
+    rec_ctone = (uint8_t)i;
     if (!midi_note_held(t, x) && !midi_local_held(t, x)) {
         if (duell_mode == DM_LAYER)
             lay_input(t, x, m->vel);
         else
             input_on(t, x, m->vel);
     }
+    rec_ctone = 0;
     m->n = (uint8_t)(i + 1u);
 }
 
@@ -181,10 +199,12 @@ static void midi_play(track_t *t, uint32_t ch, uint32_t note, uint32_t vel)
     } else if (rt & 1u) {
         for (i = 0; i < n; i++)
             if (!midi_note_held(t, nn[i]) && !midi_local_held(t, nn[i])) {
+                rec_ctone = (uint8_t)i;
                 if (lay)
                     lay_input(t, nn[i], vel);
                 else
                     input_on(t, nn[i], vel);
+                rec_ctone = 0;
             }
         if (n > 1u || nn[0] != note) {
             mchord_t *m = &mchord[f];
@@ -225,8 +245,11 @@ static void midi_play(track_t *t, uint32_t ch, uint32_t note, uint32_t vel)
             return;
         }
         for (i = 0; i < n; i++)
-            if (!midi_note_held(t2, nn[i]) && !midi_local_held(t2, nn[i]))
+            if (!midi_note_held(t2, nn[i]) && !midi_local_held(t2, nn[i])) {
+                rec_ctone = (uint8_t)i;
                 lay_input(t2, nn[i], vel);
+                rec_ctone = 0;
+            }
         if (n > 1u || nn[0] != note) {
             mchord_t *m = &mchord[f];
             m->ch = (uint8_t)ch;
@@ -253,11 +276,14 @@ static void midi_note_event(uint32_t ch, uint32_t note, uint32_t vel)
         midi_expression(t, c);
         if (t != TSEL && duell_mode != DM_LAYER)       /* (LAYER: part 1 plays both, whichever is selected) */
             midi_hint = (uint8_t)(trk_index(t) + 1u);
-        c->targets |= (uint8_t)(1u << trk_index(t));
+        /* review FR8 (A4): LAYER with SPLIT, a note part 2 plays alone is owned by part 2, so its release (midi_release, id 2) leaves part 1 alone; kept
+         * at the note-on, so a SPLIT moved while it is held cannot strand it */
+        uint32_t own = duell_mode == DM_LAYER && !(lay_route(note) & 1u) ? 1u : trk_index(t);
+        c->targets |= (uint8_t)(1u << own);
         midi_play(t, ch, note, vel);
-        midi_note_put(ch, note, trk_index(t) + 1u);
-        midi_owners[trk_index(t)]++;
-        c->owned[trk_index(t)]++;
+        midi_note_put(ch, note, own + 1u);
+        midi_owners[own]++;
+        c->owned[own]++;
     } else if (id) {
         if (c->pedal)
             midi_note_put(ch, note, midi_note_get(ch, note) | MIDI_PEDAL_NOTE);
@@ -396,18 +422,18 @@ static volatile uint8_t *const ml_io;       /* ui.ml.io (midi_learn.c) */
 
 /* DUELL 4b, SPEC 4.4 / 3.4a: the MORPH's actions, on each part's channel (the part the channel plays, as its notes: ROUT CH1-4 channel 1
  * part 1, channel 2 part 2, the hidden parts' channels ignored; SEL the selected part):
- *   MORPH the fader 0..127; AMOUNT 0..127 -> 0..100 %; TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH (global; 0.2.9:
- *   ALGORITHM's selector, ui_input.c algo_step: BOTH keeps the selected part as the edit target);
+ *   MORPH the fader 0..127; AMOUNT 0..127 -> 0..100 %; TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH (global; 1.0.0-b5:
+ *   the one part selection, ui_input.c part_select: BOTH keeps the last single part as the edit pages' part);
  *   ROLL (one CC, centred like the knob): 0..42 rolls End A, 43..84 nothing, 85..127 rolls End B; a roll fires when the value ENTERS its zone and again
- *   only after the value has left it. ROLL A, ROLL B (typed lines only): a value >= 64 fires once; the channel's CC re-arms below 64. UNDO: 1..63 undoes End A once,
- *   64..127 End B once (the knob's left / right), 0 re-arms. SMART, ARP, PITCH: 0-63 off, 64-127 on (global).
+ *   only after the value has left it. ROLL A, ROLL B (typed lines only): a value >= 64 fires once; the channel's CC re-arms below 64 (UNDO, 1.0.0-b5: gone,
+ *   its code is a spare). SMART, ARP, PITCH: 0-63 off, 64-127 on (global).
  * TARGET a part: a CC acts on its channel's part only; BOTH: a CC on either channel acts on both parts (morph.c
  * morph_mask). Queued for the main loop (morph.c morph_push: a roll is no work for the audio ISR).
  * The MOD WHEEL (CC1) moves the fader too, always (no switch), as the MORPH line does (same queue, same
  * TARGET rules), while it stays the matrix's MODW source (mod.c mod_midi); in LAYER it moves both parts' faders.
- * The triggers' memory (midi_morph_fired) is a bit of the TARGET, not of the CC number: ROLL A 0, ROLL B 1, UNDO 2, ROLL's A zone 3, B zone 4 */
+ * The triggers' memory (midi_morph_fired) is a bit of the TARGET, not of the CC number: ROLL A 0, ROLL B 1, (2 spare: UNDO's), ROLL's A zone 3, B zone 4 */
 #define MQ_PART_ALL 0x7Fu                                  /* (morph_push's part: every shown part, ui_input.c morph_poll) */
-static uint8_t midi_morph_fired[16];                      /* bit k: ROLL A / ROLL B / UNDO (k = target - MAP_T_ROLL_A) at or above 64 on the channel (fired) */
+static uint8_t midi_morph_fired[16];                      /* bit k: ROLL A / ROLL B (k = target - MAP_T_ROLL_A) at or above 64 on the channel (fired) */
 static void __attribute__((noinline)) midi_morph(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)
 {
     uint32_t b;
@@ -435,16 +461,9 @@ static void __attribute__((noinline)) midi_morph(uint32_t ch, uint32_t pi, uint3
         }
     } else if (code >= MAP_T_SMART) {
         morph_push(code == MAP_T_SMART ? MQ_SMART : code == MAP_T_ARP ? MQ_ARP : MQ_PITCH, pi, value >= 64u);
-    } else {
+    } else if (code == MAP_T_ROLL_A || code == MAP_T_ROLL_B) {
         b = 1u << (code - MAP_T_ROLL_A);
-        if (code == MAP_T_UNDO) {
-            if (!value) {
-                midi_morph_fired[ch] &= (uint8_t)~b;
-            } else if (!(midi_morph_fired[ch] & b)) {
-                midi_morph_fired[ch] |= (uint8_t)b;
-                morph_push(MQ_UNDO, pi, value >= 64u);
-            }
-        } else if (value < 64u) {
+        if (value < 64u) {
             midi_morph_fired[ch] &= (uint8_t)~b;        /* released: armed again */
         } else if (!(midi_morph_fired[ch] & b)) {
             midi_morph_fired[ch] |= (uint8_t)b;
@@ -453,9 +472,27 @@ static void __attribute__((noinline)) midi_morph(uint32_t ch, uint32_t pi, uint3
     }
 }
 
+/* MIDI ISR: queue work; planning and sequence changes remain on the main loop.
+ * Staying in one end zone must not restart a glide on every controller message. */
+static uint8_t midi_tide_fired[16]; /* two bits per shown part, independently on each channel */
+static void midi_tide(uint32_t ch, uint32_t pi, uint32_t code, uint32_t value)
+{
+    if (pi >= NSHOWN)
+        return;
+    if (code == MAP_T_SEQ) {
+        morph_push(MQ_SEQF, pi, value);
+    } else {
+        uint32_t zone = value < 43u ? 1u : value < 85u ? 0u : 2u;
+        uint32_t shift = pi * 2u, old = (midi_tide_fired[ch & 15u] >> shift) & 3u;
+        midi_tide_fired[ch & 15u] = (uint8_t)((midi_tide_fired[ch & 15u] & ~(3u << shift)) | (zone << shift));
+        if (zone && zone != old)
+            morph_push(MQ_GLIDE, pi, zone - 1u);
+    }
+}
+
 /* DUELL step 5 (SPEC 5b.1): the MODE is global (not a part's): 0-42 SPLIT, 43-85 STEREO, 86-127 LAYER, on any channel (also one ROUT does
  * not play: the MODE is no part's), a value that keeps the mode does nothing. XFADE 0..127 -> 0..100 % (item 157: BALANCE is no target any more);
- * SPLIT 0 = OFF, 1..127 = the note n. Queued for nothing: mode_apply runs here, in the ISR */
+ * SPLIT 0 = OFF, 1 = MIDDLE (1.0.0-b7: the middle of the keys as played; it was the note 1, C#-1), 2..127 = the note n. Queued for nothing: mode_apply runs here, in the ISR */
 static void mode_apply(void);                   /* (seq.c) */
 /* 1: code is a global target and is set now */
 static int __attribute__((noinline)) midi_glob_act(uint32_t code, uint32_t value)
@@ -464,8 +501,8 @@ static int __attribute__((noinline)) midi_glob_act(uint32_t code, uint32_t value
         midi_glob_set(code - MAP_T_G0, value);
     else if (code == MAP_T_XFADE)                   /* 0..127 -> 0..100 % */
         mix_xf = (uint8_t)((value * 100u + 63u) / 127u);
-    else if (code == MAP_T_SPLIT)                   /* 0 OFF, 1..127 the note n (stored n + 1) */
-        mix_split = (uint8_t)(value ? value + 1u : 0u);
+    else if (code == MAP_T_SPLIT)                   /* 0 OFF, 1 MIDDLE, 2..127 the note n (stored n + 1) */
+        mix_split = (uint8_t)(value == 1u ? SPLIT_MIDDLE : value ? value + 1u : 0u);
     else if (code == MAP_T_MODE) {
         duell_mode_req = (uint8_t)(value < 43u ? DM_SPLIT : value < 86u ? DM_STEREO : DM_LAYER);
         mode_apply();
@@ -512,6 +549,8 @@ static void __attribute__((noinline)) midi_map_cc(uint32_t ch, track_t *ct, uint
             return;
         id = e == 15u ? (code == MAP_T_CUTOFF_SMART ? P_FREEA : P_FREEB) : P_E0 + e - 1u;   /* (15: the multimode filter's CUT, RES) */
         midi_cc_set(t, id, value);
+    } else if (code == MAP_T_GLIDE || code == MAP_T_SEQ) {
+        midi_tide(ch, trk_index(t), code, value);
     } else if (code >= MAP_T_MORPH && code <= MAP_T_PITCH) {
         midi_morph(ch, trk_index(t), code, value);
     } else {
@@ -595,8 +634,8 @@ static void midi_control(uint32_t ch, uint32_t cc, uint32_t value)
  * ignored; SEL: the selected part; LAYER: part 1's channel, SEL any).
  *   LAYER: bank 0, program 0..15 = MULTI M01..M16 (the MULTI page's LOAD; an empty slot nothing); any other bank / program
  *   ignored. SPLIT, STEREO: a SOUND for the channel's part only: program n = patch slot n, #n + 1 of the ONE list of 128 slots (0.2.17; ui.c pc_recall),
- *   bank 0 and bank 1 alike (they were two lists before); every slot holds a sound (its record, else its factory sound). Other banks and programs
- *   above 127 ignored. Dropped if PCQ_N recalls are already waiting */
+ *   bank 0 and bank 1 alike (they were two lists before); every slot holds a sound (its record, else its factory sound). Bank 2 (audit G13): program n =
+ *   the read-only place #129 + n, the factory sounds past the 128 (ui.c pc_recall checks the count). Other banks ignored. Dropped if PCQ_N recalls are already waiting */
 #define PCQ_N 8u
 #define PCQ_MULTI 0xFFu                                    /* (the entry's part: LAYER's multi) */
 static volatile uint32_t pcq_buf[PCQ_N];                   /* part | program << 8 | bank << 16 */
@@ -606,10 +645,10 @@ static void __attribute__((noinline)) midi_pc(uint32_t ch, uint32_t prog)
     const midi_channel_t *c = midi_channel(ch);
     uint32_t bank = (uint32_t)c->bank_msb << 7 | c->bank_lsb, pi = trk_index(midi_track(ch)), w = pcq_w;
     if (duell_mode == DM_LAYER) {
-        if (bank || prog >= MU_SLOTS)
+        if (bank || prog >= MU_SHOWN)
             return;
         pi = PCQ_MULTI;
-    } else if (pi >= NSHOWN || bank > 1u || (bank && prog >= UP_SLOTS)) {
+    } else if (pi >= NSHOWN || bank > 2u) {
         return;
     }
     if ((uint8_t)(w - pcq_r) >= PCQ_N)

@@ -8,7 +8,12 @@
  * each glyph is rasterised at 1 << psh horizontal phases (S M 4, L 2: drawn at a pen of +0, +1/4 .. px);
  * cv_text takes the phase that puts it within a phase step of its true place. Blending uses a 16-entry
  * ramp per (ink, background) pair, cached, so a pixel costs a nibble read and a store. Colours come from the theme tokens. */
-typedef struct { uint16_t off, adv; int8_t bx; uint8_t by, bw, bh; } aag_t;
+/* Advance and vertical metrics are shared by a character's horizontal phases. */
+/* shape: signed bx in 6 bits, width in 6, biased by/bh phase deltas in 2 each. */
+typedef struct { uint16_t off, shape; } aag_t;
+typedef struct { uint16_t adv; uint8_t by, bh; } aagm_t;
+static int32_t glyph_bx(const aag_t *g) { return (int32_t)((g->shape & 63u) ^ 32u) - 32; }
+static uint32_t glyph_bw(const aag_t *g) { return (g->shape >> 6) & 63u; }
 typedef struct {
     uint8_t h, asc, first, last, nex;   /* line height, baseline; ASCII range; extras */
     uint16_t nk;                        /* kerning pairs */
@@ -19,6 +24,7 @@ typedef struct {
     const uint8_t *ex;                  /* codes of the extra glyphs */
     uint8_t psh;                        /* log2 of the phases per glyph: g[i << psh] .. g[(i << psh) + phases - 1] */
     const uint8_t *hc;                  /* data's Huffman code (cv_alpha_hc), 0 = 2 px per byte (cv_alpha) */
+    const aagm_t *metrics;
 } aafont_t;
 /* a theme (tools/gen_ui_palettes.py): per-part backgrounds, the layer one, shared surfaces, and per part A, B: c the brief's
  * colours (fills), r the same readable as values, a the accent; hc: no gradients (the morph colour jumps at the middle) */
@@ -36,6 +42,7 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #define GFX_HOOKS 0                     /* (the firmware: what only the hooks read is not even computed) */
 #define GFX_HOOK_TEXT(x0, y0, x1, y1, s, flags) ((void)0)   /* an ink box; flags 1 ellipsised, 2 cut, 4 icon, 8 free text, 32 in a scrolled view */
 #define GFX_HOOK_BLIT(x, y, r0) ((void)0)
+#define GFX_HOOK_OVER(h, inb) ((void)0)       /* (host: a picture taller than a band drawn outside CV_BANDS) */
 #define GFX_HOOK_BEGIN() ((void)0)
 #define GFX_HOOK_PIXELS(n) ((void)0)
 #endif
@@ -76,12 +83,74 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #define AL_CELLS 32u                               /* the next cells (cv_rrect), not ink: a row of keys, a fill */
 #define AL_N(n) ((uint32_t)(n) << 8)
 
-#define CV_MAX (240u * 124u)      /* the graph strip is 240 x 124 */
-static uint16_t cv_px[CV_MAX] __attribute__((section(".pool")));
-static uint32_t cv_w, cv_h;
+#define CV_BAND 68u               /* b10 ui-c: the canvas holds 68 rows (was 124: the graph strip): a taller picture is drawn in bands, the code run once for each (CV_BANDS), every primitive shifted by cv_by.
+                                   * 68 = a wave lane (ui_scope.c: two lanes a picture), so the wave page still draws once a lane */
+#define CV_MAX (240u * CV_BAND)
+#ifndef WL_ROWS_DIFF
+#define WL_ROWS_DIFF 0                    /* 1: the wave page sends only the rows that changed (ui_scope.c wl_rows; build.py DUELL_WAVE_ROWS=1; ROADMAP Later 21) */
+#endif
+static uint16_t cv_px[CV_MAX] __attribute__((section(".pool"), aligned(4)));
+static uint32_t cv_w, cv_h;      /* the canvas: width, the rows of this band */
+static uint32_t cv_ph, cv_bpass; /* the picture's whole height (cv_begin's h); the band being drawn starts at row cv_bpass of it (CV_BANDS), 0 outside a band loop */
+static int32_t cv_by;            /* the picture row the canvas's row 0 is: every primitive draws at (y + cv_oy - cv_by) */
 static uint16_t cv_bg;           /* what cv_begin cleared the canvas to */
+/* b11 (owner on rc8: "when a screen is redrawn there are still 3 vertical lines for a couple of milliseconds"): a page change within one grid layout filled the
+ * gutters (GUT: x 0..3, 79..81, 119..120, 158..160, 236..239 over rows 27..216, the gaps beside every column set a grid uses) BEFORE the strips, and where the old page had a
+ * strip over a gutter (the area page's picture, a 2 x 2 page's cards) a thin BG stripe cut through it until the new strip landed (~5 transfers). The gutters' fill now waits for
+ * the end of the pass (ui_draw.c: grid_fill arms it, gut_flush sends it): every transfer of the pass marks the gutter pixels it covers, and only the ones nothing covered
+ * get the BG. The same picture at the end (a fill under a strip was only drawn over); in between, every pixel is the old page's or the new one's. */
+static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}};   /* x, width: 16 columns, bit b of a row the b-th column */
+#define GUT_Y0 27u
+#define GUT_H 190u
+static uint16_t gut_cov[GUT_H] __attribute__((section(".pool")));   /* the gutter columns covered since gut_arm, a row */
+static uint16_t gut_bg __attribute__((section(".pool")));           /* the BG to fill with */
+static uint8_t gut_on __attribute__((section(".pool")));            /* armed (the pool is cleared at boot, main.c: off); all three outside .bss */
+static void gut_mark(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+    uint32_t i, c, b = 0, m = 0, y1 = y + h;
+    if (!gut_on)
+        return;
+    for (i = 0; i < 5u; i++)
+        for (c = GUT[i][0]; c < (uint32_t)GUT[i][0] + GUT[i][1]; c++, b++)
+            if (c >= x && c < x + w)
+                m |= 1u << b;
+    if (y < GUT_Y0)
+        y = GUT_Y0;
+    if (y1 > GUT_Y0 + GUT_H)
+        y1 = GUT_Y0 + GUT_H;
+    for (; m && y < y1; y++)
+        gut_cov[y - GUT_Y0] |= (uint16_t)m;
+}
+/* every transfer from here on marks the gutters: every UI file is compiled after this line (felucca.c: ui.c, ui_graph.c, ui_scope.c, ui_draw.c, ...), so none can send one
+ * unmarked (gut_flush would then paint BG over it). One wrapper a kind, not a mark at every call (flash). lcd_fill: lcd.c, the emulator and ui_test.c define it before
+ * this file; some host tests have none and call none, so gut_fill (which calls it) is in ui_draw.c (a test that reaches it without ui_draw.c fails to link, loudly) */
+static void gut_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
+{
+    gut_mark(x, y, w, h);
+    lcd_blit(x, y, w, h, p);
+}
+#define lcd_blit gut_blit
+static void gut_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c);
+#define lcd_fill(x, y, w, h, c) gut_fill((x), (y), (w), (h), (c))
+static void gut_arm(uint16_t bg)
+{
+    uint32_t r;
+    for (r = 0; r < GUT_H; r++)
+        gut_cov[r] = 0;
+    gut_bg = bg;
+    gut_on = 1;
+}
 static uint8_t cv_scroll;        /* 1: drawing a scrolled view (its text may run past the canvas) */
 static int32_t cv_oy;            /* y offset for graph drawing */
+/* a picture taller than the canvas: for each band cv_begin (the whole height), draw, cv_blit (the picture's own x, y): CV_BANDS(h) { cv_begin(w, h, bg); ...; cv_blit(x, y); }.
+ * The loop leaves cv_bpass 0 again. A band holds CV_BAND rows; cv_begin clips the last to what is left. */
+#if GFX_HOOKS || defined(CV_SITE_TRACE)
+static uint8_t cv_inb;                               /* (host tests: inside a CV_BANDS loop: cv_begin's taller-than-a-band check) */
+#define CV_BANDS(h) for (cv_bpass = 0, cv_inb = 1; cv_bpass < (uint32_t)(h) || (cv_bpass = 0, cv_inb = 0); cv_bpass += CV_BAND)
+#else
+#define CV_BANDS(h) for (cv_bpass = 0; cv_bpass < (uint32_t)(h) || (cv_bpass = 0); cv_bpass += CV_BAND)
+#endif
+#define CV_Y (cv_oy - cv_by)
 static int16_t cv_cy0, cv_cy1;   /* text clip: canvas rows cv_cy0 .. cv_cy1 - 1 (cv_begin: the whole canvas) */
 static uint8_t cv_flip;          /* cv_alpha_hc: the cell mirrored left <-> right (the header's metronome, ui_draw.c) */
 
@@ -167,7 +236,17 @@ static uint32_t ux_cr(uint16_t a, uint16_t b)
     return (x + 3251u) * 100u / (y + 3251u);
 }
 /* the colour for a text of part colour c on bg: c itself, or the primary text colour where c would be hard to read (< 3:1) */
-static uint16_t vt(uint16_t c, uint16_t bg) { return ux_cr(c, bg) >= 300u ? c : ux.text; }
+static uint16_t vt(uint16_t c, uint16_t bg) { return ux_cr(c, bg) >= 300u ? c : c == ux.dim ? ux.mid : ux.text; }   /* (a dim value stays secondary: the label grey, not the full text colour; audit UI 1) */
+/* the stroke floor (T10): a part colour drawn as a curve, gauge or bar is moved toward the text colour in 10 % steps until it
+ * reaches 3:1 on the background and on the panel (the text floor of vt(); tools/gen_ui_palettes.py mirrors this) */
+static uint16_t ux_stroke(uint16_t c, uint16_t bg, uint16_t sf, uint16_t tx)
+{
+    uint16_t o = c;
+    int32_t p;
+    for (p = 0; p < 110 && (ux_cr(o, bg) < 300u || ux_cr(o, sf) < 300u); p += 10)
+        o = ux_mix(c, tx, p + 10);
+    return o;
+}
 
 /* The whole screen's theme follows the selected part: its background (LAYER mode: the layer one), its THEME / ACCENT, and
  * the colour travels A -> B with the part's MORPH fader (POLICE: a smooth blend like the others). Both parts' pth / psel /
@@ -206,6 +285,7 @@ static void part_theme(uint32_t part)
             ux.pfill[k] = ux_mix(p->c[i], p->c[i + 1u], pct);
             ux.pacc[k] = ux_mix(p->a[i], p->a[i + 1u], pct);
         }
+        ux.pth[k] = ux_stroke(ux.pth[k], ux.bg, ux.base, p->text);
         ux.psel[k] = ux_mix(ux.bg, ux.pth[k], UI_SEL_PCT);
         ux.ptint[k] = ux_mix(ux.bg, ux.pth[k], UI_TINT_PCT);
         ux.plane[k] = ux_mix(ux.base, ux.pth[k], 10);
@@ -220,7 +300,7 @@ static void part_theme(uint32_t part)
     }
     /* DUELL 1.1 (owner 2026-10-25, items 65b, 67, 78): a GLOBAL page's colour is the smooth gradient between the palette's two colours (part 1's and part 2's first colour: #DC38FF to #FF1F8E in
      * the violet palette), no third colour: gth is its middle (what a flat fill takes), gacc that lightened toward the text colour; grad_col(x) is the colour at a screen column */
-    ux.gth = ux_mix(p->r[0], p->r[2], 50);
+    ux.gth = ux_stroke(ux_mix(p->r[0], p->r[2], 50), ux.bg, ux.base, p->text);
     ux.gacc = ux_mix(ux.gth, p->text, 45);
     if (ux.bw)
         ux.gth = ux.gacc = p->text;
@@ -272,14 +352,17 @@ static void palette_set(uint32_t i)
     part_theme(ux.part);
 }
 
-/* settings store a tagged id (UI_PAL_TAG + index); an untagged one (the palettes of Felucca's firmware, ids below 20; DUELL 0.2.14 no longer
- * maps them) is the default theme */
+/* settings store a tagged id (UI_PAL_TAG + index). b10 (owner): four themes, TIDE PAPER GREY MONO; the ten of before were stored as UI_PAL_TAG_OLD + their index and are
+ * read through UI_PAL_OLD_LIST (GREY, MONO and TIDE keep their place, every removed theme is TIDE). Any other id (Felucca's firmware, below 20) is the default theme */
 static uint32_t palette_from_stored(uint32_t v)
 {
-    return v >= UI_PAL_TAG && v - UI_PAL_TAG < NPALETTES ? v - UI_PAL_TAG : UI_DEFAULT_INDEX;
+    static const uint8_t OLD[UI_PAL_OLD_N] = {UI_PAL_OLD_LIST};
+    if (v >= UI_PAL_TAG)
+        return v - UI_PAL_TAG < NPALETTES ? v - UI_PAL_TAG : UI_DEFAULT_INDEX;
+    return v >= UI_PAL_TAG_OLD && v - UI_PAL_TAG_OLD < UI_PAL_OLD_N ? OLD[v - UI_PAL_TAG_OLD] : UI_DEFAULT_INDEX;
 }
 static uint32_t palette_to_stored(uint32_t i) { return UI_PAL_TAG + i % NPALETTES; }
-static int palette_stored_ok(uint32_t v) { return v >= UI_PAL_TAG && v - UI_PAL_TAG < NPALETTES; }
+static int palette_stored_ok(uint32_t v) { return (v >= UI_PAL_TAG && v - UI_PAL_TAG < NPALETTES) || (v >= UI_PAL_TAG_OLD && v - UI_PAL_TAG_OLD < UI_PAL_OLD_N); }
 
 static inline uint16_t swap16(uint32_t c) { return (uint16_t)(((c >> 8) & 0xFFu) | ((c & 0xFFu) << 8)); }
 
@@ -288,8 +371,12 @@ static void cv_begin(uint32_t w, uint32_t h, uint16_t bg)
 {
     uint32_t i, n;
     uint16_t s = swap16(bg);
-    if (w * h > CV_MAX)
-        h = CV_MAX / w;
+    cv_ph = h;
+    cv_by = (int32_t)(cv_bpass < h ? cv_bpass : 0u);
+    h -= (uint32_t)cv_by;
+    GFX_HOOK_OVER(h, cv_inb);
+    if (h > CV_BAND)
+        h = CV_BAND;
     lcd_sync();                     /* the last blit may still read cv_px */
     GFX_HOOK_BEGIN();
     cv_w = w;
@@ -302,24 +389,28 @@ static void cv_begin(uint32_t w, uint32_t h, uint16_t bg)
         cv_px[i] = s;
 }
 
+#ifdef CV_SITE_TRACE                                 /* (host probe only: who begins a canvas taller than a band outside CV_BANDS; tests/cv_sites.c) */
+static void cv_site_note(const char *file, int line, uint32_t h, int inb);
+#define cv_begin(w, h, bg) (cv_site_note(__FILE__, __LINE__, (h), cv_inb), cv_begin((w), (h), (bg)))
+#endif
 static void cv_blit(uint32_t x, uint32_t y)
 {
-    GFX_HOOK_BLIT(x, y, 0u);
-    lcd_blit(x, y, cv_w, cv_h, cv_px);
+    GFX_HOOK_BLIT(x, y + (uint32_t)cv_by, 0u);
+    lcd_blit(x, y + (uint32_t)cv_by, cv_w, cv_h, cv_px);
 }
 
 static inline void cv_pset(int32_t x, int32_t y, uint16_t c)
 {
-    y += cv_oy;
+    y += CV_Y;
     if ((uint32_t)x < cv_w && (uint32_t)y < cv_h)
         cv_px[(uint32_t)y * cv_w + (uint32_t)x] = swap16(c);
 }
 
 static void cv_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c)
 {
-    int32_t x1 = x + w, y1 = y + h + cv_oy, i;
+    int32_t x1 = x + w, y1 = y + h + CV_Y, i;
     uint16_t sc = swap16(c);
-    y += cv_oy;                             /* clipped once, then filled row by row */
+    y += CV_Y;                             /* clipped once, then filled row by row */
     if (x < 0)
         x = 0;
     if (y < 0)
@@ -387,7 +478,7 @@ static uint32_t rr_cov(int32_t r, int32_t i, int32_t j)
 static void cv_rrect(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint16_t c, uint16_t under)
 {
     int32_t i, j;
-    GFX_HOOK_CELL(x, y + cv_oy, x + w, y + h + cv_oy);   /* (the lint: what is drawn on it stays inside it) */
+    GFX_HOOK_CELL(x, y + CV_Y, x + w, y + h + CV_Y);   /* (the lint: what is drawn on it stays inside it) */
     if (r < 0) r = -r;                           /* (-r: rounded in every style: a keycap-like cushion) */
     if (r > w / 2) r = w / 2;
     if (r > h / 2) r = h / 2;
@@ -413,7 +504,7 @@ static void cv_rrect(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint
  * `under` is what lies behind it. The graph area's card and the four cards of a part page */
 static void cv_card(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c, uint16_t under)
 {
-    GFX_HOOK_CELL(x, y + cv_oy, x + w, y + h + cv_oy);
+    GFX_HOOK_CELL(x, y + CV_Y, x + w, y + h + CV_Y);
     cv_rect(x, y, w, h, c);
     cv_rect(x, y, UT_CARD_CORNER_A, 1, under);
     cv_rect(x + w - UT_CARD_CORNER_A, y, UT_CARD_CORNER_A, 1, under);
@@ -505,7 +596,7 @@ static void ramp_lin(uint16_t *v, uint16_t fg, uint16_t bg)
 static void cv_alpha(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint8_t *d, const uint16_t *rv)
 {
     uint32_t k = 0, gx, gy;
-    y += cv_oy;
+    y += CV_Y;
     for (gy = 0; gy < h; gy++) {
         int32_t py = y + (int32_t)gy;
         uint16_t *row;
@@ -529,8 +620,9 @@ static void cv_alpha(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint8_t
  * its repeat count ((count - 1) << 4 | value: runs of zeros and 15s). Codes of up to 8 bits come from a
  * 256-entry table made once per font in RAM (symbol | length << 8; 0 = a longer code: bit by bit). The
  * stream is read in order, so rows outside the clip are decoded and dropped; a run spans rows */
-#define HC_FONTS 3                       /* the codes: the faces M and L (gen_aa_font.py HUFF), the icons (AI_HC) */
-static struct { const uint8_t *hc; uint16_t lut[256]; } hc_tab[HC_FONTS] __attribute__((section(".pool")));
+#define HC_FONTS 8                       /* bounded font/icon lookup cache; a miss rebuilds an entry */
+/* Main-loop drawing only. Ordinary RAM has room; retain the pool for audio state. */
+static struct { const uint8_t *hc; uint16_t lut[256]; } hc_tab[HC_FONTS];
 static const uint16_t *hc_lut(const uint8_t *hc)
 {
     uint32_t k, len, code = 0, sym = 15, i;
@@ -555,7 +647,7 @@ static void cv_alpha_hc(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint
 {
     const uint16_t *lut = hc_lut(hc);
     uint32_t gy, v = 0, run = 0, acc = 0, nb = 0;
-    y += cv_oy;
+    y += CV_Y;
     for (gy = 0; gy < h; gy++) {
         int32_t py = y + (int32_t)gy;
         uint16_t *row = py < cv_cy0 || py >= cv_cy1 ? 0 : cv_px + (uint32_t)py * cv_w;
@@ -654,7 +746,7 @@ static int32_t text_w16(const aafont_t *f, const char *s)   /* the advance, 1/16
         uint32_t c = fold(f, (uint8_t)*s);
         if (prev)
             pen += kern(f, prev, c);
-        pen += f->g[glyph(f, c)].adv;
+        pen += f->metrics[glyph(f, c) >> f->psh].adv;
         prev = c;
     }
     return pen;
@@ -668,7 +760,7 @@ static int32_t text_w(const aafont_t *f, const char *s)
         uint32_t c = fold(f, (uint8_t)*s);
         if (prev)
             pen += kern(f, prev, c);
-        pen += f->g[glyph(f, c)].adv;
+        pen += f->metrics[glyph(f, c) >> f->psh].adv;
         prev = c;
     }
     return (pen + 8) >> 4;
@@ -686,6 +778,7 @@ static int32_t text_run(int32_t x, int32_t y, const aafont_t *f, const char *s, 
     for (; *s; s++) {
         uint32_t c = fold(f, (uint8_t)*s);
         const aag_t *g;
+        const aagm_t *m = &f->metrics[glyph(f, c) >> f->psh];
         int32_t pos, d0, d1;
         if (prev)
             pen += kern(f, prev, c);
@@ -708,20 +801,21 @@ static int32_t text_run(int32_t x, int32_t y, const aafont_t *f, const char *s, 
             pos = (pen + 8) & ~15;                   /* one phase (figures, ., blanks): the rounded pen */
         }
         err = pos - pen;
-        if (g->bw) {
-            int32_t gx = x + (pos >> 4) + g->bx, gy = y + g->by;
+        if (glyph_bw(g)) {
+            int32_t bw = (int32_t)glyph_bw(g), bh = m->bh + (int32_t)(g->shape >> 14) - 1;
+            int32_t gx = x + (pos >> 4) + glyph_bx(g), gy = y + m->by + (int32_t)((g->shape >> 12) & 3u) - 1;
             if (!rv)
                 ;                                    /* (text_ink: measured only) */
             else if (f->hc)
-                cv_alpha_hc(gx, gy, g->bw, g->bh, f->data + g->off, f->hc, rv);
+                cv_alpha_hc(gx, gy, bw, bh, f->data + g->off, f->hc, rv);
             else
-                cv_alpha(gx, gy, g->bw, g->bh, f->data + g->off, rv);
+                cv_alpha(gx, gy, bw, bh, f->data + g->off, rv);
             if (gx < x0) x0 = gx;
-            if (gx + g->bw > x1) x1 = gx + g->bw;
+            if (gx + bw > x1) x1 = gx + bw;
             if (GFX_HOOKS && gy < y0) y0 = gy;       /* (the rows: for the host's lint only) */
-            if (GFX_HOOKS && gy + g->bh > y1) y1 = gy + g->bh;
+            if (GFX_HOOKS && gy + bh > y1) y1 = gy + bh;
         }
-        pen += g->adv + text_trk;
+        pen += m->adv + text_trk;
         prev = c;
     }
     bb[0] = x0;
@@ -745,15 +839,15 @@ static int32_t cv_text_flags(int32_t x, int32_t y, const aafont_t *f, const char
     int32_t b[4], pen = text_run(x, y, f, s, text_rv ? text_rv : ramp(fg, bg), b);
     if (GFX_HOOKS && b[2] > b[0]) {
         int32_t y0 = b[1], y1 = b[3];
-        if (b[0] < 0 || b[2] > (int32_t)cv_w || y0 + cv_oy < cv_cy0 || y1 + cv_oy > cv_cy1)
+        if (b[0] < 0 || b[2] > (int32_t)cv_w || y0 + CV_Y < cv_cy0 || y1 + CV_Y > cv_cy1)
             flags |= 2u;                             /* cut by the canvas */
         if (cv_scroll) {                             /* a scrolled view: what lands on the screen is its visible part */
             flags |= 32u;
-            if (y0 + cv_oy < cv_cy0) y0 = cv_cy0 - cv_oy;
-            if (y1 + cv_oy > cv_cy1) y1 = cv_cy1 - cv_oy;
+            if (y0 + CV_Y < cv_cy0) y0 = cv_cy0 - CV_Y;
+            if (y1 + CV_Y > cv_cy1) y1 = cv_cy1 - CV_Y;
         }
         GFX_HOOK_PEN(y, f);
-        GFX_HOOK_TEXT(b[0], y0 + cv_oy, b[2], y1 + cv_oy, s, flags);
+        GFX_HOOK_TEXT(b[0], y0 + CV_Y, b[2], y1 + CV_Y, s, flags);
     }
     (void)flags;
     return x + ((pen + 8) >> 4);
@@ -800,23 +894,6 @@ static int32_t cv_text_grad(int32_t x, int32_t y, const aafont_t *f, const char 
         cv_text(px, y, f, ch, grad_col(x0 + (px - x) + text_w(f, ch) / 2));
     }
     return x + text_w(f, s);
-}
-/* a page TITLE in the global gradient. POLICE: (a) the title plain white, the gradient on the rule, the bars and the values (owner 2026-10-25, the default); (b) the gradient on the title too: set POLICE_TITLE_PLAIN to 0 (the one line to change) */
-#define POLICE_TITLE_PLAIN 1
-static int32_t cv_text_title(int32_t x, int32_t y, const aafont_t *f, const char *s, int32_t x0)
-{
-    if (POLICE_TITLE_PLAIN && str_eq(UI_PALETTES[ux.pal % NPALETTES].name, "POLICE"))
-        return cv_text(x, y, f, s, ux.text);
-    return cv_text_grad(x, y, f, s, x0);
-}
-/* a horizontal rule or bar in the global gradient: 6 px slices, each its own colour (x0: the screen column of x) */
-static void cv_rect_grad(int32_t x, int32_t y, int32_t w, int32_t h, int32_t x0)
-{
-    int32_t i, n;
-    for (i = 0; i < w; i += 6) {
-        n = w - i < 6 ? w - i : 6;
-        cv_rect(x + i, y, n, h, grad_col(x0 + i + n / 2));
-    }
 }
 /* right-aligned: the advance ends at xr */
 static int32_t cv_text_r(int32_t xr, int32_t y, const aafont_t *f, const char *s, uint16_t fg, uint16_t bg)
@@ -889,8 +966,9 @@ static int32_t cv_free_text(int32_t x, int32_t y, const aafont_t *f, const char 
 }
 
 /* ---------------------------------------------------------- keycaps --- */
-/* a pre-rendered pill (tools/gen_aa_keycaps.py): nibble 0 outside, 1..4 the edge over `under`, 5 the fill,
- * 6..15 the label over the fill; the 16 colours per (under, fill, ink) are cached like the text ramps */
+/* a pre-rendered pill (tools/gen_aa_keycaps.py): value 0 outside, 1..4 the edge over `under`, 15 the fill, 6..14 the
+ * label over the fill and 5 the full label (the two swapped in the data, so the fill makes runs: Huffman-coded in a
+ * face's code, KC_HC); the 16 colours per (under, fill, ink) are cached like the text ramps */
 #define NKRAMP 4u
 static struct {
     uint16_t key[NKRAMP][3], v[NKRAMP][16];
@@ -921,8 +999,9 @@ static const uint16_t *kc_ramp(uint16_t under, uint16_t fill, uint16_t ink)
     v = kr.v[i];
     v[0] = swap16(under);
     for (a = 1; a < 16u; a++) {
-        int32_t p = a < 5u ? (int32_t)a * 20 : (int32_t)(a - 5u) * 10;
-        v[a] = swap16(a < 5u ? ux_mix(under, fill, p) : ux_mix(fill, ink, p));
+        uint32_t b = a == 5u ? 15u : a == 15u ? 5u : a;         /* (the data's 5 and 15 swapped) */
+        int32_t p = b < 5u ? (int32_t)b * 20 : (int32_t)(b - 5u) * 10;
+        v[a] = swap16(b < 5u ? ux_mix(under, fill, p) : ux_mix(fill, ink, p));
     }
     return v;
 }
@@ -941,11 +1020,11 @@ static int32_t cv_keycap(int32_t x, int32_t y, uint32_t id, uint16_t fill, uint1
         return x + 12;
     }
     rv = kc_ramp(under, fill, ink);
-    cv_alpha(x, y, k->w, KC_H, KC_DATA + k->off, rv);
-    if (x < 0 || x + k->w > (int32_t)cv_w || y + cv_oy < 0 || y + KC_H + cv_oy > (int32_t)cv_h)
-        GFX_HOOK_TEXT(x, y + cv_oy, x + k->w, y + KC_H + cv_oy, k->label, 6u);      /* cut by the canvas */
+    cv_alpha_hc(x, y, k->w, KC_H, KC_DATA + k->off, KC_HC, rv);
+    if (x < 0 || x + k->w > (int32_t)cv_w || y + CV_Y < 0 || y + KC_H + CV_Y > (int32_t)cv_h)
+        GFX_HOOK_TEXT(x, y + CV_Y, x + k->w, y + KC_H + CV_Y, k->label, 6u);      /* cut by the canvas */
     else
-        GFX_HOOK_TEXT(x, y + cv_oy, x + k->w, y + KC_H + cv_oy, k->label, 4u);
+        GFX_HOOK_TEXT(x, y + CV_Y, x + k->w, y + KC_H + CV_Y, k->label, 4u);
     return x + k->w;
 }
 

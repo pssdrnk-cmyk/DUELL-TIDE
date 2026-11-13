@@ -85,6 +85,7 @@ static uint32_t ed_eng(const track_t *t) { return t->eng_req % NENGINES; }
  * compares and pushes CHANGED / STEP_CHANGED, or RELOAD after a load or when another
  * track was selected (v3: RELOAD and STEP_CHANGED carry the selected track). Pushes
  * go out only into a half-empty SysEx ring, so they never wait. */
+#define ED_PCAP (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)    /* INFO 58 01: the patch records the store takes (TIDE: 126; else all 128 slots) */
 #define ED_PUSH_MAX 4u                                   /* frames per pass */
 #define ED_NV (P_COUNT + G_COUNT + NX)                   /* the track's parameters, the globals, then (scope 2) the track's extension slots */
 /* v4: the parameters of the tracks that are not selected which TRACK_CHANGED follows (the mixer) */
@@ -238,7 +239,7 @@ static void ed_sync(void)                                /* main loop */
         n++;
     }
     int16_t sv[EXT_P_LEN], ov[EXT_P_LEN];
-    ed_view(song.sel, sv);                               /* item 159: the values as shown (a fader move, a roll, AMOUNT, an UNDO push what they change) */
+    ed_view(song.sel, sv);                               /* item 159: the values as shown (a fader move, a roll, AMOUNT push what they change) */
     ed_view(ed_other(), ov);
     for (i = 0; i < ED_NV && n < ED_PUSH_MAX; i++) {    /* round robin: nothing starves */
         uint32_t k = (ed_w.pos + i) % ED_NV;
@@ -495,7 +496,7 @@ static int ed_args_ok(uint32_t cmd, const uint8_t *a, uint32_t n)
     case ED_MOTION:
         return (n == 1u || (n == 2u && (a[1] == 2u || a[1] == 7u || a[1] == 8u)) || (n == 3u && a[1] == 1u && a[2] <= 1u) ||
                 (n == 6u && (a[1] == 3u || a[1] == 5u)) || (n == 4u && a[1] == 4u) || (n == 3u && a[1] == 6u) ||
-                 (n == 7u && (a[1] == 9u || a[1] == 11u)) || (n == 5u && a[1] == 10u)) &&
+                 (n == 7u && (a[1] == 9u || a[1] == 11u) && a[4] <= 1u) || (n == 5u && a[1] == 10u && a[4] <= 1u)) &&
                a[0] < NTRK;
     default:
         return 1;                                  /* variable payloads validate in their handler */
@@ -533,7 +534,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     switch (cmd) {
     case ED_MOTION: {
         track_t *t = &trk[a[0]]; uint32_t rc = 0;
-        if (na > 1u && a[1] >= 7u) {
+        if (na > 1u && (a[1] == 7u || a[1] == 8u)) {
             /* (the query with the kinds; 8: all of them, 1.2) */
         } else if (na > 1u) {
             if (a[1] == 1u) motion_set_enabled(t, a[2]);
@@ -565,7 +566,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0);                                           /* v6: song rows (DUELL: none, no song mode) */
         ed_b(0x55); ed_b(1); ed_b(ed_ui_caps());             /* tagged preferences v1: commands 34..38 */
         ed_b(0x4d); ed_b(1); ed_b(64); ed_b(1);   /* motion + chance v1 (64: what it said before 1.2; 41 01 has the real count) */
-        ed_b(0x42); ed_b(1); ed_b(63); /* bounded full-backup read + restore; bit 2 (DUELL 0.2.14): multis 13..20 and pattern slots 21..23 are in it;
+        ed_b(0x42); ed_b(1); ed_b(127); /* bounded full-backup read + restore; bit 6 (value 64, b10 U4): M17..M26 = ids 42..46 are in it (the archive is "version 6", duellbackup.js; 41 is the FM6 voice bank); bit 2 (DUELL 0.2.14): multis 13..20 and pattern slots 21..23 are in it;
                                          * bit 3 (value 8): the user wavetables 24..26 are in it, and cmds 81..83 (editor_wtab.c);
                                          * bit 4 (value 16, DUELL 0.2.15): the patch store's chunks 6..15 were backup ids 27..31 and 35..39 (gone in job A: see bit 5);
                                          * bit 5 (value 32, the cloud plan's job A): the patch store is carried as LOGICAL records, one patch at a time: object id 40 plus a slot byte,
@@ -581,13 +582,14 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x54); ed_b(1); ed_b(NUDGE_DIV);   /* 1.2: a step's nudge (1/16 step) after its ratchet; LFO 2, QNTZ */
         ed_b(0x56); ed_b(1); ed_b(FM6_NBANK);   /* 1.4.1: FM6's voice bank (cmds 74..77; SLOT 9..40 = B1..B32) */
         ed_b(0x43); ed_b(1); ed_b(ML_N);   /* 1.5: MIDI LEARN's map (cmds 78, 79; editor_learn.c) */
-        ed_b(0x58); ed_b(1); ed_b(UP_SLOTS & 127u); ed_b(UP_SLOTS >> 7);   /* DUELL 0.2.15: the patch store's capacity (all of them always fit), 14 bit */
+        ed_b(0x58); ed_b(1); ed_b(ED_PCAP & 127u); ed_b(ED_PCAP >> 7);   /* DUELL 0.2.15: the patch store's capacity, 14 bit: the slots, all of which always fit; TIDE's 21 chunks keep 126 records (a 127th is rc 6, STORE FULL) */
         ed_b(0x5A); ed_b(1); ed_b(1);   /* DUELL 0.2.19: bit 0 = PATCH_RAW (cmd 84, editor_patchraw.c): a slot's stored record read and written whole */
         ed_b(0x59); ed_b(1); ed_b(NX);  /* cloud plan job I: scope 2 (GET, SET, DESC, CHANGED, TRACK_PARAM's scope byte): the extension slots 0 .. NX-1 (ext.h) */
         ed_b(0x5B); ed_b(1); ed_b(1);   /* DUELL 1.1: bit 0 = BYPASS, cmd 89 (editor_bypass.c) */
         ed_b(0x4B); ed_b(1); ed_b(1);   /* DUELL: bit 0 = the MIDI MAP, MAP_GET .. MAP_RESET (cmds 85..88, editor_map.c) */
         ed_b(0x4F); ed_b(1); ed_b(1);   /* item 159: bit 0 = a part's values are read AS SHOWN at the MORPH fader (morph_view) and written as the knob writes (ed_put);
                                          * TRACK_DUMP's byte 1 and TRACK_PARAM's scope + 4 = the stored Original; WATCH bit 2 = TRACK_CHANGED for the other shown part */
+        ed_b(0x44); ed_b(1); ed_b(3);   /* DUELL with TIDE: bit 0 = this firmware is the TIDE fork (the version string stays "DUELL 1.1"; plain DUELL sends no 44 tag); bit 1 = the backup can GET object 41, FM6's voice bank (editor_backup.c) */
         break;
     case ED_GET:
     case ED_SET:
@@ -647,7 +649,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_v(d->max);
         ed_v(d->def);
         ed_str(d->label, PV_LEN);
-        ed_str(d->unit, PV_LEN);
+        ed_str(UNIT_STR[d->unit], PV_LEN);
         if (d->fmt == F_ENUM && d->names)                  /* up to 64 (0.2.7: the matrix DST has 46; before, 24); the names of min .. max (0.2.9: */
             for (i = 0; i <= (uint32_t)(d->max - d->min) && i < 64u; i++)   /* SLOPE's 1, 2; every enum before starts at 0) */
                 ed_str(d->names[d->min + (int32_t)i], PV_LEN);
@@ -682,9 +684,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(TSEL->preset);
         break;
     }
-    case ED_PROJECT:                                       /* 0 = load, 1 = save, 2 = query; slot 0..15 (DUELL: the
-                                                            * multis M01..M16, project.c multi.c; Felucca's editor asks 0..3) */
-        if (na < 2u || a[0] > 2u || a[1] >= 16u)
+    case ED_PROJECT:                                       /* 0 = load, 1 = save, 2 = query; slot 0..MU_SHOWN - 1 (DUELL: the
+                                                            * multis M01..M24, project.c multi.c; Felucca's editor asks 0..3; b10 U4: every slot is stored) */
+        if (na < 2u || a[0] > 2u || a[1] >= MU_SHOWN)
             return;
         if (a[0] == 1u) {
             if (ed_flash_stop() || project_save(a[1]))
@@ -798,7 +800,8 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             up_values(&r, v);                              /* each value inside its range */
             for (i = 0; i < P_COUNT; i++)
                 up_set_value(&r, i, v[i]);                 /* the record's own form (v4: a byte each) */
-            rc = up_put(slot, &r) ? 2u : 0u;
+            rc = up_put(slot, &r);
+            rc = rc == PT_FULL ? 6u : rc ? 2u : 0u;        /* 6: STORE FULL (TIDE's 126 records; the 127th new one) */
         }
         ed_b(a[0]);
         ed_b(rc);
@@ -816,8 +819,14 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             for (i = 0; i < n0; i++)
                 nm[i] = (char)a[1 + i];
             int r;
-            r = ed_flash_stop() ? 2 : up_store(a[0], nm);
-            rc = r ? 2u : 0u;
+            {
+                uint8_t bv[MBV_MAX];
+                up_bv_take(song.sel % NSHOWN, bv);          /* (b7, review E1: End B as the device's SAVE keeps it) */
+                r = ed_flash_stop() ? 2 : up_store(a[0], nm);
+                up_bv_in = 0;
+                up_bv_n = 0;
+            }
+            rc = r == PT_FULL ? 6u : r ? 2u : 0u;
             if (!r)
                 up_adopt(song.sel % NTRK, a[0]);           /* the selected part plays that slot now (as the device's SAVE) */
         }

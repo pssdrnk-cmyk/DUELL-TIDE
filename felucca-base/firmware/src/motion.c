@@ -22,6 +22,8 @@ static void motion_setp(track_t *t, uint32_t slot, int16_t v)
     uint32_t k, j;
     if (slot < EXT_P_LEN) {
         t->p[slot] = v;
+        if (slot == P_TRIM || slot == P_LEVEL || slot == P_CHOR || slot == P_DLY || slot == P_REV)   /* (audit S10) the plain mix steps its gains at the block seam: say the next block is one the matrix moves them in, so they ramp (fx.c mix_ramp) */
+            mx_was[trk_index(t) % NLIVE] |= 1u;
         return;
     }
     k = trk_index(t);
@@ -302,15 +304,40 @@ static int motion_knob_end(void)
     motion_knob_hit = 0;
     return hit;
 }
+/* 1 = a lock on track k's step / id fits: the record already there, or a free one */
+static int motion_room(uint32_t k, uint32_t step, uint32_t id)
+{
+    uint32_t i;
+    if (motion.count < MOTION_MAX)
+        return 1;
+    for (i = 0; i < motion.count; i++)
+        if (motion.event[i].place == MOTION_PLACE(k, step, id) && (motion.event[i].param & 0x7Fu) == (id & 0x7Fu)) return 1;
+    return 0;
+}
 /* the lock of part t's parameter id with value: stopped, on the cursor's step; playing, on the step playing now (before the
  * first step has started: step 1). 1 = recorded, 0 = not (the records are full), -1 = no step inside the pattern's length
  * (the turn is then a live edit, as with record off) */
+static uint32_t arp_dur(const track_t *t);              /* (seq.c) */
+/* b7 (review B2): an ARP SEQ part plays its steps (and their locks: seq.c arp_fire) on the arp's clock: a lock is recorded on the arp's step,
+ * the one playing (half 0) or the next one past its middle (half 1, as rec_arp_note); 0xFFFFFFFF: not an ARP SEQ part */
+static uint32_t motion_arp_idx(const track_t *t, uint32_t len, uint32_t half)
+{
+    uint32_t k = t->arp_idx;
+    if (arp_mode(t) != AM_SEQ_ID)
+        return 0xFFFFFFFFu;
+    if (half ? t->arp_pos >= 0x8000000u || t->arp_pos > arp_dur(t) / 2u : k == 0xFFFFFFFFu)
+        k++;                                    /* (the next step; before the first: step 1) */
+    return tide_arp_idx(t, k, len);
+}
+#define MOTION_ARP_IDX(t, len, half) motion_arp_idx((t), (len), (half))
 static int motion_knob_lock(track_t *t, uint32_t id, int16_t value)
 {
     uint32_t k = trk_index(t), len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), step, f;
     f = motion_guard();
     if (song.playing)
         step = t->seq_pos >= 0x7FFFFFFFu ? 0u : t->seq_idx % len;   /* (seq_start: step 1 fires on the first block) */
+    if (song.playing && MOTION_ARP_IDX(t, len, 0) != 0xFFFFFFFFu)
+        step = MOTION_ARP_IDX(t, len, 0);              /* (an ARP SEQ part: the arp's step) */
     else
         step = motion_knob_cursor;
     if (step < len && ((motion_base_valid >> k) & 1u))
@@ -318,6 +345,10 @@ static int motion_knob_lock(track_t *t, uint32_t id, int16_t value)
     motion_unguard(f);
     if (step >= len)
         return -1;
+    if (!motion_room(k, step, id)) {            /* FULL: no undo copy, no hit (the copy from before stays) */
+        motion_full = 1;
+        return 0;
+    }
     if (motion_knob_undo)
         motion_knob_undo(t);
     motion_knob_hit = 1;
@@ -344,6 +375,7 @@ static int motion_capture(track_t *t, uint32_t id, int16_t value)
     f = motion_guard();
     idx = t->seq_idx % len;
     if (t->seq_pos < 0x7FFFFFFFu && t->seq_pos > step_samples(t, period, idx) / 2u) idx = (idx + 1u) % len;
+    if (MOTION_ARP_IDX(t, len, 1) != 0xFFFFFFFFu) idx = MOTION_ARP_IDX(t, len, 1);   /* (an ARP SEQ part: the arp's step) */
     /* Mark the immediate knob value transient too, so a stop before its next
      * quantized step still restores the original patch. */
     if ((motion_base_valid >> k) & 1u) motion_active[k][id / 32u] |= 1u << (id % 32u);

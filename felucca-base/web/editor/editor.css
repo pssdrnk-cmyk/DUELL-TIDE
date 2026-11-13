@@ -3,7 +3,7 @@
    draws the whole page smaller. One font size smaller than before, more space between texts (4 px at least, a label never touches its control), titles as tinted tabs.
    Below 1500 px the GLOBAL column is a view of its own (the PARTS / GLOBAL switch). The colours are the defaults; a connected unit's COLOR setting overrides them (theme.js). */
 :root { --bg: #fff; --fg: #000; --dim: #666; --line: #ccc; --warn: #b00020; --ok: #0a6b2d; --panel: #f4f4f4; --acc: #000; --accfg: #fff; }
-@media (prefers-color-scheme: dark) { :root { --bg: #000; --fg: #fff; --dim: #999; --line: #444; --warn: #ff6b81; --ok: #62d98a; --panel: #141414; --acc: #fff; --accfg: #000; } }
+@media (prefers-color-scheme: dark) { :root { --bg: #000; --fg: #fff; --dim: #999; --line: #444; --warn: #FF5A5A; --ok: #3BE8D6; --panel: #141414; --acc: #fff; --accfg: #000; } }
 /* the sizes (the list's table 1.6): 1080 (room 880 px high and more), 900 (700 .. 879), 720 (below 700) */
 :root { --fs: 13px; --tabfs: 12px; --ttlfs: 11px; --labfs: 11px; --valfs: 13px; --unitfs: 9px; --ctlfs: 11px; --namefs: 12px;
   --sl: 20px; --ch: 24px; --rg: 12px; --cg: 20px; --lv: 8px; --cpx: 10px; --cpb: 10px; --cgap: 12px; --ttlh: 18px; --top: 40px; --cols: 4; }
@@ -135,7 +135,7 @@ button.mute.on { background: var(--acc); color: var(--accfg); border-color: var(
   #main[data-view=global] .tabbody { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   #main[data-view=global] .tabbody > * { grid-column: span 4; }
   #main[data-view=global] .card .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  #main[data-view=global] .multis { grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(8, auto); }
+  #main[data-view=global] .multis { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: column; grid-template-rows: repeat(13, auto); }   /* (MR9: 26 multis, two columns of 13: with 8 rows a column the list wrapped into four narrow columns and its rows onto two lines) */
   #main[data-view=global] .multis.pats { grid-template-rows: repeat(16, auto); }
 }
 

@@ -1,80 +1,64 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     DUELL installer page. Adapted from Felucca's installer (web/index_pkg.html):
+     TIDE installer page. Adapted from DUELL's installer, itself adapted from Felucca's installer:
      Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments.
      It keeps Felucca's install method (fm1ota.js: the running firmware stages an update loader, the loader
      writes the package; fm1pkg.js: package checks; fm1backup.js: the complete backup).
-     Serve the folder felucca-base/web/ with any static web server and open /install/ (the three .js files
-     are imported from the folder above). Chrome or Edge only (WebMIDI with SysEx). -->
+     The page offers two builds, Stable (default) and Beta (under test), listed in channels.json next to it (web/make_site.py writes it
+     from the GitHub releases). It checks the SHA-256 of the downloaded package against that file before it writes anything.
+     Serve the folder felucca-base/web/ with any static web server and open /install/ (the .js files are imported from the folder
+     above; the page's styles are in ../assets/). Chrome or Edge only (WebMIDI with SysEx). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DUELL installer</title>
-<style>
-  :root { --bg: #fff; --fg: #000; --dim: #666; --line: #ccc; --warn: #b00020; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #000; --fg: #fff; --dim: #999; --line: #444; --warn: #ff6b81; } }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
-  main { max-width: 600px; margin: 0 auto; padding: 40px 16px 64px; }
-  h1 { font-size: 30px; font-weight: 700; margin: 0; letter-spacing: .02em; }
-  .tag { margin: 0 0 4px; color: var(--dim); }
-  h2 { font-size: 18px; margin: 0 0 8px; }
-  p { margin: 0 0 12px; }
-  section { border-top: 1px solid var(--line); padding: 20px 0 8px; margin-top: 20px; }
-  .n { display: inline-block; width: 1.6em; height: 1.6em; line-height: 1.6em; text-align: center; border: 1px solid var(--fg); border-radius: 50%; margin-right: 8px; font-size: 14px; }
-  button { font: inherit; background: var(--fg); color: var(--bg); border: 0; padding: 8px 20px; cursor: pointer; }
-  button:disabled { opacity: .3; cursor: default; }
-  label { display: block; margin: 4px 0; }
-  .small { color: var(--dim); font-size: 13px; }
-  .warn { color: var(--warn); }
-  .box { border: 1px solid var(--warn); padding: 10px 14px; margin: 16px 0; }
-  progress { width: 100%; height: 4px; margin-top: 8px; }
-  #status { min-height: 1.6em; margin-top: 12px; }
-  pre { color: var(--dim); font-size: 12px; white-space: pre-wrap; }
-  a { color: inherit; }
-  code { font-size: 14px; }
-  /* banner and the three action cards */
-  #banner { position: sticky; top: 0; z-index: 10; padding: 12px 16px; font-weight: 700; border-bottom: 3px solid; }
-  #banner[data-kind="return"] { background: #ffb347; color: #000; border-color: #b35f00; }
-  #banner[data-kind="install"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-  #banner[data-kind="backup"] { background: var(--bg); color: var(--fg); border-color: var(--fg); border-top: 3px solid var(--fg); }
-  .card { border: 1px solid var(--line); padding: 14px 16px 6px; margin: 12px 0; }
-  .card.install { border: 3px solid var(--fg); }
-  .card.return { border: 3px solid #e08a00; }
-  .card.return h2 { color: #b35f00; }
-  @media (prefers-color-scheme: dark) { .card.return { border-color: #ffb347; } .card.return h2 { color: #ffb347; } }
-  .card .bar { width: 100%; height: 8px; margin: 8px 0; }
-  .card .status { min-height: 1.6em; margin: 4px 0; font-weight: 700; }
-  .card .result { min-height: 1.2em; margin: 4px 0 8px; }
-  .card .lock { color: var(--dim); font-size: 13px; min-height: 1.2em; margin: 0 0 8px; }
-  .retwarn { border: 2px solid #e08a00; padding: 8px 12px; margin: 8px 0 12px; font-weight: 700; }
-</style>
+<title>Install TIDE</title>
+<meta name="description" content="Install TIDE on an M-VAVE FM-1 from your browser: Stable or Beta, with a backup first and a way back to the official firmware.">
+<meta name="theme-color" content="#040B13">
+<link rel="icon" type="image/svg+xml" href="../assets/tide-favicon.svg">
+<link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
 <div id="banner" role="alert" hidden></div>
-<main>
-  <h1>DUELL</h1>
-  <p class="tag">MultiMorphing Bitimbral Synthesizer<br>by OSCILL/R</p>
-  <p><b><span class="ver">DUELL</span> installer</b> for the M-VAVE FM-1.</p>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="TIDE, home"><img src="../assets/tide-wordmark.svg" alt="" width="87" height="26"></a>
+    <nav aria-label="Main">
+      <a href="../">Home</a>
+      <a href="../emu/">Emulator</a>
+      <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable#readme">Guide</a>
+      <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Issues</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="wrap" style="padding-top:32px;padding-bottom:24px">
+  <h1 style="font-size:clamp(34px,9vw,46px)">Install TIDE</h1>
+  <p class="lead" style="font-size:21px;font-weight:500;margin:10px 0 6px">Firmware for the M-VAVE FM-1, written from this page over USB.</p>
+  <p class="small">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.<br>Not made or endorsed by OSCILL/R or M-VAVE.</p>
 
-  <div class="box" id="notreleased">
-    <p><b>DUELL firmware is not yet released.</b></p>
-    <p><a href="../emu/">Web emulator</a> · <a href="https://github.com/oscillr/DUELL">Source code</a></p>
+  <div class="notice" id="notreleased" hidden>
+    <p><b class="t" id="notreleased-title">TIDE is not released yet.</b></p>
+    <p id="notreleased-text">No stable or beta package is published with this page, so there is nothing to install here.</p>
+    <p><a href="../emu/">Web emulator</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code</a></p>
   </div>
 
-  <p class="small" id="risknote">Installing is at your own risk. If something goes wrong, the way back is the official firmware (the last card below, "Go back to the official firmware"); the <a href="https://github.com/oscillr/DUELL/blob/main/docs/RECOVERY.md">recovery notes</a> explain it. DUELL is not affiliated with M-VAVE.</p>
+  <div class="notice risk" id="risknote" role="note">
+    <p><b class="t">Installing is at your own risk.</b> If something goes wrong, the way back is the official firmware (the last card below, "Go back to the official firmware"); the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">recovery notes</a> explain it. TIDE is not affiliated with M-VAVE. Back up first.</p>
+  </div>
 
   <p class="small" id="browser"></p>
+  <noscript><p class="warn"><b>This page needs JavaScript</b> to talk to the FM-1.</p></noscript>
 
-  <section>
+  <section class="step">
     <details id="backup-details">
     <summary><b>Back up (recommended)</b></summary>
     <div class="card backup" id="card-backup">
       <h2>BACK UP</h2>
       <p>Reads the unit and saves a file with your current sounds and settings to this computer. Nothing is written to the FM-1. It needs a firmware that supports
-      backups (Felucca or DUELL). The official M-VAVE firmware cannot be backed up from this page.</p>
+      backups (Felucca, DUELL or TIDE). The official M-VAVE firmware cannot be backed up from this page.</p>
       <p class="small">The file holds every patch, the settings and the music of both parts; from DUELL 0.2.14 on also the MULTIs and the PATTERN slots, and the user wavetables. An older firmware cannot save the MULTIs and PATTERN slots: the message after the backup says so. A backup is restored in the editor (its Backup page).</p>
-      <p><button id="backup" disabled>Save a backup file</button></p>
+      <p><button id="backup" class="act" disabled>Save a backup file</button></p>
       <p class="lock" id="lock-backup"></p>
       <progress class="bar" id="bar-backup" max="100" value="0" hidden></progress>
       <p class="status" id="status-backup"></p>
@@ -84,90 +68,113 @@
   </section>
 
   <div class="needpkg" hidden>
-  <section>
-    <h2>The DUELL build</h2>
-    <p id="pkgstate">Looking for the build ...</p>
-    <p class="small" id="pkginfo"></p>
+  <section class="step" id="choose">
+    <h2>Choose a build</h2>
+    <p class="small">Stable is the build the fork owner validated on a unit. Beta is newer and still under test.</p>
+    <div class="choices" role="radiogroup" aria-label="Build to install">
+      <label class="choice"><input type="radio" name="channel" id="ch-stable" value="stable" disabled><span class="body"><b>Stable</b> <span class="chip ok">Recommended</span><span class="meta" id="meta-stable">Not released yet</span></span></label>
+      <label class="choice"><input type="radio" name="channel" id="ch-beta" value="beta" disabled><span class="body"><b>Beta</b> <span class="chip test">Under test</span><span class="meta" id="meta-beta">Not released yet</span></span></label>
+    </div>
+    <div class="beta-panel" id="beta-panel" hidden>
+      <h3>Beta: under test</h3>
+      <p id="beta-warning">This is a beta. It is under test and has known issues. The stable build is the one the fork owner validated.</p>
+      <div id="beta-issues-wrap" hidden>
+        <p><b>Known open issues</b></p>
+        <ul class="plain" id="beta-issues"></ul>
+      </div>
+      <p id="beta-noissues" hidden>No known issues are listed in the release notes. Read the notes before you install.</p>
+      <p><a id="notes-beta" href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases" target="_blank" rel="noopener">Read the beta's release notes</a></p>
+      <label><input type="checkbox" id="beta-ack"> <b id="beta-ack-label">I understand this is a beta under test. I have a backup, or I accept the risk without one.</b></label>
+    </div>
+    <div class="panel" id="what-written">
+      <h3>What will be written</h3>
+      <dl class="facts" id="pkgfacts"></dl>
+      <p class="verify" id="hashstate" role="status"></p>
+      <p class="small" id="pkgstate">Looking for the build ...</p>
+      <p class="small" id="notes-line" hidden><a id="notes-link" href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases" target="_blank" rel="noopener">Release notes for this build</a></p>
+    </div>
   </section>
 
-  <section>
+  <section class="step">
     <h2>Connect</h2>
     <p>Connect the FM-1 by USB and switch it on. Close other programs that use MIDI (a DAW, another browser tab). Chrome will ask to allow MIDI with SysEx: allow it.</p>
   </section>
 
-  <section>
+  <section class="step">
     <h2>Install</h2>
     <div class="card install" id="card-install">
-      <h2>INSTALL DUELL</h2>
+      <h2>INSTALL TIDE</h2>
+      <p class="small" id="install-what"></p>
       <p class="small">The page checks what your FM-1 runs now and sets the box below for you. You can always tick or untick it yourself.</p>
-      <p class="small"><b id="erase-detect"></b> <button id="detect" type="button" disabled>Check the unit</button></p>
+      <p class="small"><b id="erase-detect"></b> <button id="detect" class="act quiet" style="min-height:36px;padding:4px 14px;font-size:16px" type="button" disabled>Check the unit</button></p>
       <label><input type="checkbox" id="erase-after"> <b id="erase-label">Erase my saved data after installing (start from scratch)</b></label>
       <p class="small" id="erase-smart"></p>
       <p class="small" id="erase-help">Erases your settings (theme, scale, MIDI channels, favourites), the autosave, your patches, your multis and your patterns. The factory sounds, multis and patterns come back. This cannot be undone: back up first. Left off, your saved data stays and the unit comes back as you left it.</p>
       <p class="small" id="erase-lock"></p>
-      <p><b>Do not switch off or unplug the unit while it installs.</b> <a href="../editor/backup.html">Back up first (recommended)</a></p>
-      <p><button id="go" disabled>Install <span class="ver">DUELL</span></button></p>
+      <p><b>Do not switch off or unplug the unit while it installs.</b> On a unit that runs TIDE or DUELL the page first saves a backup file to your downloads and stops if that fails (<a href="../editor/backup.html">the Backup page</a> restores it).</p>
+      <p><button id="go" class="act" disabled>Install <span class="ver">TIDE</span></button></p>
       <p class="lock" id="lock-install"></p>
       <progress class="bar" id="bar-install" max="100" value="0" hidden></progress>
       <p class="status" id="status-install"></p>
       <p class="result" id="result-install"></p>
-      <p class="small">If it stops: replug the cable and press Install again. The FM-1 stays in update mode until the write is finished, and the page resumes it.</p>
+      <p class="small">If it stops: replug the cable and press Install again, with the same build chosen. The FM-1 stays in update mode until the write is finished, and the page resumes it.</p>
     </div>
   </section>
   </div>
 
-  <section>
+  <section class="step">
     <h2>Go back to the official firmware</h2>
     <div class="card return" id="card-return">
       <h2>RETURN TO OFFICIAL FIRMWARE</h2>
-      <p class="retwarn">This writes the official M-VAVE firmware back. DUELL will be removed. Keep the cable connected until DONE.</p>
+      <p class="retwarn">This writes the official M-VAVE firmware back. TIDE will be removed. Keep the cable connected until DONE.</p>
       <p>Download the official FM-1 firmware (<code>FM-1.fwsc</code>, V15) yourself from M-VAVE's download page:
       <a href="https://www.m-vave.com/download" target="_blank" rel="noopener">m-vave.com/download</a>. This project does not host or redistribute M-VAVE's files.
       Select the unmodified file here; the page checks it in your browser (it is never uploaded) and only accepts V15.</p>
       <p><label>Official FM-1.fwsc<br><input id="stock-file" type="file" accept=".fwsc"></label></p>
-      <p><button id="stock-go" disabled>Back up and return to official V15</button></p>
+      <p><button id="stock-go" class="act" disabled>Back up and return to official V15</button></p>
       <p class="lock" id="lock-return"></p>
       <progress class="bar" id="bar-return" max="100" value="0" hidden></progress>
       <p class="status" id="status-return"></p>
       <p class="result" id="result-return"></p>
-      <p class="small">DUELL music and sounds cannot be opened by the official firmware.</p>
+      <p class="small">TIDE music and sounds cannot be opened by the official firmware.</p>
       <p class="small"><label><input id="stock-recovery" type="checkbox"> Resume an interrupted return: I already saved a complete backup to this computer</label></p>
       <p class="small" id="stockstate"></p>
     </div>
   </section>
 
-  <p class="small" style="margin-top:32px"><a href="https://github.com/oscillr/DUELL/blob/main/docs/RECOVERY.md">Recovery</a> · <a href="https://github.com/oscillr/DUELL/blob/main/docs/TROUBLESHOOTING.md">Troubleshooting</a> · <a href="https://github.com/oscillr/DUELL/blob/main/docs/INSTALL.md">Install guide</a> · <a href="https://github.com/oscillr/DUELL/blob/main/docs/KNOWN_ISSUES.md">Known issues</a></p>
+  <section class="step">
+    <h2>Go back to plain DUELL 1.1</h2>
+    <div class="card" id="card-plain">
+      <h2>PLAIN DUELL 1.1 (OSCILL/R)</h2>
+      <p>To leave TIDE and run the original DUELL 1.1, use the Install page on <a href="https://oscillr.github.io/DUELL/" target="_blank" rel="noopener">OSCILL/R's DUELL site</a>. This page does not host their package.
+      <b>Save a backup here first.</b> Plain DUELL does not read a patch whose End B morphs an FM6 sound (it shows the factory sound and drops that patch at its next save).
+      Details: <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">RECOVERY</a> and <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_LIMITS.md">Known limits</a>.</p>
+    </div>
+  </section>
+
+  <p class="small" style="margin-top:32px"><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">Recovery</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/TROUBLESHOOTING.md">Troubleshooting</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/INSTALL.md">Install guide</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_ISSUES.md">Known issues</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem</a></p>
   <pre id="log"></pre>
-  <p class="small"><span class="ver">DUELL</span> installer. DUELL is free software under the GPL-3.0, with <b>no warranty</b>. It is a fork of Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
-    The package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
-    <a href="./LICENSES/">Licence texts</a> · <a href="https://github.com/oscillr/DUELL/blob/main/felucca-base/LICENSING.md">LICENSING.md</a> · <a href="https://github.com/oscillr/DUELL/blob/main/LICENSE">GPL-3.0</a> · <a href="https://github.com/oscillr/DUELL">Source code</a>.<br>
-    M-VAVE and FM-1 are trademarks of their respective owners. DUELL is independent and not affiliated with, endorsed by or supported by them.</p>
 </main>
+<footer class="site">
+  <div class="wrap">
+    <p class="credit"><b>TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</b></p>
+    <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please send TIDE problems to this fork's <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">issues</a>, not to the DUELL author.</p>
+    <p><span class="ver">TIDE</span> installer. TIDE is free software under the GPL-3.0, with <b>no warranty</b>. DUELL is a fork of Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
+    The package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
+    <a href="./LICENSES/">Licence texts</a> · <a href="./LICENSING.md">LICENSING.md</a> · <a href="./LICENSE">GPL-3.0</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code (TIDE)</a> · <a href="https://github.com/oscillr/DUELL">Source code (DUELL)</a>.</p>
+    <p>M-VAVE and FM-1 are trademarks of their respective owners. TIDE is independent and not affiliated with, endorsed by or supported by them.</p>
+    <p>This page sets no cookies and loads nothing from other servers. The package is checked in your browser and never uploaded.</p>
+  </div>
+</footer>
 <script type="module">
 import { productOf, logicalImage, sha256hex, validateStockPackage } from "../fm1pkg.js";
 import { Updater } from "../fm1ota.js";
-import { BackupConnection, captureBackup, eraseAllData, parseInfo } from "../fm1backup.js";
-import { uiState, TEXT, SWITCH_OFF_ON, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision } from "../installer_state.js";
+import { BackupConnection, eraseAllData, parseInfo } from "../fm1backup.js";
+import { captureUnitBackup } from "../installer_backup.js";
+import { uiState, TEXT, BACKUP_FIRST, SWITCH_OFF_ON, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
+         CHANNELS, CHANNEL, NOT_RELEASED, HASH_TEXT, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText } from "../installer_state.js";
 
 const $ = (id) => document.getElementById(id);
-// the version comes from duell-version.json next to this page (make_site.py / tools/build.py write it from the VERSION file)
-const PKG_URLS = ["./duell-latest.fwsc", "./duell-0.1-beta.fwsc", "./felucca-0.1-beta.fwsc"];   // newest first; the versioned name is added when the version is known
-let VERSION = "DUELL";                                                                            // fallback text when duell-version.json is missing
-const showVersion = (v) => {
-  const beta = /^0\./.test(v) ? " beta" : "";               // 0.x.y builds are test betas; 1.0 and later are not
-  VERSION = `DUELL ${v}${beta}`;
-  document.querySelectorAll(".ver").forEach((e) => { e.textContent = VERSION; });
-  document.querySelectorAll(".verfile").forEach((e) => { e.textContent = v; });
-  document.title = `${VERSION} installer`;
-  PKG_URLS.splice(1, 0, `./duell-${v}${beta ? "-beta" : ""}.fwsc`);
-};
-const versionReady = (async () => {
-  try {
-    const r = await fetch("./duell-version.json", { cache: "no-store" });
-    const v = r.ok ? String((await r.json()).version || "") : "";
-    if (/^\d+\.\d+(\.\d+)?$/.test(v)) showVersion(v);
-  } catch { /* no version file: the fallback text stays */ }
-})();
 const log = (t) => { $("log").textContent += t + "\n"; };
 // every card has its own status line (progress while running) and result line (the outcome; failures stay here)
 const say = (card, t) => { $("status-" + card).textContent = t; };
@@ -175,6 +182,9 @@ const result = (card, t, bad = false) => { const e = $("result-" + card); e.text
 
 // busy: null | "backup" | "install" | "return". Only one action can run; everything else is locked meanwhile.
 let image = null, product = null, stock = null, busy = null, ready = false;
+// the builds: manifest = { stable, beta } from channels.json (each a checked entry or null); channel / entry = the one chosen;
+// betaAck = the extra box for a beta; loadToken drops the answer of a download the user has already left
+let manifest = { stable: null, beta: null }, channel = null, entry = null, betaAck = false, loadToken = 0;
 // what the unit runs (installer_state.js detectUnit), null until the page really talked to it; touched: the user clicked the erase box
 let detected = null, touched = false, probing = false, midiAccess = null;
 const BTN = { backup: "backup", install: "go", return: "stock-go" };
@@ -186,7 +196,7 @@ function showErase() {
   $("erase-smart").textContent = d.help;
 }
 function refresh() {
-  const u = uiState({ busy, ready, hasImage: !!image, hasStock: !!stock });
+  const u = uiState({ busy, ready, hasImage: !!image, hasStock: !!stock, channel: channel || "stable", betaAck });
   for (const a of Object.keys(BTN)) {
     $(BTN[a]).disabled = !u.buttons[a].enabled;
     $("lock-" + a).textContent = u.buttons[a].note;
@@ -197,6 +207,8 @@ function refresh() {
   b.hidden = !u.banner;
   if (u.banner) { b.dataset.kind = u.banner.kind; b.textContent = u.banner.text; }
   for (const id of ["stock-file", "stock-recovery"]) $(id).disabled = u.inputsLocked;
+  for (const c of CHANNELS) $("ch-" + c).disabled = u.channelLocked || !manifest[c];
+  $("beta-ack").disabled = u.channelLocked;
   $("erase-after").disabled = u.eraseBox.disabled;
   $("erase-lock").textContent = u.eraseBox.note || (probing ? SMART.checking : "");
   if (probing) for (const a of Object.keys(BTN)) $(BTN[a]).disabled = true;      // the check uses the unit's MIDI ports: nothing else starts meanwhile
@@ -216,41 +228,108 @@ if (!navigator.requestMIDIAccess) {
   $("browser").classList.add("warn");
 } else { ready = true; $("browser").textContent = "Browser OK (WebMIDI available)."; }
 
-// a package is accepted only if it is a Felucca-loader package (FM-1_9xx), as web/make_site.py insists
-async function acceptPackage(bytes, source) {
+// ---- the builds: channels.json lists Stable and Beta (tag, date, commit, file, size, SHA-256, notes link). Stable is chosen unless the address says #beta.
+const showVersion = () => {
+  const v = entry ? `${CHANNEL[channel].label} ${entry.version || entry.date || entry.tag}` : "TIDE";
+  document.querySelectorAll(".ver").forEach((e) => { e.textContent = v; });
+  $("install-what").textContent = entry ? `Writes: ${CHANNEL[channel].label} build ${entry.tag}${entry.commit ? " (" + entry.commit.slice(0, 7) + ")" : ""}. Chosen above.` : "";
+};
+function showFacts(rows) {
+  const dl = $("pkgfacts");
+  dl.replaceChildren();
+  for (const [k, v] of rows) {
+    const dt = document.createElement("dt"), dd = document.createElement("dd");
+    dt.textContent = k; dd.textContent = v;
+    if (k === "SHA-256") dd.className = "hash";
+    dl.append(dt, dd);
+  }
+}
+function showHash(state, text) { const e = $("hashstate"); e.textContent = text; e.className = "verify" + (state ? " " + state : ""); }
+function showEntry() {
+  showVersion();
+  showFacts(entry ? infoRows(entry, "", 0) : []);
+  $("beta-panel").hidden = channel !== "beta";
+  const issues = $("beta-issues");
+  issues.replaceChildren();
+  for (const t of (manifest.beta && manifest.beta.issues) || []) { const li = document.createElement("li"); li.textContent = t; issues.append(li); }
+  $("beta-issues-wrap").hidden = !issues.children.length;
+  $("beta-noissues").hidden = !!issues.children.length;
+  if (manifest.beta && manifest.beta.notesUrl) $("notes-beta").href = manifest.beta.notesUrl;
+  $("notes-line").hidden = !(entry && entry.notesUrl);
+  if (entry && entry.notesUrl) $("notes-link").href = entry.notesUrl;
+}
+function showChoices() {
+  for (const c of CHANNELS) {
+    const e = manifest[c];
+    $("meta-" + c).textContent = e ? `${e.tag}${e.commit ? ", commit " + e.commit.slice(0, 7) : ""}${e.date ? ", " + e.date : ""}` : "Not released yet";
+  }
+}
+
+// a package is accepted only if its SHA-256 is the one in the release data and it is a Felucca-loader package (FM-1_9xx), as web/make_site.py insists
+async function acceptPackage(bytes, source, e, token) {
   try {
+    showHash("", HASH_TEXT.checking);
+    const sha = await sha256hex(bytes);
+    if (token !== loadToken) return;                                   // the user chose the other build meanwhile
+    const check = verifyDownload(e, { sha256: sha, size: bytes.length });
+    if (!check.ok) { image = null; product = null; showHash("bad", check.text); $("pkgstate").textContent = "This build cannot be installed."; refresh(); return; }
+    showHash("good", check.text);
     const id = productOf(bytes);
-    if (!/^FM-1_9\d\d$/.test(id)) throw new Error(`identity ${id || "(none)"} is not a DUELL/Felucca package (expected FM-1_9xx)`);
+    if (!/^FM-1_9\d\d$/.test(id)) throw new Error(`identity ${id || "(none)"} is not a TIDE/DUELL/Felucca package (expected FM-1_9xx)`);
     if (!new TextDecoder("latin1").decode(bytes).includes("FELUCCA-LOADER-1"))
       throw new Error("no Felucca update loader in this file (never install a package made from an official file)");
     image = logicalImage(bytes); product = id;
-    document.querySelectorAll(".needpkg").forEach((e) => { e.hidden = false; }); $("notreleased").hidden = true;   // a package exists: show the install card
-    const sha = await sha256hex(bytes);
-    $("pkgstate").textContent = `Ready: ${source}`;
-    $("pkginfo").textContent = `${VERSION} · identity ${id} · ${bytes.length} bytes · SHA-256 ${sha}. Compare it with the SHA256SUMS file of the release.`;
-  } catch (e) {
+    showFacts(infoRows(e, id, bytes.length));
+    $("pkgstate").textContent = `Ready to install: ${source}`;
+  } catch (err) {
     image = null; product = null;
-    $("pkgstate").textContent = "This file cannot be installed: " + e.message;
-    $("pkginfo").textContent = "";
+    $("pkgstate").textContent = "This file cannot be installed: " + err.message;
   }
   refresh();
 }
-(async () => {
-  await versionReady;
+async function loadPackage() {
+  const e = entry, token = ++loadToken, url = "./" + e.file;
+  image = null; product = null;
+  showHash("", HASH_TEXT.checking);
+  $("pkgstate").textContent = "Downloading the package ...";
+  refresh();
+  let bytes = null;
   try {
-    let r = null, url = "";
-    for (url of PKG_URLS) {
-      try { r = await fetch(url, { cache: "no-store" }); } catch { r = null; }
-      if (r && r.ok) break;
-      r = null;
-    }
-    if (!r) throw new Error("not found");
-    await acceptPackage(new Uint8Array(await r.arrayBuffer()), url);
-  } catch {
-    // no package next to this page: the notice stays, the install card stays hidden
-    $("pkgstate").innerHTML = "<b>Build not yet attached.</b> No DUELL firmware file is published with this page yet, so there is nothing to install.";
-    refresh();
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    bytes = new Uint8Array(await r.arrayBuffer());
+  } catch (err) {
+    if (token === loadToken) { showHash("bad", ""); $("pkgstate").textContent = `The package could not be downloaded (${err.message}). Reload the page to try again.`; refresh(); }
+    return;
   }
+  if (token === loadToken) await acceptPackage(bytes, url.slice(2), e, token);
+}
+function selectChannel(c) {
+  channel = c; entry = manifest[c]; betaAck = false;
+  $("beta-ack").checked = false; $("ch-" + c).checked = true;      // a beta is confirmed again every time it is chosen
+  showEntry();
+  return loadPackage();
+}
+for (const c of CHANNELS) $("ch-" + c).addEventListener("change", () => { if (!busy && $("ch-" + c).checked && manifest[c]) selectChannel(c); });
+$("beta-ack").addEventListener("change", () => { betaAck = $("beta-ack").checked; refresh(); });
+(async () => {
+  let m = null;
+  try {
+    const r = await fetch("./channels.json", { cache: "no-store" });
+    if (r.ok) m = parseManifest(await r.json());
+  } catch { /* no manifest next to this page: not released yet */ }
+  manifest = m || { stable: null, beta: null };
+  showChoices();
+  const first = chooseChannel(manifest, location.hash.replace(/^#/, ""));
+  if (!first) {
+    // no package next to this page: the notice stays, the choice and the install card stay hidden
+    $("notreleased-title").textContent = NOT_RELEASED.title; $("notreleased-text").textContent = NOT_RELEASED.text;
+    $("notreleased").hidden = false;
+    refresh();
+    return;
+  }
+  document.querySelectorAll(".needpkg").forEach((e) => { e.hidden = false; });
+  await selectChannel(first);
 })();
 
 // ---- shared messages
@@ -281,7 +360,7 @@ const progress = (card, total) => (k, a) => {
 // Asks the running unit for INFO (editor protocol, read-only, writes nothing). It never asks for MIDI permission on its own: at load it
 // only goes ahead when Chrome already allowed MIDI with SysEx for this page (earlier visit); otherwise the "Check the unit" button
 // asks (the same prompt the other buttons show). No answer, other firmware, or update mode all count as "not DUELL".
-const infoString = (a) => { const z = a.indexOf(0); return z < 0 ? "" : String.fromCharCode(...a.slice(0, z)); };
+const infoString = (a) => { const z = a.indexOf(0); if (z < 0) return ""; let tide = false; try { tide = parseInfo(a).tide; } catch { /* the version alone */ } return String.fromCharCode(...a.slice(0, z)) + (tide ? " TIDE" : ""); };
 async function probeUnit(midi) {
   const outs = [...midi.outputs.values()];
   let talked = false;
@@ -350,9 +429,43 @@ async function eraseAfterInstall(midi) {
     finally { link.close(); }
   } catch (e) { log(String(e && e.stack || e)); return eraseOutcome(null, e); }
 }
+// The install saves a backup first (a unit in update mode cannot: the resume below skips it). A DUELL unit whose backup fails stops the install here, before anything is
+// written. A unit that does not answer INFO (the official firmware) or runs something else than DUELL has nothing of DUELL's to save: the install goes on.
+// A DUELL build that cannot make a complete backup asks once. Returns true when the install may go on.
+async function backupBeforeInstall(up) {
+  say("install", BACKUP_FIRST.looking);
+  const device = await up.find((id) => id.model === "FM-1");
+  if (!device) return true;                                   // no unit in normal mode: up.install says so
+  const input = device.link.input, output = device.link.output; device.link.close();
+  const link = new BackupConnection(input, output);
+  try {
+    let raw;
+    try { raw = await link.request([1, []]); } catch { return true; }       // no answer to INFO: nothing to save
+    const info = archiveInfo(raw);
+    if (!detected) { detected = detectUnit(info.version); refresh(); }
+    if (!info.supported) {
+      if (detectUnit(info.version).kind !== "duell") return true;
+      if (confirm(BACKUP_FIRST.cannot)) return true;
+      result("install", BACKUP_FIRST.declined);
+      return false;
+    }
+    const { file, name } = await captureUnitBackup((r, o) => link.request(r, o), raw,
+      (d, t) => say("install", `Saving backup ${Math.round(d / Math.max(1, t) * 100)}%`));
+    saveArchive(file, name);
+    say("install", BACKUP_FIRST.saved);
+    return true;
+  } catch (e) {
+    log(String(e && e.stack || e));
+    result("install", BACKUP_FIRST.failed(e && e.message ? e.message.replace(/\.$/, "") : "no reason given"), true);
+    return false;
+  } finally { link.close(); }
+}
 $("go").addEventListener("click", async () => {
-  if (busy || !image) return;
+  if (busy || !image || !entry) return;
+  // what is written is the verified package of the chosen build (image comes only from bytes whose SHA-256 matched the release data)
+  if (channel === "beta" && (!betaAck || !confirm(betaConfirmText(entry)))) return;      // a beta: the box, and once more at the click
   const wantErase = $("erase-after").checked;       // read once, before anything locks
+  log(`install: ${channel} ${entry.tag} ${entry.sha256}`);
   begin("install");
   try {
     let midi;
@@ -363,7 +476,7 @@ $("go").addEventListener("click", async () => {
     if (ota) {
       ota.link.close();
       if (await up.resume(image, step, product)) installed = true; else result("install", ERR.stopped, true);
-    } else { await up.install(image, product, step); installed = true; }
+    } else if (await backupBeforeInstall(up)) { await up.install(image, product, step); installed = true; }
     if (installed && !wantErase) result("install", TEXT.done.install);
     else if (installed) { const o = await eraseAfterInstall(midi); result("install", o.text + " " + SWITCH_OFF_ON, o.bad); }
   } catch (e) { fail("install", e); }
@@ -371,17 +484,17 @@ $("go").addEventListener("click", async () => {
 });
 
 // ---- backup
-function saveArchive(archive) {
+function saveArchive(archive, name) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(archive)], { type: "application/json" }));
-  const a = document.createElement("a"); a.href = url; a.download = `DUELL-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const a = document.createElement("a"); a.href = url; a.download = name;
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function archiveInfo(a) {
-  const { version, tags, caps, patchCap } = parseInfo(a);
+  const { version: v0, tags, caps, patchCap, tide } = parseInfo(a), version = v0 + (tide ? " TIDE" : "");   // (a TIDE unit: "DUELL 1.1 TIDE", which detectUnit reads)
   // the firmware reports "FELUCCA <version string>", DUELL's too. A complete backup needs the preferences, motion and backup tags
   // (the song-rows byte is not compared: Felucca sent 16, DUELL sends 0) and the backup tag's bit 0.
   const supported = /^FELUCCA /i.test(version) && tags.has(0x55) && tags.has(0x4d) && caps !== null && !!(caps & 1);
-  return { version, supported, caps: caps ?? 0, patchCap };
+  return { version, supported, caps: caps ?? 0, patchCap, raw: a };
 }
 // card = the card that shows the progress ("backup", or "return" when the return makes its backup first)
 async function doBackup(up, card) {
@@ -393,9 +506,9 @@ async function doBackup(up, card) {
     const info = archiveInfo(await link.request([1, []]));
     if (!detected) { detected = detectUnit(info.version); refresh(); }      // the backup just talked to the unit: reuse its answer
     if (!info.supported) { result(card, "This firmware cannot make a complete backup (the official firmware, or an old build). Nothing was saved.", card === "backup"); return false; }
-    const archive = await captureBackup((r, o) => link.request(r, o), info.version,
+    const { file, name } = await captureUnitBackup((r, o) => link.request(r, o), info.raw,
       (d, t) => { const pc = d / Math.max(1, t) * 100; say(card, `Saving backup ${Math.round(pc)}%`); if (card === "backup") $("bar-backup").value = pc; });
-    saveArchive(archive);
+    saveArchive(file, name);
     result(card, "Backup saved to your downloads." + (info.caps & 4 ? "" : " MULTIs and PATTERN slots are not in it (this firmware cannot save them)."));
     return true;
   } finally { link.close(); }
@@ -433,7 +546,7 @@ $("stock-go").addEventListener("click", async () => {
     if (loader) {
       loader.link.close();
       if (!$("stock-recovery").checked) { result("return", "The FM-1 is in update mode, so no backup can be made now. Tick \"Resume an interrupted return\" only if you already saved a backup.", true); return; }
-      if (!confirm("Return to official V15? DUELL music cannot be opened by the official firmware.")) return;
+      if (!confirm("Return to official V15? TIDE music cannot be opened by the official firmware.")) return;
       if (await up.resume(selected.image, step, selected.product)) result("return", TEXT.done.return); else result("return", ERR.stopped, true);
     } else {
       say("return", "Backing up before the return (nothing is written yet)");

@@ -330,6 +330,13 @@ int main(void)
                           : "without the console = a FELUCCA_CDC=0 build of 1.0 byte for byte",
               T_UAC ? same_as(dev, c, n, V10_NOCDC_DEV, V10_NOCDC_CFG, sizeof V10_NOCDC_CFG)
                     : same_as(dev, c, n, V10_MIDI_DEV, V10_MIDI_CFG, sizeof V10_MIDI_CFG));
+#if T_UAC
+    {                                                  /* b9 USB AUDIO OFF: the MIDI-only descriptors are 1.0's FELUCCA_UAC=0 build byte for byte */
+        check("USB AUDIO OFF (usb.c DEV_DESC_NOAUD, CFG_DESC_NOAUD) = a build without the audio input byte for byte (1.0's MIDI layout)",
+              sizeof CFG_DESC_NOAUD == sizeof V10_MIDI_CFG && !memcmp(CFG_DESC_NOAUD, V10_MIDI_CFG, sizeof V10_MIDI_CFG) &&
+              !memcmp(DEV_DESC_NOAUD, V10_MIDI_DEV, 18));
+    }
+#endif
     if (T_UAC) {                                       /* the audio streaming format, as a host lists the rates */
         uint32_t rates = 0, r0 = 0, r1 = 0, maxp = 0, as = 0;
         for (off = 0; off < n; off += c[off]) {

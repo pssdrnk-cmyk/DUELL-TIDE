@@ -12,14 +12,14 @@
 #include <stdint.h>
 #include "fm1_cc.h"
 
-#define FM1_UT1_CON0   (*(volatile uint32_t *)0x12100u)
-#define FM1_UT1_CON1   (*(volatile uint32_t *)0x12104u)
-#define FM1_UT1_BAUD   (*(volatile uint32_t *)0x12108u)
+#define FM1_UT1_CON0   (*(volatile uint16_t *)0x12100u)
+#define FM1_UT1_CON1   (*(volatile uint16_t *)0x12104u)
+#define FM1_UT1_BAUD   (*(volatile uint16_t *)0x12108u)
 #define FM1_UT1_OTCNT  (*(volatile uint32_t *)0x12110u)
 #define FM1_UT1_RXSADR (*(volatile uint32_t *)0x1211Cu)
 #define FM1_UT1_RXEADR (*(volatile uint32_t *)0x12120u)
 #define FM1_UT1_RXCNT  (*(volatile uint32_t *)0x12124u)
-#define FM1_UT1_HRXCNT (*(volatile uint32_t *)0x12128u)
+#define FM1_UT1_HRXCNT (*(volatile uint16_t *)0x12128u)
 #define FM1_UM_CLK_CON1  (*(volatile uint32_t *)0x10010u)   /* [11:10] UART clock: 1 = PLL48M */
 #define FM1_UM_IOMAP2    (*(volatile uint32_t *)0x51024u)   /* input ch1 source [13:8] */
 #define FM1_UM_IOMAP3    (*(volatile uint32_t *)0x51028u)   /* UT1: b7 fixed IO, [6:4] RX select */
@@ -27,6 +27,8 @@
 #define FM1_UM_PH_DIE    (*(volatile uint32_t *)0x501CCu)
 #define FM1_UM_PH_PU     (*(volatile uint32_t *)0x501D0u)
 #define FM1_UM_PH_PD     (*(volatile uint32_t *)0x501D4u)
+
+#define FM1_UART1_RX_FRAME 32u
 
 FM1_INLINE void fm1_uart1_midi_init(volatile uint8_t *ring, uint32_t len)
 {
@@ -42,7 +44,7 @@ FM1_INLINE void fm1_uart1_midi_init(volatile uint8_t *ring, uint32_t len)
     FM1_UM_PH_PU |= 1u << 8;
     FM1_UT1_RXSADR = (uint32_t)(uintptr_t)ring;
     FM1_UT1_RXEADR = (uint32_t)(uintptr_t)ring + len;
-    FM1_UT1_RXCNT = len;
+    FM1_UT1_RXCNT = len < FM1_UART1_RX_FRAME ? len : FM1_UART1_RX_FRAME;
     FM1_UT1_BAUD = 48000000u / 31250u / 4u - 1u;       /* 383 */
     FM1_UT1_OTCNT = 60000u;
     __asm__ volatile("csync" ::: "memory");
@@ -51,10 +53,19 @@ FM1_INLINE void fm1_uart1_midi_init(volatile uint8_t *ring, uint32_t len)
     FM1_UT1_CON0 |= 1u;                                /* UTEN last */
 }
 
+/* Felucca #264 / WL82 SDK: no receive event means no new DMA batch.
+ * A retained HRXCNT must never be replayed. Tests substitute register I/O only. */
+#ifndef FM1_UART1_CON_READ
+#define FM1_UART1_CON_READ() (FM1_UT1_CON0)
+#define FM1_UART1_CON_WRITE(v) (FM1_UT1_CON0 = (uint16_t)(v))
+#define FM1_UART1_COUNT_READ() (FM1_UT1_HRXCNT)
+#define FM1_UART1_SYNC() __asm__ volatile("csync" ::: "memory")
+#endif
 FM1_INLINE uint32_t fm1_uart1_rx_take(void)
 {
-    FM1_UT1_CON0 |= 0x80u;                             /* RDC: latch the count */
-    __asm__ volatile("csync" ::: "memory");
-    FM1_UT1_CON0 |= 0x1400u;                           /* clear RPND / OTPND */
-    return FM1_UT1_HRXCNT & 0xFFFFu;
+    if (!(FM1_UART1_CON_READ() & 0x4800u)) return 0;
+    FM1_UART1_CON_WRITE(FM1_UART1_CON_READ() | 0x80u);
+    FM1_UART1_SYNC();
+    FM1_UART1_CON_WRITE(FM1_UART1_CON_READ() | 0x1400u);
+    return FM1_UART1_COUNT_READ();
 }

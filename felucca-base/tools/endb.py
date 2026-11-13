@@ -2,7 +2,8 @@
 """DUELL: the End B block (MBV) of a patch, in Python. The SAME format as firmware/src/morph.c (morph_bv_make / morph_bv_size / morph_bv_load) and
 web/editor/patchrecord.js (endBSize, buildEndB): no second format, only a second reader and writer of it.
 
-    [0]      flags: 1 = the marks of the values set by hand follow (20 B), 2 = FM6: End B's 65 patch bytes follow (57 B)
+    [0]      flags: 1 = the marks of the values set by hand follow (20 B), 2 = FM6: End B's 65 patch bytes follow (57 B), 8 = ANALOG's WAVE takes 4 bits in this block
+             (b9, morph.c MBV_W4: encode sets it where ANALOG's WAVE is in the block, the firmware always; a block without it was made before b8, WAVE 0..6 in 3 bits, and decode reads it so)
     [1]      the part's AMOUNT knob + 1 (0: not stored)
     [2..21]  a bit per wide id (0..126 the ids, 127 never, 128..155 the extension slots): End B differs from the Original there
              then the values of the set bits in wide id order, each as (value - min) in ceil(log2(max - min + 1)) bits, LSB first, padded to the byte
@@ -31,7 +32,9 @@ def rng(eng, w):
     return d["min"], d["max"]
 
 
-def bits(eng, w):
+def bits(eng, w, w4=True):
+    if not w4 and eng == 0 and w == E0:   # before b8 (WAVE 0..6): morph.c wv_bitsl
+        return 3
     lo, hi = rng(eng, w)
     n, b = hi - lo + 1, 0
     while b < 16 and (1 << b) < n:
@@ -61,14 +64,14 @@ def code(eng, w, v):
 def decode(b, eng):
     """block bytes -> dict(amt, vals {wid: End B value}, marks [wid], fm [65] or None, size); ValueError when it is no block (morph_bv_size)"""
     b = bytes(b)
-    if len(b) < HDR or b[0] & ~3 or b[1] > 101 or (b[0] & 2 and eng != FM6_ENGINE):
+    if len(b) < HDR or b[0] & ~11 or b[1] > 101 or (b[0] & 2 and eng != FM6_ENGINE):
         raise ValueError("no End B block")
     vals, at = {}, HDR * 8
     for w in range(160):
         if b[2 + (w >> 3)] >> (w & 7) & 1:
             if not wid_ok(w) or w in MBV_NEVER:
                 raise ValueError("End B block: a bit on wide id %d" % w)
-            c, at = get_bits(b, at, bits(eng, w))
+            c, at = get_bits(b, at, bits(eng, w, b[0] & 8))
             lo, hi = rng(eng, w)
             vals[w] = min(lo + c, hi)
     at = (at + 7) & ~7
@@ -96,6 +99,8 @@ def decode(b, eng):
 def encode(eng, amt, vals, ref, marks=(), fm=None):
     """vals {wid: End B value} (only where End B differs from the Original), ref {wid: Original value} (None: not checked) -> block bytes (morph_bv_make's output)"""
     out = bytearray(HDR + 96 + PIN_BYTES + FM_BYTES)
+    if eng == 0 and E0 in vals:               # MBV_W4, only where it matters (the firmware sets it in every block): the factory blocks without ANALOG's WAVE stay byte for byte
+        out[0] = 8
     out[1] = amt
     for w in sorted(vals):
         if not wid_ok(w) or w in MBV_NEVER:

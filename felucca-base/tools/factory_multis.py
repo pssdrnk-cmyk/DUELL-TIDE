@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """DUELL factory multis (0.2.23; 0.2.24: the owner's multis back; 0.2.25: COLD CHAPEL in M13): the ONE source of the sixteen factory multis M01..M16 and the tool that builds them.
 
+    tools/factory_multis.py verify     a rebuild equals the committed records byte for byte (writes nothing in tools/)
     tools/factory_multis.py build      the records tools/factory_multis/M01.bin..M16.bin (needs build/gen from DUELL/gen_only.py)
     tools/factory_multis.py check      the records against this list (version, name, sounds, MODE, split) and the similarity check
     tools/factory_multis.py list       the list as text (slot, name, mode, parts '#NN NAME', owner / mine)
-    tools/factory_multis.py selftest   the similarity check catches each kind of pair (and lets an owner pair through, reported)
+    tools/factory_multis.py selftest   the similarity check catches each kind of pair (and lets an owner pair through, reported); the step grammar's rules (T1)
 
 How a record is made: MULTIS below says, per slot, the two parts' factory sounds (by name), what the multi sets on top of each sound
 (raw parameter values, core.h P_* ids; an engine EDIT value as "E:LABEL", e.g. "E:CUT" on an ANALOG part), the SEQUENCER arp patterns,
@@ -53,80 +54,182 @@ def note(s):
 
 # ---- the multis ---------------------------------------------------------------------------------------------------------------
 # A part: sound (factory sound name), set {P_id: value or 'NAME' of the parameter's list; "E:LABEL": the engine's EDIT value}, steps (the
-# SEQUENCER arp's pattern: offsets in semitones from the held key, '.' a rest, suffix A an accent; LEN = its length), bseed / amt (End B rolled
+# SEQUENCER arp's pattern: offsets in semitones from the held key, '.' a rest, '-' a tie (holds the note before it; after a rest or at step 0 it is
+# an error), "vNN" after the note or offset a velocity 1..127 (default 100; order: notes, v, A), suffix A an accent; LEN = its length: 8 or 16
+# steps, or 12 on a part with poly=True (a polymeter on purpose), or 32 on a part with bars=2 (two bars); any other count fails `check`), bseed / amt (End B rolled
 # again with this seed / at this AMOUNT %; 0 the sound's own). A multi: g {G_id: value}, mode, xf (0..100), split (a note:
 # below it part 1, at or above part 2; compared with the key as played, before any TRN: F3 is the lowest key at octave 0, so F4 is the middle
 # of the keyboard), what (one line, the character).
 # Units are the stored ones (params.c): sends / SAT / RES 0..127, LEVEL / TRIM 0..127 (112 = 0 dB), PAN -64..63, EQ dB -12..12,
 # DUCK DEPTH 0..100, arp GATE 1..127, the lists by name. Owner rules (0.2.23): at most 2 or 3 tributes (none in the sixteen since 0.2.25: BASILDON is spare),
 # no Moroder multi (it is a pattern), classic honest names, no two multis alike (check_similar). Owner (0.2.24): his own multis
-# (COLD CHAPEL, ACID ETHER, GARGLE ACID of 0.2.22; DEAD BUFFER holds his edits) are never dropped: `owner`.
+# (COLD CHAPEL, ACID ETHER, GARGLE ACID of 0.2.22; DEAD BUFFER holds his edits) are never dropped: `owner` (D31, 2026-11-05: the owner took ACID ETHER, GARGLE ACID, DEAD BUFFER, WIRED SNAIL, REESE SWAMP and WOOD & SKIN out of the sixteen himself).
 # In LAYER each part maps a played key with its own TRN (seq.c key_on, 0.2.23: until 0.2.22 part 2 got part 1's note and the split compared it),
 # so an octave between the parts can be set with either part's TRN.
-# Order (0.2.24): 1-4 bass grooves and splits, 5-8 pads, layers and the dry pair, 9-12 the four multis of 0.2.1 as made (the owner's),
-# 13-15 for performing (0.2.25: 13 is the owner's original COLD CHAPEL, in the slot of BASILDON, the multi least different from the rest), 16 the stress test.
+# Order (D31, audit G14, 2026-11-05): the curated dub / house order, a background layer for a bass synth and a drum machine (b9: the low end is welcome; the one rule is that the FM-1 does not take over the drums). 1-9 are the grooves
+# of the set (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN: chords and a sparse bass part where there is one; ORGAN SKANK, WARM ECHO, MINIMAL 12,
+# TINE DUB, DEEP 332: the six new ones, built here), 10-16 the colour (the owner's pads and textures, kept byte for byte). The rules of the new
+# ones: the reverb LOW CUT at the unit's default (299 Hz), the
+# rhythmic part six hits a bar or fewer and the other sustained or sparse, no part above C6, the chord and pad sounds from the dub pack (centroid
+# under about 1 kHz, so the hats keep 4-10 kHz). The patterns are the factory patterns' steps (engines.c PATTERNS: P03 DUB OFFBEAT, P04 HOUSE STAB,
+# P05 DOT DELAY, P10 MINIMAL 12, P11 DUB HALFTIME, P13 DEEP 332, P15 PAD BREATH, P17 HALF PAD, P01 DUB CHORD, P29 TIED ROOTS), written here as the arps' offsets
+# from the held key ("-" is a tie, which the SEQ arp honours). Left the sixteen: the three acid multis (REESE SWAMP, ACID ETHER, GARGLE ACID), WIRED SNAIL and
+# DEAD BUFFER (FX arps up to C8), WOOD & SKIN (a percussion demo); their records are in the git history (integ bb730b0, tools/factory_multis/M01 M09 M10 M12 M14 M15.bin)
+# and the older scenes in tests/scenes. The records kept move to their new slot byte for byte: DUB CHORD (was M04; its TIDAL SUB line was moved up an octave, C2 to C3,
+# and its LEVEL down 4, in 0.2.25 for a rule that is gone: b9, the low end is welcome; the reel replaced the line), CELLAR TAPE (was M16), NIGHT ORGAN (M02), PAD SPLIT (M03), WHISPER TIDE (M05),
+# TINE STRINGS (M06), COLD CHAPEL (M13), EERIE SIGNAL (M11), HAZY TENSOR (M08), FINAL REEL (M07); the first start loads M02 DUB CHORD (D5, tide.h TIDE_FIRST_MULTI).
 SEND = ("P_CHOR", "P_DLY", "P_REV")
 MULTIS = [
-    # ---- 1-4: bass grooves and splits ----
-    dict(slot=1, name="REESE SWAMP", kept=True, mode="LAYER", parts=[dict(sound="REESE BASS"), dict(sound="SQUELCH")],
-         what="Reese bass wobbling at 1/4 under a 1/16 acid loop (0.2.11, M01 since 0.2.13: the first start's multi)"),
-    dict(slot=2, name="NIGHT ORGAN", mode="LAYER", split="F4",
-         g=dict(G_BPM=121, G_SWING=17, G_DTIME="8D", G_DFDBK=31, G_DMIX=90, G_RTYPE="ROOM", G_RSIZE=71, G_DMODE="DIGI"),
-         parts=[dict(sound="PEDAL BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=80, P_AHOLD="OFF", P_TRANS=-12, P_VOICE="LEG", P_LEVEL=112),
-                     steps=". 0 . 0 . 0 . +12"),
-                dict(sound="DRAWBARS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=100, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE",
-                                                 P_DLY=17, P_REV=21, P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=21, P_LEVEL=104),
-                     steps=". 0 . . . 0A . .")]),
-    # M03 (0.2.24, owner: the pad sounded dark): the pad's own CUT opened in the multi from the sound's 55 (about 460 Hz) to 71 (about 1 kHz);
-    # measured on the pad alone, keys E4 / A4 / C5: spectral centroid 528 / 652 / 760 Hz -> 653 / 808 / 925 Hz, the 2-4 kHz band +3 dB, 4-8 kHz
-    # +6 dB, level the same within 0.4 dB. #44 EMBER GLOW itself is unchanged (the override lives in this record only). End B rolled again
-    # (seed 23709 at 27 %): the sound's own End B (seed 44167) closed the pad in this multi (its roll took AMP ENV -> FLT to -26: the pad alone
-    # -14.2 dB at End B on C4 E4 G4, `gen_factory_multis eval 3`), against the promise "MORPH opens the pad"; the new seed keeps the level
-    # (+0.2 dB) and is brighter (739 -> 1117 Hz, `search 3 2 27 40`).
-    dict(slot=3, name="PAD SPLIT", mode="LAYER", split="F4",
-         g=dict(G_BPM=97, G_DTIME="4D", G_DFDBK=37, G_DMIX=71, G_RTYPE="HALL", G_RSIZE=97, G_RDAMP=61, G_DMODE="DIGI"),
-         parts=[dict(sound="PLUCK BASS", set=dict(P_TRANS=-12, P_VOICE="LEG", P_LEVEL=112)),
-                dict(sound="EMBER GLOW", set={"E:CUT": 71, "P_DLY": 17, "P_REV": 57, "P_M8SRC": "MORPH", "P_M8DST": "CUT", "P_M8AMT": 21, "P_LEVEL": 101},
-                     bseed=23709, amt=27)]),
-    dict(slot=4, name="DUB CHORD", mode="LAYER",
-         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=71, G_DCOLOR=47, G_DMIX=97, G_DMODE="DIGI", G_DMDEP=17, G_RTYPE="SPRING", G_RSIZE=77, G_RDAMP=71),
-         parts=[dict(sound="BIG STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=37, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE",
-                                                 P_FREEA="u_uf(1700)", P_FREEB=17, P_DLY=77, P_REV=37, P_CHOR=0,
-                                                 P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=37, P_LEVEL=109),
-                     steps=". . 0 . . . . . . . 0 . . . . ."),
-                dict(sound="TIDAL SUB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=120, P_AHOLD="OFF", P_VOICE="LEG", P_LEVEL=117),
-                     steps="-24A . . . . . . . -24 . . -24 . . -19 .")]),
-    # ---- 5-8: pads and layers (0.2.25: the dry pair MONO DUEL is spare) ----
-    dict(slot=5, name="WHISPER TIDE", kept=True, mode="LAYER", parts=[dict(sound="DIGITAL PAD"), dict(sound="WHISPER PAD")]),
-    # slot 6: the owner's TINE STRINGS (0.2.25), from tools/owner_multis.py; his COLD CHAPEL, which was here until 0.2.24, is M13 since 0.2.25
-    # slot 7: the owner's refined FINAL REEL (0.2.25), from tools/owner_multis.py (his file duell-multi-M07-FINAL_REEL.duell-multis.json); the old kept record was the 0.2.11 one
-    # slot 8: the owner's HAZY TENSOR (0.2.25), from tools/owner_multis.py (his file duell-multi-M08-HAZY_TENSOR.duell-multis.json); MONO DUEL, which was here, is spare (below)
-    # ---- 9-12: the four multis of 0.2.1, kept as made (the owner's) ----
-    dict(slot=9, name="ACID ETHER", kept=True, owner=True, mode="LAYER", parts=[dict(sound="RUBBER BAND"), dict(sound="LADDER BASS")],
-         what="an acid line over a Moog-style bass, the chorus wobbling it (the owner's, 0.2.1: M04, M06 in 0.2.13 .. 0.2.22; back in 0.2.24)"),
-    dict(slot=10, name="WIRED SNAIL", kept=True, mode="LAYER", parts=[dict(sound="SFORZANDO"), dict(sound="GLASS SHARDS")],
-         what="brass stab in unison two octaves down under a three-octave glass arp (kept as made in 0.2.1)"),
-    dict(slot=11, name="EERIE SIGNAL", kept=True, mode="LAYER", parts=[dict(sound="VESPERS"), dict(sound="JAZZ CLUB")],
-         what="choir in diatonic triads, an organ picking notes at random at 1/8 (kept as made in 0.2.1)"),
-    dict(slot=12, name="DEAD BUFFER", kept=True, owner=True, mode="LAYER", parts=[dict(sound="FROZEN AIR"), dict(sound="MODEM")],
-         what="frozen wavetable texture under a modem-noise arp (kept as made in 0.2.1, with the owner's own edits)"),
-    # ---- 13-15: performance (one tribute, the owner's fast acid groove, a percussive pair) ----
-    dict(slot=13, name="COLD CHAPEL", kept=True, owner=True, mode="LAYER", parts=[dict(sound="EVOLVING PAD"), dict(sound="SINGING BOWL")],
-         what="evolving pad latched, a singing bowl walking up the chord a half note each, ping-pong delay in a large hall (the owner's original, 0.2.11 .. 0.2.22: M07; M06 in 0.2.24; M13 since 0.2.25, byte for byte)"),
-    dict(slot=14, name="GARGLE ACID", kept=True, owner=True, mode="LAYER", parts=[dict(sound="GROWL BASS"), dict(sound="SQUELCH")],
-         what="a growl bass two octaves down holding the key, a 16-step acid riff on it at 127 BPM (the owner's, 0.2.11 .. 0.2.22: M08; back in 0.2.24)"),
-    # slot 15: the owner's WOOD & SKIN (0.2.31), from tools/owner_multis.py (his file duell-multi-M15-WOOD_SKIN.duell-multis.json, record v7, 487 B, crc32 975420133); the 0.2.23 record built here differed in one byte (index 52)
-    # ---- 16: the STRESS TEST (owner, 0.2.23: how many notes the unit takes; a test, free to overwrite) ----
-    dict(slot=16, name="STRESS TEST", mode="LAYER", stress=True,
-         what="CPU stress test, not music: the two dearest sounds, every stage on (24 dB multimode filters, FLANGER insert + SAT on the whistle, EQ + ducker on the pad, chorus, RANDOM delay, SHIM BOTH), "
-              "a 1/16 arp pad with a short gate and release (0.2.24: calibrated so one key plays on the unit: host model 1 key ~62 %, 2 keys ~78 %, 3 keys ~95 %)",
-         g=dict(G_BPM=137, G_DTIME="1/8", G_DFDBK=61, G_DMIX=90, G_DMODE="RAND", G_DMDEP=71, G_DMRATE=44, G_CDEPTH=77, G_CRATE=41,
-                G_RTYPE="SHIM", G_RSIZE=107, G_RDAMP=51, G_SHPITCH="BOTH", G_SHMOD=51),
-         parts=[dict(sound="PAN WHISTLE", set=dict(P_VOICE="POLY", P_FREEA="u_uf(61)", P_FREEB=17, P_FREEC=127, P_FREED=2, P_ITYPE="FLANGER", P_IMIX=97, P_DIST=41,
-                                                    P_CHOR=71, P_DLY=61, P_REV=71, P_LEVEL=112)),
-                dict(sound="DIGITAL PAD", set=dict(P_VOICE="POLY", P_FREEA="u_uf(61)", P_FREEB=17, P_FREEC=127, P_FREED=2, P_AMODE="UP", P_ARATE="1/16", P_AOCT=2, P_AGATE=71, P_AHOLD="OFF",
-                                                    P_REL=47, P_EQLG=4, P_EQMG=-3, P_EQHG=3,
-                                                    P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=41, P_CHOR=71, P_DLY=61, P_REV=71, P_LEVEL=112))]),
+    # ---- 1-9: the grooves of the set ----
+    # ---- the reel (10 November 2026, owner: "sounds good, go ahead with all changes"; the design, its research and the survey of the instrument: work/reel-2026-11-10/REEL.md,
+    # RESEARCH.md, SOUNDS.md in the owner's notes): 18 multis as one curated programme, a genre each, the patterns written "in the manner of", the voices set for their roles
+    # in the multi (no new factory sound). ARP SEQ parts play one chord shape in parallel on TIDE's stand-in C4 (the key is written in the offsets; a held key moves it by its
+    # distance from C); an ARP SEQ step's vNN is not read (seq.c arp_seq_notes), so those parts have two loudnesses, plain and A. A pad is written at the coarsest ARP RATE that
+    # fits (a chord held four bars is one step). A part with len=N says its own pattern length.
+    dict(slot=1, name="DUB BASIC", mode="LAYER",
+         what="dub techno, G minor: one minor-seventh chord in a low-pass haze, three hits a bar (steps 4, 7, 14) through tape into a long dark dotted echo with a wobbling delay time, the filter riding slowly, under a low held G minor bed with a root an octave down (122 BPM)",
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=110, G_DMIX=78, G_DMODE="DIGI", G_DCOLOR=26, G_DCLFO=5, G_DMDEP=24, G_RTYPE="PLATE", G_RSIZE=84, G_RDAMP=68),
+         parts=[dict(sound="CHORD ECHO", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 90, "P_AHOLD": "OFF", "P_CHRD": "MIN7", "P_VOIC": "OPEN", "E:NOIS": 24, "P_FREEB": 18,
+                                              "P_LRATE": 12, "P_LD_FLT": 9, "P_REL": 78, "P_SPRD": 50, "P_EQMG": -4, "P_EQMF": -9, "P_DKSRC": "PUMP", "P_DKRATE": "1/4", "P_DKDEP": 30, "P_DLY": 78, "P_REV": 54, "P_LEVEL": 112, "P_ITYPE": "TAPE", "P_IA": 40, "P_IB": 45, "P_IC": 110, "P_IMIX": 70},
+                     steps=". . . -5A . . -5 . . . . . . -5 . .", bseed=56484, amt=30, b={"P_FREEA": 46, "P_FREEB": 30, "P_REL": 84}),
+                dict(sound="WARM WASH", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="+OCT", P_DLY=20, P_REV=50, P_LEVEL=84),
+                     steps="-17 -", len=2, bseed=4325, amt=20, b={"P_FREEA": 52})]),
+    dict(slot=2, name="DUB CHORD", mode="LAYER",
+         what="dub techno, C minor, the first start: the owner's FM minor-seventh stab on the off-beats (steps 3 and 11), an octave lower, C3 to B flat 3 (was C4 to B flat 4), dark and a little longer (b9 rework2: gate 60 -> 96), chorused, a wide dip of 5 dB around 600 Hz, the top rolled off from 4.5 kHz and a slow phaser (0.24 Hz) on it (b9 rework3, Attack Magazine dub techno chords; b10 round 5: the phaser half as deep and half as wet, the lows under 170 Hz down 9 dB, the high-pass of the recipe), thrown into a long dark dotted echo (feedback 110, drifting; its colour swings a little, CLFO 2, was 5), over a low analog pad holding C minor with its root an octave down through every bar (117 BPM)",
+         g=dict(G_BPM=117, G_DTIME="8D", G_DFDBK=110, G_DMIX=90, G_DMODE="DIGI", G_DCOLOR=26, G_DCLFO=2, G_DMDEP=24, G_RTYPE="PLATE", G_RSIZE=78, G_RDAMP=66),
+         parts=[dict(sound="BIG STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=96, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_FREEA=40, P_SPRD=40, P_EQLG=-9, P_EQLF=6,
+                                                 P_EQMG=-5, P_EQMF=-9, P_EQMQ=-3, P_EQHG=-4, P_EQHF=-10, P_ITYPE="PHASER", P_IA=30, P_IB=40, P_IC=50, P_IMIX=30,
+                                                 P_CHOR=80, P_DLY=77, P_REV=56, P_LRATE=12, P_LD_FLT=9, P_TRIM=120, P_LEVEL=112),
+                     steps=". . -12A . . . . . . . -12 . . . . .", bseed=26818, amt=12, b={"P_FREEA": 44}),
+                dict(sound="SLOW TIDE", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="+OCT", P_FREEA=40, P_DLY=20, P_REV=60, P_LEVEL=82),
+                     steps="-12 -", len=2, bseed=27687, amt=30, b={"P_FREEA": 50})]),
+    # ---- b7 (lane TECHNO, owner 9 November 2026: "adjustments of the multis for techno, like berlin and such"; then: "a curated selection of electronic music and
+    # genres, berlin school, idm, electro"): M03 acid, M04 electro, M07 techno, M13 IDM, M14 Berlin school, M15 Detroit, 120-130 BPM, two ARP SEQ parts each (both play on
+    # PLAY with no key held), the motif's anchors accented and a few softer hits TIDE may thin.
+    # Replaced: CELLAR TAPE (M03), NIGHT ORGAN (M04, the owner's), MINIMAL 12's blip and pad (M07), COLD CHAPEL, EERIE SIGNAL, HAZY TENSOR (M13-M15, the owner's);
+    # their records are in the git history (b7/integ dc8f1d3, tools/factory_multis/M03 M04 M07 M13 M14 M15.bin).
+    dict(slot=3, name="HSE JUNO", mode="LAYER",
+         what="deep house, A minor, written notes (it stays in its key): three soft clustered chords held long (A minor add 9 two bars, F major 7, G add 9) on a chorused saw pad, a round analog bass line of six notes a bar doing the rhythm, each note closing its filter, A2 to A3 (116 BPM)",
+         g=dict(G_BPM=116, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="HALL", G_RSIZE=70, G_RDAMP=61),
+         parts=[dict(sound="WARM WASH", set=dict(P_AMODE="OFF", P_SDIV="1/2", P_SGATE=127, P_ATK=62, P_REL=88, P_FREEA=48, P_CHOR=100, P_SPRD=64, P_LD_FLT=14, P_E2FLT=30, P_DLY=40, P_REV=64, P_LEVEL=96),
+                     steps="n57+60+64+71v96 - - - n57+60+64+67v92 - n55+57+59+62v96 -", bseed=26818, amt=30, b={"P_FREEA": 56, "P_ATK": 72}),
+                dict(sound="RUBBER BAND", set=dict(P_AMODE="OFF", P_SGATE=100, P_E2FLT=44, P_CHOR=30, P_SPRD=40, P_DLY=30, P_REV=18, P_LEVEL=100),
+                     steps="n45v110 . . n45v90 . . n52v90 . . . n55v90 . n57 . . n52v80 "
+                           "n45v110 . . n45v90 . . n52v90 . . . n55v90 . n57 . . n55v80 "
+                           "n41v110 . . n41v90 . . n48v90 . . . n52v90 . n53 . . n48v80 "
+                           "n43v110 . . n43v90 . . n50v90 . . . n50v90 . n55 . . n52v80", len=64, bseed=26818, amt=30, b={"P_FREEA": 36, "P_DEC": 88})]),
+    dict(slot=4, name="HSE RHODES", mode="LAYER",
+         what="deep house, F minor: electric-piano minor sevenths in one parallel shape, the next bar's chord arriving on the last 16th (F minor 7, C minor 7, a 2-bar loop, swing 57) into a dotted echo, high airy strings holding A flat major 7 above without a break: F minor 9 together (122 BPM)",
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=45, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=70, G_RDAMP=61),
+         parts=[dict(sound="TINE ROOM", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 75, "P_ASWING": 57, "P_AHOLD": "OFF", "P_CHRD": "MIN7", "P_VOIC": "INV2", "E:MLVL": -8,
+                                             "P_FREEA": 82, "P_E2FLT": 0, "P_M1AMT": 0, "P_M4AMT": 0, "P_KTRK": 0, "P_CHOR": 80, "P_SPRD": 50, "P_DLY": 48, "P_REV": 36, "P_LEVEL": 103},
+                     steps=". . . -7 . . -7 . . . -7 - . . . -12A . . . -12 . . -12 . . . -12 - . . . -7A", bars=2, bseed=64940, amt=30, b={"E:MLVL": 0}),
+                dict(sound="AIR SHIMMER", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MAJ7", P_VOIC="CLOSE", P_SPRD=60, P_DLY=22, P_REV=70, P_LEVEL=85),
+                     steps="8 - - -", len=4, bseed=25230, amt=30, b={"P_FREEA": 76, "P_CHOR": 100})]),
+    dict(slot=5, name="HSE ORGAN", mode="LAYER",
+         what="classic house, G minor: an FM drawbar organ riff in hollow fifths (the hook: G, B flat, C, down to E flat and F, 2 bars, swung 58) through a dotted echo, over a tonewheel organ pad holding G and F suspended chords with a slow rotor (124 BPM)",
+         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=70, G_RDAMP=61),
+         parts=[dict(sound="DUB DRAWBAR", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 112, "P_ASWING": 58, "P_AHOLD": "OFF", "P_CHRD": "POW", "P_VOIC": "CLOSE", "E:MEG": -20, "E:MRAT": 2,
+                                               "P_CHOR": 80, "P_SPRD": 60, "P_DLY": 58, "P_REV": 40, "P_LEVEL": 108},
+                     steps=". . -5A . -5 . . -2 . . -5 . -7 . . . . . -5A . -5 . . 0 . . -2 . -9 . -7 .", bars=2, bseed=64940, amt=30, b={"E:MLVL": 6, "P_DIST": 20}),
+                dict(sound="ORGAN WASH", set={"P_AMODE": "SEQ", "P_ARATE": "1/1", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "SUS4", "P_VOIC": "CLOSE",
+                                               "P_ATK": 40, "P_REL": 90, "P_SUS": 127, "P_CHOR": 70, "P_SPRD": 60, "P_DLY": 28, "P_REV": 68, "P_LEVEL": 88},
+                     steps="7 - - 5", len=4, bseed=19366, amt=30, b={"E:TOP": 4, "P_FREEA": 78})]),
+    dict(slot=6, name="HSE FRENCH", mode="LAYER",
+         what="French house (filter house), A minor, written notes (it stays in its key; b9 rework3: was HSE PIANO, an FM grand): a mellow electric piano looping two chords, A minor 9 and F major 9 without fifths (A3-B4, F3-G4), a bar each, held and re-struck on a swung grid (60 %), pumped hard by the duck on the beat, a little saturation and a low-pass breathing slowly (about 0.07 Hz), a scoop near 500 Hz; under it a round fretless disco bass on the off-beat eighths, A2 and F2 with an octave pickup; a 1/16 ping-pong echo and a small room (124 BPM)",
+         g=dict(G_BPM=124, G_DTIME="1/16", G_DFDBK=40, G_DMIX=60, G_DMODE="PING", G_RTYPE="ROOM", G_RSIZE=50, G_RDAMP=61),
+         parts=[dict(sound="MELLOW EP", set={"P_AMODE": "OFF", "P_SGATE": 110, "P_SSWING": 60, "P_DIST": 38, "P_FREEA": 46, "P_FREEB": 34, "P_LRATE": 6, "P_LD_FLT": 18,
+                                             "P_EQMG": -3, "P_EQMF": -12, "P_DKSRC": "PUMP", "P_DKRATE": "1/4", "P_DKDEP": 60,
+                                             "P_CHOR": 50, "P_SPRD": 50, "P_DLY": 34, "P_REV": 26, "P_TRIM": 112, "P_LEVEL": 91},
+                     steps="n57+60+67+71v112 - - n57+60+67+71v84 - - n57+60+67+71v100 - - - n57+60+67+71v92 - n57+60+67+71v104 - - - "
+                           "n53+57+64+67v112 - - n53+57+64+67v84 - - n53+57+64+67v100 - - - n53+57+64+67v92 - n53+57+64+67v104 - - -", bars=2, bseed=25350, amt=30, b={"P_FREEA": 60}),
+                dict(sound="FRETLESS", set={"P_AMODE": "OFF", "P_SGATE": 80, "P_SSWING": 60, "P_TRANS": 0, "P_PRIO": 1, "P_DKSRC": "PUMP", "P_DKRATE": "1/4", "P_DKDEP": 15,
+                                                "P_CHOR": 20, "P_SPRD": 30, "P_DLY": 10, "P_REV": 8, "P_TRIM": 127, "P_LEVEL": 103},
+                     steps=". . n45v110 . . . n45v96 . . . n45v104 . . n57v80 n45v100 . "
+                           ". . n41v110 . . . n41v96 . . . n41v104 . . n53v80 n41v100 .", bars=2, bseed=33747, amt=30, b={})]),
+    dict(slot=7, name="TECH DETROIT", mode="LAYER",
+         what="Detroit techno, B minor: one saw minor-seventh block walking in parallel (B, F sharp, E), off the downbeats, each hit closing its filter gently and ringing into a long dotted echo, a 2-bar walk with its turnaround; under it a warm phase-distortion string chord swelling again every bar (E, A, B: the 11th, 7th and root of B minor, so no walk of the stab rubs it; b9 rework2: was square-ish string-machine fifths at B4 to F sharp 5) (125 BPM)",
+         g=dict(G_BPM=125, G_DTIME="8D", G_DFDBK=55, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=80, G_RDAMP=61),
+         parts=[dict(sound="LOW STAB", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=112, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_FREEA=36, P_E2FLT=40, P_E2DEC=62, P_REL=74, P_SPRD=50, P_CHOR=50,
+                                                 P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=24, P_DLY=60, P_REV=30, P_TRIM=110, P_LEVEL=103),
+                     steps=". . -1A . . -1 . . . -6 . . -6A . . . . . -8A . . -8 . . . -1 . . . . -1A -1", bars=2, bseed=43134, amt=30, b={"P_FREEA": 44, "P_DEC": 80}),
+                dict(sound="LAMPLIGHT", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="SUS4", P_VOIC="OPEN", P_ATK=70, P_REL=72, P_FREEA=50, P_CHOR=90, P_SPRD=60, P_DLY=32, P_REV=64, P_LEVEL=91),
+                     steps="-8 -8", len=2, bseed=53501, amt=30, b={"P_FREEA": 52})]),
+    dict(slot=8, name="TECH SOUL", mode="LAYER",
+         what="Detroit, the jazz side, C sharp minor: two jobs (b9 rework2: was stacked fourths and an FM bell phrase in the same octave): soft minor-seventh chords low, C sharp 3 to F sharp 4, one a bar without a break (C sharp, F sharp, G sharp, F sharp), and a warm synth-brass line of eighths and held notes falling through C sharp minor pentatonic, B3 to B4, four bars, never a semitone against the chord (127 BPM)",
+         g=dict(G_BPM=127, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=84, G_RDAMP=61),
+         parts=[dict(sound="SUNDAY KEYS", set=dict(P_AMODE="SEQ", P_ARATE="1/2", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="CLOSE", P_ATK=30, P_FREEA=34, P_E2FLT=18,
+                                                    P_CHOR=96, P_SPRD=50, P_DLY=20, P_REV=56, P_LEVEL=96),
+                     steps="-11A - -6A - -4A - -6A -", bseed=25255, amt=30, b={"P_FREEA": 40, "P_E2FLT": 24}),
+                dict(sound="SYNTH BRASS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=120, P_AHOLD="OFF", P_CHRD="OFF", P_FREEA=40, P_CHOR=50, P_SPRD=50, P_DLY=50, P_REV=50, P_LEVEL=98),
+                     steps="8A - - 6 4 - 1 . 1 - 4 - 6 - 1 . 11A - - 8 6 - -1 . 4 - 1 - -1 - 1 .", bars=2, bseed=64940, amt=30, b={"P_FREEA": 46})]),
+    dict(slot=9, name="ACID HYPNO", mode="LAYER",
+         what="hypnotic acid techno, A minor, written notes (it stays in its key): a 303 square line of fifteen 16ths against the bar (mostly A, accents on 1, 6, 10 and 14, octave pops on 4 and 10, the flat seventh on 8, one slide from C into the accent on 14), heavily distorted, its filter opening slowly by itself, home again every fifteen bars, ringing into a dotted echo over a dark fog pad holding A3 in fifths (128 BPM)",
+         g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=64, G_DMIX=84, G_DMODE="DIGI", G_DCOLOR=40, G_RTYPE="HALL", G_RSIZE=84, G_RDAMP=64),
+         parts=[dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 8, "P_FREEA": 30, "P_FREEB": 100, "P_E2FLT": 55, "P_E2DEC": 78, "P_E2ATK": 15, "P_DIST": 75,
+                                           "P_CHOR": 30, "P_SPRD": 40, "P_DLY": 55, "P_REV": 32, "P_LEVEL": 106},
+                     steps="n45A n45 n45 n57 n45 n45A n45 n43 n45 n57A n45 n45 n48S n45A n45", len=15, bseed=20216, amt=30, b={"P_FREEA": 48}),
+                dict(sound="FOG BANK", set=dict(P_AMODE="SEQ", P_ARATE="2BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=40, P_L2RATE=10, P_L2FLT=30, P_CHOR=70, P_SPRD=60, P_DLY=40, P_REV=78, P_LEVEL=88),
+                     steps="-3 -", len=2, bseed=26818, amt=30, b={"P_FREEA": 42})]),
+    # ---- 10-16: colour: the owner's pads and textures, kept byte for byte (tools/owner_multis.py; their old slots in brackets) ----
+    # 10 PAD SPLIT (M03), 11 WHISPER TIDE (M05), 12 TINE STRINGS (M06), 13 COLD CHAPEL (M13), 14 EERIE SIGNAL (M11), 15 HAZY TENSOR (M08), 16 FINAL REEL (M07)
+    # b7 lane TECHNO: 13-15 are IDM, Berlin school and Detroit scenes now (the owner's COLD CHAPEL, EERIE SIGNAL and HAZY TENSOR left; see M03 above)
+    dict(slot=13, name="ELEC DEEPSEA", mode="LAYER",
+         what="electro, F sharp minor: a quick glassy wavetable arpeggio, each note closing its shape, chorused into a dotted echo and kept under the chords; chorused pulse-width chords inside the arpeggio's own F sharp minor pentatonic on a six-bar cycle (F sharp minor 7; B, E, F sharp, A; E, A, B, E; two bars each) that ignores the four-bar grid (133 BPM, straight)",
+         g=dict(G_BPM=133, G_DTIME="8D", G_DFDBK=55, G_DMIX=78, G_DMODE="PING", G_DCOLOR=45, G_RTYPE="HALL", G_RSIZE=90, G_RDAMP=61, G_CDEPTH=80),
+         parts=[dict(sound="DIGI PLUCK", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=90, P_AHOLD="OFF", P_CHRD="OFF", P_DKSRC="PUMP", P_DKRATE="1/4", P_DKDEP=20, P_CHOR=70, P_SPRD=60, P_DLY=55, P_REV=32, P_LEVEL=92),
+                     steps="-6A . 1 6 . 1 -3 . -6 . 1 4 . 1 . 9", bseed=25230, amt=30, b={"P_FREEA": 68, "P_DEC": 96}),
+                dict(sound="PWM PAD", set=dict(P_AMODE="OFF", P_SDIV="1/1", P_SGATE=127, P_CHOR=100, P_SPRD=60, P_DLY=25, P_REV=65, P_LEVEL=90),
+                     steps="n54+57+61+64v90 - n52+57+59+66v90 - n52+57+59+64v90 -", len=6, bseed=50996, amt=30, b={"P_FREEA": 60})]),
+    dict(slot=14, name="ELEC WARPED", mode="LAYER",
+         what="IDM, D mixolydian: a music-box tune of long notes, two and a half bars long, into a dotted echo, over a detuned pad in bare suspended chords (D, C, G) that wobbles like worn tape (a TAPE insert) and turns over every six bars; the two meet differently each time (114 BPM)",
+         g=dict(G_BPM=114, G_DTIME="8D", G_DFDBK=55, G_DMIX=80, G_DMODE="PING", G_DCOLOR=12, G_RTYPE="HALL", G_RSIZE=90, G_RDAMP=61),
+         parts=[dict(sound="WAVE CHIMES", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AOCT=1, P_AGATE=110, P_AHOLD="OFF", P_CHRD="OFF", P_EQHG=-4, P_CHOR=55, P_SPRD=40, P_DLY=50, P_REV=50, P_LEVEL=100),
+                     steps="9A . 6 4 . 2 . . 4 . 6 9 . 11A . 9 . . . .", len=20, bseed=27687, amt=30, b={"P_REL": 82}),
+                dict(sound="TAPE CLOUD", set={"P_AMODE": "SEQ", "P_ARATE": "1/1", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "SUS2", "P_VOIC": "CLOSE", "P_ITYPE": "TAPE", "P_IA": 55, "P_IB": 40, "P_IC": 96,
+                                              "E:DTN": 52, "P_FREEA": 46, "P_CHOR": 100, "P_DLY": 20, "P_REV": 66, "P_LEVEL": 98},
+                     steps="2 - -3 - -8 2", len=6, bseed=64940, amt=30, b={"P_IA": 85, "E:DTN": 70, "P_FREEA": 40})]),
+    dict(slot=15, name="AMB BERLIN", mode="LAYER",
+         what="Berlin school, F minor: an eighth-note bass sequence on a round analog bass (b9 rework2: was a bright pluck), F2 to A flat 3, on root, fifth, flat seventh and fourth, every note closing its filter, a doubled hit at the turnaround, the dotted echo making sixteenths of it; a choir through a slow phaser holding fifths four bars at a time (F, F, E flat, B flat). Hold a key: the run transposes (112 BPM)",
+         g=dict(G_BPM=112, G_DTIME="8D", G_DFDBK=58, G_DMIX=80, G_DMODE="PING", G_DCOLOR=12, G_RTYPE="HALL", G_RSIZE=100, G_RDAMP=61),
+         parts=[dict(sound="RUBBER BAND", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AOCT=1, P_TRANS=0, P_ATK=10, P_AGATE=127, P_AHOLD="OFF", P_CHRD="OFF", P_VOICE="MONO", P_DEC=78, P_E2DEC=80, P_E2FLT=40, P_FREEA=30, P_FREEB=14, P_EQHG=-3,
+                                                  P_CHOR=50, P_SPRD=50, P_DLY=64, P_REV=38, P_LEVEL=98),
+                     steps="-19A . -7 . -12 . -7 . -9 . -7 . -12 . -14 . -19A . -7 . -12 . -7 . -4 . -7 . -9 . -12 -12", bars=2, bseed=26818, amt=30, b={"P_FREEA": 44, "P_E2FLT": 58, "P_DEC": 86}),
+                dict(sound="CHOIR LOFT", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="POW", P_VOIC="CLOSE", P_ITYPE="PHASER", P_IA=30, P_IB=80, P_IC=50, P_IMIX=90,
+                                                   P_CHOR=70, P_SPRD=50, P_DLY=30, P_REV=78, P_LEVEL=110),
+                     steps="-7 - -9 -14", len=4, bseed=43134, amt=30, b={"P_IB": 110, "P_FREEA": 56})]),
+    dict(slot=10, name="ACID TWO 303", mode="LAYER",
+         what="acid techno, D minor, the Hardfloor / Josh Wink way: two distorted 303s and no pad, a saw line (16 steps, accents before the kick, a slide up into an accent and an octave drop) hard left against a square line (13 steps, answering in the saw's rests) hard right, so they meet again only every thirteen bars, the long dotted echo carrying the gaps (130 BPM, straight, gate 58 %)",
+         g=dict(G_BPM=130, G_DTIME="8D", G_DFDBK=66, G_DMIX=84, G_DMODE="PING", G_DCOLOR=40, G_RTYPE="HALL", G_RSIZE=90, G_RDAMP=64),
+         parts=[dict(sound="TIDAL SUB", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 7, "P_ATK": 0, "E:MIX": 0, "P_SUS": 110, "P_REL": 100, "P_GLIDE": 55, "P_GLMODE": 1, "P_FREEA": 30, "P_FREEB": 100, "P_E2FLT": 63, "P_E2DEC": 78, "P_E2ATK": 15,
+                                               "P_DIST": 72, "P_PAN": -48, "P_CHOR": 25, "P_SPRD": 30, "P_DLY": 70, "P_REV": 55, "P_LEVEL": 112},
+                     steps="n38 . n38 n45A . n38 n41S n43A . n38 n38 n45A . n50S n38 n48A", bseed=20216, amt=30, b={"P_FREEA": 52}),
+                dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 8, "E:MIX": 0, "P_REL": 100, "P_FREEA": 34, "P_FREEB": 92, "P_E2FLT": 58, "P_E2DEC": 74, "P_E2ATK": 15,
+                                           "P_DIST": 72, "P_PAN": 48, "P_CHOR": 25, "P_SPRD": 30, "P_DLY": 70, "P_REV": 55, "P_LEVEL": 112},
+                     steps=". n57 . . n50A . n53S n55 n50A . . n60 n50A", len=13, bseed=26818, amt=30, b={"P_FREEA": 56})]),
+    dict(slot=11, name="ACID LINES", mode="LAYER",
+         what="Chicago acid house, E minor: a 303 saw line (ACID wave) of sixteen 16ths, accents on the off-beat eighths, three slides into accents (one an octave down, the bend), a resonant filter that snaps shut on every plain note and a hand on the cutoff in the ride; under it a slow dark pad holding A minor 7, F major 7 and G 6, its sends feeding the dotted echo (122 BPM, straight)",
+         g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=64, G_DMIX=84, G_DMODE="PING", G_DCOLOR=40, G_RTYPE="HALL", G_RSIZE=78, G_RDAMP=64),
+         parts=[dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 7, "E:MIX": 0, "P_FREEA": 28, "P_FREEB": 95, "P_E2FLT": 63, "P_E2DEC": 80, "P_E2ATK": 15,
+                                            "P_GLIDE": 55, "P_DIST": 45, "P_CHOR": 35, "P_SPRD": 40, "P_DLY": 55, "P_REV": 35, "P_LEVEL": 112},
+                     steps="n40 n40 n52A n40 . n43S n45A n40 n40 n52S n40A . n38 n40S n43A .", bseed=20216, amt=30, b={"P_FREEA": 50, "P_FREEB": 108, "P_E2DEC": 86}),
+                dict(sound="DEEP BLUE", set=dict(P_AMODE="OFF", P_SDIV="1/1", P_SGATE=127, P_ATK=84, P_EQHG=-8, P_L2RATE=10, P_L2FLT=30, P_CHOR=90, P_SPRD=60, P_DLY=80, P_REV=80, P_LEVEL=98),
+                     steps="n57+60+64+67v90 - n52+55+59+62v90 n55+59+62+64v90", len=4, bseed=26818, amt=30, b={"P_FREEA": 58})]),
+    dict(slot=12, name="ELEC ROBOT", mode="LAYER",
+         what="electro, G minor: a round ladder-filter bass on the electro kick's own rhythm (steps 1, 7, 11, 14, one octave jump a bar), each note closing its filter, under a darker vowel-table choir in bare fifths holding every bar, G3 to B flat 4 (b9 rework2: was an octave up), its vowel moving slowly: G for two bars, B flat, F (128 BPM, straight)",
+         g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=52, G_DMIX=80, G_DMODE="DIGI", G_DCOLOR=45, G_RTYPE="ROOM", G_RSIZE=72, G_RDAMP=64),
+         parts=[dict(sound="LADDER BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=100, P_AHOLD="OFF", P_CHRD="OFF", P_E2ATK=0, P_E2FLT=44, P_E2DEC=70, P_FREEA=30, P_CHOR=45, P_SPRD=40, P_DLY=50, P_REV=32, P_LEVEL=104),
+                     steps="-17A . . -17 . . -17A . . . -5A . . -7 . -10", bseed=6079, amt=30, b={"P_FREEA": 40, "P_E2FLT": 54}),
+                dict(sound="VOWEL PAD", set={"P_AMODE": "SEQ", "P_ARATE": "1/4", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "POW", "P_VOIC": "CLOSE", "P_ATK": 52, "P_REL": 84, "P_FREEA": 38, "P_EQHG": -6,
+                                             "P_M8SRC": "LFO2", "P_M8DST": "E2", "P_M8AMT": 24, "P_L2RATE": 30, "P_CHOR": 90, "P_DLY": 55, "P_REV": 78, "P_LEVEL": 100},
+                     steps="-5A - - - -5 - -5 - -2A - - - -7A - - -", bseed=64073, amt=30, b={"E:POS": 30, "P_FREEA": 46})]),
+    dict(slot=16, name="AMB LOOPS", mode="LAYER",
+         what="ambient, E flat major: two loops of unequal length that never meet the same way twice: four soft, dark FM bell notes on eleven half-notes, B flat 3 to G4 (b9 rework2: was an octave up and brighter), open suspended chords (E flat four bars, A flat three) held without a break on seven whole notes; long hall, long echo (100 BPM)",
+         g=dict(G_BPM=100, G_DTIME="4D", G_DFDBK=64, G_DMIX=80, G_DMODE="PING", G_DCOLOR=14, G_RTYPE="HALL", G_RSIZE=115, G_RDAMP=50),
+         parts=[dict(sound="FROST BELLS", set={"P_AMODE": "SEQ", "P_ARATE": "1/2", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "OFF", "E:MLVL": -8, "P_EQLG": -4, "P_EQLF": 7, "P_EQHG": -3, "P_CHOR": 55, "P_DLY": 65, "P_REV": 80, "P_LEVEL": 106},
+                     steps="-2 . . 5 . . . 3 . 7 .", len=11, bseed=19366, amt=30, b={"E:MLVL": -12}),
+                dict(sound="EVOLVING PAD", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="SUS2", P_VOIC="CLOSE", P_ATK=96, P_CHOR=60, P_SPRD=50, P_DLY=45, P_REV=90, P_LEVEL=94),
+                     steps="-9 - - - -4 - -", len=7, bseed=27687, amt=30, b={"E:POS": 90, "P_FREEA": 68})]),
 ]
 
 # ---- spare multis (0.2.24): made for 0.2.23, out of the sixteen so the owner's COLD CHAPEL, ACID ETHER and GARGLE ACID could come back.
@@ -184,6 +287,16 @@ def apply_owner(multis):
 
 
 MULTIS = apply_owner(MULTIS)
+# The ORDER the unit lists the multis in (owner, 12 November 2026: genre by genre, not in the order they were made): the record numbers (M01 .. M24 as these tools, the tests' names and the
+# docs call a record: the files tools/factory_multis/Mnn.bin and tools/drone_multis/Mnn.bin) in the order of the slots. tools/gen_duell_multis.py gives each record the slot of its place here (the unit's
+# M01 .. M24, MIDI program changes 1 .. 24, DF_SLOT, multi_names.h); a record keeps its number in every tool. Slots 1 .. 16 can be saved over (flash objects), 17 .. 24 are ROM only, the last two the drones.
+# The KEY of each multi (b10 round 9, live assist phase 2): record number -> "A min" / "F# maj", None where the multi has no key worth naming (a drone, a bed of two or three notes). TAKE + ANSWER
+# (firmware/src/tide_take.c) takes the key from SCL, else from here, else from the take itself (the header then shows a ?). Read by tools/gen_duell_multis.py (DF_KEY in duell_multis.h, one byte
+# a multi: 0xFF none, else the root 0 .. 11 | 16 for minor). The keys were read off each multi's own patterns (the key estimate of tide_take.c over both parts; M03, M06, M08, M15 agree with the
+# design report's hand-made keys). The record format is untouched: a multi saved by the player carries no key (0xFF) until it is saved with SCL.
+KEYS = {1: "G min", 2: "C min", 3: "A min", 4: "F min", 5: "G min", 6: "A min", 7: "E maj", 8: "C# min", 9: "A min", 10: "D min", 11: "E min", 12: "G min", 13: "F# min", 14: "D maj", 15: "F min",
+        16: "D# maj", 17: "C min", 18: "C min", 19: "F# min", 20: "G maj", 21: "G# min", 22: "A min", 23: "A min", 24: "A maj", 25: "G min", 26: "G maj"}
+DISPLAY_ORDER = [1, 2, 25, 20, 3, 4, 26, 5, 6, 21, 7, 8, 24, 19, 22, 9, 10, 11, 12, 13, 14, 23, 15, 16, 17, 18]
 
 
 # ---- the firmware's names --------------------------------------------------------------------------------------------------------
@@ -278,9 +391,14 @@ def emit(path):
                 else:
                     st += [k, str(value(P_LIST, k, v))]
             steps = p.get("steps")
+            if steps and check_steps(steps, bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1))):
+                sys.exit("factory_multis: %s: %s" % (m["name"], "; ".join(check_steps(steps, bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1))))))
             n = len(steps.split()) if steps else 16
-            lines.append('        {%d, %d, "%s", {%s}, %s, %d, %d, %d},' % (p["eng"], p["idx"], p["sound"], ", ".join(st + ["END"]),
-                                                                       '"%s"' % steps if steps else "0", n, p.get("bseed", 0), p.get("amt", 0)))
+            bs = []                                     # (reel: b {P_id or "E:LABEL": value}: End B's value set by hand after the roll, as a player sets it at the B end; gen_factory_multis.c)
+            for k, v in p.get("b", {}).items():
+                bs += [edit_key(p["eng"], k[2:]) if k.startswith("E:") else k, str(value(P_LIST, k, v))]
+            lines.append('        {%d, %d, "%s", {%s}, %s, %d, %d, %d, {%s}},' % (p["eng"], p["idx"], p["sound"], ", ".join(st + ["END"]),
+                                                                             '"%s"' % steps if steps else "0", n, p.get("bseed", 0), p.get("amt", 0), ", ".join(bs + ["END"])))
         lines.append("    }},")
     lines.append("};")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -291,13 +409,16 @@ BOOT_H = """/* tools/factory_multis.py: no factory multis (the build of the gene
 #define DF_TEST_MULTIS DUELL_TEST_MODE
 #define DF_N 0u
 static const uint8_t DF_SLOT[1] = {0};
+static const uint8_t DF_KEY[1] = {255};
 static const uint16_t DM_LEN[1] = {0};
 static const uint16_t DM_AT[1] = {0};
 static const uint8_t DM_REC[1] = {0};
+static const uint8_t *dm_rec(uint32_t i, uint8_t *out) { (void)out; return DM_REC + i; }
 """
 
 
-def build():
+def _make(out):
+    """builds the records of the list that are not `kept` into the folder `out` (the C tool's `build`); -> the sound table"""
     snd = sounds()
     resolve(snd)
     emit(GEN / "factory_multis_def.h")
@@ -308,14 +429,47 @@ def build():
           "-o", str(exe), "tests/gen_factory_multis.c", "-lm"]
     if subprocess.run(cc, cwd=ROOT).returncode:
         sys.exit("factory_multis: tests/gen_factory_multis.c does not compile (run DUELL/gen_only.py first: build/gen)")
-    if subprocess.run([str(exe), "build", str(DIR)], cwd=ROOT).returncode:
+    if subprocess.run([str(exe), "build", str(out)], cwd=ROOT).returncode:
         sys.exit("factory_multis: the build failed")
+    return snd
+
+
+def build():
+    snd = _make(DIR)
     want = {"M%02d.bin" % m["slot"] for m in MULTIS}
     for f in DIR.glob("M*.bin"):
         if f.name not in want:
             f.unlink()
             print("removed", f.name)
     check(snd)
+
+
+def verify():
+    """a rebuild from the list gives the committed records byte for byte (the records marked `kept` are not rebuilt: they are the source); nothing is written
+    to tools/factory_multis. Since b8 this holds (End B AMOUNT included); this keeps it so."""
+    import tempfile
+    if os.name == "nt":                                 # (the record builder is a host program that includes <sys/wait.h>: not on Windows; CI and WSL run this)
+        print("factory_multis: verify not run on Windows (tests/gen_factory_multis.c needs fork())")
+        return True
+    with tempfile.TemporaryDirectory() as tmp:
+        _make(tmp)
+        bad, n = [], 0
+        for m in MULTIS:
+            if m.get("kept"):
+                continue
+            name = "M%02d.bin" % m["slot"]
+            made = Path(tmp) / name
+            if not made.exists():
+                bad.append("%s: not built" % name)
+            elif made.read_bytes() != (DIR / name).read_bytes():
+                a, b = made.read_bytes(), (DIR / name).read_bytes()
+                at = next((i for i in range(min(len(a), len(b))) if a[i] != b[i]), min(len(a), len(b)))
+                bad.append("%s: a rebuild differs from the committed record (%d B vs %d B, first difference at byte %d)" % (name, len(a), len(b), at))
+            n += 1
+    for b in bad:
+        print("factory_multis: " + b)
+    print("factory_multis: %d records rebuilt, %d differ from the committed ones" % (n, len(bad)))
+    return not bad
 
 
 # ---- checks -------------------------------------------------------------------------------------------------------------------------
@@ -394,6 +548,34 @@ def p_ids():
     return {n: i for i, n in enumerate(names)}
 
 
+STEP_TOKEN = re.compile(r"(?P<rest>\.)|(?P<tie>-)|(?:n\d+(?:\+\d+){0,3}|[+-]?\d+)(?:v(?P<vel>\d+))?[AS]*")
+
+
+def check_steps(steps, poly=False, bars=1):
+    """T1: the problems of a SEQUENCER arp pattern as text (an empty list: it is fine): every token is a rest '.', a tie '-', a note
+    ('+7', '-5', '0', or 'n60+64' absolute) with an optional 'vNN' velocity 1..127 then any 'A' accents; a tie needs a note before it
+    (not a rest, not step 0); the step count is 8 or 16, or 12 with poly, or 32 with bars=2"""
+    err, prev = [], None
+    toks = steps.split()
+    for i, tok in enumerate(toks):
+        m = STEP_TOKEN.fullmatch(tok)
+        if not m:
+            err.append("step %d '%s': not a rest, a tie, or a note with an optional vNN then A" % (i + 1, tok))
+            prev = "bad"
+            continue
+        if m.group("vel") is not None and not 1 <= int(m.group("vel")) <= 127:
+            err.append("step %d '%s': velocity %s is not 1..127" % (i + 1, tok, m.group("vel")))
+        if m.group("tie") and prev in (None, "rest"):
+            err.append("step %d: tie without a note" % (i + 1))
+        prev = "rest" if m.group("rest") else "note"
+    allowed = [8, 16] + ([12] if poly else []) + ([32] if bars == 2 else [])
+    if isinstance(bars, tuple):                     # (reel, 2026-11-10: a part with len=N says its own length, 1..64: a 7-step loop, a 6-bar pad at 1/1, a 4-bar written line)
+        allowed = [bars[1]] if 1 <= bars[1] <= 64 else []
+    if len(toks) not in allowed:
+        err.append("the pattern has %d steps, not %s (12 needs poly=True, 32 needs bars=2)" % (len(toks), " or ".join(str(n) for n in allowed)))
+    return err
+
+
 def check_similar(entries):
     """No two multis alike (owner, 0.2.23: "no two multis near-duplicates"). entries: (slot, name, mode, (sound 1, sound 2), split,
     ((engine, category) of part 1, of part 2), owner). Alike: the same two sounds (either order); one sound in the same place with the same
@@ -431,7 +613,30 @@ def selftest():
         bad, allowed = check_similar([base, e])
         ok &= len(bad) == want_bad and len(allowed) == want_allowed
     print("factory_multis: selftest of the similarity check %s" % ("ok" if ok else "FAILED"))
-    return ok
+    ok_steps = True
+    n16 = lambda head: head + " ." * (16 - len(head.split()))
+    step_cases = [(n16("0A - - 3v90A"), {}, 0),                       # a tie after a note, a velocity before the accent
+                  (n16("0 . - 3"), {}, 1),                            # a tie after a rest
+                  (n16("- 0"), {}, 1),                                # a tie at step 0
+                  (n16("0 - -"), {}, 0),                              # a chain of ties
+                  (n16("0v0"), {}, 1),                                # velocity under 1
+                  (n16("0v128"), {}, 1),                              # velocity over 127
+                  (n16("0v127 +7v1A n60+64v64A"), {}, 0),             # the bounds, offsets, absolute notes
+                  (n16("0Av90"), {}, 1),                              # the accent before the velocity
+                  (n16("0v"), {}, 1),                                 # a velocity without a number
+                  (" ".join(["0"] * 8), {}, 0),                       # LEN 8
+                  (" ".join(["0"] * 12), {}, 1),                      # LEN 12 without poly
+                  (" ".join(["0"] * 12), dict(poly=True), 0),         # LEN 12 with poly
+                  (" ".join(["0"] * 32), {}, 1),                      # LEN 32 without bars
+                  (" ".join(["0"] * 32), dict(bars=2), 0),            # LEN 32 with bars=2
+                  (" ".join(["0"] * 15), dict(poly=True, bars=2), 1)] # any other count
+    for pat, kw, want in step_cases:
+        got = len(check_steps(pat, **kw))
+        if bool(got) != bool(want):
+            print("factory_multis: selftest step case %r %r: %d problems, wanted %s" % (pat, kw, got, "some" if want else "none"))
+            ok_steps = False
+    print("factory_multis: selftest of the step rules %s" % ("ok" if ok_steps else "FAILED"))
+    return ok and ok_steps
 
 
 def check(snd=None):
@@ -445,6 +650,10 @@ def check(snd=None):
         err.append("two multis share a slot or a name (the spare ones counted)")
     if sum(1 for m in MULTIS if m.get("tribute")) > 3:
         err.append("more than three tribute multis (owner: at most 2 or 3)")
+    for m in MULTIS:                                  # (T1: a pattern is 8 or 16 steps, or 12 on a part with poly=True (a polymeter on purpose), or 32 on a part with bars=2 (two bars): one token short drifts a 16th a bar against the other part, M16 had 15; and the step grammar: ties, velocities)
+        for t, p in enumerate(m["parts"]):
+            if p.get("steps"):
+                err += ["M%02d part %d: %s" % (m["slot"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1)))]
     for m in MULTIS:
         f = DIR / ("M%02d.bin" % m["slot"])
         if not f.exists():
@@ -454,8 +663,15 @@ def check(snd=None):
         err += check_record(m, b, by_idx, P)
         if not m.get("stress"):
             snds = (m["parts"][0]["sound"], m["parts"][1]["sound"])
-            entries.append((m["slot"], m["name"], b[4], snds, b[-1], (cat[snds[0]], cat[snds[1]]), bool(m.get("owner"))))
+            kinds = [cat[x] for x in snds]
+            for t, p in enumerate(m["parts"]):      # (b8: an ANALOG part set to WAVE 7 ACID / 8 ACID SQR is another sound and another kind (ANALOG/ACID: a 303), not the saw bass it is loaded from)
+                if p.get("set", {}).get("E:WAVE") in (7, 8):
+                    snds, kinds[t] = snds[:t] + ("%s+WAVE%d" % (snds[t], p["set"]["E:WAVE"]),) + snds[t + 1:], (kinds[t][0], "ACID")
+            entries.append((m["slot"], m["name"], b[4], snds, b[-1], tuple(kinds), bool(m.get("owner"))))
     for m in SPARE:                                   # (the spare records exist and name their sounds)
+        for t, p in enumerate(m["parts"]):
+            if p.get("steps"):
+                err += ["spare %s part %d: %s" % (m["name"], t + 1, e) for e in check_steps(p["steps"], bool(p.get("poly")), (("len", p["len"]) if p.get("len") else p.get("bars", 1)))]
         f = ROOT / "tests" / "scenes" / (m["scene"] + ".bin")
         if not f.exists():
             err.append("spare %s: %s missing" % (m["name"], f.name))
@@ -502,6 +718,8 @@ if __name__ == "__main__":
         sys.exit(0 if check() else 1)
     if cmd == "check":
         sys.exit(0 if check() else 1)
+    if cmd == "verify":
+        sys.exit(0 if verify() else 1)
     if cmd == "selftest":
         sys.exit(0 if selftest() else 1)
     if cmd == "list":

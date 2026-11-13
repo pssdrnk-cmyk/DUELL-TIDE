@@ -93,7 +93,7 @@ int main(void)
 
     /* the pages fit: every text drawn in the page's body within the text room (x GD_X .. GD_X + GD_W, ink to the pixel), above the key hints; every L heading and option name has its glyphs in the sparse L face */
     {
-        static const char *const GUIDE_L[] = {"LAYER", "STEREO", "DUEL", "PART MARKER", "PERFORM MODE", "QUICK EDIT", "STOP ALL", "RESET A KNOB", "SAVE OVER A PATCH", "PARAMETER LOCK", "LATER", "NOW"};
+        static const char *const GUIDE_L[] = {"LAYER", "STEREO", "DUEL", "PART MARKER", "PERFORM MODE", "QUICK EDIT", "STOP ALL", "RESET A KNOB", "SAVE OVER A PATCH", "PARAMETER LOCK", "SOUNDS AND MORPH", "LATER", "NOW"};
         uint32_t p, m, q, ok = 1, glyphs = 1, maxw = 0, maxy = 0, seen = 0;
         const char *s;
         for (m = 0; m < 2u; m++)
@@ -201,9 +201,9 @@ int main(void)
         transport_req = 0; ui.msg_t = 0;
         song.playing = 0;                               /* (no audio here to stop it: the settings write waits for silence, the transport stopped too) */
         tails_over();
-        TSEL->p[P_AHOLD] = 0;
+        trk[0].p[P_AHOLD] = trk[1].p[P_AHOLD] = 0;      /* (both parts: REC's HOLD is one direction for all, and TIDE's first multi holds part 2) */
         press(B_REC);
-        expect("REC: the HOLD switch (HOLD ON), still in the guide", TSEL->p[P_AHOLD] != 0 && ui.guide == 3u && str_eq(ui.msg, "HOLD ON"));
+        expect("REC: the HOLD switch (HOLD ON), still in the guide", TSEL->p[P_AHOLD] != 0 && ui.guide == 3u && (str_eq(ui.msg, "HOLD ON") || str_eq(ui.msg, "HOLD ON: SEQ+REC=REC")));
         press(B_REC);
         expect("  .. again: HOLD OFF", TSEL->p[P_AHOLD] == 0 && ui.guide == 3u);
         ui.msg_t = 0;

@@ -12,11 +12,12 @@
 
 
 /* DUELL CPU LOAD METER (MENU > SYSTEM > TEST: the full card, graph_test below; ABOUT keeps a line). The audio ISR (audio.c) adds each I2S half's
- * render time to cpu_sum / cpu_n, keeps the longest in cpu_pk and counts the halves that missed their time (cpu_miss); this
- * reads them once a second, only while TEST or ABOUT is shown (cpu_meter_poll from their signature), so nothing runs for it
- * otherwise. AVERAGE = the sum / (halves x the half's time) of the last second; PEAK = the longest half of the last second,
- * held (the highest of the last CPU_HOLD_MS, then it falls to the latest); MISSED = halves over their time or overtaken
- * by the DMA since power-on. Colours (fixed, flat): below 80 % the theme, 80 % and up amber (NEAR LIMIT), 95 % and up or a
+ * render time to cpu_sum / cpu_n, keeps the longest in cpu_pk and the longest ELAPSED half in cpu_el_pk, and counts the DMA periods
+ * missed (cpu_miss); cpu_snap_poll (below) is the one place that reads and clears the peaks, this reads its snapshot
+ * once a second, only while TEST or ABOUT is shown (cpu_meter_poll from their signature), so nothing runs for it
+ * otherwise. AVERAGE = the sum / (halves x the half's time) of the last second (the render's); PEAK = the longest ELAPSED half of the last second
+ * (K2: what the DMA deadline saw), held (the highest of the last CPU_HOLD_MS, then it falls to the latest); MISSED = DMA periods missed
+ * since power-on. Colours (fixed, flat): below 80 % the theme, 80 % and up amber (NEAR LIMIT), 95 % and up or a
  * miss in the last 5 s red (the word says it too: MONO has no colours). Emulator: FELUCCA_METER_EST, a voice-count
  * ESTIMATE (audio.c), shown as such */
 #define CPU_WIN_MS 1000u
@@ -24,50 +25,128 @@
 #define CPU_RECENT_MS 5000u
 #define CPU_WARN 80u
 #define CPU_HOT 95u
+#define MENU_PAL_SIG ux.pal                 /* (the menu's signature: the theme applied, ui.c pal_q) */
 static struct {
     uint16_t avg, peak, hold;                          /* % (peak and hold up to 999) */
     uint32_t miss, miss_t, t, hold_t, n0, sum0;        /* the misses seen, when the last one was seen, window start, ... */
     uint32_t base;                                     /* TEST's RESET: the misses counted from here (ABOUT: since power-on) */
     uint8_t seen;                                      /* a miss was ever seen (miss_t valid) */
 } cpum;
+static uint32_t cpu_wel[CPU_NW];                       /* each reader's own longest elapsed half since its last take (us) */
+#if DUELL_TEST_MODE
+static uint32_t cpu_wpk_con;                           /* the console's render peak (its `cpu` prints both) */
+#endif
+/* THE owner (K2): read and clear the ISR's peaks together, fold them into every window. Main loop only and not reentrant: neither this nor cpu_win_take may be called from an interrupt */
+static void cpu_snap_poll(void)
+{
+    uint32_t k, el;
+#if DUELL_TEST_MODE
+    uint32_t pk;
+#endif
+    fm1_irq_off();
+    cpu_snap.sum = cpu_sum;
+    cpu_snap.n = cpu_n;
+    cpu_snap.miss = cpu_miss;
+#if DUELL_TEST_MODE
+    pk = cpu_pk;
+    cpu_pk = 0;
+#endif
+    el = cpu_el_pk;
+    cpu_el_pk = 0;
+    fm1_irq_on();
+    for (k = 0; k < CPU_NW; k++)
+        if (el > cpu_wel[k])
+            cpu_wel[k] = el;
+#if DUELL_TEST_MODE
+    if (pk > cpu_wpk_con)
+        cpu_wpk_con = pk;
+#endif
+}
+static uint32_t cpu_win_take(uint32_t k)               /* reader k's longest elapsed half (us) since its last take; the window starts again */
+{
+    uint32_t el;
+    cpu_snap_poll();
+    el = cpu_wel[k];
+    cpu_wel[k] = 0;
+    return el;
+}
 static void cpu_meter_open(void)                       /* TEST / ABOUT opened: a fresh window (the IIR load until it is over) */
 {
-    cpum.n0 = cpu_n;
-    cpum.sum0 = cpu_sum;
-    cpu_pk = 0;
+    (void)cpu_win_take(CPU_W_MENU);
+    cpum.n0 = cpu_snap.n;
+    cpum.sum0 = cpu_snap.sum;
     cpum.t = fm1_ms;
     cpum.avg = cpum.peak = cpum.hold = (uint16_t)(song.cpu_q8 * 100u / 256u);
     cpum.hold_t = fm1_ms;
-    cpum.miss = cpu_miss;
+    cpum.miss = cpu_snap.miss;
     cpum.seen = 0;
 }
 static void cpu_meter_poll(void)                       /* once a window, and only when asked */
 {
-    uint32_t n, sum, pk;
+    uint32_t n, sum, el;
     if (fm1_ms - cpum.t < CPU_WIN_MS)
         return;
-    do {
-        n = cpu_n;
-        sum = cpu_sum;
-    } while (n != cpu_n);
-    pk = cpu_pk;
-    cpu_pk = 0;
+    el = cpu_win_take(CPU_W_MENU);
+    n = cpu_snap.n;
+    sum = cpu_snap.sum;
     cpum.t = fm1_ms;
     if (n != cpum.n0)
         cpum.avg = (uint16_t)clamp((int32_t)((uint64_t)(sum - cpum.sum0) * 100u / ((uint64_t)(n - cpum.n0) * CPU_BUDGET_US)), 0, 999);
     cpum.n0 = n;
     cpum.sum0 = sum;
-    cpum.peak = (uint16_t)clamp((int32_t)((uint64_t)pk * 100u / CPU_BUDGET_US), 0, 999);
+    cpum.peak = (uint16_t)clamp((int32_t)((uint64_t)el * 100u / CPU_BUDGET_US), 0, 999);   /* (K2: the elapsed peak, what the deadline saw; the average stays the render's) */
     if (cpum.peak >= cpum.hold || fm1_ms - cpum.hold_t >= CPU_HOLD_MS) {
         cpum.hold = cpum.peak;
         cpum.hold_t = fm1_ms;
     }
-    if (cpu_miss != cpum.miss) {
-        cpum.miss = cpu_miss;
+    if (cpu_snap.miss != cpum.miss) {
+        cpum.miss = cpu_snap.miss;
         cpum.miss_t = fm1_ms;
         cpum.seen = 1;
     }
 }
+#if DUELL_TEST_MODE
+/* K2, TIDE: the CPU truth in the header of HOME's three pages (MORPH, TIDE SETTINGS, AUTO TIDE), in the two gaps beside the page title: at the left the ELAPSED peak (cpu_el_pk: what the DMA deadline sees,
+ * the key scan nested in it included) in % of the half's time, the longest of the last 4 s (the window is read every 4 s), at the right the DMA periods missed recently (since the baseline, which moves up after CPU_MISS_SHOW_MS with no new miss; first CPU_HEAD_SETTLE_MS after power-on, so the start's own misses are left out; TEST > RESET sets it again). Drawn by ui_draw.c draw_head: the peak in a dim outlined pill beside part 1's capsule, the misses in a REC red badge beside part 2's, only when there are any (the colour output c is no longer used there). Read-only: its own window (CPU_W_HEAD), read every 4 s, nothing is cleared for anyone else */
+#define CPU_HEAD_SETTLE_MS 8000u                       /* the count starts from the misses at this time after power-on: the start (flash loads, USB enumerating, the first frames) is over then */
+#define CPU_MISS_SHOW_MS 60000u                        /* the badge goes after this long with no new miss; the baseline then moves up to the count */
+static struct { uint32_t hold, armed, t, base, seen, mt; } cpuh;   /* (seen: the count last drawn, mt: when it last changed) */
+static void cpu_head_arm(void)                         /* every header frame: once the start is over, the count's zero is the misses so far (ABOUT and TEST keep the raw count) */
+{
+    if (!cpuh.armed && fm1_ms >= CPU_HEAD_SETTLE_MS) {
+        cpu_snap_poll();
+        cpuh.base = cpu_snap.miss;
+        cpuh.armed = 1;
+    }
+}
+static __attribute__((noinline)) uint32_t cpu_head(char *l, char *r, uint16_t *c)   /* the two texts and their colour -> what a redraw depends on */
+{
+    uint32_t el, m, d = fm1_ms - cpuh.t;
+    if (d >= CPU_HOLD_MS) {                            /* the window: the longest elapsed half of the last 4 s, kept 4 s */
+        el = cpu_win_take(CPU_W_HEAD);
+        cpuh.t = fm1_ms;
+        if (d > 2u * CPU_HOLD_MS) {                    /* not looked at for a while: that window is old, left out; the next look is in a second (a fresh 1 s peak, not 4 s of nothing) */
+            el = 0;
+            cpuh.t = fm1_ms - CPU_HOLD_MS + CPU_WIN_MS;
+        }
+        el = el > 10u * CPU_BUDGET_US ? 999u : el * 100u / CPU_BUDGET_US;   /* (no overflow: el is under 10 budgets) */
+        cpuh.hold = el;
+    }
+    m = cpuh.armed ? cpu_snap.miss - cpuh.base : 0u;
+    if (m != cpuh.seen) {                              /* a new miss (or a reset): the minute starts again */
+        cpuh.seen = m;
+        cpuh.mt = fm1_ms;
+    } else if (m && fm1_ms - cpuh.mt >= CPU_MISS_SHOW_MS) {   /* a minute with no new miss: the badge goes, the next miss shows 1 */
+        cpuh.base = cpu_snap.miss;
+        cpuh.seen = m = 0;
+    }
+    m = m > 999u ? 999u : m;
+    fmt_int(l, cpuh.hold);
+    fmt_int(r, (int32_t)m);
+    *c = m ? T_REC : T_DIM;
+    return cpuh.hold + (m << 10) + 1u;
+}
+#endif
 static uint32_t cpu_recent(void) { return cpum.seen && fm1_ms - cpum.miss_t < CPU_RECENT_MS; }
 static uint32_t cpu_level(void)                        /* 0 fine, 1 near the limit, 2 at it or blocks missed */
 {
@@ -127,6 +206,10 @@ static uint32_t about_step(void)                       /* the animation's step (
 enum { MC_TEXT, MC_TITLE, MC_URL };
 typedef struct { const char *text; uint8_t kind; } menu_credit_t;
 static const menu_credit_t MENU_CREDITS[] = {
+    {"DUELL", MC_TITLE},                           /* b10 TIDE identity: the firmware TIDE is built on */
+    {"OSCILL/R: DUELL 1.1, a modified version of Felucca", MC_TEXT},
+    {"GPL-3.0", MC_TEXT},
+    {"", MC_TEXT},
     {"H\xFCgelton Instruments", MC_TITLE},  /* Felucca's own: above; these are ours too */
     {"Leo Kuroshita", MC_TEXT},
     {"CrispyZebra (PHASE waveforms): GPL-3.0", MC_TEXT},
@@ -194,7 +277,7 @@ static int32_t menu_text(const char *s, int32_t y, uint16_t col, int draw)
             uint32_t c = (uint8_t)s[n];
             line[n] = s[n];
             line[n + 1u] = 0;
-            pen += (prev ? kern(&AF_S, prev, c) : 0) + AF_S.g[glyph(&AF_S, c)].adv;
+            pen += (prev ? kern(&AF_S, prev, c) : 0) + AF_S.metrics[glyph(&AF_S, c) >> AF_S.psh].adv;
             prev = c;
             if ((pen + 8) >> 4 > 216)
                 break;
@@ -223,21 +306,14 @@ static uint32_t info_usb(void)                         /* 0 OFF, 1 WAIT, 2 BUS, 
 static int32_t about_sec[2];                           /* ABOUT's CREDITS and LICENSES headings, from the document's top (menu_document) */
 #define ABOUT_AIR 18                                   /* the air above and below the logo word */
 #define ABOUT_GAP 24                                   /* the gap under the logo word: more than a text line */
-#define ABOUT_SH 50                                    /* the lines below shift down: 17 + 28 + 17 + 20 + 20 + 24 against the old 78 */
+#ifndef DUELL_BUILD_DATE                               /* ABOUT's build date (build.py DUELL_BUILD_DATE pins it: the tools compare builds across days) */
+#define DUELL_BUILD_DATE __DATE__
+#endif
+#define ABOUT_SH 70                                    /* the lines below shift down: 17 + 28 + 17 + 20 + 20 + 20 + 24 against the old 78 (the attribution line takes three text lines) */
 /* the DUELL word of the logo (tools/gen_splash_logo.py SPL_WORD, 80 % of the splash's size), coverage blended onto the canvas in the text colour; (x, y) its top left */
 static void about_word_draw(int32_t x, int32_t y)
 {
-    uint32_t i, p = 0;
-    for (i = 0; i < (uint32_t)sizeof SPL_WORD; i++) {
-        uint32_t v = SPL_WORD[i] >> 4, n = (SPL_WORD[i] & 15u) + 1u, e = p + n;
-        for (; v && p < e; p++) {
-            int32_t px = x + (int32_t)(p % SPL_WORD_W), py = y + cv_oy + (int32_t)(p / SPL_WORD_W);
-            if (px < 0 || py < 0 || px >= (int32_t)cv_w || py >= (int32_t)cv_h)
-                continue;
-            cv_px[(uint32_t)py * cv_w + (uint32_t)px] = swap16(ux_mix(swap16(cv_px[(uint32_t)py * cv_w + (uint32_t)px]), T_TEXT, (int32_t)(v * 100u / 15u)));
-        }
-        p = e;
-    }
+    tide_word(x, y, 28, 6, 5, T_TEXT);                  /* (b10 TIDE identity: the splash's wordmark, ui_draw.c) */
 }
 static const char *about_cores(const char **l2)         /* the CORES line (owner, test3): two cores playing, or one (the second core off: it did not start, a fault, or the jobs paused: the automatic fallback);
                                                         * item 119: the long form is 234 px, the card holds 220: two lines, "CORES: 1 RUNNING" and "(SECOND CORE OFF)", every word whole */
@@ -270,11 +346,23 @@ static int32_t menu_document(int32_t y, int draw)
             vb[vi] = 0;
             ver = vb;
         }
-        about_word_draw(6, y0 + ABOUT_AIR);             /* the DUELL word of the logo at 80 %, air above and below it (LOGO_SCREENS_V1.png) */
-        cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP, &AF_M, "MultiMorphing Bitimbral Synthesizer", T_TEXT);
-        cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_M, "by OSCILL/R", T_TEXT);
-        cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 44, &AF_M, ver, 6);
-        cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 47, &AF_S, __DATE__, T_MID, T_BG);
+        about_word_draw(6, y0 + ABOUT_AIR);             /* the logo word, air above and below it (LOGO_SCREENS_V1.png; b10 TIDE: the TIDE wordmark) */
+        {   /* b10 TIDE identity (item 10): TIDE and its version, what it is built on (DUELL by OSCILL/R, Felucca by Huegelton Instruments), GPL-3.0; the line that it is
+             * not made or endorsed by OSCILL/R or M-VAVE is in LICENSES + SOURCE below */
+            char tl[40];                                 /* (drawn at once: on the stack) */
+#if defined(DUELL_TIDE_ID) && !DUELL_TEST_MODE                                  /* the build's id (build.py DUELL_TIDE_ID: the TIDE version, "+" off a release tag) */
+            const char *tv = DUELL_TIDE_ID;
+#else
+            const char *tv = DUELL_TIDE_VERSION[0] ? DUELL_TIDE_VERSION : ver;   /* (the TIDE_VERSION file: tools/gen_version.py) */
+#endif
+            str_cpy(tl, "TIDE ", sizeof tl);
+            str_cpy(tl + 5, tv, sizeof tl - 5u);
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP, &AF_S, "built on DUELL (OSCILL/R) and", T_TEXT);        /* the one attribution line, as the splash and the site say it, in three lines of the 223 px the document has */
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 20, &AF_S, "Felucca (H\xFCgelton Instruments),", T_TEXT);
+            cv_text(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 40, &AF_S, "GPL-3.0", T_TEXT);
+            cv_text_grad(6, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 64, &AF_M, tl, 6);
+            cv_text_r(222, y0 + ABOUT_AIR + 28 + ABOUT_GAP + 67, &AF_S, DUELL_BUILD_DATE, T_MID, T_BG);
+        }
         cv_text(6, y + 96, &AF_S, "CPU", T_MID);                 /* the meter: the 1 s average, the held peak, the misses */
         cpu_pct(b, cpum.avg);
         cv_text(34, y + 96, &AF_S, b, col);
@@ -343,6 +431,7 @@ static int32_t menu_document(int32_t y, int draw)
     }
     about_sec[1] = y + 12 - y0;
     y = menu_text("LICENSES + SOURCE", y + 12, T_THEME, draw);
+    y = menu_text("TIDE by pssdrnk: GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.", y, T_TEXT, draw);   /* (b10 TIDE identity, item 10) */
     y = menu_text("Fonts and icons: their licences travel with the source and the release files.", y, T_TEXT, draw);
     y = menu_text("NO WARRANTY", y, T_TEXT, draw);
     y = menu_text("Full notices in source:", y + 8, T_TEXT, draw);
@@ -590,28 +679,30 @@ static void test_sync(void)
 static void test_reset(void)                           /* K4: peak hold, missed blocks and the average window from zero */
 {
     cpu_meter_open();
-    cpum.base = cpu_miss;
+    cpum.base = cpu_snap.miss;
+    cpuh.base = cpu_snap.miss;                          /* (the header's count too) */
+    cpuh.armed = 1;
     test_t = fm1_ms ? fm1_ms : 1u;
 }
 static uint8_t test_pick = 0xFFu;                      /* K3's multi (0..15): the last one stepped to or loaded */
 static uint32_t test_slot(void)                        /* the multi K3 shows: the pick, else the one the music came from, else the first used */
 {
     uint32_t k;
-    if (test_pick < MU_SLOTS && project_used(test_pick))
+    if (test_pick < MU_SHOWN && project_used(test_pick))
         return test_pick;
     k = project_cur_slot();
-    if (k < MU_SLOTS && project_used(k))
+    if (k < MU_SHOWN && project_used(k))
         return k;
-    for (k = 0; k < MU_SLOTS; k++)
+    for (k = 0; k < MU_SHOWN; k++)
         if (project_used(k))
             return k;
-    return MU_SLOTS;                                   /* no multi at all */
+    return MU_SHOWN;                                   /* no multi at all */
 }
 static uint32_t test_missed(void) { return cpum.miss - cpum.base; }
 static void test_multi_name(char *b)                   /* "M05 NAME", or "NO MULTI" when the music did not come from one */
 {
     uint32_t k = project_cur_slot();
-    if (k >= MU_SLOTS) {
+    if (k >= MU_SHOWN) {
         str_cpy(b, "NO MULTI", 24);
         return;
     }
@@ -626,7 +717,7 @@ static uint32_t test_sig(void)                         /* what the panel shows *
     test_sync();
     h = (h ^ cpu_sig()) * 16777619u;
     h = (h ^ felucca_dbg.erase_max_us / 1000u) * 16777619u;
-    h = (h ^ (vcap_shown(0) * 16u + vcap_shown(1))) * 16777619u;
+    h = (h ^ (trk_nvoice(&trk[0]) * 16u + trk_nvoice(&trk[1]))) * 16777619u;
     test_multi_name(b);
     h = str_hash(h, b);
     for (k = 0; k < 2u; k++) {
@@ -644,7 +735,7 @@ static void graph_test(void)
     int32_t fill = (int32_t)(cpum.avg > 100u ? 100u : cpum.avg) * 224 / 100, tick = (int32_t)(cpum.hold > 100u ? 100u : cpum.hold) * 224 / 100, x;
     cv_text_on(10, 3, &AF_S, "MULTI", T_MID, T_BG);
     test_multi_name(b);
-    cv_text_r(230, 3, &AF_S, b, project_cur_slot() < MU_SLOTS ? T_TEXT : T_DIM, T_BG);
+    cv_text_r(230, 3, &AF_S, b, project_cur_slot() < MU_SHOWN ? T_TEXT : T_DIM, T_BG);
     for (k = 0; k < 2u; k++) {                         /* the parts: engine at the left, the patch at the right */
         int32_t y = 17 + 13 * (int32_t)k;
         v[0] = (char)('1' + k);
@@ -661,29 +752,29 @@ static void graph_test(void)
     cv_rect(8, 64, fill, 8, col);
     cv_rect(8 + 224 * (int32_t)CPU_WARN / 100, 72, 1, 3, T_MID);
     cv_rect(8 + (tick > 222 ? 222 : tick), 61, 2, 14, T_TEXT);
-    x = cv_text_on(10, 79, &AF_S, "PEAK HOLD", T_MID, T_BG);
+    x = cv_text_on(10, 77, &AF_S, "PEAK HOLD", T_MID, T_BG);
     test_pct(v, cpum.hold);
-    cv_text_on(x + 6, 79, &AF_S, v, cpu_col(plv, T_BG), T_BG);
+    cv_text_on(x + 6, 77, &AF_S, v, cpu_col(plv, T_BG), T_BG);
     fmt_int(v, (int32_t)(test_missed() > 9999u ? 9999u : test_missed()));
-    x = cv_text_r(230, 79, &AF_S, v, cpu_recent() ? cpu_col(2u, T_BG) : T_TEXT, T_BG);
-    cv_text_r(x - 6, 79, &AF_S, "MISSED", T_MID, T_BG);
-    cv_text_on(10, 93, &AF_S, cpu_word(), lvl ? cpu_col(lvl, T_BG) : T_MID, T_BG);
+    x = cv_text_r(230, 77, &AF_S, v, cpu_recent() ? cpu_col(2u, T_BG) : T_TEXT, T_BG);
+    cv_text_r(x - 6, 77, &AF_S, "MISSED", T_MID, T_BG);
+    cv_text_on(10, 89, &AF_S, cpu_word(), lvl ? cpu_col(lvl, T_BG) : T_MID, T_BG);
 #ifdef FELUCCA_METER_EST
-    cv_text_r(230, 93, &AF_S, "EMULATOR ESTIMATE", T_DIM, T_BG);
+    cv_text_r(230, 89, &AF_S, "EMULATOR ESTIMATE", T_DIM, T_BG);
 #endif
-    x = cv_text_on(10, 107, &AF_S, "ERASE", T_MID, T_BG);   /* DUELL 0.2.11: the longest flash erase since boot (storage_hw.c: the driver's own time) */
+    x = cv_text_on(10, 101, &AF_S, "ERASE", T_MID, T_BG);   /* DUELL 0.2.11: the longest flash erase since boot (storage_hw.c: the driver's own time) */
     if (felucca_dbg.erase_max_us) {
         fmt_int(v, (int32_t)((felucca_dbg.erase_max_us + 500u) / 1000u));
         str_cpy(v + str_len(v), "MS", 3);
     } else
         str_cpy(v, "--", 3);
-    cv_text_on(x + 6, 107, &AF_S, v, T_TEXT, T_BG);
-    v[0] = (char)('0' + vcap_shown(0));          /* DUELL 0.2.11: the VOICE CAP of part 1 / part 2 (voice.c vcap; the engine's own cap included) */
+    cv_text_on(x + 6, 101, &AF_S, v, T_TEXT, T_BG);
+    v[0] = (char)('0' + trk_nvoice(&trk[0]));    /* the notes part 1 / part 2 get now (the NOTES budget, the engine's own cap included; voice.c trk_nvoice) */
     str_cpy(v + 1, " / ", 4);
-    v[4] = (char)('0' + vcap_shown(1));
+    v[4] = (char)('0' + trk_nvoice(&trk[1]));
     v[5] = 0;
-    x = cv_text_r(230, 107, &AF_S, v, T_TEXT, T_BG);
-    cv_text_r(x - 6, 107, &AF_S, "VOICES", T_MID, T_BG);
+    x = cv_text_r(230, 101, &AF_S, v, T_TEXT, T_BG);
+    cv_text_r(x - 6, 101, &AF_S, "VOICES", T_MID, T_BG);
 }
 /* The TEST screen (ui.menu 3): the page TEST_PAGE drawn by the page code (header with its name TEST in the top middle, the K1..K4 cards, the
  * panel graph_test, the footer), page_over making it the current page; the LAYER state is put aside while it draws */
@@ -751,9 +842,9 @@ static void draw_menu(void)
         uint32_t r;
         sig = 2166136261u;
         for (r = 0; r < MI_COUNT; r++)
-            sig = (sig ^ menu_get(r)) * 16777619u;
+            sig = (sig ^ (r == MI_COLOR ? ux.pal : menu_get(r))) * 16777619u;   /* (COLOR: the theme applied: MENU > COLOR's steps wait for it, ui.c pal_q) */
     }
-    sig += ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings_hold * 3511u +
+    sig += ui.menu * 7u + ui.menu_sel * 131u + MENU_PAL_SIG * 1009u + settings_hold * 3511u +
           settings_leds * 6151u + ui_prefs * 4099u + song.rec * 65537u + song.sel * 13u +
           ui_rec_prefs * 92821u + ui_scr * 131071u +          /* (#157: SCREEN OFF's value redraws its row) */
           ui_prefs2 * 524287u + ui_idle * 1048573u +      /* (1.2: ANIM IDLE's value redraws its row) */
@@ -781,16 +872,18 @@ static void draw_menu(void)
         int32_t thumb = MENU_DOC_H * MENU_DOC_H / (max + MENU_DOC_H);
         if (thumb < 12) thumb = 12;
         for (pass = 0; pass < 2u; pass++) {
-            cv_begin(240, pass ? MENU_DOC_H - 124u : 124u, T_BG);
-            cv_bg = T_BG;
-            cv_oy = pass ? -124 : 0;
-            cv_scroll = 1;
-            menu_document(-scroll, 1);
-            cv_scroll = 0;
-            cv_rrect(229, 4, 3, MENU_DOC_H - 8, 1, T_LINE, T_BG);           /* the scroll bar */
-            cv_rrect(229, 4 + (max ? scroll * (MENU_DOC_H - 8 - thumb) / max : 0), 3, thumb, 1, T_MID, T_LINE);
-            cv_oy = 0;
-            cv_blit(0, H_HEAD + pass * 124u);
+            CV_BANDS(pass ? MENU_DOC_H - 124u : 124u) {
+                cv_begin(240, pass ? MENU_DOC_H - 124u : 124u, T_BG);
+                cv_bg = T_BG;
+                cv_oy = pass ? -124 : 0;
+                cv_scroll = 1;
+                menu_document(-scroll, 1);
+                cv_scroll = 0;
+                cv_rrect(229, 4, 3, MENU_DOC_H - 8, 1, T_LINE, T_BG);           /* the scroll bar */
+                cv_rrect(229, 4 + (max ? scroll * (MENU_DOC_H - 8 - thumb) / max : 0), 3, thumb, 1, T_MID, T_LINE);
+                cv_oy = 0;
+                cv_blit(0, H_HEAD + pass * 124u);
+            }
         }
         cv_begin(240, 240 - (H_HEAD + MENU_DOC_H), T_BG);
         about_keys(ABOUT_KY - (H_HEAD + MENU_DOC_H));
@@ -806,30 +899,32 @@ static void draw_menu(void)
     split = menu_split(first, n, pg, end);
     for (pass = 0; pass < 2u; pass++) {
         int32_t top_y = pass ? (int32_t)split : H_HEAD;
-        cv_begin(240, pass ? 240u - split : split - H_HEAD, T_BG);
-        cv_oy = -top_y;                               /* drawn in screen rows */
-        if (!pass)
-            menu_tabs();
-        for (k = 0; k < n; k++)
-            if (menu_place(first + k, &u) == pg && mu_y(u) + (int32_t)menu_units(first + k) * MU_P - 1 > top_y && mu_y(u) - 1 < top_y + (int32_t)cv_h)
-                menu_row(first + k);
-        if (pass) {
-            {
-                int32_t xe = mtab_pages(menu_tab()) > 1u ? 196 : 232;
-                if (MI_READONLY(ui.menu_sel))                 /* TEST, ABOUT: SELECT picks the row, KNOB 1 right opens it */
-                    cv_key_row(8, xe, MK_Y, (const khint_t[2]){KEYS[0], KEYS[2]}, 2u, 3u, T_BG);
-                else
-                    cv_key_row(8, xe, MK_Y, KEYS, menu_valued(ui.menu_sel) ? 2u : 1u, 3u, T_BG);
-                if (xe < 232) {                               /* the page, as every page's counter: "1/2" */
-                    char pc[8] = "1/2";
-                    pc[0] = (char)('0' + menu_page() + 1u);
-                    pc[2] = (char)('0' + mtab_pages(menu_tab()));
-                    cv_text_r(232, MK_Y - 3, &AF_S, pc, T_MID, T_BG);   /* item 138: on the hint words' line (gfx.c cv_key_hint: y - 3); MK_Y + 3 put its capitals on rows 231 .. 242, past the screen's last row */
+        CV_BANDS(pass ? 240u - split : split - H_HEAD) {
+            cv_begin(240, pass ? 240u - split : split - H_HEAD, T_BG);
+            cv_oy = -top_y;                               /* drawn in screen rows */
+            if (!pass)
+                menu_tabs();
+            for (k = 0; k < n; k++)
+                if (menu_place(first + k, &u) == pg && mu_y(u) + (int32_t)menu_units(first + k) * MU_P - 1 > top_y && mu_y(u) - 1 < top_y + (int32_t)cv_ph)
+                    menu_row(first + k);
+            if (pass) {
+                {
+                    int32_t xe = mtab_pages(menu_tab()) > 1u ? 196 : 232;
+                    if (MI_READONLY(ui.menu_sel))                 /* TEST, ABOUT: SELECT picks the row, KNOB 1 right opens it */
+                        cv_key_row(8, xe, MK_Y, (const khint_t[2]){KEYS[0], KEYS[2]}, 2u, 3u, T_BG);
+                    else
+                        cv_key_row(8, xe, MK_Y, KEYS, menu_valued(ui.menu_sel) ? 2u : 1u, 3u, T_BG);
+                    if (xe < 232) {                               /* the page, as every page's counter: "1/2" */
+                        char pc[8] = "1/2";
+                        pc[0] = (char)('0' + menu_page() + 1u);
+                        pc[2] = (char)('0' + mtab_pages(menu_tab()));
+                        cv_text_r(232, MK_Y - 3, &AF_S, pc, T_MID, T_BG);   /* item 138: on the hint words' line (gfx.c cv_key_hint: y - 3); MK_Y + 3 put its capitals on rows 231 .. 242, past the screen's last row */
+                    }
                 }
             }
+            cv_oy = 0;
+            cv_blit(0, (uint32_t)top_y);
         }
-        cv_oy = 0;
-        cv_blit(0, (uint32_t)top_y);
     }
 }
 static void enc_drop(void)                             /* knob turns nobody takes */

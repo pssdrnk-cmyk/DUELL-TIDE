@@ -29,6 +29,10 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define DUELL_BENCH 0            /* DUELL developer switch (-DDUELL_BENCH=1; env DUELL_BENCH=1 + BENCH_TAG for tools/build.py): 1 builds in MENU > SYSTEM > BENCH, the
                                   * stage-timing bench (src/bench.c, docs/BENCH_GUIDE.md). 0 (every normal build) leaves all of it out: not a byte of it is compiled */
 #endif
+#ifndef DUELL_VCAP
+#define DUELL_VCAP DUELL_BENCH   /* the 0.2.11 VOICE CAP (voice.c vcap_poll), superseded by the NOTES budget (budget.c) on the unit: built only where the bench holds the budget open
+                                  * (bench_bopen: bnotes 0) and in the tests that measure it (-DDUELL_VCAP=1 or #define before the includes) */
+#endif
 #if defined(DUELL_CORE1_PROBE) && DUELL_CORE1_PROBE
 #error "DUELL_CORE1_PROBE (BENCH-B's synthetic core 1 rows) is not in this line: two-core stage 1 brings core 1 (twocore.c)"
 #endif
@@ -62,6 +66,14 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define ACCENT_MAX 24
 #endif
 #define ACCENT_V0 110
+#define ACID_WAVE 7u             /* b8 ACID: ANALOG WAVE 7 (saw) and 8 (square) play like a 303 (voice.c acid_on, trk_vmode, the accent in track_render); work/b8/acid/DESIGN.md */
+#ifndef ACID_BASE
+#define ACID_BASE 10836         /* Q15 = Q15_FROM_127(42): an ACID note's level whatever its velocity; an accent bursts from it up to unity (32767) with ENV 2: +9.6 dB at the peak. Above unity the amp ramp's multiplies overflow (dsp.c mulq15) */
+#endif
+#ifndef ACID_PUSH
+#define ACID_PUSH 12000         /* Q8 dial steps at a full capacitor (one accent at RES 100 charges it to 0.2: ~10 of the 82 steps, stacked accents to 0.4); the 303 probe's accent centroid 1.0 .. 1.34 x a plain note's (Open303 1.0 .. 1.3) */
+#endif
+#define ACID_ACCDEC 73           /* ENV_EXP index of the accent's forced ENV 2 decay: 10000^(73/127) = 200 ms to 99 % (the forum figure of research-B:204, not a primary source) */
 #define ACCENT_V1 127
 static inline int32_t accent_lift(uint32_t vel, int32_t envq15)
 {
@@ -71,6 +83,9 @@ static inline int32_t accent_lift(uint32_t vel, int32_t envq15)
         vel = ACCENT_V1;
     return (envq15 * ACCENT_MAX * (int32_t)(((vel - ACCENT_V0) * 256u + 8u) / (ACCENT_V1 - ACCENT_V0))) >> 15;   /* weight Q8: 256 at 127, so the top is the old lift exactly (envq15 <= 32768: below 2^31) */
 }
+/* the velocity the accent reads: the key's (mvel), not the voice's own vel, which UNISON lowers to keep the level (vel * 36 / 100 or / 2: it never reached 111). A LEGATO
+ * key under a harder held one keeps the harder (vel is the larger there); everywhere else the two are the same */
+#define ACCENT_VEL(v) ((v)->mvel > (v)->vel ? (v)->mvel : (v)->vel)
 /* which way a filter opens, Q7 of the lift: MODE 0 (LP) +127 .. 64 (BP) 0 .. 127 (HP) -127; filter 2's TYPE (params.c TT_*: OFF 0, LP 1, BP 2, HP 3, NOTCH 4, LADDER 5, COMB 6): LP, LADDER +127, HP -127, rest 0 */
 static inline int32_t accent_dir_mode(int32_t mode) { return 127 - 2 * (mode < 0 ? 0 : mode > 127 ? 127 : mode); }
 static inline int32_t accent_dir_type(uint32_t ty) { return (ty == 1u || ty == 5u) ? 127 : ty == 3u ? -127 : 0; }
@@ -96,16 +111,21 @@ enum {
     F_CREL,                                /* .. RELEASE, 0..12: CMP_REL_MS, shown in ms, from 1000 in s */
     F_TUNEHZ,                              /* DUELL 0.2.22: MASTER TUNE, the value is the frequency of A4 in 0.1 Hz (TUNE_MIN .. TUNE_MAX), shown "440.0" Hz */
     F_DSEMI,                               /* TWIN FILTER (ext.h, cloud job B): filter 2's OFFSET, whole dial steps shown as semitones with one decimal (a dial step is 0.1103 octave: 1.3236 st), "+1.3" "-83.4" st */
-    F_N99                                  /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
+    F_N99,                                 /* DUELL 1.1 (owner 2026-10-25): FM6's AMP ENV knobs, 0..127 shown as the DX7 number 0..99 of the loudest carrier ((v * 99 + 63) / 127), no unit (appended: the fmt numbers are in the protocol) */
+    F_DEG,                                 /* a phase 0..127 shown as 0..357 degrees ("deg": the LFO's start PHS; appended) */
+    F_VOWL,                                /* VOICE's vowel position 0..127 shown as A E I O U with ">" between two ("A>E"; appended) */
+    F_CLFO                                 /* b10: the delay colour LFO, 0 shown OFF, 1..15 the number (appended) */
 };
 
 typedef struct {
     const char *label;
     uint8_t fmt;
+    uint8_t unit;               /* F_INT / F_ENUM optional unit: U_*, 0 = none (an index into UNIT_STR; 1.0.0-b9 SP4: 16 B a descriptor, was 20; sits in the padding after fmt, so every initialiser is {label, fmt, unit, min, max, def, names}) */
     int16_t min, max, def;
     const char *const *names;   /* F_ENUM */
-    const char *unit;           /* F_INT / F_ENUM optional unit */
 } param_desc_t;
+enum { U_NONE, U_CT, U_MS, U_ST, U_HZ };
+static const char *const UNIT_STR[] = {"", "ct", "ms", "st", "Hz"};
 
 enum {                          /* per-track parameters */
     P_LEVEL,                    /* DUELL 0.2.19 (owner, 2026-10-15): the MIXER LEVEL, the part's volume the player sets on the mixer: NOT part of a patch (a sound load,
@@ -171,19 +191,20 @@ enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
     G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX,
     G_RSIZE, G_RDAMP, G_CRATE, G_CDEPTH,
-    G_MIDI, G_SYNC, G_ROUTE, G_INFO,   /* G_ROUTE: MIDI IN, 0 PARTS (the parts' MIDI channels, GLO > MIDI; seq.c midi_pch), 1 SEL;
+    G_DMRATE, G_DMDEP, G_ROUTE, G_DMODE,   /* G_DMRATE / G_DMDEP / G_DMODE: the delay's modulation RATE and DEPTH and its MODE, on the retired ids of G_MIDI, G_SYNC and G_INFO (the old SYSTEM page's; U12: the stored ids do not move). G_ROUTE: MIDI IN, 0 PARTS (the parts' MIDI channels, GLO > MIDI; seq.c midi_pch), 1 SEL;
                                         * 2..4 (older: CH5-8 CH9-12 CH13-16) read as PARTS */
-    G_SLOT, G_NAME, G_LOAD, G_SAVE,
+    G_SLOT, G_SHMOD, G_LOAD, G_SAVE,   /* G_SHMOD: SHIM's MOD, on the retired id of G_NAME (a card NAME no page showed) */
     G_ENGSEL, G_RLOCUT,         /* G_ENGSEL: no page, the editor switches the engine with a SET of G_ENGSEL. G_RLOCUT (0.2.14, on the id of the unused
                                  * G_ENGGO, so G_COUNT and the formats do not move): the REVERB LOW CUT, K4 of the REVERB page. 0 OFF, 1..127 a one-pole
                                  * high-pass on the reverb bus's input, 20 Hz .. 450 Hz exponential (F_LOCUT; fx_bus.c rev_locut); default 61 (88 Hz).
                                  * DUELL 0.2.22 (owner, 2026-10-16): 20 Hz .. 2 kHz over the same 127 values (3.7 % a step), default 75 = 299 Hz */
-    G_CLRSEQ, G_INITSND,
+    G_DCLFO, G_INITSND,         /* G_DCLFO (b9): the delay colour's slow LFO (CLFO, page COLR LFO), 0..15 (x 8 COLR units each, CLFO_MAX), 0 = off, on the id of the retired CLEAR PATTERN go-value G_CLRSEQ (stored 0, read by
+                                 * nothing). The project stores it in g[] as ever; a multi keeps it in bits 1..4 of its byte 5 (multi.c), so MU_NG and the record do not move */
     G_RTYPE,                    /* REVERB TYPE: 0 ROOM, 1 SPRING, 2 HALL (1.2, the power-on default), 3 SHIM, 4 RESO (JIANT ports), 5 PLATE (0.2.14) (fx.c). Was
                                  * G_DRCH, the GM drum part's MIDI channel (inert since 1.0, never read) */
     G_PINGSPREAD,               /* DUELL: the PING-PONG's SPREAD (DLY 2), 0..100 %, stored directly, default 100 (GP def; 0 = the repeats
                                  * centred). Was G_DRLVL, the GM drum part's level (inert) */
-    G_FREE26,                   /* UNUSED since 0.2.16 (stored 0, read by nothing): was the delay's PING-PONG switch (0 OFF, 1 ON; before that G_DRREV, the GM
+    G_SHPITCH,                  /* SHIM's PITCH (0.2.19). The id was G_FREE26, unused since 0.2.16 (stored 0, read by nothing): was the delay's PING-PONG switch (0 OFF, 1 ON; before that G_DRREV, the GM
                                  * drum part's reverb send, inert since 1.0). PING-PONG is a MODE of the delay now (G_DMODE 1). The id stays so G_COUNT
                                  * and the formats do not move */
     G_COUNT
@@ -208,7 +229,7 @@ enum {                          /* global parameters */
 #define BM_DEF 8                                         /* 0.2.24 (owner): ON at 200 Hz on a new unit (BM_HZ[7]); a DEVICE setting since 0.2.24: the settings record's byte [15][21] (ui.c ms_sync, stored + 1: 0 = the default), not the project's or a multi's */
 static const uint16_t BM_HZ[BM_N] = {40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400};   /* the corners in Hz (fx.c bass_mono's table BM_C is computed for these) */
 /* DUELL 0.2.21 (owner, 2026-10-16): the MASTER COMPRESSOR, the page COMP (GLO, after BASS MONO). Four more pseudo ids past the stored globals, like G_BM: G_CT THRESH (0..40 = -40 .. 0 dB),
- * G_CR RATIO (0 = 1:1, the stage is not run; 1.5 2 3 4 6 10 20 INF), G_CA ATTACK (0.1 .. 100 ms), G_CL RELEASE (20 ms .. 2 s). They live in song.cp[0..3] and are a DEVICE setting (not in a multi, not in the
+ * G_CR RATIO (0 = 1:1, the stage is not run; 1.5 2 3 4 6 8 12 INF), G_CA ATTACK (0.1 .. 100 ms), G_CL RELEASE (20 ms .. 2 s). They live in song.cp[0..3] and are a DEVICE setting (not in a multi, not in the
  * project): packed in the settings record's retired `rsv` word (settings_persist.c; cmp_set). The tables below are the nominal times; fx.c holds the shift triples that realise them (comp_stage) */
 /* DUELL 0.2.22 (owner, 2026-10-16): the sidechain's MIDI SETUP is a DEVICE setting, not part of a sound. GLO > SIDECHAIN: per part (K1 P1 CH, K2 P1 NOTE, K3 P2 CH, K4 P2 NOTE) the MIDI channel and the note
  * that start the DUCK of a part whose DUCK SRC is MIDI (fx.c duck_note, sc_midi[]). Kept in the settings record (favorites.factory[15][14..17], 0 = the default; ui.c ui_sc_set), never in a patch, a multi or the
@@ -247,11 +268,7 @@ static uint32_t cmp_set;                                 /* the settings record'
  * in DUEL (its sides are the two parts). 0.2.25 (owner): the master saturator of 0.2.23 / 0.2.24 (G_SD, the DRIVE) is removed; its stored byte [20] is ignored */
 #define G_WD (G_COUNT + 5)
 #define WD_DEF 100
-#define G_SHPITCH G_FREE26
-#define G_SHMOD G_NAME
 enum { SHP_UP, SHP_DOWN, SHP_N };          /* 0.2.25 (owner): BOTH (2) is gone; a stored 2 (or any value out of range) reads UP (project.c, fx_bus.c rev_shimx) */
-#define G_DMDEP G_SYNC
-#define G_DMRATE G_MIDI
 /* DUELL 0.2.16 (owner, 2026-10-15): the DELAY's MODE, the first delay setting (DELAY 1/2 K1), on the id of the inert G_INFO (a "CPU" reading nothing wrote or read
  * since 1.2): 0 DIGITAL (the plain delay: clean repeats, low-passed feedback (COLR), the optional modulation; the old delay with PING off), 1 PING-PONG
  * (the repeats alternate left and right, the modulation too; the old PING ON), 2 RANDOM, 3 OCT UP (clock-synced events on the repeats, 0.2.14's RAND and OCT+);
@@ -259,7 +276,6 @@ enum { SHP_UP, SHP_DOWN, SHP_N };          /* 0.2.25 (owner): BOTH (2) is gone; 
  * PING-PONG switch on G_FREE26: those records are refused, MU_VER 4 / PROJ_REV 2.) In RANDOM and OCT UP the DELAY 2/2 card MDEPTH (G_DMDEP) is CHANCE, the share of
  * clock edges that fire an event, and RATE is faded (params.c dly_mode_why); SPREAD (G_PINGSPREAD) sets the width of PING-PONG and of the events and is
  * faded in DIGITAL. Only in STEREO and LAYER (SPLIT keeps the plain delay) */
-#define G_DMODE G_INFO
 enum { DMD_DIGITAL, DMD_PING, DMD_RAND, DMD_OCTUP, DMD_N };
 /* The CHANCE a switch of MODE into RANDOM / OCT UP starts with when the stored DEPTH / CHANCE is 0 (owner, 2026-10-15: "a reasonable level when switching modes"). The CHOMPI
  * TEMPO firmware has no such number: its randomness knob starts at 0 (granularDelay.h alt_control_ = 0) and an event fires on 0.5 x that share of the clock edges
@@ -326,7 +342,7 @@ static uint32_t eq_hz_q8(uint32_t band, int32_t r)
 enum { V_POLY, V_MONO, V_LEGATO, V_UNISON };   /* P_VOICE */
 typedef struct {
     uint8_t note, vel, gate, active;
-    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release */
+    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, VSTAGE_FADE (4) voice_kill's one-block fade */
     uint8_t side;                /* SPREAD (fx.c mix_spread): 0 left of PAN, 1 right; set as the voice starts */
     uint8_t stage2;              /* ENV 2 (DUELL, voice.c env2_tick): 0 off, 1 attack, 2 decay/sustain, 3 release */
     uint8_t chn;                 /* the voice chain (cloud job B, voice_chain.h): where the voice was last block, VCH_OFF / VCH_RUN, VCH_FRESH for a note that has not rendered, VCH_NEW seen by the stage hooks on a first block (in the pad byte before env: voice_t keeps its size) */
@@ -334,7 +350,7 @@ typedef struct {
     int32_t env_out;             /* last control-rate amplitude, Q15 */
     int32_t env2;                /* ENV 2, Q24 (ticked only while a matrix slot reads it) */
     int32_t pitch16, pitch_cur;  /* 1/16 semitone, with glide */
-    int32_t gstep;               /* glide TIME mode: 1/16 st per control tick, 0 = RATE mode */
+    int32_t gstep;               /* glide TIME mode: 1/65536 of a 1/16 st per control tick, 0 = RATE mode */
     int32_t fine;                /* unison detune: phase increment * (1 + fine / 4096) */
     uint32_t ph[3];
     int32_t s[8];                /* engine state (filters, envs) */
@@ -342,16 +358,18 @@ typedef struct {
     int16_t ufw[3];              /* .. its output's weights of the last block (input, band-pass, low-pass; Q10): the next one ramps from them */
     uint8_t uft;                 /* .. how it last ran: 0 not (from rest next time), 1 12 dB, 2 24 dB, 3 bypassed while sounding (voice.c uf_edge) */
     int32_t apitch;              /* ARP TARGET (SPEC 2.3, voice.c atg_voice): the arp pitch of the masked units, 1/16
-                                  * semitone, with glide */
+                                  * semitone << 16, with glide */
     int32_t again;               /* .. their level (the arp's gate and accent), Q15, smoothed */
     uint32_t age;
     uint16_t xg;                 /* LAYER XFADE: this note's gain, Q15 (voice_start from track_t lay_xg), 0 = unity: the sound untouched */
     uint8_t mvel;                /* mod.c: the note-on velocity (before UNISON scaling) and RAND of the note */
     int16_t mrnd;
+    uint16_t gfrac;              /* glide: the position below pitch_cur, 1/65536 of a 1/16 st (in the pad before lastc: voice_t keeps its size) */
     int32_t lastc, lastd, offc;       /* hunt3 (voice.c voice_step): this voice's contribution to the last sample of its last block, and the change from the sample before (lastd); the step a re-strike made and still has to cancel */
     uint8_t offn, offp;          /* .. the samples of that step's decay left; 1: voice_start asks for the step to be measured in the next block */
     uint16_t msl;                /* MORPH (voice.c uf_run): the multimode filter's SLOPE cross-fade of the part, weight Q15 | 0x8000 when the other end is 24 dB; 0 = none */
 } voice_t;
+#define VSTAGE_FADE 4u                  /* voice_t stage: fading out over this block (voice.c voice_kill) */
 enum { VCH_OFF, VCH_NEW, VCH_RUN, VCH_FRESH };   /* voice_t.chn (voice_chain.h): last block on the plain path / the first block in the chain (stages start from rest) / in the chain / a note that has not rendered yet */
 
 typedef struct {                 /* an LFO's state (voice.c lfo_tick): track_t's LFO 1 (its lfo_* fields) and LFO 2 */
@@ -394,7 +412,7 @@ typedef struct {                 /* per-voice control-rate modulation, computed 
  * of a part to its side); STEREO: Felucca's mix (free PAN, SPREAD, the shared stereo buses); LAYER: STEREO's mix, and every note
  * played (keys, MIDI channel 1) reaches both parts as input, each handling it by its own arp / chord (seq.c key_on, midi_control.c midi_play). The values are stored (the settings byte, ui.c
  * ui_mode_set; a learned MIDI CC, MODE has no shipped number): append-only.
- * duell_mode_req: what the UI (MODE page, the settings) or a learned MODE CC asks for; duell_mode: the mode the notes are routed by (the
+ * duell_mode_req: what the UI (MODE page; TIDE: the MODE row of TIDE SETTINGS; the settings) or a learned MODE CC asks for; duell_mode: the mode the notes are routed by (the
  * audio ISR takes the request at a block start: seq.c mode_apply, every note let go); the mix follows it through a ~50 ms
  * dip (fx.c dm_step). The product's default is SPLIT: the settings byte 0 (ui_input.c mode_settings) and every power-on
  * (ui_power_on / the boot path). The bare DSP (hostsim, regress, the goldens) starts in STEREO, Felucca's mix bit for bit */
@@ -403,12 +421,24 @@ static volatile uint8_t duell_mode_req = DM_STEREO;
 static uint8_t duell_mode = DM_STEREO;
 /* the morph's flag (rule 3b): PAN and SPREAD morph only while they are heard, in STEREO and LAYER (not in SPLIT) */
 #define duell_stereo (duell_mode != DM_SPLIT)
-/* the MODE page's other two (KNOB 3..4), kept with the settings ([15][6..7], ui.c) and in each MULTI; XFADE and SPLIT have no shipped CC number (MIDI_MAP_DEFAULTS.csv: typed lines only).
+/* the MODE page's other two (KNOB 3..4; TIDE: the XFADE and SPLIT rows of TIDE SETTINGS), kept with the settings ([15][6..7], ui.c) and in each MULTI; XFADE and SPLIT have no shipped CC number (MIDI_MAP_DEFAULTS.csv: typed lines only).
  * (item 160: mix_bal, the old BALANCE, and its audio stage fx.c bal_lvl are gone; PERFORM's SELECT = BALANCE moves the two MIXER LEVELs, ui_input.c perf_balance);
  * mix_xf: XFADE 0..100 % (0 = off; LAYER only: a note's velocity shares its level between the parts, seq.c xf_gain);
- * mix_split: SPLIT 0 = OFF, else the note + 1 (LAYER only: below it part 1 plays alone, at or above it part 2) */
+ * mix_split: SPLIT 0 = OFF, 1..128 the note + 1, SPLIT_MIDDLE (1.0.0-b7) the middle of the keys as played (seq.c split_note: the 14th of the 27 keys starts part 2, it moves with
+ * OCT- / OCT+); LAYER: below it part 1 plays alone, at or above it part 2 (TIDE_PLAYSEL: STEREO and DUEL too with the part selection on BOTH, the keys only) */
 static volatile uint8_t mix_xf, mix_split;
+#define SPLIT_MIDDLE 129u        /* (the first free code: b6 reads it from the settings or a multi as OFF; docs/design/PLAY_MODE_SELECT.md) */
+/* TIDE_PLAYSEL (1.0.0-b7, an experiment, docs/design/PLAY_MODE_SELECT.md): ALGORITHM on the BOTH pages picks PART 1, LAYER, STEREO, DUEL, PART 2 (the selection and the
+ * output MODE in one; ui_input.c algo_input) and SPLIT plays in STEREO / DUEL with BOTH (seq.c keyboard_block). 0: b6's PART 1 / BOTH / PART 2, SPLIT LAYER's only.
+ * (kept as a name: the PLAY-mode selector rows are always in) */
+#ifndef TIDE_PLAYSEL
+#define TIDE_PLAYSEL 1
+#endif
 
+#ifndef DUELL_PRESETS
+#define DUELL_PRESETS 1          /* 1: Felucca's engine preset tables (eng_*.c, engine_t.presets) are built; no firmware code reads them, the host tests render them (tests/hostsim.c,
+                                  * regress.c ..). tools/build.py passes -DDUELL_PRESETS=0 for the unit (1,6 KB of flash); DUELL_PRESETS=1 in its environment builds them in */
+#endif
 typedef struct {
     const char *name;
     int8_t e[8];                 /* P_E0..P_E7 (signed: an interval below the note; every value fits) */
@@ -429,8 +459,10 @@ typedef struct {                 /* an engine (engines.c ENGINES[]; the eng_*.c 
     const char *name;            /* "ANALOG" (PRESETS, the editor) */
     const char *page_title[2];   /* EDIT 1 and EDIT 2 */
     param_desc_t edit[8];        /* P_E0..P_E7 */
-    const preset_t *presets;
+#if DUELL_PRESETS
+    const preset_t *presets;     /* Felucca's presets: only the host tests read them (tools/build.py passes DUELL_PRESETS=0 for the unit: sounds.c has the factory sounds) */
     uint8_t npresets;
+#endif
     uint8_t knob[4];             /* HOME: the four parameters on KNOB 1..4 */
     uint8_t poly;                /* voice cap for POLY and UNISON, 0 = NVOICE */
     uint8_t sampled;             /* 1 = plays recorded material (a position, not a phase): voice.c keeps
@@ -533,7 +565,7 @@ _Static_assert(sizeof(motion_store_t) == 388u, "motion disk layout (FUN10)");
  * The stores of before 0.2.14 held 8 detents a bit; they are no longer read, so nothing converts them */
 #include "ins_bits.h"
 #define PS_SLOTS 32u             /* DUELL: the pattern slots P01..P32, ONE list for the whole device (patslot.c, SAVE > PATTERNS) */
-#define MU_SLOTS 16u             /* DUELL: the multis M01..M16 (project.c multi.c, SAVE > MULTI) */
+#define MU_SLOTS 26u             /* b10 U4 + MR9: the multis M01..M26, all stored (project.c multi.c, SAVE > MULTI; MU_SHOWN follows it): storage.c holds exactly M26 (13 objects, multi.c MU_OBJ_ALL: a 27th needs a new object); M25, M26 are the drone multis */
 
 #define NMSLOT 8u
 #define MOD_NK 16u               /* DUELL 1.1: per-block parameters a part's block can hold modulated at once: the 8 slots' destinations plus the DEST cards' virtual routes (mod.c VR, at most 7 distinct destinations) */
@@ -554,6 +586,10 @@ typedef struct {                 /* the part in mix_part, its window: one per pa
     int16_t keep[MOD_NK];
 } mod_win_t;
 
+/* The multis SHOWN (lists, labels, pickers, previews, MIDI program change) are the stored ones: since b10 U4 every position has a flash slot (storage.c), the factory multi shows
+ * while it holds nothing (multi.c mu_fact), and SAVE writes over it */
+#define MU_SHOWN MU_SLOTS
+#define MU_DRONE(k) ((uint32_t)(k) - 24u < 2u)   /* M25, M26: the built-in drone multis (TIDE plays them as STYLE DRONE, tide_ui.c tide_drone); since b10 the list is in genre order (tools/factory_multis.py DISPLAY_ORDER): M17 .. M24 are ROM-only multis of other genres */
 typedef struct track {
     int16_t p[EXT_P_LEN];        /* P_COUNT ids, a gap at 127, then the NX extension slots (ext.h XV); every store and format still counts P_COUNT */
     uint8_t engine, preset;      /* engine: what the audio ISR renders */
@@ -598,6 +634,7 @@ typedef struct track {
     uint8_t seq_hold;            /* last step slides: keep the notes until the next step */
     uint8_t slide_glide;         /* next legato note glides (slide) */
     uint8_t rat_left;            /* RATCH: repeats of the playing step still to come (seq.c seq_ratchet) */
+    int16_t acid_y;              /* ACID (b8): the accent push's capacitor, Q15 (voice.c), in the padding after rat_left */
     uint32_t seq_off;
     uint8_t seq_active;          /* any step programmed */
     uint8_t rskip_idx;           /* live recording put notes into the step about to play: */
@@ -612,6 +649,9 @@ typedef struct track {
     uint8_t rh_ties;             /* TIE steps written after it */
     uint8_t rh_last;             /* the last of them; rh_bak: what it held (an early release puts it back) */
     step_t rh_bak;
+    uint32_t rec_wr[2];          /* TIDE REC = REPLACE: the steps live recording wrote into this pass (bit idx), cleared two steps after the playhead (seq.c rec_put) */
+    uint32_t arp_skip;           /* ARP SEQ live recording: the arp step (arp_idx + 1) a key was recorded into ahead; the arp leaves it out (0: none; seq.c rec_arp_note, arp_fire) */
+    uint32_t rec_rsv;            /* (keeps track_t a multiple of 16 bytes) */
     /* mono */
     uint8_t mono_stack[8];
     uint8_t nmono;
@@ -651,7 +691,9 @@ typedef struct track {
     int32_t m_cycle, f2add, venv;
     uint8_t f2m, cym, cy;
     uint8_t vrm;                 /* DUELL 1.1: the DEST cards' virtual per-note routes (mod.c VR): bit 0 CYCLE to TWIN CUTOFF, bit 1 CYCLE to PITCH */
-    uint8_t rsv_sz[2];           /* (sizeof(track_t) a multiple of 16: below; 0.2.14: 12 more, the step_t hit / acc bytes and the drum notes gone; DUELL: 15 before ENV 2, LFO 2; 4b: 7 before mf; EQ: 4 less for P_COUNT 113; DUCK: 4 more for 119; DUCK 3: 6 more for 122, the old pad of 6 gone and 4 added; ENV 2 / LFO 2 DEST: 2 more for 127, the p[] growth padded to 4; wave 0: p[] 17 entries longer = 34 B, the pad 4 -> 2) */
+    union { uint8_t rsv_sz[1]; uint8_t lvc; };   /* TIDE live graphs: the pad byte, or the latest note's effective cutoff of filter 1, Q8 dial steps >> 7 (voice.c, voice_chain.c write it; ui_live.c reads it; the audio never does; filter 2's is tide_lvc2[]) */
+    /* (sizeof(track_t) a multiple of 16: below; 0.2.14: 12 more, the step_t hit / acc bytes and the drum notes gone; DUELL: 15 before ENV 2, LFO 2; 4b: 7 before mf; EQ: 4 less for P_COUNT 113; DUCK: 4 more for 119; DUCK 3: 6 more for 122, the old pad of 6 gone and 4 added; ENV 2 / LFO 2 DEST: 2 more for 127, the p[] growth padded to 4; wave 0: p[] 17 entries longer = 34 B, the pad 4 -> 2; F02: arp_nz, 2 -> 1) */
+    uint8_t arp_nz;              /* (the pad's other byte) bit 0: arp_note, bit 1..3: arp_ch[0..2] sounds MIDI note 0 (its value 0 reads as none; seq.c ARP_UP) */
 } track_t;
 /* the audio ISR indexes trk[] with a multiply by a small immediate and a shift while the size is a multiple of 16; 1.5's
  * new track parameters (the INSERT, the filter TYPE, ENV SYNC) and state would make it no multiple (the constant
@@ -675,6 +717,7 @@ typedef struct {
     uint8_t grid;                /* 2: NAME (ui_name.c): no key plays (0 otherwise; 1 was the DRUM grid, gone in 0.2.14) */
     uint8_t rec;                 /* live recording armed: bit per track */
     uint8_t sel;                 /* selected track 0..NTRK-1: keys, pages, editor */
+    uint8_t both;                /* 1.0.0-b5: the selection is BOTH parts (PART 1 / PART 2 / BOTH, ALGORITHM): the keys, the morph and the glide act on both, as the PLAY MODE says; sel stays the last single part, the one the edit pages edit */
     int8_t octave;
     uint32_t tick;               /* sub-blocks since play */
     uint32_t cpu_q8;             /* audio ISR load, 1/256 */
@@ -700,9 +743,37 @@ static song_t song HOTG_BSS;
  * source, 0 INT, 1 USB, 2 TRS (a fixed choice: itself; AUTO: the port it locked onto, else 0) */
 #define CLK_AUTO 3
 static uint32_t clock_src(void);
-/* the CPU load meter's counters (audio.c writes them per I2S half, ui_menu.c cpu_meter_poll reads them) and the half's time */
+/* the CPU load meter's counters (audio.c writes them per I2S half, ui_menu.c cpu_snap_poll reads them) and the half's time */
 #define CPU_BUDGET_US (HALF_FRAMES * 1000000u / FS)
-static volatile uint32_t cpu_sum, cpu_n, cpu_pk, cpu_miss;
+static volatile uint32_t cpu_sum, cpu_n, cpu_pk, cpu_el_pk, cpu_miss;   /* cpu_pk: the longest half's render time (us); cpu_el_pk: its ELAPSED time (us, the nested TIMER5 / USB work included: what the DMA deadline sees), every build; the ISR writes both and ui_menu.c cpu_snap_poll alone clears them; cpu_miss: DMA periods missed (audio.c) */
+/* K2: ONE owner of the counters. cpu_snap_poll (ui_menu.c) alone reads cpu_pk / cpu_el_pk and clears them (the counters under fm1_irq_off), fills cpu_snap (sum, n, miss as of now: the ISR's
+ * own running counters, never cleared) and folds the elapsed peak into every reader's own window (CPU_W_*). A reader takes its window with cpu_win_take: it gets the longest elapsed half (us) since
+ * ITS last take and starts again, so no reader can take another's peak away. Console, bench, ABOUT, TEST and the header read; none clears. Main loop only, not reentrant (the audio interrupt never calls them) */
+typedef struct { uint32_t sum, n, miss; } cpu_snap_t;
+enum { CPU_W_MENU, CPU_W_HEAD, CPU_W_CON, CPU_W_BENCH, CPU_NW };
+static cpu_snap_t cpu_snap;
+static volatile uint32_t cpu_el_last;                   /* the last half's elapsed time (us; the ISR writes it: the bench's timeline window is read inside the interrupt) */
+static void cpu_snap_poll(void);
+static uint32_t cpu_win_take(uint32_t k);
+/* K3 the EASE LADDER (TIDE 1.0.0-b4; audio.c ease_step, once a half): 0 = nothing eased; 1 the transitions at a lower rate (morph.c blend every 4th block, fm6_xfer.c retune
+ * and morph_xfer.c the valley's and wash's coefficients every other block); 2 a new POLY note takes over a fading note before it takes a free voice (voice.c); 3 LIGHT FX
+ * (fx.c ovl_lite); 4 released tails fade (audio.c shed_released); 5 a held note fades, only after a half that missed. The audio reads it as EASE: 0 in tests/ovl_test.c's
+ * reference build (-DOVL_NOGUARD), so its renders are those of a build without the ladder */
+static uint8_t ease;
+#define EASE_RATE 1u                    /* the levels: 1 the transitions at a lower rate */
+#define EASE_ADMIT 2u                   /* .. 2 a new note takes over a fading one */
+#define EASE_LIGHT 3u                   /* .. 3 LIGHT FX */
+#define EASE_TAILS 4u                   /* .. 4 released tails fade (and where a miss lands at least) */
+#define EASE_HELD 5u                    /* .. 5 a held note fades after a missed half */
+#define EASE_MAX 5u
+#ifndef EASE_PROBE
+#define EASE_PROBE(k) ((void)0)         /* (tests/ease_test.c counts the eased work here: 0 a morph blend, 1 a block of FM6 retunes) */
+#endif
+#ifdef OVL_NOGUARD
+#define EASE 0u
+#else
+#define EASE ease
+#endif
 #if DUELL_BENCH
 #define C0_STK_FILL 0xC0C0C0C0u                                              /* main.c c0_stack_paint, bench.c c0_stack_peak: core 0's stack marks, developer builds only */
 static void c0_stack_bounds(uint32_t **b);                                   /* b[0..3] = the user stack's bottom and top, the exception stack's bottom and top (main.c; a host test names its own) */
@@ -739,8 +810,8 @@ static part_scr_t pscr[NLIVE];
 #define TSEL (&trk[song.sel])    /* the selected track */
 
 /* DUELL 0.2.14 GLO > MODULES (SPEC "Modules"): four DEVICE switches, ARP, SEQ, SENDS, PART FX, each ON (the default) or OFF. Kept in the
- * settings byte favorites.factory[15][10] bits 1..4 (ui.c ui_mods; a SET bit is OFF, so a new unit, ERASE DATA and every older record
- * read all four ON), never in a patch, a multi or the project. ui_input copies them here every frame (ui.c mods_apply); the audio side
+ * settings byte favorites.factory[15][10] bits 1..4 (a SET bit is OFF, so a new unit, ERASE DATA and every older record
+ * read all four ON), never in a patch, a multi or the project. ui_input copies them here every frame; the audio side
  * reads only this byte. The stored values of the arp, the steps, the sends and the part effects are never touched by a switch */
 #define MODS_ARP 1u              /* ARP OFF: no arp plays, whatever its MODE (seq.c: arp_mode below); the keys play directly */
 #define MODS_SEQ 2u              /* SEQ OFF: no stored step plays (seq.c seq_play), nor the arp's SEQUENCER mode (it plays the steps) */
@@ -768,7 +839,8 @@ static volatile uint8_t mods_off;
 #define BYS_MST  8u
 #define BYS_CMP  16u
 #define BYS_ALL  31u
-static volatile uint16_t byp_m[2];
+static volatile uint16_t byp_m[NLIVE];                 /* (audit U09: by part, NLIVE of them: a host rig built with NPART=4 indexed [2] and [3]) */
+_Static_assert(sizeof byp_m / sizeof byp_m[0] >= NLIVE, "core.h: byp_m is indexed by part");
 static volatile uint8_t byp_sh;
 #define BYP(t, bit) ((MODW(t).byp & (bit)) != 0u)   /* (the block's copy, set by mod.c mod_begin before the part's voices render) */
 #define E2Q(t, v) (BYP(t, BY_ENV2) ? 0 : (v)->env2 >> 9)   /* FILTER ENV's output, Q15 (0 while bypassed: it keeps running) */
@@ -810,25 +882,33 @@ static volatile uint8_t offscale_g;                    /* OS_SNAP / OS_PLAY */
 static int32_t scale_of(const track_t *t) { (void)t; return scale_g; }
 static int32_t root_of(const track_t *t) { (void)t; return root_g; }
 
-/* SWING of a track's step clock: the track's own plus the global one, at most 100 (#31). The sequencer
- * (seq.c step_samples) times steps with it. At 100 the even
- * steps are 1.4 x the straight length and the odd ones 0.6 x. */
-#define SWING_MAX 100
-static inline int32_t track_swing(const track_t *t)
-{
-    int32_t sw = t->p[P_SSWING] + song.g[G_SWING];
-    return sw < 0 ? 0 : sw > SWING_MAX ? SWING_MAX : sw;
-}
-/* the length of step idx of a straight length `base`, swung: even steps longer, odd ones shorter */
-static inline uint32_t swing_step_len(const track_t *t, uint32_t base, uint32_t idx)
-{
-    int32_t sw = track_swing(t) * (int32_t)base / 250;
-    return base + (uint32_t)((idx & 1u) ? -sw : sw);
-}
-
 /* ----------------------------------------------------------- system --- */
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")   /* slot store before the index update */
 static volatile uint32_t fm1_ms;  /* milliseconds since boot (TIMER4-based, TIMER5 ISR in main.c) */
 /* boot-loop guard (main.c): two boots in a row that die in the first 30 s -> UBOOT */
 #define BOOTGUARD_MAGIC 0x42475244u
 struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".noinit")));
+#include "tide.h"                 /* TIDE hook: the plug (tide.h) */
+static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effective cutoff of filter 2, Q8 dial steps >> 7 (chain_f2.c writes it, ui_live.c reads it; the pad bytes of track_t are used up) */
+#define LVC2(t) (tide_lvc2[(uint32_t)((t) - trk) % NLIVE])
+/* Later 10 + 13 (b10 round 5): 1 = a part's morph costs are charged only while a transition moves (the engine cross-fade BD_FADE, TIDE's valley and wash: budget.c bd_part, bd_mv, the FM6 bridge's rule) and the
+ * INSERT dip asks for a new blend only when its value moved by a 1/256 step (morph_xfer.c morph_xstep, C1): more notes at rest, thinner while moving, fewer blends in a slow dip. 0 until the unit sweep has tried it
+ * (tools/build.py: env FELUCCA_MOVECOST=1) */
+#ifndef FELUCCA_MOVECOST
+#define FELUCCA_MOVECOST 0
+#endif
+/* b10 round 7 (ROADMAP Later 14, the RAM-candidate review): 1 = two per-block functions run only when their inputs are live - morph_xrest (a part with no morph, every block: only the first time after
+ * its state was last written) and vs_block (the note-start queue: only while a note-on is waiting or was counted this block). Same sound, bit for bit; 92 + 168 B of hot code off the always-on set.
+ * ON by default; FELUCCA_GUARDS=0 python tools/build.py turns it off if a glitch is reported (host tests: group "guards" builds both) */
+#ifndef FELUCCA_GUARDS
+#define FELUCCA_GUARDS 1
+#endif
+#ifndef GD_COUNT
+#define GD_COUNT(c) ((void)0)          /* tests/guards_test.c counts the calls and the runs of the two guarded functions (define GD_COUNT(c) (c##_n++) there) */
+#endif
+/* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
+#if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
+#define DUELL_PROBE_STAGES 1
+#else
+#define DUELL_PROBE_STAGES 0
+#endif

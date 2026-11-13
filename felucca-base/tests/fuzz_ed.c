@@ -59,15 +59,35 @@ static void fz_patch(uint32_t *sent)
     r.xb_n = (uint8_t)(rnd() % 4u == 0 ? 0u : rnd() % (XB_MAX + 1u));
     for (i = 0; i < r.xb_n; i++)
         r.xb[i] = (xb_edit_t){(uint8_t)(rnd() % 8u == 0 ? 127u : rnd() % 6u == 0 ? 128u + rnd() % 128u : rnd() % 127u), (int16_t)((int)(rnd() % 256u) - 90)};
+    {   /* (PT_VER 4: End B travels as part 1's MBV block against these values, half the time; r takes the morph's engine then) */
+        static uint8_t bv[MBV_MAX];
+        int16_t ref[EXT_P_LEN];
+        memset(ref, 0, sizeof ref);
+        up_bv_in = 0; up_bv_n = 0;
+        if ((rnd() & 1u) && mph[0].n[0]) {
+            r.engine = mph[0].eng;
+            for (i = 0; i < P_COUNT; i++)
+                ref[i] = up_value(&r, i);
+            for (i = 0; i < NX; i++)
+                ref[XW_BASE + i] = (int16_t)up_xval(&r, i);
+            up_bv_n = morph_bv_make(0, ref, bv);
+            up_bv_in = up_bv_n ? bv : 0;
+        }
+    }
     n = pt_encode(slot, 0, &r, 0);
+    up_bv_in = 0; up_bv_n = 0;
     memcpy(rec, pt_enc, n);
     rec[2] = rec[3] = 0;
-    k = rnd() % 4u;                                                 /* damage: 0 none, 1 flipped bytes, 2 the block's L, 3 the record's length field */
+    k = rnd() % 4u;                                                 /* damage: 0 none, 1 flipped bytes, 2 End B's block, 3 the record's length field */
     if (k == 1u)
         for (i = 1u + rnd() % 4u; i; i--)
             rec[rnd() % n] ^= (uint8_t)(1u << (rnd() % 8u));
-    else if (k == 2u && (rec[4] & PTF_XB))
-        rec[PT_FIX] = (uint8_t)(rec[PT_FIX] + (rnd() & 1u ? 1u : 255u));
+    else if (k == 2u && (rec[4] & PTF_MB)) {                         /* (End B's block: its flags, AMOUNT or first map bytes nudged) */
+        uint32_t xo, mb, pr, pat, fm;
+        pt_layout(rec, &xo, &mb, &pr, &pat, &fm);
+        if (mb + 4u < n)
+            rec[mb + rnd() % 4u] = (uint8_t)(rec[mb] + (rnd() & 1u ? 1u : 255u));
+    }
     else if (k == 3u)
         n = n > PT_FIX + 1u && rnd() & 1u ? n - 1u : n + (n < PT_WORST ? 1u : 0u);
     crc = st_crc32(rec, n);

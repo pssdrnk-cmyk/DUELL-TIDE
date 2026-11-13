@@ -1,10 +1,12 @@
 # Refine every patch and multi, and keep the result
 
+> Developer reference, historical. OSCILL/R's procedure for turning edited sounds and multis into the factory set; used by the generator tools. Kept at this path because source and test comments cite it.
+
 **DUELL**
 MultiMorphing Bitimbral Synthesizer
 by OSCILL/R
 
-This is the owner's way to go through all 128 patches and 16 multis in the web editor, change what he wants, and make his versions the **factory set**: after it, RESTORE on the unit brings his versions back, and every new firmware contains them. Nothing here changes the firmware by itself; he hands two files to the developer, who imports them (step 6).
+This is OSCILL/R's way, from the DUELL 1.0 work, to go through all 128 patches and 16 multis in the web editor, change what he wants, and make his versions the **factory set**: after it, RESTORE on the unit brings his versions back, and every new firmware contains them. Nothing here changes the firmware by itself; he hands two files to the developer, who imports them (step 6).
 
 ## Before you start
 
@@ -24,7 +26,7 @@ The slot number matters: slot #44 is the factory sound #44. Saving a patch into 
 ## 2. Refine a multi
 
 1. **MULTIS** tab: **Load** the multi, change the music of both parts, the tempo, the effects, the arps.
-2. **Save here...** into the same slot (M01 to M16). The unit stops playback and writes it.
+2. **Save here...** into the same slot (M01 to M26 on a b10 unit; an older one keeps M17 and up built in). The unit stops playback and writes it.
 3. The multi keeps its own copy of the sounds' values, so changing a patch does not change a multi, and the other way round. Refine both if you want both.
 
 ## 3. Take the files out

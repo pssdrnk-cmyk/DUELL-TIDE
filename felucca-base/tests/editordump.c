@@ -29,7 +29,7 @@ static void js_str(const char *s)
 
 /* the formatted value tables, one per distinct (fmt, range, names, unit); a descriptor points at its table by index */
 #define NSIG 1024
-static struct { uint8_t fmt; int16_t min, max; const char *const *names; const char *unit; const param_desc_t *d; } sig[NSIG];
+static struct { uint8_t fmt; int16_t min, max; const char *const *names; uint8_t unit; const param_desc_t *d; } sig[NSIG];
 static int nsig;
 
 static int fk_of(const param_desc_t *d)
@@ -69,7 +69,7 @@ static void js_desc(const param_desc_t *d)
     printf("{\"label\":");
     js_str(d->label);
     printf(",\"fmt\":%d,\"min\":%d,\"max\":%d,\"def\":%d,\"fk\":%d,\"unit\":", d->fmt, d->min, d->max, d->def, fk_of(d));
-    js_str(d->unit ? d->unit : "");
+    js_str(UNIT_STR[d->unit]);
     printf(",\"names\":");
     if (d->fmt == F_ENUM && d->names) {
         putchar('[');
@@ -100,11 +100,15 @@ static void js_descs(const param_desc_t *d, uint32_t n)
 }
 
 static const char *const FAMN[] = {"HOME", "ENV", "LFO", "FX", "SCL", "EDIT", "GLO", "SAVE", "ARP", "SEQ", "TRK"};
-static const char *const SCN[] = {"TRACK", "GLOBAL", "ENGINE", "STEP", "TRK", "MORPH", "MODE", "TEST", "SCALE", "MIDI", "PERF", "MODS", "FXSUM", "GMIX"};   /* (every SC_* of params.c, MODS and FXSUM too: an index past the table read whatever string lay after it) */
+static const char *const SCN[] = {"TRACK", "GLOBAL", "ENGINE", "STEP", "TRK", "MORPH", "MODE", "TEST", "SCALE", "MIDI", "PERF", "MODS", "FXSUM", "GMIX"
+                                  , "TIDE"   /* TIDE hook (H10): SC_TIDE */
+                                 };   /* (every SC_* of params.c, MODS and FXSUM too: an index past the table read whatever string lay after it) */
 static const char *const GRN[] = {"NONE", "ADSR", "LFO", "STEPS", "ARP", "SCALE", "FX", "ROLL", "BROWSE", "SLOTS", "USER", "TRK", "SLCR", "MOD", "PATS",
                                   "TOOLS", "CHORD", "SLICES", "EVENTS", "FMOP", "FMOP2", "FMENV", "INS", "ENGINE", "MORPH", "MORPHSET", "MODE", "GLO",
-                                  "MIDI", "MLEARN", "SCHAIN", "TEST", "TEMPO", "PERF", "MODS", "MSTG", "FXSUM", "EQ", "COMP", "FILT", "SUB", "CYCLE", "SEQHELP"};   /* (every GR_* of params.c: MODS was missing, so MODULES' name was whatever string lay after the table; 0.2.25: FXSUM was missing too, then EQ COMP FILT) */
-_Static_assert(sizeof GRN / sizeof GRN[0] == GR_SEQHELP + 1u && sizeof SCN / sizeof SCN[0] == SC_GMIX + 1u, "editordump: a name for every GR_* and SC_* (0.2.25)");
+                                  "MIDI", "MLEARN", "SCHAIN", "TEST", "TEMPO", "PERF", "MODS", "MSTG", "FXSUM", "EQ", "COMP", "FILT", "SUB", "CYCLE"
+                                  , "TIDE", "TIDELIST"   /* TIDE hook (H10): GR_TIDE, GR_TIDELIST */
+                                 };   /* (every GR_* of params.c: MODS was missing, so MODULES' name was whatever string lay after the table; 0.2.25: FXSUM was missing too, then EQ COMP FILT) */
+_Static_assert(sizeof GRN / sizeof GRN[0] == GR_TIDELIST + 1u && sizeof SCN / sizeof SCN[0] == SC_TIDE + 1u, "editordump: a name for every GR_* and SC_* (TIDE's too)");
 
 /* page_visible (ui.c), by the page's ids: which engines show the page. "all" or a list of engine names */
 static void js_vis(const page_t *pg)
@@ -181,11 +185,12 @@ static void js_palettes(void)
 static void js_multis(void)
 {
     uint32_t i, k;
+    static uint8_t dmb[2048];                        /* (TIDE: the records are packed, duell_multis.h dm_rec) */
     printf("[");
     for (i = 0; i < DF_N; i++) {
         char nm[PROJ_NAME_LEN + 1u];
         for (k = 0; k < PROJ_NAME_LEN; k++)
-            nm[k] = (char)DM_REC[DM_AT[i] + MU_NAME_AT + k];
+            nm[k] = (char)dm_rec(i, dmb)[MU_NAME_AT + k];
         nm[PROJ_NAME_LEN] = 0;
         printf("%s[%u,", i ? "," : "", (unsigned)DF_SLOT[i]);
         js_str(nm);
@@ -329,9 +334,16 @@ int main(void)
     printf("],\n\"ORDER\":[");
     for (k = 0; k < NENG_SHOWN; k++)
         printf("%s%u", k ? "," : "", (unsigned)eng_vis(k));
-    printf("],\n\"SLOTS\":%u,\n\"BROWSE\":[", (unsigned)UP_SLOTS);   /* 0.2.17: slot i holds the factory sound at browse position i: [engine, factory index] */
-    for (k = 0; k < ds_list_n(); k++) {
-        uint32_t fk, fe = ds_list_at(k, &fk);
+    /* 0.2.17: place i holds the factory sound at browse position i: [engine, factory index]. With the USER slots (tide.h UP_NUSER) the last UP_NUSER slots are null (USER EMPTY until saved)
+     * and the factory sounds they displace follow the slots as read-only places, then the sounds past the bank's 128 (upreset.c sl_fac), numbered as the unit does */
+    printf("],\n\"SLOTS\":%u,\n\"BROWSE\":[", (unsigned)UP_SLOTS);
+    for (k = 0; k < ds_list_n() + UP_NUSER; k++) {
+        uint32_t fk, fe;
+        if (k >= UP_SLOTS - UP_NUSER && k < UP_SLOTS) {
+            printf("%snull", k ? "," : "");
+            continue;
+        }
+        fe = ds_list_at(k >= UP_SLOTS ? k - UP_NUSER : k, &fk);
         printf("%s[%u,%u]", k ? "," : "", (unsigned)fe, (unsigned)fk);
     }
     printf("],\n\"INS\":[");                            /* the INSERT's A B C by TYPE 0..8 */

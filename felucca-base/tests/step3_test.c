@@ -214,10 +214,17 @@ static void t_old_projects(void)
     ck("FUN11 round trip: DUELL's values on the reused ids kept (slots 5..8), parts A B, motion", ok);
     /* restored onto the device: no crash, the parts have what the project holds there */
     ok = !project_restore_runtime(&d);
-    for (t = 0; t < NSHOWN; t++)
+    for (t = 0; t < NSHOWN; t++) {
+        static track_t nt;                              /* (DUELL 1.1: a restore moves the retired DEST cards' routes into the matrix and packs it: the same steps on a copy of what the project holds) */
+        memcpy(&nt, &trk[t], sizeof nt);
+        memcpy(nt.p, c.t[t].p, sizeof nt.p);
+        (void)mod_legacy_move(&nt);
+        mod_preselect(&nt);
+        mod_compact(&nt);
         for (i = 0; i < P_E0; i++)
-            ok &= trk[t].p[i] == (int16_t)param_fit(param_desc_of(trk[t].eng_req, i), c.t[t].p[i]);
-    ck("  restored onto the device: parts A B with DUELL's values on the reused ids", ok && trk[0].p[P_M5AMT] == 21 && trk[1].p[P_M8AMT] == -40);
+            ok &= trk[t].p[i] == (int16_t)param_fit(param_desc_of(trk[t].eng_req, i), nt.p[i]);
+    }
+    ck("  restored onto the device: parts A B with DUELL's values on the reused ids", ok && trk[0].p[P_M4AMT] == 21 && trk[1].p[P_M5AMT] == -40);   /* (packed: the routes after the three of the default sounds) */
 }
 
 /* the backup (editor_backup.c): an archive's project is refused when it is not this firmware's FUN11; the settings object of DUELL's keeps its map */
@@ -291,7 +298,7 @@ static void snap(track_t *t, uint32_t k, uint32_t s, uint32_t d, snap_t *o)
     memset(&m, 0, sizeof m);
     m.envq15 = 20000; m.shape = 64 << 8; m.pitch16 = 1000; m.inc = pitch_inc(1000); m.amp1 = 20000;
     if (trk[0].mdw.on)
-        mod_voice(t, &t->v[0], &m, 0);
+        mod_voice(t, &t->v[0], &m);
     o->m = m;
     if (trk[0].mdw.on)
         mod_end(t);
@@ -420,6 +427,43 @@ static int env2_follows_env1(int esync)
         moved |= t->v[0].env2 != 0;
     }
     return same && moved && b > 250u;
+}
+/* P04: Q16 release coefficients at slow tempi must eventually free the voice,
+ * including ENV 2's independent release. Tick the real envelopes without DSP. */
+static void t_slow_release(void)
+{
+    static const int16_t bpm[] = {40, 60, 70, 120};
+    static const int16_t rel[] = {120, 127};            /* 3BAR and 4BAR */
+    uint32_t i, j;
+    for (i = 0; i < sizeof bpm / sizeof bpm[0]; i++)
+        for (j = 0; j < sizeof rel / sizeof rel[0]; j++) {
+            track_t *t = &trk[0];
+            voice_t v = {0};
+            uint32_t n, limit;
+            int monotone = 1;
+            char what[88];
+            fresh(0, 0);
+            song.g[G_CLOCK] = 0;
+            song.g[G_BPM] = bpm[i];
+            t->p[P_ESYNC] = 1;
+            t->p[P_REL] = t->p[P_E2REL] = rel[j];
+            esync_coef(t);
+            esync2_coef(t);
+            v.env = v.env2 = 1 << 24;
+            v.stage = v.stage2 = 3;
+            v.active = 1;
+            limit = 3u * (beat_samples() * ESYNC_UNITS[esync_idx(rel[j])] / 96u / CTL) + 1024u;
+            for (n = 0; n < limit && (v.active || v.stage2); n++) {
+                int32_t before = v.env, before2 = v.env2;
+                env_tick(t, &v);
+                env2_tick(t, &v);
+                monotone &= v.env >= 0 && v.env <= before && v.env2 >= 0 && v.env2 <= before2;
+            }
+            printf("step3: release %d BPM %s: %u ticks, ENV1 %d stage %u active %u, ENV2 %d stage %u\n",
+                   bpm[i], ESYNC_NAMES[esync_idx(rel[j])], n, v.env, v.stage, v.active, v.env2, v.stage2);
+            snprintf(what, sizeof what, "ESYNC %d BPM %s: both releases end and free the voice", bpm[i], ESYNC_NAMES[esync_idx(rel[j])]);
+            ck(what, monotone && !v.active && !v.stage && !v.env && !v.stage2 && !v.env2);
+        }
 }
 static double rms_block(void)
 {
@@ -747,13 +791,11 @@ static void t_pages(void)
             ok &= k2 + j < NPAGES && str_eq(PAGES[k2 + j].title, L[j]) && PAGES[k2 + j].fam == FAM_LFO;
         for (j = 0; j < NPAGES; j++)
             for (k2 = j + 1u; k2 < NPAGES; k2++)
-                ok &= !str_eq(PAGES[j].title, PAGES[k2].title) ||    /* (MOD 1 / MOD 2 are in ENV's family too: the same page twice) */
-                      (PAGES[j].graph == GR_MOD && PAGES[k2].graph == GR_MOD && PAGES[j].fam == FAM_LFO && PAGES[k2].fam == FAM_ENV &&
-                       !memcmp(PAGES[j].id, PAGES[k2].id, 4)) ||
+                ok &= !str_eq(PAGES[j].title, PAGES[k2].title) ||    /* (every title is unique, MATRIX 1-4 / 5-8 are LFO's only) */
                       0;   /* (0.2.9: the multimode FILTER and ANALOG's VCF are two pages; every title is unique) */
         ok &= PAGES[l2].graph == GR_LFO && PAGES[l2].id[0] == P_L2WAVE && PAGES[l2].id[1] == P_L2RATE && PAGES[l2].id[2] == P_L2SYNC && PAGES[l2].id[3] == P_L2FADE &&
               PAGES[l2s].id[0] == P_L2TRIG && PAGES[l2s].id[1] == P_L2PHASE && PAGES[l2s].id[2] == P_L2POL;
-        ck("pages: LFO, LFO TRIG, LFO DEST, LFO 2, LFO 2 TRIG, MOD, MOD 2 (LFO's family); every title unique (but MOD 1 / MOD 2 again in ENV's)", ok);
+        ck("pages: LFO, LFO TRIG, LFO DEST, LFO 2, LFO 2 TRIG, MOD, MOD 2 (LFO's family); every title unique", ok);
         ui_power_on();
         go_title("LFO 1 DEST");
         press(B_LFO);
@@ -768,9 +810,9 @@ static void t_pages(void)
         turn(EN_K3, 1);
         ok &= TSEL->p[P_L2POL] == 1 && TSEL->p[P_LPOL] == 0;
         ck("LFO on LFO DEST opens LFO 2 (KNOB 2 RATE2), again LFO 2 TRIG (KNOB 3 POL2); LFO 1's untouched", ok);
-        ok = motion_param(P_L2RATE) && motion_param(P_L2FADE) && motion_param(P_E2ATK) && motion_param(P_E2REL) &&
+        ok = motion_param(P_L2RATE) && !motion_param(P_L2FADE) && motion_param(P_E2ATK) && motion_param(P_E2REL) &&
              !motion_param(P_L2SYNC) && !motion_param(P_L2POL) && !motion_param(P_M5SRC);
-        ck("automation as their twins: RATE2..FADE2, ATK2..REL2 yes; SYNC2 TRIG2 POL2 and the matrix no", ok);
+        ck("automation as their twins (the matrix destinations only, HANDOFF_V2 item 34): RATE2, ATK2..REL2 yes; FADE2, SYNC2 TRIG2 POL2 and the matrix no", ok);
     }
 }
 
@@ -783,6 +825,7 @@ int main(void)
     t_slots();
     t_bitident();
     t_env2();
+    t_slow_release();
     t_lfo2();
     t_pages();
     t_cost();

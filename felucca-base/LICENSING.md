@@ -7,10 +7,15 @@ texts are in `LICENSES/`.
 
 Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 Copyright (C) 2026 OSCILL/R (DUELL)
+Copyright (C) 2026 pssdrnk (TIDE, the fork at <https://github.com/pssdrnk-cmyk/DUELL-TIDE>)
 
 DUELL is a modified version of Felucca. It is licensed under the same terms, GPL-3.0-only, and
 carries Felucca's copyright notices above. The changes that make Felucca into DUELL are by
 OSCILL/R. DUELL's source is at <https://github.com/oscillr/DUELL>.
+
+TIDE is a modified version of DUELL 1.1 by pssdrnk (the TIDE pages, the glide and SEQ MORPH, added
+sounds and patterns, fixes and tests), under the same terms, GPL-3.0-only. Files the fork added carry the
+SPDX header; the fork's changes to existing files are in the git history.
 
 ## What is GPL-3.0-only
 
@@ -52,7 +57,7 @@ or in the firmware, so their rows are gone from the tables.)
 | What | Licence | Where |
 | --- | --- | --- |
 | Inter Tight font by The Inter Project Authors: the UI text, rasterised into the firmware at build time (`tools/gen_aa_font.py`) and the text of the update screen, rasterised into `firmware/loader/ldr_screen_data.h` (`tools/gen_loader_screen.py`); the generated tables are not offered as a font, and the font declares no Reserved Font Name) | SIL OFL 1.1 | `assets/fonts/InterTight[wght].ttf`, `LICENSES/OFL-InterTight.txt` (also `assets/fonts/OFL.txt`) |
-| Barlow Semi Condensed font by The Barlow Project Authors: the UI text since DUELL 1.1, rasterised into the firmware at build time (`tools/gen_aa_font.py --preset barlow`) and shown in the web editor (`web/editor/fonts/`) | SIL OFL 1.1 | `assets/fonts/BarlowSemiCondensed-*.ttf`, `LICENSES/OFL-BarlowSemiCondensed.txt` (also `assets/fonts/OFL_Barlow.txt`) |
+| Barlow Semi Condensed font by The Barlow Project Authors: the UI text since DUELL 1.1, rasterised into the firmware at build time (`tools/gen_aa_font.py --preset barlow`; TIDE's update screen: `tools/gen_loader_screen_tide.py` into `firmware/loader/ldr_screen_tide_data.h`) and shown in the web editor (`web/editor/fonts/`) | SIL OFL 1.1 | `assets/fonts/BarlowSemiCondensed-*.ttf`, `LICENSES/OFL-BarlowSemiCondensed.txt` (also `assets/fonts/OFL_Barlow.txt`) |
 | DaisySP by Electrosmith, Corp and Emilie Gillet (<https://github.com/electro-smith/DaisySP>): the PHYS engine's modal and string models and the resonator, ported to fixed point | MIT | `firmware/src/phys_dsp.c`, `LICENSES/MIT-DaisySP.txt` |
 | Rings by Emilie Gillet (<https://github.com/pichenettes/eurorack>): the PHYS engine's sympathetic strings, ported to fixed point | MIT | `firmware/src/phys_symp.c`, `LICENSES/MIT-Rings.txt` |
 | msfa by Google Inc. and Pascal Gauthier, from Dexed (<https://github.com/asb2m10/dexed>): the FM6 engine's synthesis, ported to integer C (Dexed itself is GPL-3.0; only msfa is used; the FM6 factory patches are Felucca's own) | Apache-2.0 | `firmware/src/fm6_core.c`, `LICENSES/Apache-2.0-msfa.txt` |
@@ -64,6 +69,7 @@ or in the firmware, so their rows are gone from the tables.)
 | Published ideas behind the WAVE user tables (DUELL 0.2.14), no code of anyone else: the fast Fourier transform of J. W. Cooley and J. W. Tukey, "An algorithm for the machine calculation of complex Fourier series", Math. Comp. 19 (1965), <https://doi.org/10.1090/S0025-5718-1965-0178586-1> (the converter's radix-2 FFT, written for this tree); the wavetable WAV file convention of Xfer Serum (single-cycle frames of 2048 samples one after the other, and the `clm ` chunk that names the frame size), also used by Vital and Surge, read by the converter (it only reads such files); the level in dB (a logarithmic amplitude byte) is textbook | none (ideas, formats) | `web/editor/wavetable.js`, `firmware/src/eng_wave.c` (user tables), `firmware/src/ui_menu.c` (ABOUT > CREDITS) |
 | One FM voice: aquanodemusic (Aquanode Soundscapes), CC0 1.0 Universal, <https://github.com/aquanodemusic/aquanode-soundscapes>: the bass voice behind the FM6 factory sound FM BASS 2 (DUELL 0.2.17, factory patch F9; a DX7 voice import, adapted: the name and the carriers' sustain). The other FM6 factory patches are DUELL's or Felucca's own | CC0-1.0 | `tools/gen_fm6_patches.py` (`FM_BASS_2`) |
 | DotGothic16 font by The DotGothic16 Project Authors (<https://github.com/fontworks-fonts/DotGothic16>): the browser emulator's knob labels, served with its page (cut to printable ASCII; the font declares no Reserved Font Name) | SIL OFL 1.1 | `web/emu/fonts/DotGothic16-subset.woff`, `LICENSES/OFL-DotGothic16.txt` (also `web/emu/fonts/OFL.txt`) |
+| LZMA decoder by Igor Pavlov (LzmaSpec.cpp, 7-Zip): the decoder that unpacks the compressed part of the firmware at start-up, written again in C after his reference specification | public domain | `firmware/src/ramplace.c` |
 | JieLi AC79 SDK by JieLi Technology: three of its files go into every `.fwsc` package (below); none are in this tree | Apache-2.0 | `LICENSES/Apache-2.0.txt` |
 
 On the device, HOME held > ABOUT opens the information screen; turning PRESETS scrolls on into

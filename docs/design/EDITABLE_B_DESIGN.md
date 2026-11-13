@@ -1,5 +1,7 @@
 # EDITABLE B: design study for the MORPH's B end (for your decision; nothing is built)
 
+> Design record. The feature is built; what ships is described in [SPEC.md](../../SPEC.md). Names, numbers and estimates below are as of the date of writing. Kept at this path because source comments cite it.
+
 **Built (cloud job G, branch cloud/feat-editb):** the fader at 127 makes every sound page edit End B; the hand-set list (up to 32) is stored in the patch record (extension block section 2), the multi and the project (PROJ_REV 7 also carries End B's 7-byte block per part, so a power cycle keeps B); the recommended answers 1 to 5 are the behaviour; FM6 operator bytes are not in the list in version 1 (they move both ends, the line says OPS: SAME ON A AND B). Code: morph.c (morph_b_mode, morph_b_set, morph_edits, morph_pin_load), ui_input.c (edit_param, knob_reset), ui_draw.c (head_ab).
 
 Written 2026-10-19. Research and design only: no code was changed (when this was written). Every claim is marked **CONFIRMED** (I read it in the code or the documents) or **HYPOTHESIS** (my reasoning, not checked). Numbers marked "est." are estimates.
@@ -211,7 +213,7 @@ The "rolled B + up to 32 hand edits" idea of the first helpers is the right base
 |---|---|---|
 | CPU while playing | **0** | The blend already reads B as full values (CONFIRMED). |
 | CPU at an edit | one rebuild of the morph's list per knob step, with interrupts off: tens of microseconds (est.) | `morph_build` runs locked (CONFIRMED); it can be made to update only the one value |
-| RAM | +0.3 to 0.5 KB, ordinary RAM, not hot RAM (est.): a "set by hand" mark per value per B history entry (about 29 bytes x 9 x 2 parts) | struct sizes |
+| RAM | +0.3 to 0.5 KB, RAM, not hot code (est.): a "set by hand" mark per value per B history entry (about 29 bytes x 9 x 2 parts) | struct sizes |
 | Code (flash) | +1.5 to 2.5 KB (est.) | edit routing, list save/load, header letter, UNDO, messages |
 | Patch bytes | +1 to +65 a patch (typical 3 to 31); +up to 130 a multi; the autosave the same | section 3 |
 | Effort | 2 to 3 local rounds + 1 session on your unit (est.); after stage A | |
@@ -222,7 +224,7 @@ The "rolled B + up to 32 hand edits" idea of the first helpers is the right base
 3. **Clicks while editing B.** No new risk. At the B end an edit is like an edit at A today. The 50 ms ramp is only needed when a whole end is replaced (ROLL, UNDO), and that already exists.
 4. **Saving loses the hand-set values**, if the existing "re-make B from the seed before saving" runs without putting them back. A test must check: edit A, edit B, save, load, compare.
 5. **B ends drift after the alpha** (the finding in the verdict). The roll rules must freeze for existing values from the alpha on, with a test that rolls stored seeds and compares them to the alpha's results. Values set by hand are immune.
-6. **Two undo systems.** The EDIT layer's OCT- undo of loads and the morph's UNDO A / B. Hand edits of B belong to UNDO B only. The edit undo must never put A back over a B edit. Test both orders.
+6. **Two undo systems.** The load undo (OCT- held + a PRESETS turn) and the morph's UNDO A / B. Hand edits of B belong to UNDO B only. The edit undo must never put A back over a B edit. Test both orders.
 7. **Power cycle** (section 3.1): the autosave must carry the list, and today's possible loss of a saved B after power-on must be checked first.
 
 **What suits the cloud sessions** (all of it testable on a computer, no unit needed): the store logic, edit routing, save/load round trips, power-cut tests and the frozen-seed test. **What stays local:** the header letter on the unit, the feel of the B end on the hardware, and your session.
@@ -260,11 +262,11 @@ The "rolled B + up to 32 hand edits" idea of the first helpers is the right base
 
 | What | Where | Status |
 |---|---|---|
-| Your editable-B wording (fader at B, A/B mark by the badges) | transcript 2026-10-13 11:01:33 (session 3c42d9f5) | CONFIRMED (quoted) |
-| Your header wording (A or B instead of the multi number) | transcript 2026-10-13 20:42:19 | CONFIRMED (quoted) |
-| My 10:50 proposal you answered (B stored as values, record size) | transcript 2026-10-13 10:50:22 | CONFIRMED |
+| Your editable-B wording (fader at B, A/B mark by the badges) | the owner's message of 2026-10-13 | CONFIRMED (quoted) |
+| Your header wording (A or B instead of the multi number) | the owner's message of 2026-10-13 | CONFIRMED (quoted) |
+| My 10:50 proposal you answered (B stored as values, record size) | the owner's message of 2026-10-13 | CONFIRMED |
 | The decisions as recorded | memory `project-duell-fm1-firmware.md` (OWNER DECISIONS 2026-10-13, two entries); `project-headline-features-direction.md` ("his own earlier request") | CONFIRMED |
-| Your original MORPH wording (A and B ends, one percentage, save to the patch) | transcript 2026-10-10 07:03:19 | CONFIRMED |
+| Your original MORPH wording (A and B ends, one percentage, save to the patch) | the owner's message of 2026-10-10 | CONFIRMED |
 | Runtime: Original + 9 full copies per end, FM6 65 bytes per end | `morph.c` `morph_part_t` (lines ~986-1013) | CONFIRMED |
 | Blend per kind; B weight exactly 100 % at 127 | `morph.c` `morph_apply`, `morph_wb` | CONFIRMED |
 | Edits at any fader position move the Original; ends follow by offset | `morph.c` header notes, `morph_apply` ("p + v - base"), `morph_fold` | CONFIRMED |
