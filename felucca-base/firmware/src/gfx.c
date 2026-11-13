@@ -94,6 +94,52 @@ static uint32_t cv_w, cv_h;      /* the canvas: width, the rows of this band */
 static uint32_t cv_ph, cv_bpass; /* the picture's whole height (cv_begin's h); the band being drawn starts at row cv_bpass of it (CV_BANDS), 0 outside a band loop */
 static int32_t cv_by;            /* the picture row the canvas's row 0 is: every primitive draws at (y + cv_oy - cv_by) */
 static uint16_t cv_bg;           /* what cv_begin cleared the canvas to */
+/* b11 (owner on rc8: "when a screen is redrawn there are still 3 vertical lines for a couple of milliseconds"): a page change within one grid layout filled the
+ * gutters (GUT: x 0..3, 79..81, 119..120, 158..160, 236..239 over rows 27..216, the gaps beside every column set a grid uses) BEFORE the strips, and where the old page had a
+ * strip over a gutter (the area page's picture, a 2 x 2 page's cards) a thin BG stripe cut through it until the new strip landed (~5 transfers). The gutters' fill now waits for
+ * the end of the pass (ui_draw.c: grid_fill arms it, gut_flush sends it): every transfer of the pass marks the gutter pixels it covers, and only the ones nothing covered
+ * get the BG. The same picture at the end (a fill under a strip was only drawn over); in between, every pixel is the old page's or the new one's. */
+static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}};   /* x, width: 16 columns, bit b of a row the b-th column */
+#define GUT_Y0 27u
+#define GUT_H 190u
+static uint16_t gut_cov[GUT_H] __attribute__((section(".pool")));   /* the gutter columns covered since gut_arm, a row */
+static uint16_t gut_bg __attribute__((section(".pool")));           /* the BG to fill with */
+static uint8_t gut_on __attribute__((section(".pool")));            /* armed (the pool is cleared at boot, main.c: off); all three outside .bss */
+static void gut_mark(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+    uint32_t i, c, b = 0, m = 0, y1 = y + h;
+    if (!gut_on)
+        return;
+    for (i = 0; i < 5u; i++)
+        for (c = GUT[i][0]; c < (uint32_t)GUT[i][0] + GUT[i][1]; c++, b++)
+            if (c >= x && c < x + w)
+                m |= 1u << b;
+    if (y < GUT_Y0)
+        y = GUT_Y0;
+    if (y1 > GUT_Y0 + GUT_H)
+        y1 = GUT_Y0 + GUT_H;
+    for (; m && y < y1; y++)
+        gut_cov[y - GUT_Y0] |= (uint16_t)m;
+}
+/* every transfer from here on marks the gutters: every UI file is compiled after this line (felucca.c: ui.c, ui_graph.c, ui_scope.c, ui_draw.c, ...), so none can send one
+ * unmarked (gut_flush would then paint BG over it). One wrapper a kind, not a mark at every call (flash). lcd_fill: lcd.c, the emulator and ui_test.c define it before
+ * this file; some host tests have none and call none, so gut_fill (which calls it) is in ui_draw.c (a test that reaches it without ui_draw.c fails to link, loudly) */
+static void gut_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
+{
+    gut_mark(x, y, w, h);
+    lcd_blit(x, y, w, h, p);
+}
+#define lcd_blit gut_blit
+static void gut_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c);
+#define lcd_fill(x, y, w, h, c) gut_fill((x), (y), (w), (h), (c))
+static void gut_arm(uint16_t bg)
+{
+    uint32_t r;
+    for (r = 0; r < GUT_H; r++)
+        gut_cov[r] = 0;
+    gut_bg = bg;
+    gut_on = 1;
+}
 static uint8_t cv_scroll;        /* 1: drawing a scrolled view (its text may run past the canvas) */
 static int32_t cv_oy;            /* y offset for graph drawing */
 /* a picture taller than the canvas: for each band cv_begin (the whole height), draw, cv_blit (the picture's own x, y): CV_BANDS(h) { cv_begin(w, h, bg); ...; cv_blit(x, y); }.

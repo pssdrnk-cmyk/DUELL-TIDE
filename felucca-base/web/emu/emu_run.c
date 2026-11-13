@@ -11,8 +11,12 @@
  *   master V                 the MASTER pot 0..1023
  *   midi STATUS D1 D2        a channel message (decimal or 0x..)
  *   shot NAME                DIR/NAME.png (240 x 240, the panel) after 40 ms to draw; "NAME crc32-of-the-RGB565-frame" is added to DIR/screens.txt
+ *   trace NAME [N]           the next N screen transfers (default 300), one picture after each: DIR/NAME_000.png .. and DIR/NAME.txt (n x y w h fill|blit),
+ *                            so a page change's in-between states show (what the panel holds while the next transfer is sent)
  *   rec NAME | rec off       DIR/NAME.wav (stereo 16-bit 44100 Hz) and DIR/NAME.json (for `soundlab measure DIR/NAME`) while recording
  * A fresh flash boots to the first-start GUIDE: the script starts with `boot` (2.2 s, then OCTUP to leave the GUIDE as emu_test.mjs does), or `boot keep` (no OCTUP). */
+static void trace_xfer(unsigned x, unsigned y, unsigned w, unsigned h, int blit);
+#define WEB_LCD_HOOK(x, y, w, h, b) trace_xfer(x, y, w, h, b)
 #include "felucca_web.c"
 #include <ctype.h>
 #include <sys/stat.h>
@@ -190,6 +194,38 @@ static void shot(const char *name)
         fprintf(scrf, "%s %08x\n", name, crc);
 }
 
+static char trace_name[256];
+static int trace_left, trace_n;
+static FILE *trace_f;
+static void fb_rgb(unsigned char *rgb)
+{
+    uint32_t i;
+    for (i = 0; i < 240u * 240u; i++) {
+        uint16_t p = web_fb[i];
+        uint16_t v = (uint16_t)((p >> 8) | (p << 8));
+        rgb[i * 3] = (unsigned char)(((v >> 11) & 31u) * 255u / 31u);
+        rgb[i * 3 + 1] = (unsigned char)(((v >> 5) & 63u) * 255u / 63u);
+        rgb[i * 3 + 2] = (unsigned char)((v & 31u) * 255u / 31u);
+    }
+}
+static void trace_xfer(unsigned x, unsigned y, unsigned w, unsigned h, int blit)
+{
+    static unsigned char rgb[240 * 240 * 3];
+    char fn[600];
+    if (trace_left <= 0)
+        return;
+    fb_rgb(rgb);
+    snprintf(fn, sizeof fn, "%s/%s_%03d.png", OUT, trace_name, trace_n);
+    write_png(fn, rgb, 240, 240);
+    if (trace_f)
+        fprintf(trace_f, "%d %u %u %u %u %s\n", trace_n, x, y, w, h, blit ? "blit" : "fill");
+    trace_n++;
+    if (!--trace_left && trace_f) {
+        fclose(trace_f);
+        trace_f = 0;
+    }
+}
+
 static const char *BN[] = {"FX", "SCL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE", "ARP", "SEQ", "PLAY", "REC", "OCTDN", "OCTUP"};
 static const char *EN[] = {"SELECT", "ALGO", "PRESETS", "K1", "K2", "K3", "K4"};
 static int idx_of(const char **t, int n, const char *s)
@@ -311,6 +347,15 @@ int main(int argc, char **argv)
             render(20);
         } else if (!strcmp(t[0], "shot") && nt > 1) {
             shot(t[1]);
+        } else if (!strcmp(t[0], "trace") && nt > 1) {
+            char fn[600];
+            snprintf(trace_name, sizeof trace_name, "%s", t[1]);
+            trace_left = nt > 2 ? atoi(t[2]) : 300;
+            trace_n = 0;
+            if (trace_f)
+                fclose(trace_f);
+            snprintf(fn, sizeof fn, "%s/%s.txt", OUT, t[1]);
+            trace_f = fopen(fn, "w");
         } else if (!strcmp(t[0], "rec") && nt > 1) {
             wav_close();
             if (strcmp(t[1], "off"))
