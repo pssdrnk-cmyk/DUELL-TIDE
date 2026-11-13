@@ -3,7 +3,7 @@
 export const CMD = {
   INFO: 1, GET: 2, SET: 3, DUMP: 4, DESC: 5, STEP_GET: 6, STEP_SET: 7, PRESET: 8, PROJECT: 9, NAMES: 10,
   UP_LIST: 16, UP_GET: 17, UP_PUT: 18, UP_STORE: 19, UP_LOAD: 20, UP_ERASE: 21, WATCH: 22, CHANGED: 23, RELOAD: 24, PING: 25, STEP_CHANGED: 26,
-  FM6_GET: 68, FM6_PUT: 69, PATCH_RAW: 84, BYPASS: 89, MOTION: 64,   // BYPASS: built in 1.1.0-test1 (INFO tag 5B); MOTION: ops 9..11 for target ids past 127 (1.1.0-test2, INFO tag 4C bit 1)
+  FM6_GET: 68, FM6_PUT: 69, PATCH_RAW: 84, BYPASS: 89, SLOT_HI: 90, MOTION: 64,   // BYPASS: built in 1.1.0-test1 (INFO tag 5B); MOTION: ops 9..11 for target ids past 127 (1.1.0-test2, INFO tag 4C bit 1)
   TRACK: 27, TRACK_MIX: 28, TRACK_DUMP: 29, TRACK_STEP: 30, TRACK_PARAM: 31, TRACK_CHANGED: 32, MENU_DESC: 72, MENU_SET: 73, LEARN_GET: 78, LEARN_SET: 79,
 };
 export const v14 = (v) => { const x = v + 8192; return [x & 127, x >> 7 & 127]; };
@@ -36,6 +36,8 @@ export function parseInfo(a) {
            morphView: !!((tags[0x4f]?.[0] ?? 0) & 1),
            // tide: tag 44 01 bit 0: the firmware is TIDE (the version string stays "DUELL 1.1"); a plain DUELL unit sends no 44 tag
            tide: !!((tags[0x44]?.[0] ?? 0) & 1),
+           // slots175: tag 44 01 bit 2 (b12): 175 patch slots, ids 0..174 (128..174 are addressed with SLOT_HI, cmd 90, before the command); a unit without the bit has 128 slots
+           slots175: !!((tags[0x44]?.[0] ?? 0) & 4),
            // locks: tag 4C 01 caps (the sequencer's parameter locks, MOTION ops 5..7; bit 1 = targets past 127, ops 9..11); motionMax: tag 41 01 lo hi (the motion capacity, 128: op 8 lists them all), else 64
            locks: tags[0x4c] ? tags[0x4c][0] & 127 : null, lockWide: !!((tags[0x4c]?.[0] ?? 0) & 2), motionMax: tags[0x41] ? tags[0x41][0] | tags[0x41][1] << 7 : 64 };
 }
@@ -63,8 +65,8 @@ export function parseNames(a) {                     // engine, count, names..., 
 // UP_LIST: start, count, total, per slot (1 = it holds a sound, engine, name: every slot of DUELL 0.2.17 does, its saved record or else its factory sound),
 // then one category byte per slot, then (0.2.17) one SAVED byte per slot: 1 = a saved record (RESTORE applies), 0 = the factory sound. A unit that
 // sends no SAVED bytes (before 0.2.17) is read with saved = used.
-export function parseUpList(a) {
-  const start = a[0], count = a[1], total = a[2], slots = []; let pos = 3;
+export function parseUpList(a, base = null) {   // base: the real first slot (the reply echoes the slot byte as sent: the low 7 bits)
+  const start = base ?? a[0], count = a[1], total = a[2], slots = []; let pos = 3;
   for (let i = 0; i < count; i++) { const used = a[pos], eng = a[pos + 1]; const [name, n] = rstr(a, pos + 2); pos = n; slots.push({ slot: start + i, used: !!used, eng, name }); }
   slots.forEach((s, i) => { s.cat = a[pos + i] ?? 0; });
   const hasSaved = a.length >= pos + 2 * count;
@@ -72,12 +74,12 @@ export function parseUpList(a) {
   return { start, count, total, slots };
 }
 // UP_GET: slot, used, engine, name, P_COUNT x v14, 16 x (note, flags), kind (0), category, SAVED. A factory slot: its sound's values, no pattern.
-export function parseUpGet(a, pcount) {
+export function parseUpGet(a, pcount, slot = null) {
   const [name, p0] = rstr(a, 3); let pos = p0;
   const values = []; for (let i = 0; i < pcount; i++, pos += 2) values.push(rv14(a, pos));
   const notes = []; for (let i = 0; i < 16; i++, pos += 2) notes.push([a[pos], a[pos + 1]]);
   pos++;                                           // kind
-  return { slot: a[0], used: !!a[1], eng: a[2], name, values, notes, cat: a[pos] ?? 0, saved: a[pos + 1] == null ? !!a[1] : !!a[pos + 1] };
+  return { slot: slot ?? a[0], used: !!a[1], eng: a[2], name, values, notes, cat: a[pos] ?? 0, saved: a[pos + 1] == null ? !!a[1] : !!a[pos + 1] };
 }
 // UP_PUT arguments for a sound: slot, engine, name, values, 16 steps, kind 0 + 16 zero bytes (the unit's grid slot), category
 export const upPutArgs = (slot, eng, name, values, cat = 0, notes = null) =>
@@ -130,3 +132,7 @@ export function parseMotion(a, op8 = true, wide = true) {
   if (wide && a.length >= o + count) rows.forEach((r, i) => { if (a[o + i] === 1) r.tid += 128; });
   return { track: a[0], rc: a[1], on: a[2], count, max, rows };
 }
+
+// b12: 175 slots. #1..#124 (ids 0..123), U1..U4 (124..127), #125..#171 (128..174). `wide`: the unit has the 175 (a unit with 128 shows #1..#128 as it always did).
+export const SLOTS_OLD = 128, SLOTS_WIDE = 175;
+export const slotLabel = (slot, wide = true) => (!wide || slot < 124 ? `#${slot + 1}` : slot < 128 ? `U${slot - 123}` : `#${slot - 3}`);

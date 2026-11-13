@@ -248,7 +248,8 @@ int main(void)
                 }
             }
         }
-        ck("OBJ_COUNT is 55 (ids 43..48 the patch chunks 16..21, 49 OBJ_VELO, 50..54 the multis M17..M26), and every non-retired object's two sectors are inside FL_STORE_OK and all different", OBJ_COUNT == 55u && OBJ_VELO == 49u && OBJ_MULTIX0 == 50u &&
+        ck("OBJ_COUNT is 59 (ids 43..48 the patch chunks 16..21, 49 OBJ_VELO, 50..54 the multis M17..M26, b12: 55..58 the patch chunks at 0xF4000..0xFBFFF), and every non-retired object's two sectors are inside FL_STORE_OK and all different", OBJ_COUNT == 59u && OBJ_VELO == 49u && OBJ_MULTIX0 == 50u &&
+           OBJ_PATCHY0 == 55u && st_sector(OBJ_PATCHY0, 0) == 0xF4000u && st_sector(OBJ_PATCHY0 + 3u, 1) == 0xFB000u && !FL_STORE_OK(0xE8000u, 4096u) &&
            OBJ_PATCHX0 + 16 == OBJ_VELO && sec_ok && distinct);
         for (c = 16; c < 22u; c++) {
             uint32_t ob = OBJ_PATCHX0 + (c - 6u);
@@ -260,8 +261,8 @@ int main(void)
         ck("  b10 U4: the multi objects 50..54 (M17..M26) are the A/B pairs 0xEA000..0xF3FFF in order, inside FL_STORE_OK, and the loader's sector-tail rule holds (a payload of 3,840 bytes at most)", ({ uint32_t q, okm = 1;
             for (q = 0; q < 5u; q++) okm &= st_sector(OBJ_MULTIX0 + q, 0) == 0xEA000u + q * 0x2000u && st_sector(OBJ_MULTIX0 + q, 1) == st_sector(OBJ_MULTIX0 + q, 0) + 0x1000u;
             okm; }) && FL_STORE_OK(0xEA000u, 0xA000u) && !FL_STORE_OK(0xE8000u, 0x2000u) && 3840u <= ST_PAYLOAD_MAX);
-        ck("  outside every object and outside FL_STORE_OK (what erase_test plants a pattern in): 0xF4000 and 0xF8000", !FL_STORE_OK(0xF4000u, 4096u) && !FL_STORE_OK(0xF8000u, 4096u) && ({ uint32_t hit = 0;
-            for (o = 0; o < OBJ_COUNT; o++) for (c = 0; c < 2u; c++) if (!OBJ_RETIRED(o) && (st_sector(o, c) == 0xF4000u || st_sector(o, c) == 0xF8000u)) hit++; !hit; }));
+        ck("  outside every object and outside FL_STORE_OK (what erase_test plants a pattern in): 0xE8000 and 0xE9000, the stock VM backup (b12: 0xF4000.. is the patch store now)", !FL_STORE_OK(0xE8000u, 4096u) && !FL_STORE_OK(0xE9000u, 4096u) && FL_STORE_OK(0xF4000u, 0x8000u) && ({ uint32_t hit = 0;
+            for (o = 0; o < OBJ_COUNT; o++) for (c = 0; c < 2u; c++) if (!OBJ_RETIRED(o) && (st_sector(o, c) == 0xE8000u || st_sector(o, c) == 0xE9000u)) hit++; !hit; }));
         printf("xb: %u objects in the map (retired ones left out)\n", nobj);
         /* a velocity record of 128 bytes: saved, loaded, torn at every byte */
         {

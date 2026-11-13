@@ -53,17 +53,24 @@ CMD_INFO, CMD_PING, CMD_LIST, CMD_GET, CMD_PUT = 1, 25, 65, 66, 67
 T_INFO, T_LIST, T_GET, T_PUT = 2.0, 4.0, 1.5, 6.0         # seconds, as the web Backup page waits
 CHUNK = 256
 MAX_OBJ = 3840
-PATCH_ID, PATCH_KEY0, PATCH_SLOTS, PATCH_PAGE = 40, 1000, 192, 32   # JAM bank expansion (2026-10-29): 192 slots (a unit before it: 128)
-PATCH_PAGES = PATCH_SLOTS // PATCH_PAGE
-PATCH_PAGES_OLD = 4                                              # a unit with 128 slots answers pages 5, 6 with rc 1
+PATCH_ID, PATCH_KEY0, PATCH_PAGE = 40, 1000, 32
+PATCH_ID2 = 47                                                   # b12: the wire id of the patch records of slots 128..174 (the byte after it is slot - 128)
+CAPS_SLOTS175 = 4                                                # INFO tag 44 01 bit 2: 175 patch slots
+PATCH_CAP_BANK, PATCH_CAP_HI = 126, 24                           # b12: the records slots 1..128 and slots 129..175 take, apart
+PATCH_SLOTS_OLD, PATCH_SLOTS, PATCH_PAGES_OLD, PATCH_PAGES = 128, 175, 4, 6   # (a unit without the bit has 128 slots and LIST pages 1..4)
+
+
+def patch_wire(slot: int) -> tuple[int, int]:
+    """The wire id and the slot byte of the patch in `slot` (duellbackup.js patchWireId, slot & 127): id 40 up to slot 127, id 47 above."""
+    return (PATCH_ID if slot < PATCH_SLOTS_OLD else PATCH_ID2), slot & 127
 
 
 def slot_bytes(slot: int) -> list[int]:
-    """A slot in a GET / PUT begin: one 7-bit byte; a slot of 128..191 a second byte, its bit 7 (JAM bank: the unit takes the longer request)."""
-    return [slot & 127] if slot < 128 else [slot & 127, slot >> 7]
+    """A slot in a GET / PUT begin: one 7-bit byte (slot - 128 on id 47)."""
+    return [slot & 127]
 REC_FIX, REC_WORST = 20, 580   # (PT_VER 4: the unit's PT_WORST 577 + TIDE's 3)
 CAPS_MULTI_PATTERN, CAPS_WAVETABLES, CAPS_PATCH16, CAPS_PATCH_RECORDS, CAPS_MULTI_MORE = 4, 8, 16, 32, 64
-FORMAT, VERSION = "duell-backup", 6   # (6: the multis M17..M26, ids 42..46, caps bit 6; duellbackup.js)
+FORMAT, VERSION = "duell-backup", 7   # (7: the patches of slots 129..175, id 47, b12; 6: the multis M17..M26, ids 42..46, caps bit 6; duellbackup.js)
 MULTI2_IDS = [42, 43, 44, 45, 46]
 DUELL_IDS = [0, 1, *range(13, 27), *MULTI2_IDS]
 RESTORE_ORDER = [*range(13, 21), *MULTI2_IDS, *range(21, 27), 1, 0]
@@ -342,6 +349,11 @@ class Info:
     def fv_bank(self) -> bool:
         """The unit can GET object 41, FM6's voice bank (INFO tag 44 01, bit 1)."""
         return bool(self.tags.get(0x44, [0])[0] & CAPS_FVBANK)
+
+    @property
+    def slots175(self) -> bool:
+        """The unit has 175 patch slots (INFO tag 44 01, bit 2: TIDE b12)."""
+        return bool(self.tags.get(0x44, [0])[0] & CAPS_SLOTS175)
 
     @property
     def duell(self) -> Optional[str]:
@@ -858,10 +870,14 @@ class Archive:
     notes: list[str]
     has_patches: bool
     old_patch_chunks: int
+    slots175: bool = False
 
 
 def _wire(key: int) -> dict:
-    return {"id": PATCH_ID, "slot": key - PATCH_KEY0} if is_patch_key(key) else {"id": key}
+    if not is_patch_key(key):
+        return {"id": key}
+    wid, sb = patch_wire(key - PATCH_KEY0)
+    return {"id": wid, "slot": sb}
 
 
 def iso_now() -> str:
@@ -876,7 +892,7 @@ def objects_to_file(objects: list[Obj], info: Info, patch_records: Optional[bool
     ordered = [o for o in objects if not is_patch_key(o.key)] + sorted((o for o in objects if is_patch_key(o.key)), key=lambda o: o.key)
     problems = [{**_wire(o.key), "problem": o.problem or "not checked"} for o in ordered if o.raw]
     f: dict = {"format": FORMAT, "version": VERSION, "firmware": info.version, "created": created or iso_now(), "engines": info.engines,
-               "patchRecords": patch_records if patch_records is not None else any(is_patch_key(o.key) for o in objects)}
+               "slots175": info.slots175, "patchRecords": patch_records if patch_records is not None else any(is_patch_key(o.key) for o in objects)}
     if notes:
         f["notes"] = notes
     if problems:
@@ -919,6 +935,8 @@ def _check_versions(version: int, items: list) -> None:
         raise DuellError(f"This backup is version {version}, which carries patches as records, but it holds patch chunks (ids 6, 7, 9 to 12, 27 to 31, 35 to 39): it is damaged.")
     if version < 5 and PATCH_ID in ids:
         raise DuellError(f"This backup is version {version}, which has no patch records (id {PATCH_ID}): it is damaged.")
+    if version < 7 and PATCH_ID2 in ids:
+        raise DuellError(f"This backup is version {version}, which has no patches of slots 129 to 175 (id {PATCH_ID2}): it is damaged.")
     if version < 6 and any(i in MULTI2_IDS for i in ids):
         raise DuellError(f"This backup is version {version}, which has no multis M17 and up (ids 42 to 46): it is damaged.")
 
@@ -951,7 +969,8 @@ def read_archive(file) -> Archive:
                    [str(e) for e in file.get("engines", [])] if isinstance(file.get("engines"), list) else [], objects,
                    [(o.key, o.problem or "") for o in objects.values() if o.raw],
                    [*([str(n) for n in file["notes"]] if isinstance(file.get("notes"), list) else []), *([OLD_CHUNKS_NOTE] if old else [])],
-                   version >= 5 and (file.get("patchRecords") is True or any(is_patch_key(k) for k in keys)), old)
+                   version >= 5 and (file.get("patchRecords") is True or any(is_patch_key(k) for k in keys)), old,
+                   version >= 7 and file.get("slots175") is True)
 
 
 def _read_items(items: list) -> tuple[dict[int, Obj], int]:
@@ -961,11 +980,11 @@ def _read_items(items: list) -> tuple[dict[int, Obj], int]:
     for o in items:
         if not isinstance(o, dict) or not _is_int(o.get("id")):
             raise DuellError("A backup object has no id.")
-        oid, patch = int(o["id"]), o["id"] == PATCH_ID
+        oid, patch = int(o["id"]), o["id"] in (PATCH_ID, PATCH_ID2)
         slot = o.get("slot")
-        if patch and not (_is_int(slot) and 0 <= slot < PATCH_SLOTS):
+        if patch and not (_is_int(slot) and 0 <= slot < (PATCH_SLOTS - PATCH_SLOTS_OLD if oid == PATCH_ID2 else PATCH_SLOTS_OLD)):
             raise DuellError("A patch object has no valid slot.")
-        key = PATCH_KEY0 + int(slot) if patch else oid
+        key = PATCH_KEY0 + (PATCH_SLOTS_OLD if oid == PATCH_ID2 else 0) + int(slot) if patch else oid
         name = f"Patch {object_label(key)[6:]}" if patch else f"Object {oid}"
         if not patch and oid not in KNOWN_IDS:
             raise DuellError(f"Unknown object id {oid} in this backup.")
@@ -1041,7 +1060,7 @@ def parse_list(a: list[int]) -> dict[int, Listed]:
 
 def parse_page(a: list[int], page: int) -> dict[int, Listed]:
     """A LIST page (1..6): the saved patches of 32 slots, in slot order, under their keys (1000 + slot). The slot byte is 7 bits: pages 5 and 6
-    (slots 128..191, JAM bank) give bit 7."""
+    (slots 128..174, b12) give slot - 128."""
     if not a or a[0] != 1:
         raise DuellError("Unexpected answer from the unit")
     if len(a) < 3:
@@ -1054,8 +1073,8 @@ def parse_page(a: list[int], page: int) -> dict[int, Listed]:
     last = -1
     for i in range(n):
         p = 3 + i * 11
-        slot, size, crc = a[p] + (128 if page > PATCH_PAGES_OLD else 0), r32(a, p + 1), r32(a, p + 6)
-        if slot < PATCH_PAGE * (page - 1) or slot >= PATCH_PAGE * page or slot <= last:
+        slot, size, crc = a[p] + (PATCH_SLOTS_OLD if page > PATCH_PAGES_OLD else 0), r32(a, p + 1), r32(a, p + 6)
+        if slot < PATCH_PAGE * (page - 1) or slot >= min(PATCH_SLOTS, PATCH_PAGE * page) or slot <= last:
             raise DuellError(f"The unit lists a patch (slot {slot}) that does not belong on page {page}.")
         if size < REC_FIX or size > REC_WORST:
             raise DuellError("The unit lists a patch record of a size this editor does not know. Use a newer editor.")
@@ -1064,16 +1083,13 @@ def parse_page(a: list[int], page: int) -> dict[int, Listed]:
     return out
 
 
-def list_unit(t: Transport, caps: Optional[int]) -> dict[int, Listed]:
+def list_unit(t: Transport, caps: Optional[int], slots175: bool = False) -> dict[int, Listed]:
     """The plain LIST (it stops the transport and takes the snapshot), then with caps bit 5 the patch pages, merged by key: four, and pages 5 and 6
-    on a unit with 192 slots (JAM bank; a unit with 128 answers page 5 with rc 1: its list ends there)."""
+    only on a unit with INFO 44 01 bit 2 (b12, 175 slots)."""
     out = parse_list(t.request(CMD_LIST, [], T_LIST))
     if (caps or 0) & CAPS_PATCH_RECORDS:
-        for page in range(1, PATCH_PAGES + 1):
-            a = t.request(CMD_LIST, [page], T_LIST)
-            if page > PATCH_PAGES_OLD and len(a) >= 2 and a[0] == 1 and a[1] == 1:
-                break
-            out.update(parse_page(a, page))
+        for page in range(1, (PATCH_PAGES if slots175 else PATCH_PAGES_OLD) + 1):
+            out.update(parse_page(t.request(CMD_LIST, [page], T_LIST), page))
     return out
 
 
@@ -1083,7 +1099,7 @@ Progress = Callable[[int, int], None]
 def _get_piece(t: Transport, key: int, off: int, n: int) -> bytes:
     """One GET of up to 256 bytes; asked once more after a lost reply (a GET changes nothing on the unit)."""
     patch = is_patch_key(key)
-    wire = PATCH_ID if patch else key
+    wire = patch_wire(key - PATCH_KEY0)[0] if patch else key
     args = [wire, *u32(off), n & 127, n >> 7, *(slot_bytes(key - PATCH_KEY0) if patch else [])]
     try:
         a = t.request(CMD_GET, args, T_GET)
@@ -1111,7 +1127,7 @@ def _read_object(t: Transport, key: int, size: int, tick: Callable[[int], None])
 def capture_backup(t: Transport, info: Info, progress: Optional[Progress] = None, created: Optional[str] = None) -> dict:
     """Read everything the unit lists into a file (duellbackup.js captureBackup). An object that cannot be read whole, changes meanwhile or fails
     the check is kept raw with its problem; only a refused LIST, rc 3 (playing) or nothing readable at all stops the backup."""
-    listed = list_unit(t, info.caps)
+    listed = list_unit(t, info.caps, info.slots175)
     if 0 not in listed or 1 not in listed:
         raise DuellError("The unit does not list its music and settings: is it running TIDE?")
     keys = [i for i in DUELL_IDS if i in listed] + sorted(k for k in listed if is_patch_key(k))
@@ -1179,18 +1195,24 @@ class Plan:
     excluded: list[tuple[str, str]]                      # (label, reason)
     skipped: list[int]
     caps: Optional[int]
+    slots175: bool = False
 
 
-def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, patch_cap: Optional[int] = None, fv_bank: bool = False) -> Optional[str]:
+def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, patch_cap: Optional[int] = None, fv_bank: bool = False,
+                  wide: bool = False) -> Optional[str]:
     """Why a whole group cannot be restored (duellbackup.js planRestore), None when it can."""
     if g.key == "patches":
         if not a.has_patches:
             return "patches saved by an older firmware (physical chunks) are in this file but cannot be restored" if a.old_patch_chunks else "not in this file"
-        n = sum(1 for k in a.objects if is_patch_key(k))
+        ks = [k for k in a.objects if is_patch_key(k)]
+        lo = sum(1 for k in ks if k - PATCH_KEY0 < PATCH_SLOTS_OLD)
+        hi = len(ks) - lo
         if not caps & g.caps:
             return "this unit's firmware cannot restore patches one at a time (update it first)"
-        if patch_cap and n > patch_cap:
-            return f"the file holds {n} patches and this unit stores at most {patch_cap} (STORE FULL); remove some from the file or restore them later in parts"
+        if wide and (lo > PATCH_CAP_BANK or hi > PATCH_CAP_HI):   # b12: two rooms, checked apart
+            return f"the file holds {lo} patches of slots 1..128 and {hi} of slots 129..175, and this unit stores at most {PATCH_CAP_BANK} and {PATCH_CAP_HI} (STORE FULL)"
+        if not wide and patch_cap and lo > patch_cap:
+            return f"the file holds {lo} patches and this unit stores at most {patch_cap} (STORE FULL)"
         return None
     if g.caps and (caps & g.caps) != g.caps:
         return "this unit's firmware cannot restore them (update it first)"
@@ -1203,9 +1225,14 @@ def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, pa
     return None
 
 
-def _patch_steps(a: Archive, listed: dict[int, Listed], include_raw: bool, plan: Plan) -> None:
-    """The patches made exactly the file's: a PUT where size or CRC differ, a size-0 PUT for a saved slot the file lacks."""
-    for key in sorted(k for k in a.objects if is_patch_key(k)):
+def _patch_steps(a: Archive, listed: dict[int, Listed], include_raw: bool, plan: Plan, wide: bool = False) -> None:
+    """The patches made exactly the file's: a PUT where size or CRC differ, a size-0 PUT for a saved slot the file lacks. Slots 129..175 only on a
+    unit with the bit (b12): a file's patches there are otherwise left out with a note; the removals there only when the file has slots175."""
+    low = lambda k: k - PATCH_KEY0 < PATCH_SLOTS_OLD
+    hidden = sum(1 for k in a.objects if is_patch_key(k) and not low(k)) if not wide else 0
+    if hidden:
+        plan.excluded.append(("Patches in slots 129 to 175", f"{hidden} {'patch of slots 129..175 needs' if hidden == 1 else 'patches of slots 129..175 need'} TIDE b12 or newer; {'it is' if hidden == 1 else 'they are'} not restored"))
+    for key in sorted(k for k in a.objects if is_patch_key(k) and (wide or low(k))):
         o = a.objects[key]
         if o.raw and (not include_raw or not o.size):
             plan.excluded.append((f"Patches: {object_label(key, o.data)}", f"it could not be checked when the backup was made ({o.problem}); the unit keeps what it holds there"))
@@ -1216,7 +1243,7 @@ def _patch_steps(a: Archive, listed: dict[int, Listed], include_raw: bool, plan:
             continue
         plan.steps.append(Step(key, o.data, "patches"))
     for key in listed:
-        if is_patch_key(key) and key not in a.objects:
+        if is_patch_key(key) and key not in a.objects and (a.slots175 or low(key)):
             plan.steps.append(Step(key, b"", "patches"))
 
 
@@ -1235,18 +1262,18 @@ def _object_steps(g: Group, a: Archive, include_raw: bool, plan: Plan) -> None:
 
 
 def plan_restore(a: Archive, listed: dict[int, Listed], caps: Optional[int], include_raw: bool = False, sel: Optional[set[str]] = None,
-                 patch_cap: Optional[int] = None, fv_bank: bool = False) -> Plan:
+                 patch_cap: Optional[int] = None, fv_bank: bool = False, slots175: bool = False) -> Plan:
     """What a restore would send, nothing sent: the removals of saved patches the file lacks first (they free room), the patches by slot, then 13..20,
     21..23, 24..26, 1, and the live music last. patch_cap (INFO 58 01): a file with more patches than that leaves the patches out with the reason (D05)."""
-    plan, c = Plan([], [], [], caps), caps or 0
+    plan, c = Plan([], [], [], caps, slots175), caps or 0
     for g in GROUPS:
         if (sel is not None and g.key not in sel) or (g.optional and not all(i in a.objects for i in g.ids)):
             continue
-        why = _group_reason(g, a, listed, c, patch_cap, fv_bank)
+        why = _group_reason(g, a, listed, c, patch_cap, fv_bank, slots175)
         if why:
             plan.excluded.append((g.label, why))
         elif g.dynamic:
-            _patch_steps(a, listed, include_raw, plan)
+            _patch_steps(a, listed, include_raw, plan, slots175)
         else:
             _object_steps(g, a, include_raw, plan)
     plan.steps.sort(key=lambda s: (s.key - PATCH_KEY0 if s.data else s.key - PATCH_KEY0 - 200) if s.patch else 200 + (RESTORE_ORDER.index(1) - 0.5 if s.key == FVB_ID else RESTORE_ORDER.index(s.key)))   # (the voice bank just before the settings)
@@ -1271,7 +1298,7 @@ def _put(t: Transport, args: list[int]) -> None:
 
 def _put_object(t: Transport, s: Step, tick: Callable[[int], None]) -> None:
     """begin, the 256-byte pieces in order, commit; an abort when anything after the begin fails (the unit keeps its old copy)."""
-    wire = PATCH_ID if s.patch else s.key
+    wire = patch_wire(s.key - PATCH_KEY0)[0] if s.patch else s.key
     _put(t, [0, wire, *u32(len(s.data)), *u32(crc32(s.data)), *(slot_bytes(s.key - PATCH_KEY0) if s.patch else [])])
     try:
         for off in range(0, len(s.data), CHUNK):
@@ -1353,7 +1380,7 @@ class Verify:
 def verify_restore(t: Transport, plan: Plan) -> Verify:
     """A fresh LIST: patches, multis, patterns, wavetables must equal the file (a removed patch must be gone); the music and the settings are checked by
     the unit at commit and may read back in its own normal form, so they are not compared."""
-    listed, v = list_unit(t, plan.caps), Verify([], [], [])
+    listed, v = list_unit(t, plan.caps, plan.slots175), Verify([], [], [])
     for s in plan.steps:
         if s.key in (0, 1):
             v.not_compared.append(s.key)
@@ -1468,7 +1495,10 @@ def cmd_info(a, conn: Conn, out, ask) -> int:
     print(f"DUELL {i.duell}{' with TIDE' if i.tide else ''}  ({i.version})", file=out)
     print(f"port:     {conn.t.port_name}", file=out)
     print(f"caps:     {caps_text(i.caps)}", file=out)
-    print(f"patches:  {i.patch_cap if i.patch_cap is not None else 'unknown'} slots", file=out)
+    if i.slots175:
+        print(f"patches:  {PATCH_SLOTS} slots (the store takes {i.patch_cap if i.patch_cap is not None else 'an unknown number'})", file=out)
+    else:
+        print(f"patches:  {i.patch_cap if i.patch_cap is not None else 'unknown'} slots", file=out)
     named = [e for e in i.engines if e != "-"]
     print(f"engines:  {len(named)} ({', '.join(named)}; {len(i.engines)} engine slots)", file=out)
     return EXIT_OK
@@ -1519,7 +1549,8 @@ def cmd_restore(a, conn: Conn, out, ask) -> int:
     print(f"file: a backup of {arch.firmware.removeprefix('FELUCCA ') or 'a TIDE unit'}, made {arch.created or 'an unknown date'}: {describe(arch)}", file=out)
     for line in raw_lines(arch) + arch.notes:
         print(f"  warning: {line}", file=out)
-    plan = plan_restore(arch, list_unit(conn.t, conn.info.caps), conn.info.caps, a.include_raw, patch_cap=conn.info.patch_cap, fv_bank=conn.info.fv_bank)
+    plan = plan_restore(arch, list_unit(conn.t, conn.info.caps, conn.info.slots175), conn.info.caps, a.include_raw, patch_cap=conn.info.patch_cap, fv_bank=conn.info.fv_bank,
+                        slots175=conn.info.slots175)
     if not plan.steps:
         print("Nothing to restore.", file=out)
         for lab, why in plan.excluded:

@@ -45,7 +45,7 @@ static int erase_data_run(void)
                                     OBJ_PATCHX0, OBJ_PATCHX0 + 1, OBJ_PATCHX0 + 2, OBJ_PATCHX0 + 3, OBJ_PATCHX0 + 4,
                                     OBJ_PATCHX0 + 5, OBJ_PATCHX0 + 6, OBJ_PATCHX0 + 7, OBJ_PATCHX0 + 8, OBJ_PATCHX0 + 9,
                                     OBJ_PATCHX0 + 10, OBJ_PATCHX0 + 11, OBJ_PATCHX0 + 12, OBJ_PATCHX0 + 13, OBJ_PATCHX0 + 14,
-                                    OBJ_PATCHX0 + 15,   /* (item 103, owner: OBJ_VELO, the key velocity calibration, is the unit's, not user data: KEPT) */
+                                    OBJ_PATCHX0 + 15, OBJ_PATCHY0, OBJ_PATCHY0 + 1, OBJ_PATCHY0 + 2, OBJ_PATCHY0 + 3,   /* (b12: chunks 21..24, 0xF4000..0xFBFFF) (item 103, owner: OBJ_VELO, the key velocity calibration, is the unit's, not user data: KEPT) */
                                     OBJ_WTAB0, OBJ_WTAB0 + 1, OBJ_WTAB0 + 2,
                                     OBJ_SETTINGS};
     uint32_t i, failed = 0;

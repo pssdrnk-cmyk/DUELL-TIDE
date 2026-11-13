@@ -10,7 +10,7 @@
  * the store's geometry (chunks, records a chunk). Before it (DUELL 0.2.15 .. job A) the archive carried the PHYSICAL chunks, ids 6, 7, 9..12, 27..31 and 35..39
  * (OBJ_PATCH0 .. OBJ_PATCHX0..9): those ids are gone (a LIST does not list them, GET and PUT answer rc 1); an old archive of chunks is refused by the editor.
  *   LIST (no argument)        stops the transport, takes the snapshot, lists the other objects (ids 0..5, 8, 13..26, 32..34: 24 in all)
- *   LIST page                 (page 1 .. UP_SLOTS / ED_BK_PPAGE = 4; needs the LIST before) the saved patches of slots 32 (page - 1) .. 32 page - 1: count, then per saved
+ *   LIST page                 (page 1 .. 4; b12: .. 6, pages 5 and 6 list slots 128..174 by slot - 128, their id 47; needs the LIST before) the saved patches of slots 32 (page - 1) .. 32 page - 1: count, then per saved
  *                             patch slot (the id byte), size u32, crc u32 (a slot that holds its factory sound is not listed: it has no record)
  *   GET 40 off count slot     (9 bytes: id, offset u32, count lo, count hi, slot) a piece of the record; the reply is the usual one with id 40
  *   PUT begin 40 size crc slot (13 bytes) / data / commit / abort as every object; the record goes in through up_put_raw (refused at commit, rc 2, when the store would not
@@ -42,6 +42,9 @@
 #define ED_BK_PAT0 21u
 #define ED_BK_WT0 24u
 #define ED_BK_PATCH 40u                         /* a patch record, with its slot (see the top) */
+#define ED_BK_PATCH2 47u                        /* b12 (INFO 44 01 bit 2, archive version 7): the same for the slots 128..174 (#129..#175 of the list), slot byte = slot - 128 */
+static uint32_t ed_bk_pslot(uint32_t id, uint32_t b) { return id == ED_BK_PATCH ? b : id == ED_BK_PATCH2 ? 128u + b : UP_SLOTS; }   /* (UP_SLOTS: no patch id) */
+#define ED_BK_ISP(id) ((id) == ED_BK_PATCH || (id) == ED_BK_PATCH2)
 #define ED_BK_MULX0 42u                         /* ids 42..46: the multi objects 8..12 (M17..M26, b10 U4, INFO 42 01 caps bit 6): always all five, the flash has room for M26 (MU_OBJ_ALL); the ones past MU_SLOTS read empty; 41 is the voice bank */
 #define ED_BK_FVB 41u                           /* TIDE: FM6's voice bank, read only (see the top) */
 #define ED_BK_PPAGE 32u                         /* patch records a LIST page lists (32 x 11 bytes fit the reply) */
@@ -254,10 +257,10 @@ static uint32_t ed_bk_commit(void)
         ps_restored(o, raw, ed_bk_len);             /* RAM is the restored object; no write of the old one is pending */
         sync_reload = 1; ui.force = 1;
         return 0;
-    } else if (ed_bk_id == ED_BK_PATCH) {     /* one patch record into its slot (the store places it); length 0: the slot's record removed */
+    } else if (ED_BK_ISP(ed_bk_id)) {         /* one patch record into its slot (the store places it); length 0: the slot's record removed */
         int r = ed_bk_len ? up_put_raw(ed_bk_slot, raw, ed_bk_len) : sl_restore(ed_bk_slot);
         sync_reload = 1; ui.force = 1;
-        return r == 0 || r == 3 ? 0u : r == 1 ? 2u : r == PT_FULL ? 6u : song.playing ? 3u : 4u;   /* (3: no flash, kept in RAM; 1: no record the store would read; 2: the flash failed; 6: STORE FULL, TIDE's 126 records) */
+        return r == 0 || r == 3 ? 0u : r == 1 ? 2u : r == PT_FULL ? 6u : song.playing ? 3u : 4u;   /* (3: no flash, kept in RAM; 1: no record the store would read; 2: the flash failed; 6: STORE FULL, TIDE's 150 records) */
     } else return 1;
 #if FELUCCA_FLASH
     if (!flash_ok || st_save(obj, raw, ed_bk_len)) return 4;
@@ -281,20 +284,20 @@ static int proj_store_len(uint32_t len) { return len == sizeof(project_store_t);
 static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
 {
     /* the arguments first: a malformed request never stops the transport */
-    if (n < 2u || a[0] > 3u || (a[1] > 5u && a[1] != 8u && a[1] != ED_BK_PATCH && ed_bk_multi(a[1]) < 0 && ed_bk_pat(a[1]) < 0 && ed_bk_wt(a[1]) < 0)) return 1;   /* (the ids 6, 7, 9..12, 27..31, 35..39 were the patch store's chunks: gone) */
+    if (n < 2u || a[0] > 3u || (a[1] > 5u && a[1] != 8u && !ED_BK_ISP(a[1]) && ed_bk_multi(a[1]) < 0 && ed_bk_pat(a[1]) < 0 && ed_bk_wt(a[1]) < 0)) return 1;   /* (the ids 6, 7, 9..12, 27..31, 35..39 were the patch store's chunks: gone) */
     if (a[0] == 0u) {
-        if (n != (a[1] == ED_BK_PATCH ? 13u : 12u) || a[6] > 15u || a[11] > 15u) return 1;
+        if (n != (ED_BK_ISP(a[1]) ? 13u : 12u) || a[6] > 15u || a[11] > 15u) return 1;
         uint32_t len = ed_bk_r32(a + 2);
         if (len > ED_BK_MAX || (a[1] == 0u && !proj_store_len(len)) ||
             (a[1] == 1u && len != sizeof(persist_t)) ||
-            (a[1] == ED_BK_PATCH && (a[12] >= UP_SLOTS || (len && (len < PT_FIX || len > PT_WORST)))) ||
+            (ED_BK_ISP(a[1]) && (ed_bk_pslot(a[1], a[12]) >= UP_SLOTS || (len && (len < PT_FIX || len > PT_WORST)))) ||
             (ed_bk_multi(a[1]) >= 0 && len && (len < MU_HDR || len > MU_OBJ_MAX)) ||
             (ed_bk_pat(a[1]) >= 0 && len && (len < PS_HDR || len > PS_OBJ_MAX)) ||
             (ed_bk_wt(a[1]) >= 0 && len && len != sizeof(wt_obj_t))) return 1;
         if (ed_flash_stop()) return 3;
         ed_wt_put = 0;
         ed_bk_valid = 0; ed_bk_put = 1; ed_bk_id = a[1]; ed_bk_len = len; ed_bk_gen = ++proj_wire_gen;
-        ed_bk_slot = a[1] == ED_BK_PATCH ? a[12] : 0u;
+        ed_bk_slot = (uint8_t)(ED_BK_ISP(a[1]) ? ed_bk_pslot(a[1], a[12]) : 0u);
         ed_bk_crc = ed_bk_r32(a + 7); ed_bk_pos = 0;
         ed_bk_usb = usb.resets; ed_bk_ms = fm1_ms;
         return 0;
@@ -320,21 +323,21 @@ static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
 static int ed_backup_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
 {
     if (cmd == ED_BACKUP_LIST && n == 1u) {         /* a page of the saved patch records (see the top) */
-        uint32_t pg = a[0], rc = pg >= 1u && pg <= UP_SLOTS / ED_BK_PPAGE ? 0u : 1u, k, cnt = 0;
+        uint32_t pg = a[0], rc = pg >= 1u && pg <= (UP_SLOTS + ED_BK_PPAGE - 1u) / ED_BK_PPAGE ? 0u : 1u, k, cnt = 0, ke = pg * ED_BK_PPAGE < UP_SLOTS ? pg * ED_BK_PPAGE : UP_SLOTS;   /* (b12: pages 5, 6 = 128..174) */
         if (!rc && (!ed_bk_valid || ed_bk_usb != usb.resets))
             rc = 5u;
         else if (!rc && transport_busy())
             rc = 3u;
         if (!rc)
-            for (k = (pg - 1u) * ED_BK_PPAGE; k < pg * ED_BK_PPAGE; k++)
+            for (k = (pg - 1u) * ED_BK_PPAGE; k < ke; k++)
                 cnt += (uint32_t)up_used(k);
         ed_b(1); ed_b(rc); ed_b(rc ? 0u : cnt);
         if (!rc)
-            for (k = (pg - 1u) * ED_BK_PPAGE; k < pg * ED_BK_PPAGE; k++)
+            for (k = (pg - 1u) * ED_BK_PPAGE; k < ke; k++)
                 if (up_used(k)) {
                     uint32_t len;
                     const uint8_t *p = ed_bk_patch(k, &len);
-                    ed_b(k); ed_bk_u32(len); ed_bk_u32(st_crc32(p, len));
+                    ed_b(k & 127u); ed_bk_u32(len); ed_bk_u32(st_crc32(p, len));   /* (pages 5, 6: the slot less 128, id 47's slot byte) */
                 }
         return 1;
     }
@@ -351,9 +354,9 @@ static int ed_backup_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
     }
     if (cmd == ED_BACKUP_GET) {
         uint32_t len = 0, off = n >= 6u ? ed_bk_r32(a + 1) : 0u;
-        int isp = n && a[0] == ED_BK_PATCH;
+        int isp = n && ED_BK_ISP(a[0]);
         uint32_t count = n == (isp ? 9u : 8u) ? (uint32_t)a[6] | (uint32_t)a[7] << 7 : 0u;
-        const uint8_t *p = !n ? 0 : isp ? (n == 9u && a[8] < UP_SLOTS ? ed_bk_patch(a[8], &len) : 0) : ed_bk_object(a[0], &len);
+        const uint8_t *p = !n ? 0 : isp ? (n == 9u && ed_bk_pslot(a[0], a[8]) < UP_SLOTS ? ed_bk_patch(ed_bk_pslot(a[0], a[8]), &len) : 0) : ed_bk_object(a[0], &len);
         uint32_t rc = (!ed_bk_valid || ed_bk_usb != usb.resets || (n && !a[0] && ed_bk_gen != proj_wire_gen)) ? 5u : transport_busy() ? 3u :
             n != (isp ? 9u : 8u) || a[5] > 15u || !p || !count || count > 256u || off > len || count > len - off ? 1u : 0u;
         ed_b(n ? a[0] : 127u); ed_b(rc); ed_bk_u32(off); ed_b(rc ? 0u : count & 127u); ed_b(rc ? 0u : count >> 7);

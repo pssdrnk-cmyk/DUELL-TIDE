@@ -170,7 +170,7 @@ int main(int argc, char **argv)
      * (tests/factory_bank_records.txt, PT_VER 3) is no longer read by the store. Every factory sound: loaded, saved through SAVE's path, loaded
      * back from the saved slot: the same sound (every value as the record keeps it, the slots, End B as it sounds, the FM6 patch), and the
      * record carries End B and the arp / keys block (126 slots with TIDE: its store's limit) */
-    for (k = 0; k < nsave; k++) {
+    for (k = 0; k < TIDE_PT_END; k = TIDE_PT_NEXT(k)) {
         const char *why;
         load_settled((k + 61u) % UP_SLOTS);               /* another sound first: nothing of the one before may leak into this one */
         load_settled(k);

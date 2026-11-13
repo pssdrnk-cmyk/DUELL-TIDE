@@ -8,20 +8,20 @@ import { CMD, parseUpGet, upPutArgs } from "./proto.js";
 import { L, ID } from "./layout.js";
 import { bkU32, bkR32, bkPack, bkUnpack, bkCrc } from "../fm1backup.js";
 import { itemFromRecord, itemApprox, buildFile, stringifyFile } from "./patchfile.js";
-import { UnitError, UP_SLOTS } from "./unit.js";
+import { UnitError } from "./unit.js";
 import { CATEGORIES, parseRecord } from "./patchrecord.js";
 
 export const PIECE = 112;                                        // data bytes of a PATCH_RAW piece (16 pack7 groups)
 const RC = { 1: "The unit refused the request (a bad slot, or a record it cannot read).", 2: "The unit found the record incomplete or damaged (checksum).",
   3: "The unit is playing and could not stop. Stop playback on the unit and try again.", 4: "The unit could not write its flash memory. The slot is as it was.",
-  5: "The transfer on the unit expired. Try again.", 6: "STORE FULL: the unit's patch store holds all the patches it can (126 with TIDE). Remove a saved patch on the unit, then write again." };
+  5: "The transfer on the unit expired. Try again.", 6: "STORE FULL: the unit's patch store holds all the patches it can (150 with TIDE b12, 126 before). Restore a saved patch on the unit to free a place, then write again." };
 const rcError = (rc, what = "") => new UnitError(`${what}${RC[rc] || `The unit answered error ${rc}.`}`, rc);
 
 export const hasRaw = (u) => !!u.info?.patchRaw;
 
-// ---- one slot, whole
+// ---- one slot, whole. A slot k >= 128 (b12, 175 slots): every PATCH_RAW message of a transfer goes with its own SLOT_HI (u.sreq), the slot byte is k - 128
 export async function rawInfo(u, slot) {                         // -> { saved, len, crc }
-  const a = await u.req(CMD.PATCH_RAW, [0, slot], 3000);
+  const a = await u.sreq(CMD.PATCH_RAW, [0, slot], 3000, 1);
   if (a[2]) throw rcError(a[2]);
   return { saved: !!a[3], len: a[4] | a[5] << 7, crc: bkR32(a, 6) };
 }
@@ -30,9 +30,9 @@ export async function rawRead(u, slot) {                         // -> null (the
   if (!info.saved) return null;
   const out = new Uint8Array(info.len);
   for (let off = 0; off < info.len; off += PIECE) {
-    const n = Math.min(PIECE, info.len - off), a = await u.req(CMD.PATCH_RAW, [1, slot, off & 127, off >> 7, n], 3000);
+    const n = Math.min(PIECE, info.len - off), a = await u.sreq(CMD.PATCH_RAW, [1, slot, off & 127, off >> 7, n], 3000, 1);
     if (a[2]) throw rcError(a[2]);
-    if (a[1] !== slot || (a[3] | a[4] << 7) !== off || a[5] !== n) throw new UnitError("The unit answered out of order.");
+    if (a[1] !== (slot & 127) || (a[3] | a[4] << 7) !== off || a[5] !== n) throw new UnitError("The unit answered out of order.");
     out.set(bkUnpack(a.slice(6), n), off);
   }
   if (bkCrc(out) !== info.crc) throw new UnitError("The unit changed the slot while it was read. Try again.");
@@ -40,7 +40,7 @@ export async function rawRead(u, slot) {                         // -> null (the
 }
 export async function rawWrite(u, slot, bytes, onProgress = () => {}) {   // begin, pieces, commit; the transfer is aborted on an error
   u.guard();
-  const put = async (args, t = 3000) => { const a = await u.req(CMD.PATCH_RAW, args, t); if (a[2]) throw rcError(a[2]); };
+  const put = async (args, t = 3000) => { const a = await u.sreq(CMD.PATCH_RAW, args, t, 1); if (a[2]) throw rcError(a[2]); };
   await put([2, slot, bytes.length & 127, bytes.length >> 7, ...bkU32(bkCrc(bytes))], 6000);
   try {
     for (let off = 0; off < bytes.length; off += PIECE) {
@@ -48,11 +48,11 @@ export async function rawWrite(u, slot, bytes, onProgress = () => {}) {   // beg
       onProgress(Math.min(bytes.length, off + PIECE), bytes.length);
     }
     await put([4, slot], 8000);
-  } catch (e) { await u.req(CMD.PATCH_RAW, [5, slot]).catch(() => {}); throw e; }
+  } catch (e) { await u.sreq(CMD.PATCH_RAW, [5, slot], undefined, 1).catch(() => {}); throw e; }
 }
 
 // ---- reading slots into items. A saved slot is its record (lossless); a slot that holds its factory sound is an approximate copy of its values (UP_GET)
-export async function upGet(u, slot) { return parseUpGet(await u.req(CMD.UP_GET, [slot], 3000), L.P_COUNT); }
+export async function upGet(u, slot) { return parseUpGet(await u.sreq(CMD.UP_GET, [slot], 3000), L.P_COUNT, slot); }
 export async function readItem(u, slot, listed) {
   const li = listed ?? u.slots?.[slot];
   const number = slot + 1;
@@ -83,7 +83,7 @@ export async function writeItem(u, slot, item, onProgress) {
     if (!hasRaw(u)) throw new UnitError("This unit's firmware cannot take a patch whole (it needs DUELL 0.2.19). Update it with the installer.");
     await rawWrite(u, slot, item.record, onProgress);
   } else {                                                      // an approximate copy: UP_PUT (End B, the arp block and an FM6 sound's own patch are not part of it)
-    const a = await u.req(CMD.UP_PUT, upPutArgs(slot, item.engine, item.name, item.values, item.cat), 8000);
+    const a = await u.sreq(CMD.UP_PUT, upPutArgs(slot, item.engine, item.name, item.values, item.cat), 8000);
     if (a[1] === 1) throw new UnitError("The unit refused the values or the name.", 1);
     if (a[1]) throw rcError(a[1]);
   }
@@ -98,7 +98,7 @@ export async function verifyItem(u, slot, item) {
 // ---- plans. A write is { slot, item }; `replaces` is what the slot holds now.
 export function describeSlot(u, slot) {
   const s = u.slots?.[slot];
-  return { slot, label: `#${slot + 1}`, name: s?.name ?? "", saved: !!s?.saved, engine: s ? L.ENG[s.eng]?.name : "", category: CATEGORIES[s?.cat] || "" };
+  return { slot, label: u.label(slot), name: s?.name ?? "", saved: !!s?.saved, engine: s ? L.ENG[s.eng]?.name : "", category: CATEGORIES[s?.cat] || "" };
 }
 // targets for a list of items: { mode: "same" (the item's own number), "from" (consecutive from `start`, 0-based), "pick" (explicit array) }
 export function chooseTargets(u, items, { mode = "from", start = 0, skipSaved = false, picks = [] } = {}) {
@@ -108,8 +108,8 @@ export function chooseTargets(u, items, { mode = "from", start = 0, skipSaved = 
   else {
     let s = start;
     for (let i = 0; i < items.length; i++) {
-      while (s < UP_SLOTS && skipSaved && u.slots?.[s]?.saved) s++;
-      t.push(s < UP_SLOTS ? s : null); s++;
+      while (s < u.nslots && skipSaved && u.slots?.[s]?.saved) s++;
+      t.push(s < u.nslots ? s : null); s++;
     }
   }
   return t;
@@ -120,8 +120,8 @@ export function makePlan(u, items, targets) {
   items.forEach((item, i) => {
     const slot = targets[i];
     if (slot == null) { problems.push(`${item.name}: no slot`); return; }
-    if (slot < 0 || slot >= UP_SLOTS) { problems.push(`${item.name}: slot ${slot + 1} does not exist`); return; }
-    if (seen.has(slot)) { problems.push(`${item.name} and ${seen.get(slot)} both go to #${slot + 1}`); return; }
+    if (slot < 0 || slot >= u.nslots) { problems.push(`${item.name}: slot ${slot + 1} does not exist`); return; }
+    if (seen.has(slot)) { problems.push(`${item.name} and ${seen.get(slot)} both go to ${u.label(slot)}`); return; }
     seen.set(slot, item.name);
     if (item.kind === "record" && !hasRaw(u)) { problems.push(`${item.name}: this unit's firmware cannot take a patch whole`); return; }
     writes.push({ slot, item, replaces: describeSlot(u, slot) });
@@ -205,8 +205,8 @@ export async function swapSlots(u, a, b) {
   if (ia) await writeItem(u, b, ia);                            // (both saved: the first record is in a second place before the other one is overwritten)
   if (ib) await writeItem(u, a, ib); else await restoreQuiet(u, a);
   if (!ia && ib) await restoreQuiet(u, b);
-  if (ia && !(await verifyItem(u, b, ia))) throw new UnitError(`The patch in #${b + 1} did not read back the same.`);
-  if (ib && !(await verifyItem(u, a, ib))) throw new UnitError(`The patch in #${a + 1} did not read back the same.`);
+  if (ia && !(await verifyItem(u, b, ia))) throw new UnitError(`The patch in ${u.label(b)} did not read back the same.`);
+  if (ib && !(await verifyItem(u, a, ib))) throw new UnitError(`The patch in ${u.label(a)} did not read back the same.`);
   await u.listSlots();
   return { moved: true, both: sa && sb };
 }
@@ -214,14 +214,14 @@ export async function swapSlots(u, a, b) {
 export async function moveSlot(u, a, b) {
   u.guard();
   const it = await readItem(u, a);
-  if (!u.slots[a].saved) throw new UnitError(`#${a + 1} holds a factory sound; there is nothing to move.`);
+  if (!u.slots[a].saved) throw new UnitError(`${u.label(a)} holds a factory sound; there is nothing to move.`);
   await writeItem(u, b, it);
-  if (!(await verifyItem(u, b, it))) throw new UnitError(`The patch in #${b + 1} did not read back the same; #${a + 1} was left as it is.`);
+  if (!(await verifyItem(u, b, it))) throw new UnitError(`The patch in ${u.label(b)} did not read back the same; ${u.label(a)} was left as it is.`);
   await restoreQuiet(u, a);
   await u.listSlots();
 }
 async function restoreQuiet(u, slot) {
-  const a = await u.req(CMD.UP_ERASE, [slot], 6000);
+  const a = await u.sreq(CMD.UP_ERASE, [slot], 6000);
   if (a[1]) throw rcError(a[1]);
 }
 export function swapLines(u, a, b) {

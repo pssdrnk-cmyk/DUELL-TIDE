@@ -38,8 +38,8 @@ static int ed_fm6_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
                 rc = ED_FM6_NOBANK;
             else if (a[0] == ED_FM6_FACTORY && a[1] < FM6_NFACTORY)
                 memcpy(pk, FM6_FACTORY[a[1]], FM6_PACKED);
-            else if (a[0] == ED_FM6_USER && a[1] < UP_SLOTS)
-                rc = upf_get(a[1], pk) ? 2u : 0u;          /* (2: not an FM6 preset, or none stored with it) */
+            else if (a[0] == ED_FM6_USER && ed_slot(a[1]) < UP_SLOTS)
+                rc = upf_get(ed_slot(a[1]), pk) ? 2u : 0u;          /* (2: not an FM6 preset, or none stored with it) */
             else
                 rc = 1;
         }
@@ -59,10 +59,10 @@ static int ed_fm6_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
             ui.force = 1;
         } else if (!rc && a[0] == ED_FM6_BANK) {
             rc = ED_FM6_NOBANK;
-        } else if (!rc && a[0] == ED_FM6_USER && a[1] < UP_SLOTS && upf_fm6(a[1])) {
+        } else if (!rc && a[0] == ED_FM6_USER && ed_slot(a[1]) < UP_SLOTS && upf_fm6(ed_slot(a[1]))) {
             int r = 2;
             if (!ed_flash_stop())
-                r = upf_put(a[1], a + 2);
+                r = upf_put(ed_slot(a[1]), a + 2);
             rc = r == 0 || r == 3 ? 0u : 2u;               /* (3, no flash: kept in RAM) */
         } else {
             rc = 1;

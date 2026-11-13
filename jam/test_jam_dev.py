@@ -76,8 +76,10 @@ def tearDownModule():
 
 
 class Base(unittest.TestCase):
+    MOCK = {"slots175": False}                  # the unit of before b12 (128 slots); B12Tests use the default mock, the b12 unit
+
     def setUp(self):
-        ctl("reset")
+        ctl("reset", options=self.MOCK)
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
 
@@ -185,7 +187,7 @@ class BackupTests(Base):
         created = json.loads(js)["created"]
         py = jd.file_text(capture(created))
         self.assertEqual(py, js)
-        self.assertRegex(js, r'^\{"format":"duell-backup","version":6,"firmware":"FELUCCA DUELL 0\.2\.25 bet","created":"[^"]+","engines":\[')
+        self.assertRegex(js, r'^\{"format":"duell-backup","version":7,"firmware":"FELUCCA DUELL 0\.2\.25 bet","created":"[^"]+","engines":\[')
 
     def test_cli_backup_read_by_web_editor(self):
         p = self.backup_file()
@@ -194,7 +196,7 @@ class BackupTests(Base):
         self.assertFalse(text.endswith(b"\n") or b"\r" in text)
         r = ctl("readArchive", text=text.decode())
         self.assertTrue(r["accepted"], r.get("reason"))
-        self.assertEqual((r["version"], r["objects"], r["patches"], r["problems"], r["hasPatches"]), (6, 20, [0, 1, 5, 64], [], True))
+        self.assertEqual((r["version"], r["objects"], r["patches"], r["problems"], r["hasPatches"]), (7, 20, [0, 1, 5, 64], [], True))
         f = json.loads(text)
         self.assertRegex(f["created"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
         self.assertEqual([o["id"] for o in f["objects"]], [i for i in jd.DUELL_IDS if i not in jd.MULTI2_IDS] + [40] * 4)
@@ -459,6 +461,88 @@ class RestoreTests(Base):
         self.assertEqual([lab for lab, _ in old.excluded], ["Patches", "User wavetables"])
         a.objects[1] = jd.Obj(1, a.objects[1].data + b"\0" * 16)
         self.assertIn("another version", dict(jd.plan_restore(a, jd.list_unit(t, 63), 63).excluded)["Settings"])
+
+
+class B12Tests(Base):
+    """TIDE b12: 175 patch slots (INFO 44 01 bit 2), slots 129..175 as id 47, file version 7 with slots175."""
+    MOCK = {}
+
+    def test_info(self):
+        i = jd.read_info(NoClose(BRIDGE))
+        self.assertTrue(i.slots175 and i.tide)
+        self.assertEqual(i.patch_cap, 150)
+        rc, out, _ = run_main(["info"])
+        self.assertEqual(rc, 0)
+        self.assertIn("175 slots", out)
+        self.assertIn("150", out)
+
+    def test_backup_byte_identical_with_id47(self):
+        ctl("setPatch", slot=128, name="HI FIRST")
+        ctl("setPatch", slot=160, name="HI MID")
+        ctl("setPatch", slot=174, name="HI LAST")
+        js = ctl("captureJs")["text"]
+        f = json.loads(js)
+        self.assertEqual(jd.file_text(capture(f["created"])), js)
+        self.assertIs(f["slots175"], True)
+        self.assertEqual(f["version"], 7)
+        self.assertEqual([(o["id"], o["slot"]) for o in f["objects"] if o["id"] in (40, 47)],
+                         [(40, 0), (40, 1), (40, 5), (40, 64), (47, 0), (47, 32), (47, 46)])
+        a = jd.read_archive(js)
+        self.assertTrue(a.slots175)
+        self.assertEqual(sorted(k for k in a.objects if k >= 1000), [1000, 1001, 1005, 1064, 1128, 1160, 1174])
+        r = ctl("readArchive", text=js)
+        self.assertTrue(r["accepted"], r.get("reason"))
+        self.assertEqual(r["patches"], [0, 1, 5, 64, 128, 160, 174])
+
+    def test_file_without_slots175_keeps_unit_high_slots(self):
+        a = jd.read_archive(ctl("captureJs")["text"])
+        f = json.loads(ctl("captureJs")["text"])
+        del f["slots175"]
+        ctl("setPatch", slot=160, name="MINE HI")
+        before = state()["patches"]["160"]
+        arch = jd.read_archive(json.dumps(f, separators=(",", ":")))
+        self.assertFalse(arch.slots175)
+        plan = jd.plan_restore(arch, jd.list_unit(NoClose(BRIDGE), 63, True), 63, patch_cap=150, slots175=True)
+        self.assertNotIn(1160, [s.key for s in plan.steps])
+        p = self.dir / "old.json"
+        p.write_text(json.dumps(f, separators=(",", ":")), encoding="utf-8")
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(state()["patches"]["160"], before)
+
+    def test_high_slots_restored_and_removed_with_slots175(self):
+        ctl("setPatch", slot=150, name="KEEP ME")
+        p = self.backup_file()
+        ctl("deletePatch", slot=150)
+        ctl("setPatch", slot=160, name="EXTRA")
+        want = {k: v for k, v in state()["patches"].items() if k != "160"}
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        st = state()
+        self.assertIn("150", st["patches"])
+        self.assertNotIn("160", st["patches"])                  # slots175 in the file: the unit's extra patch there is removed
+        self.assertIn(47, [a[1] for a in st["sent"] if a[0] == 0])
+        self.assertTrue(want.keys() <= st["patches"].keys())
+
+    def test_store_rooms_apart(self):
+        a = jd.read_archive(ctl("captureJs")["text"])
+        for k in range(1100 + 1, 1100 + 26):                       # 25 records in slots 129..175 are one over the room
+            a.objects[1000 + 128 + (k - 1101)] = a.objects[1000]
+        plan = jd.plan_restore(a, {}, 63, patch_cap=150, slots175=True)
+        why = dict(plan.excluded)["Patches"]
+        self.assertEqual(why, "the file holds 4 patches of slots 1..128 and 25 of slots 129..175, and this unit stores at most 126 and 24 (STORE FULL)")
+
+    def test_v7_file_to_old_unit_skips_high_slots(self):
+        ctl("setPatch", slot=130, name="HI A")
+        ctl("setPatch", slot=170, name="HI B")
+        p = self.backup_file()
+        ctl("reset", options={"slots175": False})
+        rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
+        self.assertEqual(rc, 0, err)
+        self.assertIn("2 patches of slots 129..175 need TIDE b12 or newer; they are not restored", out)
+        st = state()
+        self.assertEqual(sorted(st["patches"]), ["0", "1", "5", "64"])
+        self.assertNotIn(47, [a[1] for a in st["sent"] if a[0] == 0])
 
 
 class FlashTests(Base):

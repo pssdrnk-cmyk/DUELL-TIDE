@@ -3,11 +3,14 @@
 // every refusal before a write, the restore order and what is reported, the safety backup, the verify, older firmware and older files.
 import { OLD_PATCH_IDS, PATCH_ID, VERSION, GROUPS, DUELL_IDS, RESTORE_ORDER, patchKey, patchSlot, isPatchKey, objectLabel, parseInfo, parseList, parsePage, readArchive, objectsToFile, captureBackup, planRestore, strippedNote, runRestore,
          verifyRestore, describe, FVB_ID, FVB_OBJ, bankVoices, unpackVoice, packVoice, checkObject, listUnit, fileName, rawLines, MULTI_VERSION } from "./editor/duellbackup.js";
-import { MockUnit, buildBankObject, buildPatchRecord, buildLegacyPatchChunk, buildMultiObject, buildPatternObject, MOCK_ENGINES } from "./editor/mockunit.js";
+import { MockUnit as MockB12, buildBankObject, buildPatchRecord, buildLegacyPatchChunk, buildMultiObject, buildPatternObject, MOCK_ENGINES } from "./editor/mockunit.js";
 import { buildRecord, buildEndB, stripEndBFmt, parseRecord, storeDefaults, engineIndex, PTF, XB_DEFS } from "./editor/patchrecord.js";
 import { CMD } from "./editor/proto.js";
 import { buildObject as wtObject, WT } from "./editor/wavetable.js";
 import { readFileSync } from "node:fs";
+import { BACKUP_CMD as BK } from "./fm1backup.js";
+// The default mock is the b12 unit (175 slots, SLOT_HI, a store of 150, backup id 47). The tests of the unit of before run on the 128 slot one; the b12 tests (end of file) use MockB12.
+const MockUnit = class extends MockB12 { constructor(o = {}) { super({ slots175: false, ...o }); } };
 const IDS63 = DUELL_IDS.filter((id) => id < 42);   // what a unit of caps 63 lists (b10 U4: caps 127 adds the multis 42..46)
 const R63 = RESTORE_ORDER.filter((id) => id < 42);
 import { bkCrc, bkPack, BACKUP_IDS_FULL, BACKUP_IDS_WT, BACKUP_IDS_P16, bkManifest, bkU32, readBackup, captureBackup as installerCapture, restoreBackup as restoreInst, parseInfo as parseInfoInst } from "./fm1backup.js";
@@ -88,7 +91,7 @@ const bytesOf = (a) => new Map([...a.objects].map(([id, o]) => [id, o.bytes]));
   ok(/older version/.test(checkObject(k, (() => { const c = pv.slice(); c[4] |= 16; return c; })())), "objects: a patch record of the older form (flag 16 or 64) is refused with a plain message");
   ok(OLD_PATCH_IDS.every((id) => checkObject(id, buildLegacyPatchChunk([{ slot: 3, name: "P" }])) !== null) && checkObject(40, pc) !== null, "objects: a physical patch chunk (ids 6 7 9..12 27..31 35..39) and the bare wire id 40 are no objects of a backup");
   ok(checkObject(0, new Uint8Array(3840)) !== null && checkObject(1, new Uint8Array(584)) !== null && checkObject(2, new Uint8Array(0)) !== null, "objects: music / settings without their magic, and a retired id, are refused");
-  ok(objectLabel(patchKey(6), pc) === "patch #07 P" && objectLabel(patchKey(127)) === "patch #128" && objectLabel(6) === "a chunk of the old patch store" && patchSlot(patchKey(9)) === 9 && !isPatchKey(40) && !isPatchKey(1128) && isPatchKey(1127), "labels: patch #NN NAME from the slot (1-based, as the Patches page) and the record");
+  ok(objectLabel(patchKey(6), pc) === "patch #07 P" && objectLabel(patchKey(123)) === "patch #124" && objectLabel(patchKey(127)) === "patch U4" && objectLabel(patchKey(128)) === "patch #125" && objectLabel(patchKey(174)) === "patch #171" && objectLabel(6) === "a chunk of the old patch store" && patchSlot(patchKey(9)) === 9 && !isPatchKey(40) && isPatchKey(1127) && isPatchKey(1174) && !isPatchKey(1175), "labels: patch #NN NAME from the slot (1-based, as the Patches page) and the record");
 }
 
 // ---- the user wavetables (ids 24..26)
@@ -109,7 +112,7 @@ const info = parseInfo(await A.request([1, []]));
 const seen = []; const rqA = (r, o) => A.request(r, o);
 const file = await captureBackup(rqA, info, (d, t) => seen.push([d, t]));
 const archive = readArchive(JSON.stringify(file));
-ok(file.format === "duell-backup" && file.version === 6 && VERSION === 6 && file.firmware === info.version && file.objects.length === 20 && file.patchRecords === true && !Number.isNaN(Date.parse(file.created)), "file: format duell-backup, version 5, firmware, date, 20 objects (16 others and the 4 saved patches)");
+ok(file.format === "duell-backup" && file.version === 7 && VERSION === 7 && file.slots175 === false && file.firmware === info.version && file.objects.length === 20 && file.patchRecords === true && !Number.isNaN(Date.parse(file.created)), "file: format duell-backup, version 7, firmware, date (slots175 false: a 128-slot unit), 20 objects (16 others and the 4 saved patches)");
 ok(file.objects.slice(16).every((o, i) => o.id === 40 && o.slot === [0, 1, 5, 64][i] && o.size >= 20 && o.size <= 580) && file.objects.slice(0, 16).every((o) => o.id !== 40) && archive.hasPatches && archive.oldPatchChunks === 0 && !archive.notes.length, "file: the patches are {id: 40, slot, size, crc, data} objects, sorted by slot, after the other objects");
 ok(seen.at(-1)[0] === seen.at(-1)[1] && seen.length > 10, "capture: progress ends at the total");
 ok(IDS63.every((id) => same(archive.objects.get(id).bytes, A.objs.get(id) || new Uint8Array(0))) && [...A.patches.keys()].every((k) => same(archive.objects.get(patchKey(k)).bytes, A.patchBytes(k))) && archive.objects.size === 20,
@@ -166,7 +169,7 @@ ok(await athrows(() => captureBackup((r, o) => { const x = new MockUnit(); x.pla
 {   // a unit without caps bit 5 gives no patches, and the result says so
   const U = new MockUnit({ caps: 31 }), inf = parseInfo(await U.request([1, []]));
   const f = await captureBackup((r, o) => U.request(r, o), inf), a = readArchive(JSON.stringify(f));
-  ok(f.version === 6 && f.patchRecords === false && !f.objects.some((o) => o.id === 40) && a.hasPatches === false && /cannot back up patches one at a time/.test(f.notes?.[0] ?? "") && a.notes.length === 1 && a.objects.size === 16,
+  ok(f.version === 7 && f.patchRecords === false && !f.objects.some((o) => o.id === 40) && a.hasPatches === false && /cannot back up patches one at a time/.test(f.notes?.[0] ?? "") && a.notes.length === 1 && a.objects.size === 16,
      "capture: a unit without caps bit 5 (an older firmware) gives no patches; the file says so (a note, patchRecords false) and holds the rest");
 }
 {   // 0.2.25, the owner's report: "The backup failed. Nothing was saved. Object 13: damaged multi." (firmware 0.2.23 with an editor that refused version 6)
@@ -198,7 +201,7 @@ ok(await athrows(() => captureBackup((r, o) => { const x = new MockUnit(); x.pla
   const bad = (f) => { const c = clone(file); f(c); return c; };
   ok(throwsMsg(() => readArchive("{ nope"), /JSON/), "file: not JSON");
   ok(throwsMsg(() => readArchive({ format: "something", objects: [] }), /not a TIDE/), "file: another format");
-  ok(throwsMsg(() => readArchive(bad((c) => { c.version = 7; })), /newer editor/), "file: a newer version is refused with a plain message");
+  ok(throwsMsg(() => readArchive(bad((c) => { c.version = 8; })), /newer editor/), "file: a newer version is refused with a plain message");
   ok(throwsMsg(() => readArchive(bad((c) => { c.version = 1; })), /unknown version/), "file: version 1 of the duell-backup format does not exist");
   ok(throwsMsg(() => readArchive(bad((c) => { const o = c.objects.find((x) => x.id === 14); o.crc = (o.crc ^ 1) >>> 0; })), /checksum/), "file: a damaged object (CRC) is refused");
   ok(throwsMsg(() => readArchive(bad((c) => { const o = c.objects.find((x) => x.id === 14); o.data = o.data.slice(0, -4); })), /damaged/), "file: a truncated object is refused");
@@ -412,7 +415,7 @@ const KEYS = [1000, 1001, 1005, 1064];
   const K = new MockUnit({ caps: 3 });                           // 0.2.13: 16 ids (six of them patch chunks), no multis / patterns
   const f13 = await captureBackup((r, o) => K.request(r, o), parseInfo(await K.request([1, []])));
   const a13 = readArchive(f13);
-  ok(f13.objects.length === 2 && f13.version === 6 && !a13.objects.has(13) && !a13.hasPatches && !describe(bytesOf(a13)).has.multis && !describe(bytesOf(a13)).has.patches && /cannot back up patches/.test(a13.notes[0]),
+  ok(f13.objects.length === 2 && f13.version === 7 && !a13.objects.has(13) && !a13.hasPatches && !describe(bytesOf(a13)).has.multis && !describe(bytesOf(a13)).has.patches && /cannot back up patches/.test(a13.notes[0]),
      "0.2.13 unit: the backup holds settings and music only (no patches: it cannot give them one at a time, and the file says so), and the preview says no multis");
   const L = new MockUnit();
   L.setRecord(9, buildPatchRecord({ name: "NEWER ONE" })); L.rebuild();
@@ -436,7 +439,7 @@ const KEYS = [1000, 1001, 1005, 1064];
     const run = await runRestore(rq, pl), v = await verifyRestore(rq, pl);
     ok(run.failed === null && v.differ.length === 0 && U.patches.size === 0 && bkCrc(U.objs.get(14)) === bkCrc(A.objs.get(14)), `v${version} file: the rest restores and verifies, the unit's patches are untouched`);
   }
-  ok(throwsMsg(() => readArchive(JSON.stringify({ ...clone(file), objects: [...clone(file).objects, { id: 6, size: 0, crc: 0, data: "" }] })), /version 6.*patch chunks.*damaged/), "file: a version 5 file with a physical patch chunk (id 6) is refused");
+  ok(throwsMsg(() => readArchive(JSON.stringify({ ...clone(file), objects: [...clone(file).objects, { id: 6, size: 0, crc: 0, data: "" }] })), /version 7.*patch chunks.*damaged/), "file: a version 5 file with a physical patch chunk (id 6) is refused");
   ok(throwsMsg(() => readArchive(JSON.stringify({ ...clone(file), objects: [...clone(file).objects, { id: 39, size: 0, crc: 0, data: "" }] })), /patch chunks/) && throwsMsg(() => readArchive(JSON.stringify({ ...mk(4, OLD_PATCH_IDS), objects: [...mk(4, OLD_PATCH_IDS).objects, file.objects.at(-1)] })), /version 4.*no patch records/), "file: a version 5 file with chunk 39 is refused, and so is a version 4 file with a patch record (id 40)");
 }
 {   // a version 5 file: every refusal about the patches comes before any write
@@ -453,7 +456,7 @@ const KEYS = [1000, 1001, 1005, 1064];
      "file v5: a patch of size 0 or of 581 bytes is refused (only saved patches, 20 to 580 bytes)");
   const xb = readArchive(JSON.stringify(file));
   ok(throwsMsg(() => readArchive(bad((c) => rewrite(c, (r) => { r[4] |= 16; }))), /Patch #01: .*older version/), "file v5: a patch record of the older form (the extension flag, PT_VER 3) is refused with a plain message");
-  ok(throwsMsg(() => readArchive(bad((c) => { c.version = 5; c.objects.find((o) => o.id === 40).id = 47; })), /Unknown object id 47/), "file v5: an object id 42 is unknown (41 is the FM6 voice bank)");
+  ok(throwsMsg(() => readArchive(bad((c) => { c.version = 5; c.objects.find((o) => o.id === 40).id = 47; })), /version 5.*no patches of slots 129 to 175/), "file v5: an id 47 object (slots 129..175) is damaged in a version 5 file");
   ok(readArchive(JSON.stringify({ ...clone(file), objects: clone(file).objects.filter((o) => o.id !== 40) })).hasPatches === true && readArchive(JSON.stringify({ ...clone(file), patchRecords: undefined, objects: clone(file).objects.filter((o) => o.id !== 40) })).hasPatches === false, "file v5: patchRecords says a file without patches is the file of a unit with none; without the flag it leaves a unit's patches alone");
   ok(xb.objects.get(1000).size >= 20 && !xb.problems.length, "file v5: (no raw objects in the good file)");
 }
@@ -574,8 +577,8 @@ const KEYS = [1000, 1001, 1005, 1064];
   const A = new MockUnit({ caps: 127 });
   A.objs.set(42, buildMultiObject(["SEVENTEEN", null])); A.objs.set(45, buildMultiObject([null, "TWENTYFOUR"]));
   const inf = parseInfo(await A.request([1, []])), f = await captureBackup((r, o) => A.request(r, o), inf), arch = readArchive(JSON.stringify(f));
-  ok(inf.caps === 127 && f.version === 6 && [42, 43, 44, 45, 46].every((id) => arch.objects.has(id)) && arch.objects.get(42).size > 8 && arch.objects.get(43).size === 0 && arch.objects.get(45).size > 8,
-     "U4: a unit with caps 127 lists the multi objects 42..46; the version 6 file carries all five (M17 and M24 stored, the rest empty)");
+  ok(inf.caps === 127 && f.version === 7 && [42, 43, 44, 45, 46].every((id) => arch.objects.has(id)) && arch.objects.get(42).size > 8 && arch.objects.get(43).size === 0 && arch.objects.get(45).size > 8,
+     "U4: a unit with caps 127 lists the multi objects 42..46; the version 7 file carries all five (M17 and M24 stored, the rest empty)");
   const dsc = describe(bytesOf(arch));
   ok(dsc.multis.some((m) => m.label === "M17" && m.name === "SEVENTEEN") && dsc.multis.some((m) => m.label === "M24" && m.name === "TWENTYFOUR") && objectLabel(42) === "multis M17 and M18" && objectLabel(46) === "multis M25 and M26",
      "U4: the preview names M17 and M24, and the object labels count on from M16");
@@ -593,6 +596,114 @@ const KEYS = [1000, 1001, 1005, 1064];
   ok(p63.excluded.some((x) => x.key === "multis2" && /update it first/.test(x.reason)) && p63.steps.length === 0, "U4: a unit without caps bit 6 cannot take them: the group is excluded with the reason");
   ok(throwsMsg(() => readArchive(JSON.stringify({ ...v5, objects: [...v5.objects, f.objects.find((o) => o.id === 42)] })), /no multis M17 and up/), "U4: a version 5 file with an object 42 is refused as damaged");
 }
+// ---- b12: 175 slots (INFO 44 01 bit 2): the patches of slots 129..175 travel as id 47 (slot byte = slot - 128), LIST pages 5 and 6, archive version 7
+{
+  const rqOf = (u) => (r, o) => u.request(r, o);
+  const GET = BK.GET, PUT = BK.PUT;
+  const recs = (u, ks) => { for (const k of ks) u.setRecord(k, buildPatchRecord({ name: `HI ${k}`, engine: k % 3 })); u.rebuild(); };
+  const A = new MockB12({ seed: false }); recs(A, [3, 160, 174, 128]);                  // b12 source: slots 3, 128 (#125), 160 and 174 (#171)
+  const inf = parseInfo(await A.request([1, []])), rA = rqOf(A);
+  ok(inf.slots175 === true && inf.patchCap === 150 && parseInfo(await new MockUnit().request([1, []])).slots175 === false, "b12: INFO 44 01 bit 2 is read (slots175), the capacity says 150; a unit without the bit says false");
+  // LIST pages 5 and 6: slots 128..159 and 160..174, the byte of each entry is slot - 128
+  await A.request([BK.LIST, []]);
+  const p5 = await A.request([BK.LIST, [5]]), p6 = await A.request([BK.LIST, [6]]), p1 = await A.request([BK.LIST, [1]]);
+  ok(p5[2] === 1 && p5[3] === 0 && p6[2] === 2 && p6[3] === 32 && p6[3 + 11] === 46 && p1[2] === 1 && (await A.request([BK.LIST, [7]]))[1] === 1, "b12: LIST page 5 lists slot 128 (byte 0), page 6 slots 160 and 174 (bytes 32 and 46), page 7 is rc 1");
+  const old = new MockUnit({ seed: false });
+  await old.request([BK.LIST, []]);
+  ok((await old.request([BK.LIST, [5]]))[1] === 1 && (await old.request([BK.LIST, [6]]))[1] === 1, "b12: a unit without the bit answers LIST pages 5 and 6 with rc 1");
+  const list = await listUnit(rA, inf.caps, true);
+  ok([...list.keys()].filter(isPatchKey).sort((a, b) => a - b).join() === "1003,1128,1160,1174" && list.get(patchKey(160)).size === A.patchBytes(160).length, "b12: listUnit reads the six pages: the patches of slots 3, 128, 160, 174 under their keys");
+  // capture -> file version 7 with id 47 objects and slot bytes slot - 128
+  const f7 = await captureBackup(rA, inf);
+  const ids47 = f7.objects.filter((o) => o.id === 47);
+  ok(f7.slots175 === true && readArchive(JSON.stringify(f7)).slots175 === true, "b12: a backup of a b12 unit says slots175 (it carries slots 129..175)");
+  ok(f7.version === 7 && ids47.map((o) => o.slot).join() === "0,32,46" && f7.objects.filter((o) => o.id === 40).map((o) => o.slot).join() === "3" && f7.patchRecords === true, "b12: the backup is version 7: slot 3 is id 40, slots 128 / 160 / 174 are id 47 with the bytes 0 / 32 / 46");
+  const a7 = readArchive(JSON.stringify(f7));
+  ok(a7.version === 7 && [...a7.objects.keys()].filter(isPatchKey).sort((x, y) => x - y).join() === "1003,1128,1160,1174" && a7.hasPatches && !a7.problems.length, "b12: the version 7 file reads back: the patch keys are 1000 + the real slot");
+  ok(objectLabel(patchKey(160)) === "patch #157" && objectLabel(patchKey(160), a7.objects.get(1160).bytes) === "patch #157 HI 160" && describe(bytesOf(a7)).patches.map((p) => p.slot).join() === "3,128,160,174", "b12: the preview and the labels use the unit's numbers (slot 160 is #157)");
+  // restore the file onto a blank b12 unit: round trip, verify
+  const B = new MockB12({ seed: false }), rB = rqOf(B);
+  const planB = planRestore(a7, await listUnit(rB, 63, true), 63, all, { tide: true, slots175: true, patchCap: 150 });
+  ok(planB.steps.filter((s) => s.key !== undefined).map((s) => `${s.id}:${s.slot}`).join() === "40:3,47:0,47:32,47:46" && planB.wide === true && !planB.excluded.length, "b12: the plan sends slot 3 as id 40 and slots 128 / 160 / 174 as id 47 with the bytes 0 / 32 / 46");
+  const runB = await runRestore(rB, planB), vB = await verifyRestore(rB, planB);
+  ok(!runB.failed && runB.written.includes(1160) && patchRows(B) === patchRows(A) && vB.differ.length === 0 && vB.same.includes(1174), "b12: the version 7 file restores onto a blank b12 unit, every record the same (slots 3 and 160 included), verify finds no difference");
+  const plan2 = planRestore(a7, await listUnit(rB, 63, true), 63, new Set(["patches"]), { tide: true, slots175: true });
+  ok(plan2.steps.length === 0 && plan2.skipped.length === 4, "b12: a second restore finds all four patches identical and writes nothing");
+  // a version 7 file makes the patches exactly the file's (slots past 127 too)
+  const C = new MockB12({ seed: false }); recs(C, [3, 140, 170]);
+  const planC = planRestore(a7, await listUnit(rqOf(C), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true });
+  ok(planC.steps.filter((s) => !s.size).map((s) => s.key).join() === "1140,1170" && (await runRestore(rqOf(C), planC)).failures.length === 0 && patchRows(C) === patchRows(A), "b12: a version 7 file makes the patches exactly the file's: the unit's slots 140 and 170 are removed first");
+  {   // review PR 99, 3: a backup made with this editor on a 128-slot unit is version 6, and restoring it onto a b12 unit keeps the saved #125..#171
+    const O = new MockUnit({ seed: false }); recs(O, [3, 9]);
+    const fo = await captureBackup(rqOf(O), parseInfo(await O.request([1, []]))), ao = readArchive(JSON.stringify(fo));
+    const T = new MockB12({ seed: false }); recs(T, [3, 130, 140]);
+    const pl = planRestore(ao, await listUnit(rqOf(T), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true, patchCap: 150 });
+    await runRestore(rqOf(T), pl);
+    ok(fo.version === 7 && fo.slots175 === false && !ao.slots175 && !pl.steps.some((s) => s.key === 1130 || s.key === 1140) && T.patches.has(130) && T.patches.has(140) && T.patches.has(9),
+       "b12 (review PR 99, 3): a backup of a 128-slot unit says slots175 false; restored onto a b12 unit it keeps the unit's saved #126 and #136 (slots 130, 140)");
+  }
+  {   // review PR 99, 4: the two rooms (126 for slots 1..128, 24 for 129..175) are checked apart, before anything is written
+    const big = new MockB12({ seed: false }), ks = [...Array(126).keys(), ...Array.from({ length: 25 }, (_, i) => 128 + i)];
+    recs(big, ks.slice(0, 126));
+    const fb = await captureBackup(rqOf(big), parseInfo(await big.request([1, []]))), ab = readArchive(JSON.stringify(fb));
+    const T2 = new MockB12({ seed: false });
+    const okLow = !planRestore(ab, await listUnit(rqOf(T2), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true, patchCap: 150 }).excluded.length;
+    ab.objects.set(patchKey(126), ab.objects.get(patchKey(0)));                       // a 127th of slots 1..128
+    const exLow = planRestore(ab, await listUnit(rqOf(T2), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true, patchCap: 150 }).excluded;
+    ab.objects.delete(patchKey(126));
+    for (let i = 0; i < 25; i++) ab.objects.set(patchKey(128 + i), ab.objects.get(patchKey(0)));   // 25 of slots 129..175
+    const exHi = planRestore(ab, await listUnit(rqOf(T2), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true, patchCap: 150 }).excluded;
+    ok(okLow && exLow.some((x) => x.key === "patches" && /127 patches of slots 1\.\.128.*126 and 24/.test(x.reason)) && exHi.some((x) => x.key === "patches" && /25 of slots 129\.\.175/.test(x.reason)),
+       "b12 (review PR 99, 4): 126 patches of slots 1..128 fit, a 127th or a 25th past the 128 is refused before anything is written (STORE FULL)");
+    ok(ks.length === 151, "(the test's slots)");
+  }
+  // a version 6 file: restores as before and leaves slots 129..175 as they are
+  const S6 = new MockB12({ seed: false }); recs(S6, [3, 9]);
+  const f6 = clone(await captureBackup(rqOf(S6), parseInfo(await S6.request([1, []])))); f6.version = 6;
+  const a6 = readArchive(JSON.stringify(f6));
+  const D = new MockB12({ seed: false }); recs(D, [3, 160, 5]);                          // the target holds slot 160 (and slot 5, which the file has not: removed)
+  const crc160 = bkCrc(D.patchBytes(160));
+  const planD = planRestore(a6, await listUnit(rqOf(D), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true });
+  const runD = await runRestore(rqOf(D), planD);
+  ok(!runD.failed && !planD.steps.some((s) => s.id === 47) && D.patches.has(160) && bkCrc(D.patchBytes(160)) === crc160 && D.patches.has(9) && D.patches.get(3).name === "HI 3" && !D.patches.has(5), "b12: a version 6 file restores on a b12 unit as before (slots under 128 made the file's) and leaves the saved record of slot 160 untouched");
+  ok((await verifyRestore(rqOf(D), planD)).differ.length === 0, "b12: ..and its verify finds nothing different");
+  // a version 7 file to a unit WITHOUT the bit: the id 47 patches are skipped, the plan says so, the rest is restored
+  const O = new MockUnit({ seed: false }), rO = rqOf(O);
+  const infoO = parseInfo(await O.request([1, []]));
+  const planO = planRestore(a7, await listUnit(rO, infoO.caps, infoO.slots175), infoO.caps, all, { tide: infoO.tideAnswer, slots175: infoO.slots175, patchCap: infoO.patchCap });
+  const exO = planO.excluded.find((x) => x.key === "patches");
+  ok(infoO.slots175 === false && exO && /^3 patches of slots 129\.\.175 need TIDE b12 or newer; they are not restored$/.test(exO.reason) && planO.steps.filter((s) => s.key !== undefined).map((s) => `${s.id}:${s.slot}`).join() === "40:3" && planO.wide === false,
+     "b12: a version 7 file onto a unit without the bit: the 3 patches of slots 129..175 are left out with the plain note, slot 3 and every other group stay in the plan");
+  const runO = await runRestore(rO, planO), vO = await verifyRestore(rO, planO);
+  ok(!runO.failed && O.patches.size === 1 && O.patches.has(3) && vO.differ.length === 0 && O.log.every((x) => x !== "cmd 90"), "b12: ..the rest is restored and verified on the old unit; nothing past slot 127 is sent");
+  const f7b = clone(f7); f7b.objects = f7b.objects.filter((o) => o.id !== 47 || o.slot === 32);
+  const planO1 = planRestore(readArchive(JSON.stringify(f7b)), await listUnit(rO, infoO.caps, false), infoO.caps, new Set(["patches"]), { slots175: false });
+  ok(/^1 patch of slots 129\.\.175 needs TIDE b12 or newer; it is not restored$/.test(planO1.excluded[0]?.reason), "b12: one patch past 128 reads '1 patch of slots 129..175 needs TIDE b12 or newer; it is not restored'");
+  // the file checks of id 47
+  const withSlot = (id, slot) => { const c = clone(f7); c.objects.find((o) => o.id === id).slot = slot; return JSON.stringify(c); };
+  ok(throwsMsg(() => readArchive(JSON.stringify({ ...clone(f7), version: 6 })), /no patches of slots 129 to 175/) && throwsMsg(() => readArchive(withSlot(47, 47)), /no valid slot/) && throwsMsg(() => readArchive(withSlot(40, 128)), /no valid slot/),
+     "b12: id 47 in a file of version 6 is refused, and slot bytes out of range (id 47: over 46, id 40: over 127) are no valid slot");
+  // the unit's rules for PUT 47 over the wire: b12 only, begin 13 bytes, byte 0..46
+  const W = new MockB12({ seed: false }), rw = rqOf(W), rec = buildPatchRecord({ name: "WIRE 47" }), crc = bkCrc(rec);
+  await W.request([BK.LIST, []]);
+  const b47 = (u, slot) => u.request([PUT, [0, 47, ...bkU32(rec.length), ...bkU32(crc), slot]]);
+  ok((await b47(W, 47))[2] === 1 && (await b47(W, 0))[2] === 0, "b12: PUT 47 begin: a byte over 46 is rc 1, 0..46 is accepted");
+  ok((await b47(new MockUnit({ seed: false }), 0))[2] === 1, "b12: a unit without the bit answers PUT 47 with rc 1 (unknown object)");
+  // GET 47 reads slot 128 + byte (rc 1 for byte 5 under id 40: no record there; rc 5 on a unit without the bit: no LIST before, as for any id)
+  const G = new MockB12({ seed: false }); recs(G, [133]); await G.request([BK.LIST, []]);
+  const g47 = await G.request([GET, [47, ...bkU32(0), 20, 0, 5]]), g40 = await G.request([GET, [40, ...bkU32(0), 20, 0, 5]]);
+  ok(g47[1] === 0 && g40[1] === 1, "b12: GET 47 with byte 5 reads slot 133; GET 40 with byte 5 has no record (rc 1)");
+  // the installer's capture gives the same version 7 file
+  const { captureUnitBackup } = await import("./installer_backup.js");
+  const cap = await captureUnitBackup(rA, await A.request([1, []]));
+  ok(cap.format === "duell-backup" && cap.file.version === 7 && cap.file.objects.filter((o) => o.id === 47).length === 3, "b12: the installer's capture of a b12 unit is the same version 7 file (id 47 objects)");
+  // STORE FULL for id 47 patches
+  const FS = new MockB12({ seed: false, storeMax: 2 }); recs(FS, [1, 2]);
+  const planFS = planRestore(a7, await listUnit(rqOf(FS), 63, true), 63, new Set(["patches"]), { tide: true, slots175: true });
+  const runFS = await runRestore(rqOf(FS), planFS);
+  ok(planFS.steps.slice(0, 2).every((s) => !s.size) && runFS.failures.length === 2 && runFS.failures.every((x) => x.rc === 6) && FS.patches.size === 2, "b12: STORE FULL (rc 6) answers the patches that do not fit; removals come first, the failures are reported by key");
+}
+
 ok(/^TIDE-backup-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(fileName("TIDE-backup")), "file name: TIDE-backup-YYYY-MM-DD-HHMM.json");
 
 console.log(fails ? `DUELL BACKUP WEB TESTS FAILED (${fails})` : "duell backup web tests passed");

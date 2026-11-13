@@ -284,7 +284,7 @@ static void tide_scene(void)
         for (m = 0; m < 2u; m++) {
             uint32_t p, w0f[2], w0v[2], w2f[2], w2v[2], wl0, wl2, d0, d2, spin;
             int nofit;
-            if (i >= UP_USER0 && i < UP_SLOTS)
+            if (i >= UP_USER0 && i < UP_BANK)
                 continue;
             boot();
             duell_mode_force(m ? DM_SPLIT : DM_LAYER);

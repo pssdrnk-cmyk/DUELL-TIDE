@@ -859,7 +859,7 @@ static void patch_save_ask(void)
                                                          * only, where the header shows both; was MORPH SET too) */
         if (trk2 >= 2u) {                               /* both parts, each over its own slot: the same slot twice would lose one */
             if (slot_both(0) == slot_both(1)) {
-                ui_message(slot_of(&trk[1]) >= UP_SLOTS ? "NEEDS 2 USER SLOTS" : "SAME SLOT");
+                ui_message("SAME SLOT");                 /* (b12: every factory sound has its own slot, no USER slots are needed for two) */
                 return;
             }
         } else {

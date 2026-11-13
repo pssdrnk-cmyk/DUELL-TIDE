@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// DUELL editor: the PATCHES tab, the patch LIBRARIAN. The 128 slots as a compact list that fits the global column and a wide grid (an overlay over the page, for dragging
+// DUELL editor: the PATCHES tab, the patch LIBRARIAN. Every slot the unit has (128; 175 with TIDE b12) as a compact list that fits the global column and a wide grid (an overlay over the page, for dragging
 // between slots); patch files and DX7 sysex files dropped on the tab (or chosen with a button) open a preview with the target slots; a slot dragged onto another is copied
 // (the list) or swapped (the wide grid); a file or a slot dropped on a part loads there without saving (app.js). Every write is listed before it is made; the work is in
 // librarian.js. Rules of the owner's UI: no counts of free places (every slot is always writable), a control that does not apply is not drawn, one text style.
 import { h, clear, ask, askText } from "./ui_util.js";
 import { L, engineLabel } from "./layout.js";
 import { CATEGORY_NAMES as CATEGORIES } from "./labels.js";
-import { UP_SLOTS } from "./unit.js";
 import * as LIB from "./librarian.js";
 import { parseFile, sniff, fileName, itemFromRecord } from "./patchfile.js";
 import { parseDx7File, voiceToPatch, SOURCE_LABEL } from "./dx7import.js";
 import { dropZone, hasFiles, hasSlot, slotOf, filesOf, readBytes, saveText, SLOT_TYPE } from "./dropzone.js";
 
-const label = (slot) => `#${slot + 1}`;
+let LU = null;                                                   // the unit the tab shows: its slot labels (#1..#124, U1..U4, #125..#171 with 175 slots) and count
+const label = (slot) => (LU ? LU.label(slot) : `#${slot + 1}`);
 const pad3 = (n) => String(n + 1).padStart(3, " ");
 const partSel = (app, name = "Part") => {
   const s = h("select", { "aria-label": name }, h("option", { value: 0, text: "PART 1" }), h("option", { value: 1, text: "PART 2" }));
@@ -22,21 +22,22 @@ const partSel = (app, name = "Part") => {
 
 // ---------------------------------------------------------------- a dialog that asks for a slot number and shows what would change
 function askSlot(app, { title, intro, value, okLabel, describe }) {
+  const NS = app.unit.nslots;
   return new Promise((resolve) => {
     const dlg = h("dialog", { class: "ask", "aria-label": title });
-    const input = h("input", { type: "number", min: 1, max: UP_SLOTS, value: String(value + 1), "aria-label": "Target slot number" });
+    const input = h("input", { type: "number", min: 1, max: NS, value: String(value + 1), "aria-label": "Target slot number" });
     const list = h("ul", { class: "effects", "aria-live": "polite" });
     const ok = h("button", { text: okLabel });
     const done = (v) => { dlg.close(); dlg.remove(); resolve(v); };
     const upd = () => {
-      const n = +input.value - 1, d = Number.isInteger(n) && n >= 0 && n < UP_SLOTS ? describe(n) : { lines: ["Pick a slot from 1 to 128."], bad: true };
+      const n = +input.value - 1, d = Number.isInteger(n) && n >= 0 && n < NS ? describe(n) : { lines: [`Pick a slot from 1 to ${NS}.`], bad: true };
       clear(list).append(...d.lines.map((t) => h("li", { text: t })));
       ok.disabled = !!d.bad; ok.classList.toggle("danger", !!d.danger);
     };
     input.addEventListener("input", upd);
     input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !ok.disabled) done(+input.value - 1); });
     ok.addEventListener("click", () => done(+input.value - 1));
-    dlg.append(h("h2", { text: title }), ...[].concat(intro).map((t) => h("p", { text: t })), h("label", { class: "row" }, h("span", { text: "Target slot #" }), input), list,
+    dlg.append(h("h2", { text: title }), ...[].concat(intro).map((t) => h("p", { text: t })), h("label", { class: "row" }, h("span", { text: NS > 128 ? "Target slot (place in the list)" : "Target slot #" }), input), list,
       h("div", { class: "row end" }, h("button", { class: "ghost", text: "Cancel", onclick: () => done(null) }), ok));
     dlg.addEventListener("cancel", (e) => { e.preventDefault(); done(null); });
     document.body.append(dlg); upd(); dlg.showModal(); input.select();
@@ -46,7 +47,7 @@ function askSlot(app, { title, intro, value, okLabel, describe }) {
 // ---------------------------------------------------------------- the import preview: a list of patches (a file's, or a DX7 bank's voices) and where each goes
 // o: { title, source, items: [item | {damaged, name}], notes: [text], problems: [text], start (0-based slot or null), numbers (the items carry slot numbers) }
 export async function importDialog(app, o) {
-  const u = app.unit;
+  const u = app.unit; LU = u;
   if (!u.slots) await u.listSlots();
   return new Promise((resolve) => {
     const dlg = h("dialog", { class: "ask wide imp", "aria-label": o.title });
@@ -77,8 +78,8 @@ export async function importDialog(app, o) {
       const modeSel = h("select", { "aria-label": "Where the patches go", onchange: (e) => { st.mode = e.target.value; rows.forEach((r) => { r.manual = null; }); draw(); } },
         withNumbers ? h("option", { value: "same", text: "The same slot numbers as in the file" }) : null, h("option", { value: "from", text: "One after the other, from the slot ..." }));
       modeSel.value = st.mode;
-      const start = h("input", { type: "number", min: 1, max: UP_SLOTS, value: String(st.start + 1), "aria-label": "First slot", hidden: st.mode !== "from",
-        oninput: (e) => { const n = +e.target.value - 1; if (n >= 0 && n < UP_SLOTS) { st.start = n; rows.forEach((r) => { r.manual = null; }); update(); } } });
+      const start = h("input", { type: "number", min: 1, max: u.nslots, value: String(st.start + 1), "aria-label": "First slot", hidden: st.mode !== "from",
+        oninput: (e) => { const n = +e.target.value - 1; if (n >= 0 && n < u.nslots) { st.start = n; rows.forEach((r) => { r.manual = null; }); update(); } } });
       const skip = h("label", { class: "chk", hidden: st.mode !== "from" }, h("input", { type: "checkbox", checked: st.skip, onchange: (e) => { st.skip = e.target.checked; rows.forEach((r) => { r.manual = null; }); draw(); } }), " skip slots that hold a saved patch");
       body.append(h("div", { class: "row" }, modeSel, start, skip));
       // the list
@@ -88,8 +89,8 @@ export async function importDialog(app, o) {
       for (const r of rows) {
         const it = r.it, idx = r.on ? k++ : -1, slot = idx >= 0 ? t[idx] : null, now = slot != null ? LIB.describeSlot(u, slot) : null;
         const chk = h("input", { type: "checkbox", checked: r.on, disabled: !!(it.damaged || it.error), "aria-label": `Import ${it.name}`, onchange: (e) => { r.on = e.target.checked; draw(); } });
-        const sl = h("input", { type: "number", min: 1, max: UP_SLOTS, value: slot != null ? String(slot + 1) : "", disabled: !r.on, "aria-label": `Slot for ${it.name}`,
-          onchange: (e) => { const n = +e.target.value - 1; r.manual = n >= 0 && n < UP_SLOTS ? n : null; draw(); } });
+        const sl = h("input", { type: "number", min: 1, max: u.nslots, value: slot != null ? String(slot + 1) : "", disabled: !r.on, "aria-label": `Slot for ${it.name}`,
+          onchange: (e) => { const n = +e.target.value - 1; r.manual = n >= 0 && n < u.nslots ? n : null; draw(); } });
         const rep = !r.on ? "" : slot == null ? "no slot" : `${now.label} ${now.saved ? `"${now.name}" (saved)` : `"${now.name}" (factory)`}`;
         tbl.append(h("div", { class: "improw" + (r.on ? "" : " off"), role: "row" }, chk,
           h("span", { class: "n", text: it.damaged ? `${it.name || "?"} (damaged in the file)` : it.error ? `${it.name} (${it.error})` : it.name, title: it.number != null ? `from slot ${label(it.number - 1)}` : "" }),
@@ -205,7 +206,7 @@ async function loadInto(app, part, items, title, source, notes, problems) {
 
 // ---------------------------------------------------------------- the tab
 export function buildPatches(app, wrap) {
-  const u = app.unit, lib = LIB.hasRaw(u);
+  const u = app.unit, lib = LIB.hasRaw(u); LU = u;
   const st = { items: [], sel: new Set(), cur: null, anchor: null, q: "", eng: "all", cat: "all", loading: true, wide: null, wideMode: "swap" };
   const rowEls = new Map();
   const list = h("ul", { class: "plist", role: "listbox", "aria-multiselectable": "true", "aria-label": "Patch slots" });
@@ -216,7 +217,7 @@ export function buildPatches(app, wrap) {
   const catSel = h("select", { "aria-label": "Category", onchange: (e) => { st.cat = e.target.value; drawList(); paintWide(); } }, h("option", { value: "all", text: "All categories" }),
     CATEGORIES.map((c, i) => (i ? h("option", { value: i, text: c }) : null)));
   const fileIn = h("input", { type: "file", accept: ".json,.syx,application/json", multiple: true, hidden: true, "aria-label": "Patch file", onchange: async (e) => { for (const f of e.target.files) await handleFile(app, f, { start: st.cur ?? 0 }); e.target.value = ""; } });
-  const bar1 = h("div", { class: "row" }, search, catSel, eng, h("button", { class: "ghost small", text: "Wide view", title: "All 128 slots on the full width of the page, for dragging a patch from one slot to another", onclick: openWide }));
+  const bar1 = h("div", { class: "row" }, search, catSel, eng, h("button", { class: "ghost small", text: "Wide view", title: `All ${u.nslots} slots on the full width of the page, for dragging a patch from one slot to another`, onclick: openWide }));
   const bar2 = h("div", { class: "row" },
     lib ? [h("button", { class: "ghost small", text: "Import file...", title: "A DUELL patch file from this computer (you can also drop it here)", onclick: () => fileIn.click() }), fileIn,
       h("button", { class: "ghost small", text: "Import .syx...", title: "A DX7 sysex file (one voice or a bank of 32): each voice becomes an FM6 patch (the six-operator engine); you choose the slots before anything is written", onclick: () => fileIn.click() }),
@@ -358,22 +359,22 @@ export function buildPatches(app, wrap) {
     const go = await new Promise((resolve) => {
       const done = (v) => { dlg.close(); dlg.remove(); resolve(v); };
       dlg.append(h("h2", { text: "Download all saved patches" }), h("p", { text: "One file on this computer with every patch you saved on the unit, each with its slot number. Drop it on a unit's PATCHES tab to put them back in the same slots." }),
-        h("label", { class: "chk" }, inc, " Also include the factory sounds (a copy of their values, 128 patches in all)"),
+        h("label", { class: "chk" }, inc, ` Also include the factory sounds (a copy of their values, ${u.nslots} patches in all)`),
         h("div", { class: "row end" }, h("button", { class: "ghost", text: "Cancel", onclick: () => done(false) }), h("button", { text: "Download", onclick: () => done(true) })));
       dlg.addEventListener("cancel", (e) => { e.preventDefault(); done(false); });
       document.body.append(dlg); dlg.showModal();
     });
     if (!go) return;
-    const slots = inc.checked ? [...Array(UP_SLOTS).keys()] : saved;
+    const slots = inc.checked ? [...Array(u.nslots).keys()] : saved;
     if (!slots.length) { app.say("No patch is saved on the unit; the bank holds only factory sounds. Tick the box to export those too."); return; }
     await exportSlots(slots, "bank");
   }
   async function copyTo(slots) {
     const first = slots[0];
-    const to = await askSlot(app, { title: slots.length === 1 ? `Copy ${label(first)} to ...` : `Copy ${slots.length} patches to ...`, value: Math.min(UP_SLOTS - 1, (slots.at(-1) ?? 0) + 1), okLabel: "Copy",
+    const to = await askSlot(app, { title: slots.length === 1 ? `Copy ${label(first)} to ...` : `Copy ${slots.length} patches to ...`, value: Math.min(u.nslots - 1, (slots.at(-1) ?? 0) + 1), okLabel: "Copy",
       intro: slots.length === 1 ? `"${LIB.describeSlot(u, first).name}" is copied; the original stays.` : `The ${slots.length} patches are copied one after the other from the slot you pick; the originals stay.`,
       describe: (n) => {
-        if (n + slots.length > UP_SLOTS) return { lines: [`Not enough slots after #${n + 1}.`], bad: true };
+        if (n + slots.length > u.nslots) return { lines: [`Not enough slots after ${label(n)}.`], bad: true };
         const lines = slots.slice(0, 8).map((s, i) => `${label(s)} "${LIB.describeSlot(u, s).name}" -> ${label(n + i)}, replacing "${LIB.describeSlot(u, n + i).name}" (${LIB.describeSlot(u, n + i).saved ? "saved" : "factory sound"})`);
         if (slots.length > 8) lines.push(`... and ${slots.length - 8} more.`);
         return { lines, danger: slots.some((s, i) => LIB.describeSlot(u, n + i).saved) };
@@ -389,7 +390,7 @@ export function buildPatches(app, wrap) {
   }
   async function moveTo(slot) {
     const a = LIB.describeSlot(u, slot);
-    const to = await askSlot(app, { title: `Move ${a.label} to ...`, value: Math.min(UP_SLOTS - 1, slot + 1), okLabel: "Move", intro: `"${a.name}" moves to the slot you pick. ${a.label} shows its own factory sound again.`,
+    const to = await askSlot(app, { title: `Move ${a.label} to ...`, value: Math.min(u.nslots - 1, slot + 1), okLabel: "Move", intro: `"${a.name}" moves to the slot you pick. ${a.label} shows its own factory sound again.`,
       describe: (n) => { const b = LIB.describeSlot(u, n); return n === slot ? { lines: ["That is the slot it is in."], bad: true } : { lines: [`${b.label} "${b.name}" (${b.saved ? "saved" : "factory sound"}) is replaced.`], danger: b.saved }; } });
     if (to == null) return;
     const b = LIB.describeSlot(u, to);
@@ -482,12 +483,12 @@ export function buildPatches(app, wrap) {
     try { app.say("Restoring ..."); await u.restoreAll((i, n) => app.say(`Restoring ... ${i} of ${n}`)); await load(); app.say("Every slot holds its factory sound.", "good"); } catch (e) { app.fail(e); await load(); }
   }
 
-  // ---- the wide view: all 128 slots on the full width, an overlay under the header. Drag: swap (Alt: copy)
+  // ---- the wide view: all the slots (175 with TIDE b12: 11 rows of 16) on the full width, an overlay under the header. Drag: swap (Alt: copy)
   function openWide() {
     if (st.wide) { st.wide.querySelector(".tile[tabindex='0']")?.focus(); return; }
     const top = Math.round(document.getElementById("top")?.getBoundingClientRect().bottom ?? 0);
     const grid = h("div", { class: "pgrid", role: "listbox", "aria-multiselectable": "true", "aria-label": "Patch slots, wide view" });
-    for (let s = 0; s < UP_SLOTS; s++) grid.append(h("div", { class: "tile", role: "option", tabindex: s === (st.cur ?? 0) ? 0 : -1, draggable: "true", dataset: { slot: s }, "aria-selected": "false" },
+    for (let s = 0; s < u.nslots; s++) grid.append(h("div", { class: "tile", role: "option", tabindex: s === (st.cur ?? 0) ? 0 : -1, draggable: "true", dataset: { slot: s }, "aria-selected": "false" },
       h("span", { class: "k", text: label(s) }), h("span", { class: "n" }), h("span", { class: "e" })));
     const mode = h("span", { class: "segs", role: "group", "aria-label": "What dragging does" },
       ["swap", "copy"].map((m) => h("button", { class: "seg ghost" + (st.wideMode === m ? " on" : ""), type: "button", dataset: { mode: m }, text: m === "swap" ? "Drag swaps" : "Drag copies", "aria-pressed": String(st.wideMode === m),
@@ -500,11 +501,11 @@ export function buildPatches(app, wrap) {
     ov.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { e.preventDefault(); closeWide(); return; }
       const t = e.target.closest?.(".tile"); if (!t) return;
-      const s = +t.dataset.slot, step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns(), ArrowUp: -columns(), Home: -s, End: UP_SLOTS - 1 - s }[e.key];
+      const s = +t.dataset.slot, step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns(), ArrowUp: -columns(), Home: -s, End: u.nslots - 1 - s }[e.key];
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(s, e); return; }
       if (step == null) return;
       e.preventDefault();
-      const to = Math.max(0, Math.min(UP_SLOTS - 1, s + step)), el = grid.children[to];
+      const to = Math.max(0, Math.min(u.nslots - 1, s + step)), el = grid.children[to];
       for (const c of grid.children) c.tabIndex = -1;
       el.tabIndex = 0; el.focus(); if (e.shiftKey) select(to, { shiftKey: true });
     });

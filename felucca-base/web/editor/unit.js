@@ -2,13 +2,13 @@
 // DUELL editor: the unit as the editor sees it. Reads both parts and the globals, writes parameters (coalesced, one request at a time through
 // the link), follows the unit by WATCH pushes, loads and stores patches, loads and saves multis, reads and sets MENU settings.
 // No DOM: editor/test_editor.mjs runs it against the simulated unit.
-import { CMD, v14, rv14, cstr, parseInfo, parseTrackQuery, parseTrackDump, parseDump, parseNames, parseUpList, parseMenu, parseLearn, parseStep, stepBytes, xReadArgs, xWriteArgs, parseXReply, parseMotion, motionSetArgs, motionDeleteArgs, MOTION_ERR } from "./proto.js";
+import { CMD, v14, rv14, cstr, parseInfo, parseTrackQuery, parseTrackDump, parseDump, parseNames, parseUpList, parseMenu, parseLearn, parseStep, stepBytes, xReadArgs, xWriteArgs, parseXReply, parseMotion, motionSetArgs, motionDeleteArgs, MOTION_ERR, slotLabel, SLOTS_OLD, SLOTS_WIDE } from "./proto.js";
 import { lo7, hi7, join7 } from "./modbypass.js";
 import { L, ID, P_E0, NX, X, descOf, xdescOf, xDefaults, clampTo } from "./layout.js";
 import { BACKUP_CMD, bkU32, bkR32, bkPack, bkUnpack, bkCrc } from "../fm1backup.js";
 import { multiObjId, multiSlotsOf } from "./duellbackup.js";
 
-export const UP_SLOTS = 128;   // the patch slots, ids 0..127 (DUELL 0.2.17: one list; a slot is its saved record or else the factory sound at that place of the list)
+export const UP_SLOTS = SLOTS_OLD;   // the patch slots of a unit WITHOUT INFO 44 01 bit 2, ids 0..127 (DUELL 0.2.17: one list; a slot is its saved record or else the factory sound at that place of the list); a b12 unit has 175 (unit.nslots)
 export class UnitError extends Error { constructor(msg, rc) { super(msg); this.rc = rc; } }
 // the filter cutoffs (fmt 23 FILT: the multimode filter's CUT, 0..82; fmt 5 CUTOFF: an engine's own) move in steps of at most this many per write (see queueWrite)
 const slewOf = (d) => (d && !d.names && (d.fmt === 23 || d.fmt === 5) ? Math.max(2, Math.round((d.max - d.min) / 24)) : 0);
@@ -26,6 +26,18 @@ export class Unit {
   off(type, fn) { const l = this.listeners.get(type); if (l) { const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); } return this; }
   emit(type, d) { for (const fn of this.listeners.get(type) || []) fn(d); }
   req(cmd, args = [], timeout) { return this.link.request([cmd, args], { timeout }); }
+  // b12 (INFO 44 01 bit 2): 175 slots, ids 0..174; a slot k >= 128 is addressed by SLOT_HI [1] (cmd 90, no reply) right before the command and k - 128 in the slot byte
+  get wide() { return !!this.info?.slots175; }
+  get nslots() { return this.wide ? SLOTS_WIDE : SLOTS_OLD; }
+  label(slot) { return slotLabel(slot, this.wide); }                     // #1..#124, U1..U4, #125..#171 (a 128 slot unit: #1..#128 as before)
+  // a request whose argument `at` is a slot: the link sends SLOT_HI first for k >= 128 (one turn, so nothing comes between), the byte is k & 127. The reply echoes the byte as sent.
+  sreq(cmd, args, timeout, at = 0) {
+    const k = args[at];
+    if (!(k >= 128)) return this.req(cmd, args, timeout);
+    if (!this.wide) return Promise.reject(new UnitError(`This unit has no slot ${k + 1} (it has ${SLOTS_OLD}).`, 1));
+    const a = args.slice(); a[at] = k & 127;
+    return this.link.request([cmd, a], { timeout, hi: true });
+  }
   get writable() { return !!this.info && this.compat === null; }   // compat: null = fine, else the reason the unit is read-only
 
   // ---- connect
@@ -292,8 +304,19 @@ export class Unit {
       this.set(part, P_E0 + 7, rv14(s, 2), false);
     });
   }
+  // the USER voices (FM6_GET / FM6_PUT target 3, index = the slot): with b12 an index >= 128 goes with SLOT_HI like any slot command
+  async readFm6User(index) {
+    const a = await this.sreq(CMD.FM6_GET, [3, index], 2000, 1);
+    if (a[2]) throw new UnitError("The unit did not give that FM6 voice.", a[2]);
+    return a.slice(3, 3 + 128);
+  }
+  async writeFm6User(index, packed) {
+    this.guard();
+    const a = await this.sreq(CMD.FM6_PUT, [3, index, ...Array.from(packed, (x) => x & 127)], 2000, 1);
+    if (a[2]) throw new UnitError("The unit refused the FM6 voice.", a[2]);
+  }
 
-  // ---- patch slots (DUELL 0.2.17: ONE list of 128 slots; slot i is its saved record, or else the factory sound at browse position i, #NN = i + 1)
+  // ---- patch slots (DUELL 0.2.17: ONE list of 128 slots, b12: 175; slot i is its saved record, or else the factory sound at browse position i, #NN = i + 1)
   async factoryNames(eng) {
     if (this.names.has(eng)) return this.names.get(eng);
     const n = parseNames(await this.req(CMD.NAMES, [eng])).names; this.names.set(eng, n); return n;
@@ -303,18 +326,19 @@ export class Unit {
     await this.req(CMD.PRESET, [eng, idx]);
     await this.readPart(part);
   }
-  // the 128 slots: [{slot, eng, name, cat, saved}] (saved: it holds a saved record; false: it holds its factory sound)
+  // the 128 (b12: 175) slots: [{slot, eng, name, cat, saved}] (saved: it holds a saved record; false: it holds its factory sound)
   async listSlots(onProgress) {
     const all = [];
-    for (let s = 0; s < UP_SLOTS; s += 16) {
-      const r = parseUpList(await this.req(CMD.UP_LIST, [s, 16]));
-      all.push(...r.slots); onProgress?.(s + 16, UP_SLOTS);
+    const n = this.nslots;
+    for (let s = 0; s < n; s += 16) {
+      const r = parseUpList(await this.sreq(CMD.UP_LIST, [s, 16]), s);
+      all.push(...r.slots); onProgress?.(Math.min(s + 16, n), n);
     }
-    this.slots = all.slice(0, UP_SLOTS); this.emit("patches", this.slots); return this.slots;
+    this.slots = all.slice(0, n); this.emit("patches", this.slots); return this.slots;
   }
   async loadSlot(part, slot) {                        // the slot's record, else its factory sound, into the part
     await this.select(part); await this.idle();
-    const a = await this.req(CMD.UP_LOAD, [slot]);
+    const a = await this.sreq(CMD.UP_LOAD, [slot]);
     if (a[1] !== 0) throw new UnitError("That slot is not valid.", a[1]);
     await this.readPart(part);
     this.parts[part].slot = slot;
@@ -323,10 +347,10 @@ export class Unit {
   // the slot held is gone (a saved record, or nothing but its factory sound, which RESTORE brings back).
   async saveSlot(part, slot, name) {
     await this.select(part); await this.idle();
-    const a = await this.req(CMD.UP_STORE, [slot, ...cstr(name)], 6000);
+    const a = await this.sreq(CMD.UP_STORE, [slot, ...cstr(name)], 6000);
     if (a[1] === 1) throw new UnitError("The unit refused the name or the slot.", 1);
     if (a[1] === 2) throw new UnitError("The unit could not write: it could not stop playback in time, or the flash failed. Stop playback on the unit and try again.", 2);
-    if (a[1] === 6) throw new UnitError("STORE FULL: the unit's patch store holds all the patches it can (126 with TIDE). Save over a used slot, or remove a saved patch first.", 6);
+    if (a[1] === 6) throw new UnitError("STORE FULL: the unit's patch store holds all the patches it can (150 with TIDE b12, 126 before). Save over a used slot, or restore a saved patch first.", 6);
     if (a[1] !== 0) throw new UnitError(`The unit answered error ${a[1]}.`, a[1]);
     if (this.parts[part]) this.parts[part].slot = slot;
     await this.listSlots();
@@ -334,7 +358,7 @@ export class Unit {
   // RESTORE: the slot's saved record is removed and its factory sound is back (UP_ERASE; a slot that holds its factory sound already: rc 0, nothing written)
   async restoreSlot(slot) {
     this.guard();
-    const a = await this.req(CMD.UP_ERASE, [slot], 6000);
+    const a = await this.sreq(CMD.UP_ERASE, [slot], 6000);
     if (a[1] !== 0) throw new UnitError("The unit could not restore the slot (playback could not be stopped, or a flash error).", a[1]);
     await this.listSlots();
   }
@@ -343,8 +367,8 @@ export class Unit {
     this.guard();
     const todo = (this.slots || await this.listSlots()).filter((s) => s.saved).map((s) => s.slot);
     for (const [i, s] of todo.entries()) {
-      const a = await this.req(CMD.UP_ERASE, [s], 6000);
-      if (a[1] !== 0) { await this.listSlots(); throw new UnitError(`The unit could not restore slot ${s + 1} (playback could not be stopped, or a flash error). The slots before it are restored; run it again.`, a[1]); }
+      const a = await this.sreq(CMD.UP_ERASE, [s], 6000);
+      if (a[1] !== 0) { await this.listSlots(); throw new UnitError(`The unit could not restore slot ${this.label(s)} (playback could not be stopped, or a flash error). The slots before it are restored; run it again.`, a[1]); }
       onProgress?.(i + 1, todo.length);
     }
     await this.listSlots();

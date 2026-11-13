@@ -50,7 +50,9 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define ENGI_RETIRED(e) ((e) == 1u || (e) == 4u || (e) == 8u || (e) == 10u || (e) == 13u)
 #define NENG_RETIRED 5
 #define NENG_SHOWN (NENGINES - NENG_RETIRED)   /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the display order of engines.c ENGINE_ORDER */
-#define UP_SLOTS 128u            /* stored patches (upreset.c): shadows of factory sounds and user patches, 128 in all */
+#define UP_BANK 128u             /* the bank of 128 (program change bank 0 / 1, the favorites' slot bits): #1..#124 and the USER slots U1..U4 (tide.h) */
+#define UP_SLOTS 175u            /* b12 (every factory sound editable): the patch slots (upreset.c), one per place of the PATCHES list: the bank's 128, then the
+                                 * factory sounds the USER slots displaced and the ones past the 128 (#125..#171); each holds its saved record, else its factory sound */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 /* The velocity ACCENT LIFT (DUELL 1.1, release_drafts/VELOCITY_AFTERTOUCH_V1.md): above velocity ACCENT_V0 the envelope opens the filter / the engine's tone
  * (cutoff += envq15 x ACCENT_MAX >> 7). It was one step at 111 (full lift), and it made 24 of 127 sounds QUIETER at a harder key (up to 5 dB). Now it grows

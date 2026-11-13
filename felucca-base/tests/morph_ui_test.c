@@ -1123,7 +1123,7 @@ static void t_both_ro(void)
     fresh();
     for (e = 0; e < NENGINES && n < 2u; e++)
         for (p = 0; p < ds_count(e) && n < 2u; p++)
-            if ((r = ds_list_rank(e, p)) >= UP_USER0 && r < UP_SLOTS + UP_NXTRA) {
+            if ((r = ds_list_rank(e, p)) >= UP_USER0 && r < UP_BANK + UP_NXTRA) {   /* (b12: each has its own slot now: two slots, both saved) */
                 trk[n].eng_req = (uint8_t)e; trk[n].preset = (uint8_t)p; trk[n].user = 0; n++;
             }
     morph_page();

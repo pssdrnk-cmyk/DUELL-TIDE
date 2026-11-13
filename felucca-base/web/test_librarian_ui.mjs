@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The library UI in a real browser: headless Chrome drives editor/?mock=1 (the simulated unit) through the Chrome DevTools protocol. Files and slots are dropped with
+// The library UI in a real browser: headless Chrome drives editor/?mock=128 (the simulated unit of before; ?mock=1 is the b12 one, last block) through the Chrome DevTools protocol. Files and slots are dropped with
 // synthetic DragEvents that carry a DataTransfer (files and the slot type), the dialogs are answered as a user would, and the unit's state is read back from the mock.
 // Screenshots for a look go to SHOTS (default: the temp directory). Not part of host_tests.sh (needs Chrome): node web/test_librarian_ui.mjs
 //   node web/test_librarian_ui.mjs [CHROME_PATH]      (use the emsdk node: the Homebrew one is broken here)
@@ -63,7 +63,7 @@ async function waitFor(expr, what, ms = 8000) {
   throw new Error(`timed out waiting for: ${what}`);
 }
 async function shot(name) { const r = await cdp("Page.captureScreenshot", { format: "png" }); writeFileSync(join(SHOTS, name + ".png"), Buffer.from(r.data, "base64")); }
-async function open(query = "?mock=1") {
+async function open(query = "?mock=128") {   // (the mock of the unit of before: 128 slots; ?mock=1 is the b12 unit with 175)
   await cdp("Page.navigate", { url: `http://127.0.0.1:${PORT}/editor/${query}` });
   await waitFor(`document.getElementById("unit")?.textContent.startsWith("Connected")`, "the page connects to the mock unit");
   await ev(HELPERS);
@@ -303,7 +303,7 @@ try {
   ok(stay === true && /Drop a patch file/.test(await msg()), "a file dropped on the header is not opened by the browser; the footer says where files go");
 
   // ============================================================================ the save form follows the patch that was clicked (owner's bug: it said LADDER BASS, slot 1)
-  await open("?mock=1");
+  await open("?mock=128");
   await ev(`document.querySelector('.col.glob [data-key="patches"]').click()`);
   await rows();
   await ev(`window.__app.unit.loadSlot(0, 64)`);                  // PART 1 now plays WAVE LEAD: the form must not take its name, or its sound
@@ -354,7 +354,7 @@ try {
   // ============================================================================ a unit that is playing, and a unit with older firmware
   await open("?mock=playing");
   await ev(`document.querySelector('.col.glob [data-key="patches"]').click()`);
-  await waitFor(`document.querySelectorAll(".plist li[data-slot]").length === 128`, "rows (playing unit)");
+  await waitFor(`document.querySelectorAll(".plist li[data-slot]").length === 175`, "rows (playing unit)");
   ok(await ev(`true`), "playing unit: the list loads (reading never touches the flash)");
   await ev(`__t.dropFiles(".patches", [["mybank.duell-patches.json", null, ${JSON.stringify(fileText)}]])`);
   await waitFor(`!!document.querySelector("dialog.imp[open]")`, "import dialog (playing unit)");
@@ -368,7 +368,7 @@ try {
   ok(await ev(`!__t.btn("Import file...", ".patches") && !__t.btn("Download all...", ".patches") && /need firmware 0.2.19/.test(document.querySelector(".patches").textContent)`), "older firmware: the library buttons are not drawn, one line says why");
   // ============================================================================ a smaller window (1280 x 720): the GLOBAL view, the list and the wide view still fit
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
-  await open("?mock=1");
+  await open("?mock=128");
   await ev(`document.getElementById("vglobal").click(); document.querySelector('.col.glob [data-key="patches"]').click()`);
   await waitFor(`document.querySelectorAll(".plist li[data-slot]").length === 128`, "rows (1280 x 720)");
   await shot("08-small-window");
@@ -378,7 +378,17 @@ try {
   await shot("09-small-window-wide");
   ok(await ev(`(() => { const o = document.querySelector(".pwide"), g = document.querySelector(".pgrid"); return getComputedStyle(g).gridTemplateColumns.split(" ").length === 8 && g.scrollWidth <= g.clientWidth + 1 && o.getBoundingClientRect().right <= innerWidth; })()`), "1280 x 720: the wide view is 8 slots to a row and fits (it scrolls up and down, not sideways)");
   await ev(`document.querySelector(".pwide").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); 1`);
+  // ============================================================================ b12: the b12 mock (?mock=1) has 175 slots: the list, the labels, the wide view (11 rows of 16)
   await cdp("Emulation.clearDeviceMetricsOverride");
+  await open("?mock=1");
+  await ev(`document.querySelector('.col.glob [data-key="patches"]').click()`);
+  await waitFor(`document.querySelectorAll(".plist li[data-slot]").length === 175`, "175 rows (b12)");
+  ok(await ev(`(() => { const k = (s) => document.querySelector('.plist li[data-slot="' + s + '"] .k')?.textContent; return k(0) === "#1" && k(123) === "#124" && k(124) === "U1" && k(127) === "U4" && k(128) === "#125" && k(174) === "#171"; })()`), "b12: the list shows #1..#124, U1..U4, #125..#171");
+  await ev(`__t.click("Wide view", ".patches")`);
+  await waitFor(`document.querySelectorAll(".pwide .tile").length === 175`, "wide view (175 tiles)");
+  ok(await ev(`(() => { const g = document.querySelector(".pgrid"), n = getComputedStyle(g).gridTemplateColumns.split(" ").length; return n === 16 && Math.ceil(175 / n) === 11 && g.children[174].querySelector(".k").textContent === "#171"; })()`), "b12: the wide view holds 175 tiles, 16 to a row (11 rows)");
+  await ev(`document.querySelector(".pwide").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); 1`);
+  ok(await ev(`(async () => { const u = window.__app.unit; await u.saveSlot(0, 150, "UI HIGH"); return u.slots[150].saved && window.__app.mock.patches.has(150); })()`) && await ev(`document.querySelector('.plist li[data-slot="150"]')?.textContent.includes("UI HIGH")`), "b12: a save into slot 150 shows in the list");
   ok(consoleMsgs.length === 0, `no script error in the page${consoleMsgs.length ? ": " + consoleMsgs.slice(0, 3).join(" | ") : ""}`);
 } catch (e) {
   console.log("TEST ERROR:", e.message); fails++;
