@@ -967,29 +967,29 @@ static uint32_t tide_views(const track_t *t, uint32_t page, tv_t *out)
 static void tide_steps(const track_t *t, int32_t y, int32_t hmax, uint16_t c)
 {
     tv_t tv[16];
+    uint8_t st[16];
     uint32_t ph = tide_views(t, 0xFFu, tv), page = ph == TV_NOPH ? 0u : ph / 16u, i;
-    int32_t h1 = 6, hs = 3, r;                           /* (a single note, each further note of a chord) */
+    int32_t r;
+    ns_states(st, t, page * 16u);                        /* b11: the standard note strip (ui_graph.c): the accents and (B) the pitch of the steps */
     for (i = 0; i < 16u; i++) {
-        int32_t x = bar_x(i), h = h1 / 2;
+        int32_t x = bar_x(i), h = 3;
         const tv_t *e = &tv[i];
-        if (e->k == TV_END) {
-            cv_rect(x, y - 1, 9, 1, T_LINE);
-            continue;
-        }
-        if (e->k >= TV_HIT) {
-            h = h1 + hs * (int32_t)(e->n - 1u);
-            h = h > hmax ? hmax : h;
-            if (e->k == TV_ADD)
-                cv_frame(x, y - h, 9, h, T_ACCENT);
-            else
-                cv_rrect(x, y - h, 9, h, 2, e->k == TV_MOVE ? T_ACCENT : c, T_BG);
-        } else if (e->k == TV_TIE)
-            cv_rrect(x, y - h, 9, h, 1, T_MID, T_BG);
+        uint32_t s = (st[i] & 0xF8u) | (e->n > 1u ? NS_CHORD : NS_NOTE);
+        if (e->k >= TV_HIT)
+            h = ns_h(s, hmax);
+        if (e->k == TV_END)
+            ns_step(x, y, hmax, NS_END, c);
+        else if (e->k == TV_ADD)
+            cv_frame(x, y - h, 9, h, T_ACCENT);           /* (AUTO TIDE's own states over the standard: added outlined, moved in the accent, dropped dim) */
+        else if (e->k >= TV_HIT)
+            ns_step(x, y, hmax, s, e->k == TV_MOVE ? T_ACCENT : c);
+        else if (e->k == TV_TIE)
+            ns_step(x, y, hmax, NS_TIE, c);
         else if (e->k == TV_DROP)
-            cv_frame(x, y - h1, 9, h1, T_DIM);
+            cv_frame(x, y - 6, 9, 6, T_DIM);
         else
-            cv_rrect(x, y - 3, 9, 3, 1, T_DIM, T_BG);
-        if (e->maybe && e->k != TV_ADD)
+            ns_step(x, y, hmax, NS_REST, c);
+        if (e->maybe && e->k != TV_ADD && e->k != TV_END)
             for (r = 1; r < h; r += 2)
                 cv_rect(x, y - h + r, 9, 1, T_BG);
         if (ph == page * 16u + i)

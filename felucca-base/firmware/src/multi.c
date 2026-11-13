@@ -503,8 +503,14 @@ static void multi_preview(uint32_t slot, mu_pv_t *o)
         o->p[t].preset = v[1];
         o->p[t].mode = v[2];
         o->p[t].has = v[3];
-        for (i = 0; i < 16u && i < slen; i++)
-            o->p[t].bar[i] = pv_bar_of(&d->step[i]);
+        {
+            uint8_t top[16] = {0};
+            for (i = 0; i < 16u && i < slen; i++) {
+                o->p[t].bar[i] = pv_bar_of(&d->step[i]);
+                top[i] = pv_top(&d->step[i]);
+            }
+            pv_rank(o->p[t].bar, top, 16u);             /* (b11 note strip B: the pitch) */
+        }
     }
 }
 static const char *multi_vname(uint32_t slot, uint32_t part)
