@@ -148,6 +148,9 @@ static void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
         for (i = 0; i < w && x + i < 240u; i++)
             web_fb[(y + j) * 240u + x + i] = sw;
     web_draws++;
+#ifdef WEB_LCD_HOOK
+    WEB_LCD_HOOK(x, y, w, h, 0);                /* (emu_run's `trace`: one picture a transfer) */
+#endif
 }
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 {
@@ -157,6 +160,9 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
         for (i = 0; i < w && x + i < 240u; i++)
             web_fb[(y + j) * 240u + x + i] = p[j * w + i];
     web_draws++;
+#ifdef WEB_LCD_HOOK
+    WEB_LCD_HOOK(x, y, w, h, 1);
+#endif
 }
 static void lcd_sync(void) {}
 static void lcd_power(uint32_t s)              /* MENU > SCREEN OFF (lcd.c): off, the page dark; on: redrawn before */

@@ -675,19 +675,17 @@ static void grid_fill(void)
         {5, 24, 3}, {5, 51, 3}, {5, 130, 7}, {5, 209, 8}, {6, 24, 4}, {6, 80, 6}, {6, 198, 4}, {7, 24, 3}, {7, 90, 3}, {7, 152, 3}, {7, 214, 3},
         {14, 24, 3}, {14, 119, 98}, {15, 24, 3}, {15, 51, 3}, {15, 133, 4}, {15, 216, 1},
         {16, 24, 3}, {16, 150, 1}, {16, 170, 4}, {16, 184, 5}, {16, 194, 8}, {16, 209, 8}, {17, 24, 3}};
-    static const uint8_t GUT[5][2] = {{0, 4}, {79, 3}, {119, 2}, {158, 3}, {236, 4}};
     uint32_t i, n = 0;
     for (i = 0; i < sizeof GAPB / sizeof GAPB[0]; i++)
-        if (GAPB[i][0] == grid_on) {
-            lcd_fill(0, GAPB[i][1], 240, GAPB[i][2], T_BG);
-            n++;
-        }
+        n += GAPB[i][0] == grid_on;
     if (!n) {
         gap_rows(H_HEAD, Y_FOOT + 15);
         return;
     }
-    for (i = 0; i < 5u; i++)
-        lcd_fill(GUT[i][0], 27, GUT[i][1], 190, T_BG);
+    gut_arm(T_BG);                                      /* b11: the gutters (gfx.c GUT) at the end of the pass, only where nothing drew (ui_draw: gut_flush) */
+    for (i = 0; i < sizeof GAPB / sizeof GAPB[0]; i++)
+        if (GAPB[i][0] == grid_on)
+            lcd_fill(0, GAPB[i][1], 240, GAPB[i][2], T_BG);
 }
 #ifndef GRID_PREFILL
 #define GRID_PREFILL() grid_fill()
@@ -3583,6 +3581,7 @@ static void ui_draw(void)
             return;
     }
     ui_draw_page(counting);
+    gut_flush();                                        /* b11: the gutters a grid's full redraw left to the end of its pass (gfx.c) */
     scr_shown();
 }
 /* b10 TIDE identity (design consult direction A, owner 2026-11-12): THE TIDE LINE. Rows 20 .. 26, between the header (its canvas rows 0 .. 19) and knob 1's line (rows 27 ..),
