@@ -53,9 +53,9 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None, sets=None):
 # with no key held, and a held chord still sets the key. The moving parts' rates are doubled in length (1/4 -> 1/2, 1/2 -> 1/1): under a 120 BPM clock they move as made at 60.
 BED_STEPS = "0 - - - - - - - - - - - - - - -"
 DRONES = [
-    multi(17, 1, "AMB DUNEHORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER", 107, 91,
+    multi(17, 1, "AMB DUNEHORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER", 107, 99,
           seq=[(0, "1/2", "0 - - . 0 - - . 5 - - . 0 - - ."), (1, "1/4", BED_STEPS)]),
-    multi(18, 2, "AMB GROWL", "a deep growling drone: detuned low saws on C2 with their sub on C1, beating slowly, a little overdrive, the low-pass moving slowly; above it a dark haze turning C3, E flat 3, G3", "REESE BASS", "NIGHT DRONE", 106, 92,
+    multi(18, 2, "AMB GROWL", "a deep growling drone: detuned low saws on C2 with their sub on C1, beating slowly, a little overdrive, the low-pass moving slowly; above it a dark haze turning C3, E flat 3, G3", "REESE BASS", "NIGHT DRONE", 106, 100,
           seq=[(1, "1/1", "-12 - - - - - - . -9 - - - -5 - - ."), (0, "1/4", "-24" + BED_STEPS[1:])],
           sets=[dict(P_TRANS=0, P_PRIO=1, P_DKDEP=0, P_DIST=45, P_FREEA=66, P_LD_FLT=20, P_EQHG=-6, P_CHOR=40, P_DLY=30, P_REV=70), dict(P_TRANS=0, P_EQHG=-6, P_CHOR=70, P_SPRD=64, P_DLY=40, P_REV=90)]),
 ]
@@ -71,7 +71,7 @@ MORE = [
          parts=[dict(sound="HARM BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=70, P_AHOLD="OFF", P_CHRD="OFF", P_TRANS=0, P_FREEA=34, P_FREEB=22, P_E2FLT=50, P_DIST=30,
                                                   P_DLY=40, P_REV=24, P_TRIM=127, P_LEVEL=104),
                      steps="-30A . . -30 . . -30 . . -18 . .", len=12, poly=True, bseed=4325, amt=30, b={"P_FREEA": 40}),
-                dict(sound="FM HAZE", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=44, P_LRATE=14, P_LD_FLT=16,
+                dict(sound="FM HAZE", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=44, P_LRATE=14, P_LD_FLT=16, **{"E:DTUN": 10, "E:MLVL": -12},
                                                 P_CHOR=60, P_SPRD=60, P_DLY=30, P_REV=60, P_LEVEL=92),
                      steps="-6 -", len=2, bseed=27687, amt=30, b={"P_FREEA": 50})]),
     dict(rom=20, slot=4, name="DUB HOUSE", mode="LAYER",
@@ -88,7 +88,7 @@ MORE = [
          parts=[dict(sound="SOFT EP", set={"P_AMODE": "OFF", "P_SGATE": 110, "P_SSWING": 70, "P_ITYPE": "TAPE", "P_IA": 50, "P_IB": 60, "P_IC": 70, "P_IMIX": 80, "P_FREEA": 50,
                                              "P_CHOR": 60, "P_SPRD": 50, "P_DLY": 34, "P_REV": 60, "P_TRIM": 91, "P_LEVEL": 108},
                      steps="n61+63+66+68v100 - - n61+63+66+68v80 - . n54+56+59+61v100 - - - n54+56+59+61v84 - . n61+63+66+68v72 . n54+56+59+61v92", len=16, bseed=25255, amt=30, b={"P_FREEA": 56}),
-                dict(sound="FM BASS 2", set={"P_AMODE": "OFF", "P_SGATE": 90, "P_SSWING": 70, "P_TRANS": 0, "P_DKDEP": 0, "P_DLY": 0, "P_REV": 8, "P_TRIM": 115, "P_LEVEL": 88},
+                dict(sound="FM BASS 2", set={"P_AMODE": "OFF", "P_SGATE": 90, "P_SSWING": 70, "P_TRANS": 0, "P_DKDEP": 0, "P_DLY": 0, "P_REV": 8, "P_TRIM": 115, "P_LEVEL": 104},
                      steps=". . . n39v104 . . . . . n44v96 . . . . n39v90 .", len=16, bseed=4325, amt=30, b={})]),
     dict(rom=22, slot=6, name="TECH CINEMA", mode="LAYER",
          what="cinematic hypnotic techno, A minor (131 BPM): a slow-swelling string pad, rootless A minor 9 two bars, then F major 7 and G add 9, each with its fifth dropped an octave and the ninth or the third on top (E3 to B4), through a deep slow phaser into a big hall; under it a breathy pad holding A1 through every chord",
@@ -106,7 +106,7 @@ MORE = [
                                                  "P_CHOR": 100, "P_SPRD": 60, "P_DLY": 30, "P_REV": 70, "P_TRIM": 92, "P_LEVEL": 92},
                      steps="-7 -5 -12 -10", len=4, bseed=33289, amt=30, b={"P_FREEA": 52}),
                 dict(sound="GHOST HARP", set={"P_AMODE": "SEQ", "P_ARATE": "1/8", "P_AGATE": 90, "P_AHOLD": "OFF", "P_CHRD": "OFF", "P_TRANS": 0, "P_REL": 50, "P_FREEA": 54,
-                                                "P_CHOR": 40, "P_SPRD": 60, "P_DLY": 70, "P_REV": 60, "P_TRIM": 100, "P_LEVEL": 100},
+                                                "P_CHOR": 40, "P_SPRD": 60, "P_DLY": 70, "P_REV": 60, "P_TRIM": 100, "P_LEVEL": 112},
                      steps="-7A 9 0 . 9 0 9 . -5A 11 2 . 11 2 . . -12A 4 -5 . 4 -5 4 . -10A 6 -3 . 6 -3 . .", len=32, bseed=10920, amt=30, b={"P_FREEA": 60})]),
     dict(rom=24, slot=8, name="TECH MINIMAL", mode="LAYER",
          what="minimal techno, A minor (125 BPM): a long-ringing koto pluck going back and forth between A3 and E4 six times a bar, through a slow phaser, chorus and a dotted ping-pong echo; under it a sub pluck on A2 (its sub on A1) on the off-beat 16ths, never on the beat",
