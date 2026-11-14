@@ -1420,100 +1420,56 @@ SOUNDS = [
             'E3': 5, 'E4': 1, 'E6': 4, 'SUB LEVEL': 4, 'CYCLE RISE': 4, 'CYCLE FALL': 88, 'CYCLE CURVE': -7, 'AMPENV SATN': -1, 'FILTERENV MRES': 6,
             'CYCLE PAN': 2, 'LFO2 MMODE': -10,
          }),
-    dict(engine='PHASE', idx=6, name='DEEP KICK', cat='PERC', bseed=55474,  # #95
+    # b13 (2026-11-14, owner: the factory drums removed): The Reese of Clipper's HYBRID patch REESE (isod89/clipper-fm1, GPL-3.0; firmware/src/hybrid_patches.h): two saws 27 cents apart (WAVE 1 and 2 SAW,
+    # DTN 27), a sine sub an octave under at 70, a 24 dB low-pass at 56 with a slow drift on it, drive: the beating DnB / dub bass, held.
+    # From ELASTIC BASS's values; End B from the seed.
+    dict(engine='PHASE', idx=6, name='NIGHT REESE', cat='BASS', lcat='PERC', bseed=55474,  # #95 (b13: was DEEP KICK, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 84, 'SUS': 0, 'REL': 66, 'ED_PIT': 9, 'KTRK': 0, 'TRANS': -12, 'E2ATK': 0, 'E2DEC': 56, 'E2SUS': 0, 'E2REL': 41,
-            'EQHG': -2, 'TRIM': 101, 'E3': 0, 'E4': 56, 'MOD1': ('AT', 'SHP', 13), 'MOD2': ('ENV2', 'PITCH', 63), 'MOD3': ('ENV2', 'PITCH', 20),
-            'MOD4': ('EXPR', 'PITCH', -64), 'LTRIG': 1, 'L2TRIG': 1,
-         },
-         bend={
-            'ATK': 9, 'DEC': 87, 'SUS': 2, 'REL': 79, 'ED_SHP': 10, 'LRATE': 69, 'LPHASE': 12, 'LFADE': 11, 'LD_FLT': 6, 'LD_SHP': -9, 'LD_AMP': 4,
-            'KTRK': 3, 'DIST': 1, 'CHOR': 7, 'DLY': 1, 'REV': 5, 'DETUNE': 39, 'FREEA': 78, 'FREEB': 2, 'FREEC': 1, 'M1AMT': 10, 'E2ATK': 10,
-            'E2DEC': 63, 'E2SUS': 2, 'E2REL': 54, 'L2RATE': 71, 'L2PHASE': 5, 'L2FADE': 13, 'E2FLT': 5, 'E3': 12, 'E4': 51, 'E5': 1, 'SUB LEVEL': 9,
-            'CYCLE RISE': 1, 'CYCLE FALL': 72, 'CYCLE CURVE': -13, 'AMPENV SATN': -3, 'FILTERENV MRES': 1, 'CYCLE PAN': -6, 'LFO2 MMODE': -8,
+            'DEC': 76, 'SUS': 127, 'REL': 55, 'KTRK': 0, 'TRANS': -12, 'DIST': 20, 'VOICE': 2, 'GLIDE': 40, 'GLMODE': 1, 'FREEA': 56, 'FREEB': 20,
+            'FREED': 2, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 13, 'E2REL': 54, 'L2RATE': 27, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 14,
+            'TRIM': 94, 'DKSRC': 0, 'E2FLT': 27, 'L2FLT': 4, 'E1': 0, 'E3': 70, 'E4': 40, 'MOD1': ('AT', 'SAT', 14), 'MOD2': ('CYCLE', 'CUT', 7),
+            'LTRIG': 1, 'L2TRIG': 1, 'CYCLE RISE': 100, 'CYCLE FALL': 100, 'E2': 1, 'E5': 27, 'SUB LEVEL': 70,
          }),
-    dict(engine='PHASE', idx=10, name='HARD KICK', cat='PERC', bseed=14853,  # #96
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset PHASE ORGAN (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='PHASE', idx=10, name='PHASE ORGAN', cat='KEYS', lcat='PERC', bseed=14853,  # #96 (b13: was HARD KICK, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 64, 'KTRK': 0, 'TRANS': -12, 'DIST': 48, 'E2ATK': 0, 'E2DEC': 60, 'E2SUS': 0, 'E2REL': 41,
-            'ITYPE': 2, 'IA': 127, 'IB': 90, 'IC': 90, 'TRIM': 113, 'E3': 0, 'E4': 14, 'MOD1': ('ENV2', 'PITCH', 63), 'MOD2': ('ENV2', 'PITCH', 63),
-            'MOD3': ('EXPR', 'PITCH', -64), 'MOD4': ('EXPR', 'PITCH', -64), 'LTRIG': 1, 'L2TRIG': 1,
-         },
-         bend={
-            'ATK': 1, 'DEC': 83, 'SUS': 2, 'REL': 56, 'ED_SHP': -9, 'LRATE': 73, 'LPHASE': 3, 'LFADE': 11, 'LD_FLT': -10, 'LD_SHP': 6, 'LD_AMP': 10,
-            'KTRK': -2, 'DIST': 50, 'CHOR': 6, 'DLY': 7, 'REV': 6, 'DETUNE': 32, 'FREEA': 73, 'FREEB': 2, 'FREEC': 7, 'E2ATK': 9, 'E2DEC': 58,
-            'E2SUS': 10, 'E2REL': 30, 'L2RATE': 50, 'L2PHASE': 11, 'L2FADE': 6, 'IA': 126, 'IB': 85, 'IC': 85, 'IMIX': 126, 'E2FLT': 5, 'E3': 4,
-            'E4': 9, 'E5': 6, 'SUB LEVEL': 8, 'CYCLE RISE': 12, 'CYCLE FALL': 80, 'CYCLE CURVE': 7, 'AMPENV SATN': -3, 'FILTERENV MRES': 6,
-            'CYCLE PAN': -8, 'LFO2 MMODE': -13,
+            'ATK': 0, 'DEC': 127, 'SUS': 127, 'REL': 30, 'KTRK': 0, 'DIST': 0, 'CHOR': 40, 'DLY': 0, 'REV': 30, 'E1': 3, 'E2': 0, 'E3': 40, 'E4': 0, 'E5': 0, 'E6': 0, 'E7': 0, 'E8': 0, 'TRIM': 82, 'LTRIG': 1, 'L2TRIG': 1, 'MOD1': ('AT', 'CUT', 12),
          }),
-    dict(engine='TRIO', idx=7, name='FIELD CLANK', cat='PERC', bseed=8464,  # #97
+    # b13 (2026-11-14, owner: the factory drums removed): Clipper's MOOG BASS (GPL-3.0, hybrid_patches.h) on TRIO: three saws, two of them an octave under, into the low-pass with a snappy filter
+    # envelope and drive, mono with glide: the classic mono bass (synthwave 16ths, Detroit, house).
+    # From BREADBIN's values; End B from the seed.
+    dict(engine='TRIO', idx=7, name='FAT MONO', cat='BASS', lcat='PERC', bseed=8464,  # #97 (b13: was FIELD CLANK, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 79, 'SUS': 0, 'REL': 66, 'RES2': 27, 'KTRK': 0, 'REV': 14, 'TWTYPE': 2, 'FREEA': 70, 'FREEB': 4, 'E2ATK': 0, 'E2DEC': 47,
-            'E2SUS': 0, 'E2REL': 41, 'L2RATE': 27, 'L2WAVE': 1, 'CUT2': 59, 'TRIM': 124, 'E1': 1, 'E2': 6, 'E3': 0, 'E4': 0, 'MOD1': ('AT', 'E4', 17),
-            'MOD2': ('CYCLE', 'CUT2', 11), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN ENV2': 12, 'TWIN LFO2': 4, 'CYCLE MODE': 1, 'CYCLE RISE': 0,
-            'CYCLE FALL': 80,
-         },
-         bend={
-            'ATK': 5, 'DEC': 82, 'SUS': 2, 'REL': 79, 'ED_SHP': -2, 'LRATE': 67, 'LPHASE': 3, 'LFADE': 6, 'LD_FLT': 3, 'LD_SHP': 4, 'LD_AMP': 9,
-            'RES2': 47, 'DRV2': 6, 'KTRK': 12, 'DIST': 10, 'CHOR': 3, 'DLY': 3, 'REV': 3, 'DETUNE': 42, 'FREEA': 77, 'FREEB': 2, 'FREEC': 6,
-            'M1AMT': 19, 'M2AMT': 8, 'E2ATK': 4, 'E2DEC': 34, 'E2SUS': 4, 'E2REL': 54, 'L2RATE': 30, 'L2PHASE': 2, 'L2FADE': 12, 'BLEND': 2,
-            'E2FLT': -11, 'E4': 4, 'E8': 56, 'TWIN KTRK2': -6, 'TWIN ENV2': 18, 'TWIN LFO1': -12, 'TWIN LFO2': -9, 'SUB LEVEL': 8, 'CYCLE RISE': 6,
-            'CYCLE FALL': 84, 'CYCLE CURVE': 4, 'AMPENV SATN': 13, 'FILTERENV FBLND': 5, 'FILTERENV FDRV': 10, 'FILTERENV MRES': -1, 'CYCLE TCUT': 9,
-            'CYCLE PAN': -13, 'LFO2 TRES': 6, 'LFO2 MMODE': -3, 'LFO2 FBLND': -10,
+            'DEC': 74, 'SUS': 58, 'REL': 55, 'RES2': 41, 'KTRK': 0, 'TRANS': -12, 'VOICE': 2, 'GLIDE': 40, 'GLMODE': 1, 'TWTYPE': 1, 'FREEA': 40,
+            'FREEB': 20, 'E2ATK': 19, 'E2DEC': 75, 'E2SUS': 28, 'E2REL': 56, 'L2RATE': 27, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'CUT2': 37,
+            'DKDEP': 15, 'TRIM': 112, 'DKSRC': 0, 'E4': 4, 'MOD1': ('AT', 'SAT', 14), 'MOD2': ('VEL', 'CUT2', 6), 'MOD3': ('CYCLE', 'CUT2', 7),
+            'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN ENV2': 19, 'TWIN LFO2': 4, 'SUB LEVEL': 31, 'CYCLE RISE': 100, 'CYCLE FALL': 100, 'E1': 0,
+            'E2': -12, 'E3': -12, 'DIST': 20,
          }),
-    dict(engine='PHYS', idx=8, name='FLOOR THUD', cat='PERC', bseed=11677,  # #98
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset PHYS KALIMBA (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='PHYS', idx=8, name='KALIMBA', cat='PLUCK', lcat='PERC', bseed=11677,  # #98 (b13: was FLOOR THUD, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'SUS': 127, 'REL': 71, 'KTRK': 0, 'REV': 22, 'TRIM': 99, 'E1': 2, 'E2': 0, 'E3': 52, 'E4': 71, 'E5': 30, 'E6': 100, 'E7': 17, 'E8': 27,
-            'MOD1': ('AT', 'E7', 11), 'LTRIG': 1, 'L2TRIG': 1,
-         },
-         bend={
-            'ATK': 2, 'DEC': 72, 'SUS': 116, 'REL': 64, 'ED_SHP': 6, 'LRATE': 56, 'LPHASE': 12, 'LFADE': 11, 'LD_FLT': -5, 'LD_SHP': 7, 'LD_AMP': 3,
-            'KTRK': 5, 'DIST': 6, 'CHOR': 9, 'DLY': 6, 'REV': 17, 'DETUNE': 53, 'FREEA': 78, 'FREEB': 1, 'FREEC': 9, 'M1AMT': 24, 'E2ATK': 18,
-            'E2DEC': 74, 'E2SUS': 79, 'E2REL': 54, 'L2RATE': 47, 'L2PHASE': 11, 'L2FADE': 7, 'E2FLT': 4, 'E2': 13, 'E3': 41, 'E4': 83, 'E5': 21,
-            'E6': 106, 'E7': 9, 'E8': 29, 'SUB LEVEL': 4, 'CYCLE RISE': 2, 'CYCLE FALL': 76, 'CYCLE CURVE': -4, 'AMPENV SATN': 1,
-            'FILTERENV MRES': -1, 'CYCLE PAN': -1, 'LFO2 MMODE': -10,
+            'ATK': 0, 'DEC': 100, 'SUS': 127, 'REL': 60, 'KTRK': 0, 'DIST': 0, 'CHOR': 10, 'DLY': 20, 'REV': 40, 'E1': 0, 'E2': 34, 'E3': 16, 'E4': 56, 'E5': 100, 'E6': 90, 'E7': 0, 'E8': 48, 'TRIM': 120, 'LTRIG': 1, 'L2TRIG': 1, 'MOD1': ('AT', 'CUT', 12),
          }),
-    dict(engine='NOISE', idx=6, name='OPEN SIZZLE', cat='PERC', bseed=25614,  # #99
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset NOISE WIND (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='NOISE', idx=6, name='NIGHT WIND', cat='FX', lcat='PERC', text=True, bseed=28032,  # #99 (b13: was OPEN SIZZLE, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 91, 'SUS': 0, 'REL': 66, 'EQLG': -6, 'RES2': 17, 'KTRK': 0, 'REV': 22, 'TWTYPE': 2, 'FREEA': 56, 'FREEB': 8,
-            'FREEC': 127, 'E2ATK': 0, 'E2DEC': 76, 'E2SUS': 127, 'L2RATE': 29, 'L2WAVE': 1, 'CUT2': 71, 'TRIM': 109, 'E2': 0, 'MOD1': ('AT', 'E8', 11),
-            'MOD2': ('RAND', 'CUT2', 5), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN LFO2': 3,
-         },
-         bend={
-            'ATK': 2, 'DEC': 94, 'SUS': 2, 'REL': 69, 'ED_SHP': -5, 'LRATE': 73, 'LPHASE': 4, 'LFADE': 6, 'LD_FLT': -6, 'LD_SHP': 4, 'LD_AMP': 3,
-            'RES2': 6, 'DRV2': 1, 'KTRK': -10, 'DIST': 10, 'CHOR': 10, 'DLY': 7, 'REV': 18, 'DETUNE': 42, 'FREEA': 55, 'FREEB': 3, 'FREEC': 125,
-            'M1AMT': 16, 'M2AMT': 16, 'E2ATK': 5, 'E2DEC': 70, 'E2SUS': 118, 'E2REL': 47, 'L2RATE': 40, 'L2PHASE': 7, 'L2FADE': 6, 'BLEND': 10,
-            'E2FLT': 3, 'E2': 5, 'E6': 10, 'E7': 2, 'E8': 9, 'TWIN KTRK2': -10, 'TWIN ENV2': -7, 'TWIN LFO1': -1, 'TWIN LFO2': -1, 'SUB LEVEL': 1,
-            'CYCLE RISE': 12, 'CYCLE FALL': 72, 'CYCLE CURVE': 5, 'AMPENV SATN': -13, 'FILTERENV FBLND': 12, 'FILTERENV FDRV': -2,
-            'FILTERENV MRES': -2, 'CYCLE TCUT': -12, 'CYCLE PAN': 7, 'LFO2 TRES': -3, 'LFO2 MMODE': -13, 'LFO2 FBLND': 4,
+            'ATK': 90, 'DEC': 90, 'SUS': 110, 'REL': 90, 'KTRK': 0, 'DIST': 0, 'CHOR': 30, 'DLY': 20, 'REV': 80, 'E1': 0, 'E2': 64, 'E3': 0, 'E4': 0, 'E5': 0, 'E6': 0, 'E7': 70, 'E8': 0, 'TRIM': 110, 'LTRIG': 1, 'L2TRIG': 1,
          }),
-    dict(engine='NOISE', idx=7, name='STATIC SNARE', cat='PERC', bseed=58051,  # #100
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset NOISE ARCADE (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='NOISE', idx=7, name='RETRO ZAP', cat='OTHER', lcat='PERC', bseed=58051,  # #100 (b13: was STATIC SNARE, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 71, 'SUS': 0, 'REL': 56, 'RES2': 41, 'KTRK': 0, 'DIST': 31, 'REV': 23, 'TWTYPE': 2, 'FREEA': 39, 'FREEB': 44, 'FREEC': 36,
-            'FREED': 2, 'E2ATK': 0, 'E2DEC': 56, 'E2SUS': 0, 'E2REL': 51, 'L2RATE': 18, 'L2WAVE': 1, 'BLEND': -17, 'CUT2': 57, 'TRIM': 122,
-            'E2FLT': 29, 'E2': 0, 'MOD1': ('AT', 'SAT', 17), 'MOD2': ('RAND', 'CUT2', 7), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN ROUTE': 1, 'TWIN LINK': 0,
-            'TWIN LFO2': 3,
-         },
-         bend={
-            'ATK': 9, 'DEC': 74, 'SUS': 2, 'REL': 55, 'ED_SHP': -9, 'LRATE': 67, 'LPHASE': 2, 'LFADE': 8, 'LD_FLT': -6, 'LD_SHP': -9, 'LD_AMP': 4,
-            'RES2': 43, 'DRV2': 2, 'KTRK': -1, 'DIST': 22, 'CHOR': 13, 'DLY': 13, 'REV': 25, 'DETUNE': 53, 'FREEB': 36, 'M1AMT': 27, 'M2AMT': 10,
-            'E2ATK': 13, 'E2DEC': 68, 'E2SUS': 3, 'E2REL': 38, 'L2RATE': 6, 'L2PHASE': 8, 'L2FADE': 7, 'BLEND': -16, 'CUT2': 52, 'E2FLT': 36,
-            'E2': 9, 'E6': 12, 'E7': 1, 'E8': 5, 'TWIN KTRK2': 7, 'TWIN ENV2': 12, 'TWIN LFO1': 3, 'TWIN LFO2': 13, 'SUB LEVEL': 1, 'CYCLE RISE': 20,
-            'CYCLE FALL': 76, 'CYCLE CURVE': 8, 'AMPENV SATN': -10, 'FILTERENV FBLND': -12, 'FILTERENV FDRV': 9, 'FILTERENV MRES': 9,
-            'CYCLE TCUT': 12, 'CYCLE PAN': 12, 'LFO2 TRES': -13, 'LFO2 MMODE': 7, 'LFO2 FBLND': 8,
+            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 50, 'KTRK': 0, 'DIST': 0, 'CHOR': 0, 'DLY': 10, 'REV': 20, 'E1': 2, 'E2': 0, 'E3': 0, 'E4': 0, 'E5': 0, 'E6': 112, 'E7': 0, 'E8': 84, 'TRIM': 120, 'LTRIG': 1, 'L2TRIG': 1,
          }),
-    dict(engine='NOISE', idx=5, name='TIZZ HAT', cat='PERC', bseed=61611,  # #101
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset NOISE METAL (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='NOISE', idx=5, name='STEEL NOISE', cat='FX', lcat='PERC', bseed=20021,  # #101 (b13: was TIZZ HAT, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 52, 'SUS': 0, 'REL': 47, 'EQLG': -6, 'RES2': 21, 'KTRK': 0, 'REV': 13, 'TWTYPE': 2, 'FREEA': 61, 'FREEB': 11,
-            'FREEC': 127, 'E2ATK': 0, 'E2DEC': 51, 'E2SUS': 0, 'E2REL': 41, 'L2RATE': 32, 'L2WAVE': 1, 'CUT2': 74, 'TRIM': 117, 'E2FLT': 6, 'E2': 0,
-            'MOD1': ('AT', 'REV', 17), 'MOD2': ('RAND', 'CUT2', 7), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN LFO2': 3,
-         },
-         bend={
-            'ATK': 1, 'DEC': 53, 'SUS': 2, 'REL': 59, 'ED_SHP': -12, 'LRATE': 68, 'LPHASE': 11, 'LFADE': 8, 'LD_FLT': 11, 'LD_SHP': -2, 'LD_AMP': 6,
-            'RES2': 11, 'DRV2': 7, 'KTRK': -7, 'DIST': 11, 'CHOR': 2, 'DLY': 9, 'REV': 16, 'DETUNE': 51, 'FREEA': 53, 'FREEB': 15, 'FREEC': 122,
-            'M1AMT': 18, 'M2AMT': 4, 'E2ATK': 11, 'E2DEC': 38, 'E2SUS': 10, 'E2REL': 42, 'L2RATE': 45, 'L2PHASE': 5, 'L2FADE': 5, 'BLEND': -12,
-            'CUT2': 63, 'E2FLT': -5, 'E2': 2, 'E6': 12, 'E7': 9, 'E8': 12, 'TWIN KTRK2': -6, 'TWIN ENV2': -2, 'TWIN LFO1': 5, 'TWIN LFO2': -4,
-            'SUB LEVEL': 5, 'CYCLE RISE': 5, 'CYCLE FALL': 66, 'CYCLE CURVE': -12, 'AMPENV SATN': 6, 'FILTERENV FBLND': -3, 'FILTERENV FDRV': -13,
-            'FILTERENV MRES': 2, 'CYCLE TCUT': -10, 'CYCLE PAN': -10, 'LFO2 TRES': -7, 'LFO2 MMODE': -10, 'LFO2 FBLND': 7,
+            'ATK': 0, 'DEC': 75, 'SUS': 40, 'REL': 60, 'KTRK': 0, 'DIST': 0, 'CHOR': 20, 'DLY': 30, 'REV': 45, 'ED_FLT': 10, 'E1': 3, 'E2': 0, 'E3': 0, 'E4': 0, 'E5': 0, 'E6': 32, 'E7': 0, 'E8': 0, 'TRIM': 118, 'LTRIG': 1, 'L2TRIG': 1,
          }),
     dict(engine='ANALOG', idx=14, name='STORM FRONT', cat='FX', text=True, bseed=36047, bamt=14,  # #102
          p={
@@ -1784,22 +1740,13 @@ SOUNDS = [
             'AMPENV SATN': -20, 'FILTERENV FBLND': -18, 'FILTERENV FDRV': 1, 'FILTERENV MRES': -7, 'CYCLE TCUT': -11, 'CYCLE PAN': 18,
             'LFO2 TRES': 12, 'LFO2 MMODE': -21, 'LFO2 FBLND': -16,
          }),
-    dict(engine='FM6', idx=8, name='TEMPLE BLOCK', cat='PERC', lcat='OTHER', bseed=13064,  # #119
+    # b13 (2026-11-14, owner: the factory drums removed): was TEMPLE BLOCK. An imported FM piano (FM6 factory voice F12 HSE PIANO: the YM2612-Dexed-Presets
+    # voice Keys_17, MIT, tools/gen_fm6_patches.py): a struck, bright four-operator piano that falls away under the key, with a little chorus spread and a
+    # short room: the classic house piano stab (chords on the offbeat). End B from the seed.
+    dict(engine='FM6', idx=8, name='HOUSE PIANO', cat='KEYS', lcat='OTHER', bseed=13064,  # #119 (listed where TEMPLE BLOCK was: no number moves)
          p={
-            'REV': 25, 'FREEB': 17, 'E2ATK': 0, 'E2DEC': 67, 'E2SUS': 0, 'E2REL': 56, 'TRIM': 120, 'E3': 22, 'E4': -2, 'E6': 3, 'E8': 5,
-            'MOD1': ('EXPR', 'PITCH', 63), 'MOD2': ('EXPR', 'PITCH', 38), 'MOD3': ('ENV2', 'AMP', 63), 'LTRIG': 1, 'L2TRIG': 1,
-         },
-         bend={
-            'ATK': 6, 'DEC': 56, 'SUS': 2, 'REL': 52, 'ED_SHP': -17, 'LRATE': 52, 'LPHASE': 13, 'LFADE': 13, 'LD_FLT': 17, 'LD_SHP': -11,
-            'LD_AMP': 2, 'KTRK': 44, 'DIST': 9, 'CHOR': 4, 'DLY': 21, 'REV': 27, 'DETUNE': 42, 'FREEA': 78, 'FREEB': 28, 'FREEC': 9, 'M3AMT': 61,
-            'E2ATK': 7, 'E2DEC': 79, 'E2SUS': 1, 'E2REL': 49, 'L2RATE': 43, 'L2PHASE': 9, 'L2FADE': 4, 'E2FLT': -7, 'E2': 1, 'E3': 11, 'E5': 18,
-            'E6': 5, 'E7': 5, 'SUB LEVEL': 21, 'CYCLE RISE': 3, 'CYCLE FALL': 75, 'CYCLE CURVE': 20, 'AMPENV SATN': -4, 'FILTERENV MRES': -8,
-            'CYCLE PAN': -6, 'LFO2 MMODE': 20,
-         },
-         bfm=[
-            97, 86, 91, 98, 97, 88, 96, 4, 8, 90, 98, 91, 85, 98, 98, 98, 0, 2, 87, 79, 34, 47, 92, 5, 9, 1, 54, 97, 68, 52, 50, 98, 1, 1, 0, 74, 97,
-            82, 43, 54, 96, 5, 1, 2, 74, 86, 49, 42, 57, 98, 1, 1, 0, 97, 99, 99, 99, 99, 50, 50, 50, 34, 5, 0, 7,
-         ]),
+            'KTRK': 20, 'CHOR': 40, 'REV': 24, 'SPRD': 40, 'TRIM': 118, 'E8': 44, 'MOD1': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         }),
     dict(engine='LOFI', idx=5, name='DEAD BATTERY', cat='FX', lcat='OTHER', bseed=16860,  # #120
          p={
             'ATK': 0, 'DEC': 68, 'SUS': 19, 'REL': 62, 'AMODE': 3, 'AOCT': 2, 'APROB': 114, 'DLY': 51, 'REV': 38, 'TWTYPE': 4, 'FREEA': 57,
@@ -1830,29 +1777,17 @@ SOUNDS = [
             'TWIN LFO1': 10, 'TWIN LFO2': 12, 'SUB LEVEL': 6, 'CYCLE CURVE': -13, 'AMPENV SATN': 6, 'FILTERENV FBLND': -5, 'FILTERENV FDRV': 11,
             'FILTERENV MRES': 10, 'CYCLE TCUT': 4, 'CYCLE PAN': 8, 'LFO2 TRES': -11, 'LFO2 MMODE': -7, 'LFO2 FBLND': 15,
          }),
-    dict(engine='LOFI', idx=6, name='PIXEL KICK', cat='PERC', lcat='OTHER', bseed=33683,  # #122
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset LOFI ARP 8BIT (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='LOFI', idx=6, name='PIXEL ARP', cat='PLUCK', lcat='OTHER', bseed=33683,  # #122 (b13: was PIXEL KICK, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 72, 'SUS': 0, 'KTRK': 0, 'TRANS': -12, 'DIST': 19, 'REV': 10, 'E2ATK': 0, 'E2DEC': 62, 'E2SUS': 0, 'E2REL': 51,
-            'TRIM': 118, 'E2': 1, 'E5': 16, 'E8': 90, 'MOD1': ('AT', 'E5', 13), 'LTRIG': 1, 'L2TRIG': 1,
-         },
-         bend={
-            'ATK': 2, 'DEC': 76, 'SUS': 2, 'REL': 51, 'ED_SHP': 8, 'LRATE': 47, 'LPHASE': 10, 'LFADE': 2, 'LD_FLT': 6, 'LD_SHP': -6, 'LD_AMP': 9,
-            'KTRK': 6, 'DIST': 17, 'CHOR': 9, 'DLY': 19, 'REV': 31, 'DETUNE': 31, 'FREEA': 77, 'FREEB': 2, 'FREEC': 14, 'M1AMT': 17, 'E2ATK': 17,
-            'E2DEC': 71, 'E2SUS': 6, 'E2REL': 54, 'L2RATE': 79, 'L2PHASE': 12, 'L2FADE': 21, 'E2FLT': 6, 'E3': 60, 'E4': 17, 'E5': 7, 'E6': 8,
-            'E8': 84, 'SUB LEVEL': 12, 'CYCLE RISE': 26, 'CYCLE FALL': 82, 'CYCLE CURVE': 5, 'AMPENV SATN': -21, 'FILTERENV MRES': 4,
-            'CYCLE PAN': 14, 'LFO2 MMODE': -6,
+            'ATK': 0, 'DEC': 60, 'SUS': 80, 'REL': 40, 'KTRK': 0, 'DIST': 0, 'CHOR': 0, 'DLY': 30, 'REV': 20, 'E1': 2, 'E2': 0, 'E3': 96, 'E4': 0, 'E5': 0, 'E6': 0, 'E7': 2, 'E8': 110, 'TRIM': 94, 'LTRIG': 1, 'L2TRIG': 1, 'MOD1': ('AT', 'CUT', 12),
          }),
-    dict(engine='VOICE', idx=4, name='VOCAL BEATS', cat='PERC', lcat='OTHER', bseed=31759,  # #123
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset VOICE (FORMANT) CHOIR AAH (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='VOICE', idx=4, name='AAH CHOIR', cat='PAD', lcat='OTHER', bseed=31759,  # #123 (b13: was VOCAL BEATS, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 67, 'SUS': 0, 'REV': 19, 'FREEB': 17, 'E2ATK': 0, 'E2DEC': 65, 'E2SUS': 0, 'E2REL': 54, 'TRIM': 119, 'E2': 127, 'E3': 100,
-            'E5': 30, 'E6': 100, 'E7': 110, 'E8': 89, 'MOD1': ('AT', 'SHP', 16), 'LTRIG': 1, 'L2TRIG': 1,
-         },
-         bend={
-            'ATK': 16, 'DEC': 71, 'SUS': 2, 'REL': 62, 'ED_SHP': 21, 'LRATE': 75, 'LPHASE': 7, 'LFADE': 16, 'LD_FLT': 7, 'LD_SHP': -10, 'LD_AMP': 11,
-            'KTRK': 50, 'DIST': 14, 'CHOR': 11, 'DLY': 17, 'REV': 6, 'DETUNE': 52, 'FREEA': 69, 'FREEB': 16, 'FREEC': 5, 'M1AMT': 37, 'E2ATK': 17,
-            'E2DEC': 77, 'E2SUS': 14, 'E2REL': 62, 'L2RATE': 64, 'L2PHASE': 11, 'L2FADE': 3, 'E2FLT': 2, 'E1': 18, 'E2': 111, 'E3': 81, 'E4': -1,
-            'E5': 20, 'E6': 95, 'E7': 107, 'E8': 88, 'SUB LEVEL': 6, 'CYCLE RISE': 28, 'CYCLE FALL': 83, 'CYCLE CURVE': 17, 'AMPENV SATN': -7,
-            'FILTERENV MRES': -6, 'CYCLE PAN': -4, 'LFO2 MMODE': -3,
+            'ATK': 85, 'DEC': 90, 'SUS': 115, 'REL': 95, 'KTRK': 0, 'DIST': 0, 'CHOR': 70, 'DLY': 15, 'REV': 90, 'E1': 0, 'E2': 0, 'E3': 0, 'E4': 0, 'E5': 40, 'E6': 22, 'E7': 60, 'E8': 0, 'TRIM': 88, 'LTRIG': 1, 'L2TRIG': 1, 'MOD1': ('AT', 'CUT', 12),
          }),
     dict(engine='TRIO', idx=10, name='DIAL TONE', cat='FX', lcat='OTHER', bseed=61579,  # #124
          p={
@@ -1867,31 +1802,22 @@ SOUNDS = [
             'CYCLE FALL': 55, 'CYCLE CURVE': -4, 'AMPENV SATN': 19, 'FILTERENV FBLND': -4, 'FILTERENV FDRV': -21, 'FILTERENV MRES': -1,
             'CYCLE TCUT': -8, 'CYCLE PAN': 19, 'LFO2 TRES': 12, 'LFO2 MMODE': 11, 'LFO2 FBLND': -7,
          }),
-    dict(engine='TRIO', idx=6, name='GRAVEL SNARE', cat='PERC', lcat='OTHER', bseed=7996,  # #125
+    # b13 (2026-11-14, owner: the factory drums removed): Clipper's STRINGS (GPL-3.0, hybrid_patches.h) on TRIO: pulses an octave apart, 8 cents of detune, the width moved by a slow LFO, a slow attack
+    # and a wide chorus: the string machine of synthwave and Detroit.
+    # From STRING MACH's values; End B from the seed.
+    dict(engine='TRIO', idx=6, name='PWM STRINGS', cat='PAD', lcat='OTHER', bseed=7996,  # #125 (b13: was GRAVEL SNARE, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 71, 'SUS': 0, 'REL': 65, 'RES2': 30, 'KTRK': 0, 'REV': 23, 'TWTYPE': 1, 'E2ATK': 0, 'E2DEC': 67, 'E2SUS': 0, 'E2REL': 59,
-            'CUT2': 65, 'E1': 7, 'E3': 24, 'E4': 0, 'E8': 50, 'MOD1': ('AT', 'CUT2', 8), 'MOD2': ('VEL', 'CUT2', 10), 'LTRIG': 1, 'L2TRIG': 1,
-            'TWIN LINK': 0, 'TWIN ENV2': 17,
-         },
-         bend={
-            'ATK': 18, 'DEC': 75, 'SUS': 2, 'REL': 74, 'ED_SHP': -15, 'LRATE': 74, 'LPHASE': 3, 'LFADE': 12, 'LD_FLT': -9, 'LD_SHP': -11,
-            'LD_AMP': 1, 'RES2': 6, 'DRV2': 10, 'KTRK': -13, 'DIST': 16, 'CHOR': 17, 'DLY': 19, 'REV': 31, 'DETUNE': 46, 'FREEA': 69, 'FREEB': 3,
-            'FREEC': 3, 'M1AMT': -11, 'M2AMT': -5, 'E2ATK': 7, 'E2DEC': 56, 'E2SUS': 6, 'E2REL': 70, 'L2RATE': 59, 'L2PHASE': 15, 'L2FADE': 5,
-            'BLEND': 14, 'CUT2': 45, 'E2FLT': 13, 'E4': 6, 'E8': 34, 'TWIN KTRK2': -19, 'TWIN ENV2': 21, 'TWIN LFO1': 8, 'TWIN LFO2': -15,
-            'SUB LEVEL': 8, 'CYCLE RISE': 25, 'CYCLE FALL': 75, 'CYCLE CURVE': 19, 'AMPENV SATN': -21, 'FILTERENV FBLND': 14, 'FILTERENV FDRV': -5,
-            'FILTERENV MRES': -1, 'CYCLE TCUT': 5, 'CYCLE PAN': -18, 'LFO2 TRES': -5, 'LFO2 MMODE': 11, 'LFO2 FBLND': 17,
+            'ATK': 77, 'DEC': 101, 'SUS': 127, 'REL': 97, 'LRATE': 40, 'LWAVE': 1, 'LD_SHP': 12, 'KTRK': 0, 'CHOR': 60, 'REV': 52, 'TWTYPE': 3,
+            'FREEA': 61, 'FREEB': 3, 'E2ATK': 85, 'E2DEC': 101, 'E2SUS': 89, 'E2REL': 94, 'L2RATE': 23, 'SPRD': 34, 'CUT2': 11, 'TRIM': 90,
+            'E2FLT': 7, 'E1': 1, 'E2': 12, 'E3': 0, 'E4': 8, 'E8': 50, 'MOD1': ('AT', 'CUT', 12), 'MOD2': ('CYCLE', 'CUT', 7),
+            'MOD3': ('LFO2', 'E8', 10), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'CYCLE RISE': 103, 'CYCLE FALL': 103, 'CYCLE SYNC': 1, 'LSYNC': 3,
+            'L2SYNC': 1,
          }),
-    dict(engine='PHYS', idx=7, name='TABLA TALK', cat='PERC', lcat='OTHER', bseed=40371,  # #126
+    # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset PHYS MARIMBA (eng_*.c PRESETS, Leo Kuroshita /
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
+    dict(engine='PHYS', idx=7, name='MARIMBA', cat='KEYS', lcat='OTHER', bseed=40371,  # #126 (b13: was TABLA TALK, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'SUS': 127, 'REL': 56, 'REV': 19, 'FREEB': 17, 'E2ATK': 0, 'E2DEC': 69, 'E2SUS': 0, 'TRIM': 108, 'E1': 2, 'E2': 112, 'E3': 76,
-            'E4': 56, 'E5': 44, 'E6': 100, 'E7': 14, 'E8': 24, 'MOD1': ('AT', 'E7', 13), 'LTRIG': 1, 'L2TRIG': 1,
-         },
-         bend={
-            'ATK': 9, 'DEC': 74, 'SUS': 122, 'REL': 71, 'ED_SHP': 7, 'LRATE': 39, 'LPHASE': 19, 'LFADE': 4, 'LD_FLT': -7, 'LD_SHP': -10, 'LD_AMP': 6,
-            'KTRK': 42, 'DIST': 21, 'CHOR': 5, 'DLY': 5, 'REV': 11, 'DETUNE': 45, 'FREEA': 76, 'FREEB': 11, 'FREEC': 7, 'M1AMT': 6, 'E2ATK': 14,
-            'E2DEC': 60, 'E2SUS': 8, 'E2REL': 67, 'L2RATE': 54, 'L2PHASE': 21, 'L2FADE': 10, 'E2FLT': 17, 'E2': 114, 'E3': 75, 'E4': 60, 'E5': 34,
-            'E6': 103, 'E7': 35, 'E8': 3, 'SUB LEVEL': 14, 'CYCLE RISE': 15, 'CYCLE FALL': 90, 'CYCLE CURVE': -14, 'AMPENV SATN': 7,
-            'FILTERENV MRES': 0, 'CYCLE PAN': 7, 'LFO2 MMODE': 6,
+            'ATK': 0, 'DEC': 90, 'SUS': 127, 'REL': 52, 'KTRK': 0, 'DIST': 0, 'CHOR': 0, 'DLY': 15, 'REV': 30, 'E1': 0, 'E2': 116, 'E3': 38, 'E4': 40, 'E5': 24, 'E6': 90, 'E7': 0, 'E8': 30, 'TRIM': 124, 'LTRIG': 1, 'L2TRIG': 1, 'MOD1': ('AT', 'CUT', 12),
          }),
     dict(engine='NOISE', idx=8, name='GEIGER', cat='FX', lcat='OTHER', bseed=56918,  # #127
          p={

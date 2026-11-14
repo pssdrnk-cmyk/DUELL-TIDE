@@ -8256,7 +8256,7 @@ static int test_item158_pc(void)
     bad += check("item 158 S1:   .. the same on a global screen (MODE: no capsules), the arrow inside the canvas", okg);
     bad += check("item 158 S1:   .. the name shown whole when the arrow has 16 free px, else shortened with one '.' to the longest that leaves them", oks);
     {   /* user names: long ones (M, W, every length that fits the title room and more) shortened, the arrow always there, both parts */
-        static const char *const W[] = {"#128 MMMMMMMMMMMMMMMM", "#128 WWWWWWWWWWWWWWWW", "#99 GRAVEL SNARE XL", "#7 A B C D E F G H I J"};
+        static const char *const W[] = {"#128 MMMMMMMMMMMMMMMM", "#128 WWWWWWWWWWWWWWWW", "#99 PWM STRINGS XLW", "#7 A B C D E F G H I J"};
         char t[24];
         int okn = 1;
         uint32_t L, q, cut = 0;

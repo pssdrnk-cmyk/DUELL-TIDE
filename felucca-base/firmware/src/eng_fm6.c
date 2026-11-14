@@ -43,7 +43,7 @@
 #define FM6_POLY 8               /* engine_t.poly (D18: the engine's cap is the pool's, NVOICE; the NOTES budget sets the number: budget.c) */
 #define FM6_OWN FM6_NFACTORY     /* SLOT: the track's own patch (F1..F8 before it) */
 #define FM6_NBANK 32u            /* SLOT: B1..B32 after OWN, the voice bank (fm6_vbank.c) */
-/* DUELL 0.2.17: FM6_NXF more factory patches (felucca_fm6.h FM6_XFACTORY: F9, F10) at SLOT 41 and up, AFTER B32, so the SLOT values of
+/* DUELL 0.2.17: FM6_NXF more factory patches (felucca_fm6.h FM6_XFACTORY: F9, F10; b13: F12 an imported voice) at SLOT 41 and up, AFTER B32, so the SLOT values of
  * F1..F8, OWN (8) and B1..B32 (9..40) mean what they meant. Like a bank slot a stored value is never one of them (params.c param_fit:
  * above OWN is OWN, the patch comes with the project / the record), the factory sounds that use them (FM BASS 2, TUBE BELLS) load them */
 #define FM6_XBASE (FM6_OWN + FM6_NBANK + 1u)
@@ -641,7 +641,7 @@ static const char *const N_FM6_ALG[] = {
 static const char *const N_FM6_PATCH[] = {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "OWN",
                                           "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12",
                                           "B13", "B14", "B15", "B16", "B17", "B18", "B19", "B20", "B21", "B22", "B23",
-                                          "B24", "B25", "B26", "B27", "B28", "B29", "B30", "B31", "B32", "F9", "F10", "F11", 0};
+                                          "B24", "B25", "B26", "B27", "B28", "B29", "B30", "B31", "B32", "F9", "F10", "F11", "F12", 0};
 _Static_assert(NELEM(N_FM6_PATCH) == FM6_OWN + FM6_NBANK + FM6_NXF + 2u, "a SLOT name per value");
 
 /* {ALG, FB, MLVL, MRAT, MEG, VMOD, DTUN, SLOT}: the factory patch F1..F8 as it is, DTUN on the pad */
