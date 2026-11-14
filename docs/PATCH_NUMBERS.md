@@ -103,12 +103,12 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 93 | SYNTH BRASS |
 | 94 | WAVE CHIMES |
 | 95 | NIGHT REESE |
-| 96 | ROUND SUB |
+| 96 | PHASE ORGAN |
 | 97 | FAT MONO |
-| 98 | THUMB PIANO |
+| 98 | KALIMBA |
 | 99 | NIGHT WIND |
-| 100 | SEA BED |
-| 101 | SURF HISS |
+| 100 | RETRO ZAP |
+| 101 | STEEL NOISE |
 | 102 | STORM FRONT |
 | 103 | ALIEN CHIMES |
 | 104 | CRYSTAL CAVE |
@@ -129,11 +129,11 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 119 | HOUSE PIANO |
 | 120 | DEAD BATTERY |
 | 121 | DUSTY DRONE |
-| 122 | LOFI KEYS |
+| 122 | PIXEL ARP |
 | 123 | AAH CHOIR |
 | 124 | DIAL TONE |
 | 125 | PWM STRINGS |
-| 126 | DUB MALLET |
+| 126 | MARIMBA |
 | 127 | GEIGER |
 | 128 | MODEM |
 | 129 | FOG BANK |

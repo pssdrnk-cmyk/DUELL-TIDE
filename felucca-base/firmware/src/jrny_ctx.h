@@ -51,7 +51,7 @@ static const uint8_t JRNY_CTX[171] = {
     249,   /* 2 7 SONAR PING: -5.3 dB, 177 Hz */
     202,   /* 2 8 FAKE KOTO: -12.3 dB, 248 Hz */
     114,   /* 2 9 FUZZ BASS: -22.5 dB, 306 Hz */
-     96,   /* 2 10 ROUND SUB: -24.7 dB, 67 Hz */
+    147,   /* 2 10 PHASE ORGAN: -18.6 dB, 420 Hz */
     219,   /* 2 11 AIR SHIMMER: -10.4 dB, 547 Hz */
     212,   /* 2 12 STAR FIELD: -10.5 dB, 1050 Hz */
     234,   /* 2 13 MELLOW EP: -8.1 dB, 342 Hz */
@@ -65,7 +65,7 @@ static const uint8_t JRNY_CTX[171] = {
     130,   /* 3 3 MARBLE RUN: -20.7 dB, 338 Hz */
     124,   /* 3 4 DIVE BOMB: -21.9 dB, 1389 Hz */
     114,   /* 3 5 DEAD BATTERY: -22.7 dB, 323 Hz */
-    169,   /* 3 6 LOFI KEYS: -15.6 dB, 178 Hz */
+    156,   /* 3 6 PIXEL ARP: -18.3 dB, 1232 Hz */
     203,   /* 3 7 DUSTY DRONE: -11.6 dB, 409 Hz */
     114,   /* 3 8 ARP BASS: -23.3 dB, 186 Hz */
     210,   /* 3 9 GRID HUM: -11.0 dB, 324 Hz */
@@ -73,7 +73,7 @@ static const uint8_t JRNY_CTX[171] = {
     187,   /* 5 1 VESPERS: -13.9 dB, 430 Hz */
      83,   /* 5 2 DOO WOP: -27.4 dB, 457 Hz */
     171,   /* 5 3 GHOST VOICES: -15.7 dB, 668 Hz */
-    219,   /* 5 4 AAH CHOIR: -10.3 dB, 564 Hz */
+    220,   /* 5 4 AAH CHOIR: -10.3 dB, 744 Hz */
     212,   /* 5 5 WHISPER PAD: -11.5 dB, 749 Hz */
     202,   /* 5 6 PLATE CHOIR: -11.9 dB, 319 Hz */
     148,   /* 5 7 YO YA: -19.2 dB, 817 Hz */
@@ -112,8 +112,8 @@ static const uint8_t JRNY_CTX[171] = {
     179,   /* 9 4 ROSEWOOD: -15.5 dB, 558 Hz */
     236,   /* 9 5 MOTOR VIBES: -8.5 dB, 814 Hz */
     142,   /* 9 6 RAIN CHIMES: -20.5 dB, 3455 Hz */
-    187,   /* 9 7 DUB MALLET: -13.9 dB, 374 Hz */
-    180,   /* 9 8 THUMB PIANO: -15.4 dB, 964 Hz */
+    179,   /* 9 7 MARIMBA: -15.1 dB, 376 Hz */
+    186,   /* 9 8 KALIMBA: -13.6 dB, 183 Hz */
     189,   /* 9 9 NURSERY KEYS: -13.8 dB, 1543 Hz */
     173,   /* 9 10 FAUX HARPSI: -15.6 dB, 1661 Hz */
     154,   /* 9 11 PLUCK BASS: -17.5 dB, 235 Hz */
@@ -122,9 +122,9 @@ static const uint8_t JRNY_CTX[171] = {
     213,   /* 11 2 SEA ORGAN: -11.1 dB, 1623 Hz */
     129,   /* 11 3 WHITE OUT: -21.3 dB, 176 Hz */
     212,   /* 11 4 MOOR WIND: -10.9 dB, 1268 Hz */
-    204,   /* 11 5 SURF HISS: -12.4 dB, 1005 Hz */
-    212,   /* 11 6 NIGHT WIND: -11.2 dB, 1359 Hz */
-    229,   /* 11 7 SEA BED: -8.8 dB, 2668 Hz */
+    223,   /* 11 5 STEEL NOISE: -10.1 dB, 6109 Hz */
+    222,   /* 11 6 NIGHT WIND: -9.6 dB, 3982 Hz */
+    255,   /* 11 7 RETRO ZAP: -5.7 dB, 6795 Hz */
     150,   /* 11 8 GEIGER: -19.2 dB, 3933 Hz */
     149,   /* 11 9 MODEM: -18.8 dB, 1637 Hz */
     149,   /* 11 10 REV CYMBAL: -19.4 dB, 2512 Hz */

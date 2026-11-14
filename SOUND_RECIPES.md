@@ -423,19 +423,19 @@ Purpose: typical settings of classic synth patches, in generic synth terms, as a
 
 
 ## 6.5 The ex-drum slots, tonal (b13, 2026-11-14)
-Each keeps its slot's identity (engine, idx), its End B seed and its list place (the list group PERC or OTHER stays, so no browse
-number moves); each starts from the values of a TIDE sound of the same engine that passes the audit, changed toward the recipe; End B
-from the seed. Two are translations of Clipper's HYBRID patches (**Clipper** by 3dSam, <https://github.com/isod89/clipper-fm1>,
-GPL-3.0-only, `firmware/src/hybrid_patches.h`): the recipe, not code. Levels by `tests/sound_audit.c` (TRIM).
-- **#95 NIGHT REESE (PHASE 6, from ELASTIC BASS):** Clipper's REESE: two saws 27 cents apart (WAVE 1 and 2 SAW, DTN 27; b13 genres: a CZ-style Reese +-0.27 st), DCW 70, a sine sub an octave under at 70, the 24 dB low-pass at 56 with RES 20 and the slow cycle on it, drive 20, mono with glide. Atmospheric DnB, dub.
-- **#96 ROUND SUB (PHASE 10, from ELASTIC BASS):** PHASE with DCW 0 is a sine (genres: deep dubstep, dub roots); ENV 8, a soft saturation, the low-pass at 45, mono, held.
-- **#97 FAT MONO (TRIO 7, from BREADBIN):** Clipper's MOOG BASS: three saws, two an octave under (INT2 / INT3 -12), the low-pass at 40 with its snappy filter envelope, drive 20, mono with glide 40. Synthwave 16ths, Detroit, house.
-- **#98 THUMB PIANO (PHYS 8, from NURSERY KEYS):** a kalimba: MODAL as struck metal tines, STRC 100 (less stretched), BRIT 70, DAMP 60, POS 15, the thumb's knock EXC 30; a dub echo and a room.
-- **#99 NIGHT WIND, #100 SEA BED, #101 SURF HISS (NOISE 6 / 7 / 5, from MOOR WIND):** three beds (textures): wind (the band a little higher, the drift wider), a low sea (COLR 60, CUT 26, a slower swell), bright surf spray (COLR 120, CUT 50, an echo).
-- **#122 LOFI KEYS (LOFI 6, from PIXEL HERO):** an 8-bit triangle, a little crush, TONE 90, poly with chorus and a short room; no vibrato (a KEYS sound of the 128 moves only slowly). Lo-fi house.
-- **#123 AAH CHOIR (VOICE 4, from PLATE CHOIR):** the vowels moved to A (VOWL 1 0, VOWL 2 20), BUZZ 50, BRTH 20, a wider chorus and room.
-- **#125 PWM STRINGS (TRIO 6, from STRING MACH):** Clipper's STRINGS: pulses an octave apart (INT2 +12), 8 cents of detune, the width moved by LFO 2, the slow attack and a wide chorus: the string machine.
-- **#126 DUB MALLET (PHYS 7, from ROSEWOOD):** a darker, longer wooden mallet (CUT 36, BRIT 40, DAMP 50) into a dub echo.
+Only human-made patches (owner: "a real sound"). Each slot keeps its identity (engine, idx), its End B seed (two re-picked by the audit's
+seed search) and its list place (the list group PERC or OTHER stays, so no browse number moves). Added to each only what TIDE's audit
+asks of a factory sound: TRIM (the level), AT to the cutoff (not on FX), LFO triggers FREE.
+- **Felucca's own engine presets** (Leo Kuroshita, Hügelton Instruments, GPL-3.0: the `PRESETS` tables in `firmware/src/eng_*.c`, which
+  the unit no longer reads), their values as the engine loads them (E1..E8, the amp envelope, ENV to filter, the four sends):
+  #96 PHASE ORGAN (PHASE ORGAN), #98 KALIMBA (PHYS KALIMBA), #99 NIGHT WIND (NOISE WIND), #100 RETRO ZAP (NOISE ARCADE: a pitched 7-bit
+  chip buzz, a one-shot, OTHER), #101 STEEL NOISE (NOISE METAL), #122 PIXEL ARP (LOFI ARP 8BIT), #123 AAH CHOIR (the VOICE engine's
+  CHOIR AAH), #126 MARIMBA (PHYS MARIMBA).
+- **Clipper's HYBRID patches** (3dSam, <https://github.com/isod89/clipper-fm1>, GPL-3.0-only, `firmware/src/hybrid_patches.h`), set on
+  TIDE's engines (the recipe, no code): #95 NIGHT REESE (REESE: two saws 27 cents apart, a sine sub an octave under at 70, the 24 dB
+  low-pass at 56, drive), #97 FAT MONO (MOOG BASS: three saws, two an octave under, the low-pass with a snappy envelope, drive, mono
+  with glide), #125 PWM STRINGS (STRINGS: pulses an octave apart, 8 cents of detune, the width moved by LFO 2, a slow attack, chorus).
+- **#119 HOUSE PIANO:** the imported DX7 voice Keys_17 of YM2612-Dexed-Presets (MIT), see 4.15.
 
 ---
 

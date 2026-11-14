@@ -1084,7 +1084,7 @@ static void test_cost(void)
 
 
 /* ------------------------------------------------------------------ the listening set (comp_test DEMODIR) --- */
-/* three short pieces without a drum engine: ANALOG bass + pad (LADDER BASS, SILK CHORUS), WAVE chord stabs over a pad (DRAWBARS, DIGITAL PAD), PHYS hits (THUMB PIANO, DUB MALLET: b13, the factory drums removed);
+/* three short pieces without a drum engine: ANALOG bass + pad (LADDER BASS, SILK CHORUS), WAVE chord stabs over a pad (DRAWBARS, DIGITAL PAD), PHYS hits (KALIMBA, MARIMBA: b13, the factory drums removed);
  * LAYER, MASTER at its default (2048). Each piece is rendered at 1:1 and at 2:1, 4:1 and 8:1, FAST (attack 3 ms, release 100 ms) and SLOW (attack 30 ms, release 700 ms), the threshold
  * chosen from the piece's own pre-MASTER peak (12 dB under it); the files are what the unit's output would be (after MASTER, the limiter, the soft clip) */
 typedef struct { uint32_t t_ms, dur_ms; uint8_t part, note, vel; } demo_ev_t;
@@ -1120,7 +1120,7 @@ static void demo_piece(uint32_t kind, uint32_t cfg, uint32_t secs, int32_t *ol, 
                 ev[n].t_ms = t0, ev[n].dur_ms = 4u * bm - 80u, ev[n].part = 1, ev[n].note = (bar & 1u ? STAB2 : STAB)[i] - 12u, ev[n].vel = 70;
                 n++;
             }
-        } else {                                        /* PHYS THUMB PIANO: 1, 2.5 (soft), 3, 3.75; PHYS DUB MALLET: 2 and 4, a ghost on 3.5 */
+        } else {                                        /* PHYS KALIMBA: 1, 2.5 (soft), 3, 3.75; PHYS MARIMBA: 2 and 4, a ghost on 3.5 */
             static const uint16_t KT[4] = {0, 1500, 1800, 2250}, ST[3] = {600, 1800 + 600, 2100};
             for (i = 0; i < 4u; i++) {
                 ev[n].t_ms = t0 + KT[i] , ev[n].dur_ms = 300, ev[n].part = 0, ev[n].note = 36, ev[n].vel = i == 1u ? 70 : 118;
@@ -1217,7 +1217,7 @@ static void wav_out(const char *path, const int32_t *l, const int32_t *r, uint32
 static void demo(const char *dir)
 {
     static const char *const TITLE[3] = {"ANALOG bass + pad: LADDER BASS and SILK CHORUS (eighth-note bass, a held chord a bar)",
-                                         "WAVE chord: DRAWBARS stabs over a DIGITAL PAD", "PHYS THUMB PIANO and DUB MALLET hits (no drum engine)"};
+                                         "WAVE chord: DRAWBARS stabs over a DIGITAL PAD", "PHYS KALIMBA and MARIMBA hits (no drum engine)"};
     static const char *const TAG[3] = {"bass_pad", "wave_chord", "hits"};
     static const uint32_t RATIO_N[3] = {2, 4, 8}, RIDX[3] = {2, 4, 6};   /* 2:1, 4:1, 8:1: the ratio list's indices */
     static const struct { const char *tag, *name; uint32_t atk, rel; } SP[2] = {{"fast", "FAST: attack 3 ms, release 100 ms", 9, 4}, {"slow", "SLOW: attack 30 ms, release 700 ms", 15, 9}};
