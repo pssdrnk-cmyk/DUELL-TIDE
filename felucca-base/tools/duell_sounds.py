@@ -168,15 +168,15 @@ SOUNDS = [
          ]),
     dict(engine='PHASE', idx=0, name='ELASTIC BASS', cat='BASS', bseed=57458, bamt=11,  # #10
          p={
-            'DEC': 76, 'SUS': 70, 'REL': 55, 'KTRK': 0, 'TRANS': -12, 'DIST': 13, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'FREEA': 25, 'FREEB': 15,
-            'FREED': 2, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 13, 'E2REL': 54, 'L2RATE': 27, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 14,
-            'TRIM': 116, 'DKSRC': 0, 'E2FLT': 27, 'L2FLT': 4, 'E1': 5, 'E3': 14, 'E4': 66, 'MOD1': ('AT', 'SAT', 14), 'MOD2': ('CYCLE', 'CUT', 7),
-            'LTRIG': 1, 'L2TRIG': 1, 'CYCLE RISE': 100, 'CYCLE FALL': 100, 'EQLG': 6,
+            'DEC': 76, 'SUS': 70, 'REL': 55, 'KTRK': 0, 'TRANS': -12, 'DIST': 13, 'VOICE': 2, 'GLIDE': 51, 'GLMODE': 1, 'FREEA': 37, 'FREEB': 15,
+            'FREED': 2, 'E2ATK': 0, 'E2DEC': 71, 'E2SUS': 13, 'E2REL': 54, 'L2RATE': 27, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'DKDEP': 14, 'TRIM': 110,
+            'DKSRC': 0, 'E2FLT': 27, 'L2FLT': 4, 'E1': 5, 'E3': 38, 'E4': 66, 'MOD1': ('AT', 'SAT', 14), 'MOD2': ('CYCLE', 'CUT', 7), 'LTRIG': 1,
+            'L2TRIG': 1, 'CYCLE RISE': 100, 'CYCLE FALL': 100,
          },
          bend={
             'ATK': 13, 'DEC': 74, 'SUS': 71, 'REL': 59, 'ED_SHP': 11, 'LRATE': 48, 'LPHASE': 8, 'LFADE': 7, 'LD_FLT': -2, 'LD_SHP': 2, 'LD_AMP': 7,
             'KTRK': 6, 'DIST': 3, 'CHOR': 12, 'DLY': 8, 'REV': 4, 'DETUNE': 34, 'FREEB': 13, 'FREEC': 4, 'M2AMT': 1, 'M3AMT': 1, 'E2ATK': 9,
-            'E2DEC': 82, 'E2SUS': 23, 'E2REL': 66, 'L2RATE': 36, 'L2PHASE': 10, 'L2FADE': 7, 'DKDEP': 21, 'E2FLT': 26, 'E3': 5, 'E4': 75, 'E5': 1,
+            'E2DEC': 82, 'E2SUS': 23, 'E2REL': 66, 'L2RATE': 36, 'L2PHASE': 10, 'L2FADE': 7, 'DKDEP': 21, 'E2FLT': 26, 'E3': 29, 'E4': 75, 'E5': 1,
             'SUB LEVEL': 11, 'CYCLE RISE': 104, 'CYCLE FALL': 105, 'CYCLE CURVE': 13, 'AMPENV SATN': 2, 'FILTERENV MRES': -3, 'CYCLE PAN': -11,
             'LFO2 MMODE': 4,
          }),
@@ -242,7 +242,7 @@ SOUNDS = [
             'FREEB': 4, 'E2ATK': 19, 'E2DEC': 75, 'E2SUS': 28, 'E2REL': 56, 'L2RATE': 27, 'L2WAVE': 1, 'EQHG': -4, 'EQHF': -8, 'CUT2': 37,
             'DKDEP': 15, 'TRIM': 112, 'DKSRC': 0, 'E4': 11, 'MOD1': ('AT', 'SAT', 14), 'MOD2': ('VEL', 'CUT2', 6), 'MOD3': ('CYCLE', 'CUT2', 7),
             'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0, 'TWIN ENV2': 19, 'TWIN LFO2': 4, 'SUB LEVEL': 31, 'CYCLE RISE': 100, 'CYCLE FALL': 100,
-            'ED_FLT': 30,
+           
          },
          bend={
             'ATK': 3, 'DEC': 80, 'SUS': 66, 'REL': 51, 'ED_SHP': 3, 'LRATE': 63, 'LPHASE': 6, 'LFADE': 5, 'LD_FLT': -7, 'LD_SHP': 5, 'LD_AMP': 8,
@@ -2070,7 +2070,7 @@ SOUNDS = [
     # End B: more echo and a longer tail, the filter lower.
     dict(engine='ANALOG', idx=30, name='DUB BLIP', cat='PLUCK', bamt=20,  # #140
          p={
-            'ATK': 15, 'DEC': 80, 'SUS': 0, 'REL': 44, 'KTRK': 34, 'CHOR': 65, 'DLY': 92, 'REV': 28, 'FREEA': 50, 'FREEB': 20, 'FREED': 2,
+            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 44, 'KTRK': 34, 'CHOR': 65, 'DLY': 92, 'REV': 28, 'FREEA': 50, 'FREEB': 20, 'FREED': 2,
             'E2ATK': 0, 'E2DEC': 50, 'E2SUS': 0, 'E2REL': 46, 'E2FLT': 44, 'TRIM': 114, 'E1': 1, 'E2': 8, 'E7': 8, 'MOD1': ('VEL', 'CUT', 16),
             'LTRIG': 1, 'L2TRIG': 1, 'SPRD': 48,
          },
