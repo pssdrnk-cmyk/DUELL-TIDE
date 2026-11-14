@@ -71,7 +71,7 @@ MORE = [
          parts=[dict(sound="HARM BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=70, P_AHOLD="OFF", P_CHRD="OFF", P_TRANS=0, P_FREEA=34, P_FREEB=22, P_E2FLT=50, P_DIST=30,
                                                   P_DLY=40, P_REV=24, P_TRIM=127, P_LEVEL=104),
                      steps="-30A . . -30 . . -30 . . -18 . .", len=12, poly=True, bseed=4325, amt=30, b={"P_FREEA": 40}),
-                dict(sound="FM HAZE", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=44, P_LRATE=14, P_LD_FLT=16, **{"E:DTUN": 10, "E:MLVL": -12},
+                dict(sound="FM STRINGS", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=44, P_LRATE=14, P_LD_FLT=16, **{"E:DTUN": 10, "E:MLVL": -12},
                                                 P_CHOR=60, P_SPRD=60, P_DLY=30, P_REV=60, P_LEVEL=92),
                      steps="-6 -", len=2, bseed=27687, amt=30, b={"P_FREEA": 50})]),
     dict(rom=20, slot=4, name="DUB HOUSE", mode="LAYER",
