@@ -24,7 +24,7 @@
 # hunt1 (release_drafts/CLICK_HUNT1.md): the fader's steps of the sends, PATCH LEVEL and PAN are ramped inside the block (mod.c mod_mixmv counts the open morph window): M08 f127,
 # M09 f63 f127, M12 f63 f127 re-made once (2 to 16 samples in the first 12 ms differ, by at most 15 of a peak of 17,000: the step of the fader set at the start).
 # hunt1: SAT out of 0 and back into 0 without a step (fx.c track_dist_ramp): M12 f127 and S05_DEAD_BUFFER f127 re-made once (their matrix route lets the followed SAT run down
-# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 %). The other 103 renders are unchanged.
+# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 ). The other 103 renders are unchanged.
 # hunt1: the SPREAD mix's gains in a line while a route or the MORPH window moves them, SAT's blend ramp on a SPREAD part (fx.c spread_run / spread_post): M03 f63 f127, M05 f0 f63 f127,
 # M06 f63 f127, M07 f0 f63 f127, M10 f63 f127, M11 f63 f127 re-made once (14 of 105; the start of the render, the stored PAN's follower and the fader's first steps on SPREAD parts:
 # the largest difference is 266 of a peak of 17,000 (M10 f127), most 4 to 95). The other 91 renders are unchanged.
@@ -93,15 +93,15 @@ M12 f127 acfa0efbcf0befe8
 M13 f0 7b7155d5e7da151c
 M13 f63 b7ba411147cf57ea
 M13 f127 371bdb5135280461
-M14 f0 d4e96f7a67b9a578
-M14 f63 ae6dca0e06e4ebef
-M14 f127 20d8b3b8a074fecc
+M14 f0 27e40511e8e44ec5
+M14 f63 30bbfdd87f58fbec
+M14 f127 51935c66e8b0d6fd
 M15 f0 2966b33e289d3e45
 M15 f63 3f6ac5edda41dcd5
 M15 f127 755301740b1a654b
-M16 f0 ed748a935af177bf
-M16 f63 5b29ea6a8c9d7126
-M16 f127 1c17888fc3efd005
+M16 f0 cd96df1adc512c3b
+M16 f63 d0893e4c85fa90eb
+M16 f127 2308c08129163dc5
 S01_REESE_SWAMP f0 6207d4bdeb7d8a3e
 S01_REESE_SWAMP f63 cbd5bc1f5f2c6354
 S01_REESE_SWAMP f127 24a551cd378bc7fd

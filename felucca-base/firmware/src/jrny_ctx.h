@@ -7,42 +7,42 @@
 static const uint8_t JRNY_CTX[171] = {
     113,   /* 0 0 LADDER BASS: -22.9 dB, 137 Hz */
      96,   /* 0 1 TIDAL SUB: -24.7 dB, 68 Hz */
-    114,   /* 0 2 BEHIVE: -23.4 dB, 318 Hz */
+    114,   /* 0 2 BEHIVE: -23.2 dB, 316 Hz */
     154,   /* 0 3 RUBBER BAND: -18.2 dB, 197 Hz */
     113,   /* 0 4 SQUELCH: -23.0 dB, 129 Hz */
-    122,   /* 0 5 TORCH SONG: -21.9 dB, 194 Hz */
-    115,   /* 0 6 RAZORWIRE: -23.3 dB, 485 Hz */
+    178,   /* 0 5 TORCH SONG: -14.9 dB, 187 Hz */
+    155,   /* 0 6 RAZORWIRE: -18.3 dB, 488 Hz */
     211,   /* 0 7 FUNFARE: -11.4 dB, 657 Hz */
     147,   /* 0 8 WALL OF SAW: -19.0 dB, 619 Hz */
-    203,   /* 0 9 SILK CHORUS: -11.6 dB, 485 Hz */
+    203,   /* 0 9 SILK CHORUS: -11.7 dB, 485 Hz */
     188,   /* 0 10 EMBER GLOW: -14.5 dB, 780 Hz */
     203,   /* 0 11 VELVET BOW: -12.0 dB, 409 Hz */
     204,   /* 0 12 PIZZICATO: -12.0 dB, 842 Hz */
-    172,   /* 0 13 SFORZANDO: -15.8 dB, 729 Hz */
+    171,   /* 0 13 SFORZANDO: -15.8 dB, 722 Hz */
     147,   /* 0 14 STORM FRONT: -19.4 dB, 385 Hz */
      92,   /* 0 15 GLASS SHARDS: -26.4 dB, 1314 Hz */
     123,   /* 0 16 FOLD BASS: -22.3 dB, 481 Hz */
-    106,   /* 0 17 SQUARE LEAD: -23.6 dB, 362 Hz */
+    146,   /* 0 17 SQUARE LEAD: -19.3 dB, 337 Hz */
     115,   /* 0 18 ARP PLUCK: -23.1 dB, 614 Hz */
-    116,   /* 0 19 DRIVEN SAW: -23.1 dB, 1148 Hz */
-    204,   /* 0 20 CHORD ECHO: -12.5 dB, 749 Hz */
-    210,   /* 0 21 DARK MIN7: -11.4 dB, 360 Hz */
+    140,   /* 0 19 DRIVEN SAW: -19.9 dB, 1140 Hz */
+    196,   /* 0 20 CHORD ECHO: -12.5 dB, 763 Hz */
+    210,   /* 0 21 DARK MIN7: -11.3 dB, 359 Hz */
     219,   /* 0 22 WARM WASH: -10.4 dB, 575 Hz */
     219,   /* 0 23 SLOW TIDE: -10.0 dB, 723 Hz */
     161,   /* 0 24 SUB PLUCK: -16.8 dB, 179 Hz */
-    196,   /* 0 25 SOUL STAB: -12.8 dB, 1100 Hz */
-    186,   /* 0 26 SUNDAY KEYS: -13.8 dB, 349 Hz */
-    163,   /* 0 27 LOW STAB: -16.9 dB, 577 Hz */
+    196,   /* 0 25 SOUL STAB: -12.8 dB, 1090 Hz */
+    226,   /* 0 26 SUNDAY KEYS: -8.9 dB, 328 Hz */
+    163,   /* 0 27 LOW STAB: -17.2 dB, 570 Hz */
     218,   /* 0 28 FOG BANK: -10.1 dB, 325 Hz */
     228,   /* 0 29 NEON DRIFT: -9.3 dB, 762 Hz */
-    219,   /* 0 30 DUB BLIP: -10.2 dB, 636 Hz */
+    219,   /* 0 30 DUB BLIP: -10.5 dB, 626 Hz */
     196,   /* 0 31 TAPE PLUCK: -13.2 dB, 906 Hz */
-    212,   /* 0 32 HOLLOW POP: -10.8 dB, 773 Hz */
+    212,   /* 0 32 HOLLOW POP: -10.9 dB, 776 Hz */
     202,   /* 0 33 NIGHT DRONE: -12.4 dB, 338 Hz */
     227,   /* 0 34 NEON BRASS: -9.0 dB, 443 Hz */
     251,   /* 0 35 SOLAR WIND: -6.0 dB, 368 Hz */
     122,   /* 2 0 ELASTIC BASS: -21.7 dB, 293 Hz */
-    114,   /* 2 1 BRAZEN: -22.6 dB, 214 Hz */
+    146,   /* 2 1 BRAZEN: -19.4 dB, 205 Hz */
     179,   /* 2 2 LAMPLIGHT: -15.2 dB, 438 Hz */
     131,   /* 2 3 WIRE HARP: -21.2 dB, 386 Hz */
     226,   /* 2 4 CLAVICLE: -8.9 dB, 232 Hz */
@@ -52,14 +52,14 @@ static const uint8_t JRNY_CTX[171] = {
     202,   /* 2 8 FAKE KOTO: -12.3 dB, 248 Hz */
     114,   /* 2 9 FUZZ BASS: -22.5 dB, 306 Hz */
     129,   /* 2 10 HARD KICK: -20.8 dB, 157 Hz */
-    211,   /* 2 11 AIR SHIMMER: -10.8 dB, 549 Hz */
+    219,   /* 2 11 AIR SHIMMER: -10.4 dB, 547 Hz */
     212,   /* 2 12 STAR FIELD: -10.5 dB, 1050 Hz */
-    234,   /* 2 13 MELLOW EP: -8.1 dB, 341 Hz */
+    234,   /* 2 13 MELLOW EP: -8.1 dB, 342 Hz */
     212,   /* 2 14 DEEP BLUE: -10.8 dB, 812 Hz */
     218,   /* 2 15 TAPE CLOUD: -9.9 dB, 219 Hz */
-    196,   /* 2 16 ICE STAB: -12.8 dB, 1054 Hz */
-    178,   /* 2 17 SOFT EP: -14.7 dB, 344 Hz */
-    104,   /* 3 0 CARTRIDGE: -23.7 dB, 81 Hz */
+    196,   /* 2 16 ICE STAB: -13.2 dB, 1063 Hz */
+    178,   /* 2 17 SOFT EP: -14.8 dB, 345 Hz */
+    128,   /* 3 0 CARTRIDGE: -20.7 dB, 89 Hz */
     115,   /* 3 1 PIXEL HERO: -22.9 dB, 513 Hz */
     209,   /* 3 2 WOW FLUTTER: -11.4 dB, 178 Hz */
     130,   /* 3 3 MARBLE RUN: -20.7 dB, 338 Hz */
@@ -67,18 +67,18 @@ static const uint8_t JRNY_CTX[171] = {
     114,   /* 3 5 DEAD BATTERY: -22.7 dB, 323 Hz */
     171,   /* 3 6 PIXEL KICK: -16.3 dB, 385 Hz */
     203,   /* 3 7 DUSTY DRONE: -11.6 dB, 409 Hz */
-    114,   /* 3 8 ARP BASS: -22.7 dB, 301 Hz */
+    114,   /* 3 8 ARP BASS: -23.3 dB, 186 Hz */
     210,   /* 3 9 GRID HUM: -11.0 dB, 324 Hz */
-    107,   /* 5 0 BULLFROG: -24.1 dB, 399 Hz */
+    122,   /* 5 0 BULLFROG: -22.1 dB, 345 Hz */
     187,   /* 5 1 VESPERS: -13.9 dB, 430 Hz */
-    107,   /* 5 2 DOO WOP: -24.0 dB, 442 Hz */
+     83,   /* 5 2 DOO WOP: -27.4 dB, 457 Hz */
     171,   /* 5 3 GHOST VOICES: -15.7 dB, 668 Hz */
     180,   /* 5 4 VOCAL BEATS: -15.1 dB, 1028 Hz */
     212,   /* 5 5 WHISPER PAD: -11.5 dB, 749 Hz */
     202,   /* 5 6 PLATE CHOIR: -11.9 dB, 319 Hz */
-    108,   /* 5 7 YO YA: -23.8 dB, 833 Hz */
-    113,   /* 6 0 BREADBIN: -23.2 dB, 157 Hz */
-    115,   /* 6 1 BANSHEE: -22.8 dB, 451 Hz */
+    148,   /* 5 7 YO YA: -19.2 dB, 817 Hz */
+    129,   /* 6 0 BREADBIN: -21.0 dB, 156 Hz */
+    147,   /* 6 1 BANSHEE: -18.5 dB, 430 Hz */
     212,   /* 6 2 CHIP CHAPEL: -11.1 dB, 1137 Hz */
     211,   /* 6 3 TIN TOLL: -11.4 dB, 724 Hz */
     115,   /* 6 4 PEBBLE POP: -22.7 dB, 615 Hz */
@@ -89,38 +89,38 @@ static const uint8_t JRNY_CTX[171] = {
     212,   /* 6 9 STRING MACH: -11.2 dB, 1088 Hz */
     129,   /* 6 10 DIAL TONE: -20.9 dB, 177 Hz */
     129,   /* 6 11 SID BASS: -21.3 dB, 150 Hz */
-    158,   /* 6 12 SYNC BASS: -17.5 dB, 3259 Hz */
+    166,   /* 6 12 SYNC BASS: -17.4 dB, 3397 Hz */
     227,   /* 6 13 RAIN STRINGS: -9.3 dB, 656 Hz */
     195,   /* 6 14 IRON WORKS: -12.6 dB, 565 Hz */
      96,   /* 7 0 PEDAL BASS: -25.1 dB, 57 Hz */
-    107,   /* 7 1 SMOKE RING: -23.6 dB, 444 Hz */
+    155,   /* 7 1 SMOKE RING: -18.1 dB, 431 Hz */
     195,   /* 7 2 CHOIR LOFT: -13.3 dB, 578 Hz */
-    154,   /* 7 3 JAZZ CLUB: -17.7 dB, 248 Hz */
-    148,   /* 7 4 NIGHT BOX: -18.9 dB, 811 Hz */
+    154,   /* 7 3 JAZZ CLUB: -18.0 dB, 239 Hz */
+    148,   /* 7 4 NIGHT BOX: -18.8 dB, 806 Hz */
     179,   /* 7 5 LESLIE STORM: -14.7 dB, 600 Hz */
     194,   /* 7 6 TAPE DRONE: -12.9 dB, 360 Hz */
-    162,   /* 7 7 ORGAN SKANK: -16.6 dB, 355 Hz */
+    162,   /* 7 7 ORGAN SKANK: -16.5 dB, 273 Hz */
     163,   /* 7 8 DEEP ORGAN: -16.7 dB, 507 Hz */
-    161,   /* 7 9 SOFT ORGAN: -16.7 dB, 179 Hz */
-    163,   /* 7 10 HOUSE ORGAN: -17.1 dB, 528 Hz */
+    217,   /* 7 9 SOFT ORGAN: -10.3 dB, 179 Hz */
+    155,   /* 7 10 HOUSE ORGAN: -17.7 dB, 472 Hz */
     211,   /* 7 11 ORGAN WASH: -10.7 dB, 626 Hz */
     218,   /* 7 12 ROTOR HAZE: -9.7 dB, 322 Hz */
-      4,   /* 9 0 PAN WHISTLE: -36.6 dB, 995 Hz */
+     60,   /* 9 0 PAN WHISTLE: -29.7 dB, 991 Hz */
     204,   /* 9 1 SINGING BOWL: -11.6 dB, 1075 Hz */
     218,   /* 9 2 GHOST HARP: -9.6 dB, 331 Hz */
     100,   /* 9 3 NYLON GUT: -24.6 dB, 1146 Hz */
     179,   /* 9 4 ROSEWOOD: -15.5 dB, 558 Hz */
-    212,   /* 9 5 MOTOR VIBES: -10.6 dB, 810 Hz */
+    236,   /* 9 5 MOTOR VIBES: -8.5 dB, 814 Hz */
     142,   /* 9 6 RAIN CHIMES: -20.5 dB, 3455 Hz */
     171,   /* 9 7 TABLA TALK: -16.3 dB, 379 Hz */
     186,   /* 9 8 FLOOR THUD: -13.8 dB, 295 Hz */
-    197,   /* 9 9 NURSERY KEYS: -12.8 dB, 1536 Hz */
-    197,   /* 9 10 FAUX HARPSI: -13.2 dB, 1710 Hz */
-    162,   /* 9 11 PLUCK BASS: -17.2 dB, 303 Hz */
-    148,   /* 11 0 GEARBOX: -19.2 dB, 974 Hz */
+    189,   /* 9 9 NURSERY KEYS: -13.8 dB, 1543 Hz */
+    173,   /* 9 10 FAUX HARPSI: -15.6 dB, 1661 Hz */
+    154,   /* 9 11 PLUCK BASS: -17.5 dB, 235 Hz */
+    140,   /* 11 0 GEARBOX: -20.0 dB, 726 Hz */
     109,   /* 11 1 HORNET: -23.6 dB, 2846 Hz */
     213,   /* 11 2 SEA ORGAN: -11.1 dB, 1623 Hz */
-    147,   /* 11 3 WHITE OUT: -18.5 dB, 712 Hz */
+    129,   /* 11 3 WHITE OUT: -21.3 dB, 176 Hz */
     212,   /* 11 4 MOOR WIND: -10.9 dB, 1268 Hz */
     151,   /* 11 5 TIZZ HAT: -18.7 dB, 10003 Hz */
     215,   /* 11 6 OPEN SIZZLE: -11.5 dB, 8633 Hz */
@@ -131,7 +131,7 @@ static const uint8_t JRNY_CTX[171] = {
     196,   /* 11 11 DUST BED: -13.1 dB, 1447 Hz */
     221,   /* 11 12 TAPE HISS: -10.0 dB, 1729 Hz */
     154,   /* 12 0 SLAP DOCTOR: -18.3 dB, 278 Hz */
-    122,   /* 12 1 HAN SOLO: -21.9 dB, 329 Hz */
+    138,   /* 12 1 HAN SOLO: -19.7 dB, 321 Hz */
      10,   /* 12 2 GLASS HALL: -35.6 dB, 224 Hz */
     220,   /* 12 3 MALLET WOOD: -9.7 dB, 1090 Hz */
     180,   /* 12 4 TINE ROOM: -15.5 dB, 979 Hz */
@@ -139,38 +139,38 @@ static const uint8_t JRNY_CTX[171] = {
     220,   /* 12 6 FROST BELLS: -9.6 dB, 1272 Hz */
     173,   /* 12 7 ALIEN CHIMES: -15.7 dB, 1992 Hz */
     180,   /* 12 8 TEMPLE BLOCK: -15.2 dB, 1302 Hz */
-    202,   /* 12 9 ISLAND STEEL: -12.1 dB, 289 Hz */
-    180,   /* 12 10 SALOON KEYS: -15.2 dB, 775 Hz */
+    202,   /* 12 9 ISLAND STEEL: -11.7 dB, 297 Hz */
+    180,   /* 12 10 SALOON KEYS: -14.7 dB, 803 Hz */
     137,   /* 12 11 FRETLESS: -19.9 dB, 97 Hz */
     105,   /* 12 12 FM BASS 2: -23.9 dB, 112 Hz */
     195,   /* 12 13 TUBE BELLS: -13.0 dB, 434 Hz */
      18,   /* 12 14 FM HAZE: -35.2 dB, 221 Hz */
-    154,   /* 12 15 DUB DRAWBAR: -17.6 dB, 317 Hz */
-    227,   /* 12 16 BELL STAB: -8.7 dB, 559 Hz */
+    154,   /* 12 15 DUB DRAWBAR: -17.6 dB, 314 Hz */
+    227,   /* 12 16 BELL STAB: -9.3 dB, 564 Hz */
     218,   /* 12 17 HORN SWELL: -9.9 dB, 268 Hz */
     203,   /* 14 0 PWM PAD: -11.8 dB, 486 Hz */
     204,   /* 14 1 VOWEL PAD: -12.2 dB, 1062 Hz */
     204,   /* 14 2 GLASS PAD: -12.4 dB, 1006 Hz */
     219,   /* 14 3 EVOLVING PAD: -9.5 dB, 531 Hz */
-    138,   /* 14 4 DRAWBARS: -19.7 dB, 210 Hz */
+    178,   /* 14 4 DRAWBARS: -14.8 dB, 201 Hz */
     212,   /* 14 5 WAVE CHIMES: -10.6 dB, 944 Hz */
     211,   /* 14 6 DIGI PLUCK: -11.1 dB, 669 Hz */
-    108,   /* 14 7 SYNC LEAD: -23.8 dB, 808 Hz */
+    148,   /* 14 7 SYNC LEAD: -18.7 dB, 821 Hz */
     113,   /* 14 8 HARM BASS: -22.6 dB, 120 Hz */
-    139,   /* 14 9 SYNTH BRASS: -19.7 dB, 511 Hz */
+    139,   /* 14 9 SYNTH BRASS: -20.0 dB, 517 Hz */
     203,   /* 14 10 RESO SWEEP: -12.0 dB, 615 Hz */
-    115,   /* 14 11 GROWL BASS: -23.2 dB, 385 Hz */
-     73,   /* 14 12 REESE BASS: -28.3 dB, 167 Hz */
+     56,   /* 14 11 GROWL BASS: -29.6 dB, 79 Hz */
+     73,   /* 14 12 REESE BASS: -28.3 dB, 166 Hz */
     139,   /* 14 13 HOOVER: -19.9 dB, 684 Hz */
     203,   /* 14 14 DIGITAL PAD: -12.5 dB, 407 Hz */
     196,   /* 14 15 BREATH PAD: -13.2 dB, 921 Hz */
     220,   /* 14 16 PLATE BELL: -10.0 dB, 852 Hz */
     219,   /* 14 17 FROZEN AIR: -10.3 dB, 697 Hz */
-     74,   /* 14 18 PURPLE FLUTE: -27.6 dB, 359 Hz */
-     98,   /* 14 19 LICORICE: -24.6 dB, 304 Hz */
+    130,   /* 14 18 PURPLE FLUTE: -20.6 dB, 358 Hz */
+    170,   /* 14 19 LICORICE: -15.7 dB, 307 Hz */
     203,   /* 14 20 BRASS PAD: -11.9 dB, 498 Hz */
-    104,   /* 14 21 KICK BASS: -24.1 dB, 83 Hz */
-    125,   /* 14 22 SCREAMER: -22.5 dB, 1768 Hz */
+     88,   /* 14 21 KICK BASS: -25.5 dB, 55 Hz */
+    149,   /* 14 22 SCREAMER: -19.3 dB, 1760 Hz */
     196,   /* 14 23 COMB PLUCK: -12.6 dB, 755 Hz */
     205,   /* 14 24 AIR POP: -11.5 dB, 1956 Hz */
     212,   /* 14 25 BOTTLE TAP: -11.4 dB, 1346 Hz */
