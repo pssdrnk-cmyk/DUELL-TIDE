@@ -4,7 +4,7 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 
 **1.0: the factory bank is OSCILL/R's bank** (`felucca-base/tools/factory_bank.duell-patches.json`, imported by `tools/import_bank.py`; each patch exactly as exported, only its TRIM balanced). YO YA is new and CARNIVAL is not in the bank, so #108 to #125 moved by one against 0.2.31.
 
-**Past the 128 (1.1 with TIDE):** #129 to #163 are 35 more factory sounds (the 8 of the dub pack, 24 for TIDE's JRNY: pads, chords, stabs, plucks, textures, and 3 FM6 dub voices: FM HAZE, DUB DRAWBAR, BELL STAB), listed after the 128 so no number of the 128 moves. They are read-only places in PATCHES, not slots: a number past #128 holds no saved sound and SAVE offers USER 1 for it. They can be marked FAV (the star belongs to the sound, not to a slot) and MIDI program change reaches them in bank 2 (bank select CC0 = 0, CC32 = 2): program 0 is #129, program 34 is #163. The same holds for the displaced #125 to #128 for FAV; program change cannot call those four. Their order is the same one: category, engine, name. (With the USER slots, U1 to U4 stand at the places of #125 to #128, which stay listed after the slots.) From #164 on (1.0.0-b2: the eight drones, #164 to #171, MIDI bank 2 programs 35 to 42) a sound is added at the end, in the order it was added, so no number up to #163 moves either.
+**Past the 128 (1.1 with TIDE):** #129 to #163 are 35 more factory sounds (the 8 of the dub pack, 24 for TIDE's JRNY: pads, chords, stabs, plucks, textures, and 3 FM6 dub voices: FM STRINGS, DUB DRAWBAR, BELL STAB), listed after the 128 so no number of the 128 moves. They are read-only places in PATCHES, not slots: a number past #128 holds no saved sound and SAVE offers USER 1 for it. They can be marked FAV (the star belongs to the sound, not to a slot) and MIDI program change reaches them in bank 2 (bank select CC0 = 0, CC32 = 2): program 0 is #129, program 34 is #163. The same holds for the displaced #125 to #128 for FAV; program change cannot call those four. Their order is the same one: category, engine, name. (With the USER slots, U1 to U4 stand at the places of #125 to #128, which stay listed after the slots.) From #164 on (1.0.0-b2: the eight drones, #164 to #171, MIDI bank 2 programs 35 to 42) a sound is added at the end, in the order it was added, so no number up to #163 moves either.
 
 | PATCHES # | Name |
 |---|---|
@@ -21,7 +21,7 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 11 | FUZZ BASS |
 | 12 | ARP BASS |
 | 13 | CARTRIDGE |
-| 14 | BULLFROG |
+| 14 | WOW BASS |
 | 15 | BREADBIN |
 | 16 | SID BASS |
 | 17 | SYNC BASS |
@@ -30,11 +30,11 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 20 | GEARBOX |
 | 21 | GROWL BASS |
 | 22 | HARM BASS |
-| 23 | KICK BASS |
+| 23 | ODD BASS |
 | 24 | REESE BASS |
 | 25 | DRIVEN SAW |
 | 26 | FUNFARE |
-| 27 | RAZORWIRE |
+| 27 | RAVE LEAD |
 | 28 | SQUARE LEAD |
 | 29 | TORCH SONG |
 | 30 | WALL OF SAW |
@@ -49,7 +49,7 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 39 | HOOVER |
 | 40 | LICORICE |
 | 41 | PURPLE FLUTE |
-| 42 | SCREAMER |
+| 42 | SAW PAD |
 | 43 | SYNC LEAD |
 | 44 | EMBER GLOW |
 | 45 | SILK CHORUS |
@@ -74,7 +74,7 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 64 | VOWEL PAD |
 | 65 | ARP PLUCK |
 | 66 | PIZZICATO |
-| 67 | ISLAND STEEL |
+| 67 | BRASS STAB |
 | 68 | MALLET WOOD |
 | 69 | FAKE KOTO |
 | 70 | WIRE HARP |
@@ -111,12 +111,12 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 101 | STEEL NOISE |
 | 102 | STORM FRONT |
 | 103 | ALIEN CHIMES |
-| 104 | CRYSTAL CAVE |
-| 105 | SONAR PING |
-| 106 | DIVE BOMB |
+| 104 | PHASE BRASS |
+| 105 | PHASE STRING |
+| 106 | CHIP LEAD |
 | 107 | GHOST VOICES |
 | 108 | YO YA |
-| 109 | CIRCUIT BEND |
+| 109 | BELL RING |
 | 110 | LESLIE STORM |
 | 111 | TAPE DRONE |
 | 112 | RAIN CHIMES |
@@ -127,11 +127,11 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 117 | RESO SWEEP |
 | 118 | GLASS SHARDS |
 | 119 | HOUSE PIANO |
-| 120 | DEAD BATTERY |
+| 120 | CHIP PULSE |
 | 121 | DUSTY DRONE |
 | 122 | PIXEL ARP |
 | 123 | AAH CHOIR |
-| 124 | DIAL TONE |
+| 124 | ARP LEAD |
 | 125 | PWM STRINGS |
 | 126 | MARIMBA |
 | 127 | GEIGER |
@@ -140,7 +140,7 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 130 | NEON DRIFT |
 | 131 | SLOW TIDE |
 | 132 | WARM WASH |
-| 133 | FM HAZE |
+| 133 | FM STRINGS |
 | 134 | AIR SHIMMER |
 | 135 | DEEP BLUE |
 | 136 | STAR FIELD |

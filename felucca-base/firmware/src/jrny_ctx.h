@@ -11,7 +11,7 @@ static const uint8_t JRNY_CTX[171] = {
     154,   /* 0 3 RUBBER BAND: -18.2 dB, 197 Hz */
     113,   /* 0 4 SQUELCH: -23.0 dB, 129 Hz */
     178,   /* 0 5 TORCH SONG: -14.9 dB, 187 Hz */
-    155,   /* 0 6 RAZORWIRE: -18.3 dB, 488 Hz */
+    108,   /* 0 6 RAVE LEAD: -23.9 dB, 1182 Hz */
     211,   /* 0 7 FUNFARE: -11.4 dB, 657 Hz */
     147,   /* 0 8 WALL OF SAW: -19.0 dB, 619 Hz */
     203,   /* 0 9 SILK CHORUS: -11.7 dB, 485 Hz */
@@ -46,9 +46,9 @@ static const uint8_t JRNY_CTX[171] = {
     179,   /* 2 2 LAMPLIGHT: -15.2 dB, 438 Hz */
     131,   /* 2 3 WIRE HARP: -21.2 dB, 386 Hz */
     226,   /* 2 4 CLAVICLE: -8.9 dB, 232 Hz */
-    157,   /* 2 5 CRYSTAL CAVE: -17.8 dB, 2675 Hz */
+    162,   /* 2 5 PHASE BRASS: -16.6 dB, 256 Hz */
      97,   /* 2 6 NIGHT REESE: -24.6 dB, 106 Hz */
-    249,   /* 2 7 SONAR PING: -5.3 dB, 177 Hz */
+    162,   /* 2 7 PHASE STRING: -16.6 dB, 282 Hz */
     202,   /* 2 8 FAKE KOTO: -12.3 dB, 248 Hz */
     114,   /* 2 9 FUZZ BASS: -22.5 dB, 306 Hz */
     147,   /* 2 10 PHASE ORGAN: -18.6 dB, 420 Hz */
@@ -63,13 +63,13 @@ static const uint8_t JRNY_CTX[171] = {
     115,   /* 3 1 PIXEL HERO: -22.9 dB, 513 Hz */
     209,   /* 3 2 WOW FLUTTER: -11.4 dB, 178 Hz */
     130,   /* 3 3 MARBLE RUN: -20.7 dB, 338 Hz */
-    124,   /* 3 4 DIVE BOMB: -21.9 dB, 1389 Hz */
-    114,   /* 3 5 DEAD BATTERY: -22.7 dB, 323 Hz */
+    125,   /* 3 4 CHIP LEAD: -22.2 dB, 1860 Hz */
+    132,   /* 3 5 CHIP PULSE: -21.3 dB, 1440 Hz */
     156,   /* 3 6 PIXEL ARP: -18.3 dB, 1232 Hz */
     203,   /* 3 7 DUSTY DRONE: -11.6 dB, 409 Hz */
     114,   /* 3 8 ARP BASS: -23.3 dB, 186 Hz */
     210,   /* 3 9 GRID HUM: -11.0 dB, 324 Hz */
-    122,   /* 5 0 BULLFROG: -22.1 dB, 345 Hz */
+     99,   /* 5 0 WOW BASS: -25.0 dB, 528 Hz */
     187,   /* 5 1 VESPERS: -13.9 dB, 430 Hz */
      83,   /* 5 2 DOO WOP: -27.4 dB, 457 Hz */
     171,   /* 5 3 GHOST VOICES: -15.7 dB, 668 Hz */
@@ -82,12 +82,12 @@ static const uint8_t JRNY_CTX[171] = {
     212,   /* 6 2 CHIP CHAPEL: -11.1 dB, 1137 Hz */
     211,   /* 6 3 TIN TOLL: -11.4 dB, 724 Hz */
     115,   /* 6 4 PEBBLE POP: -22.7 dB, 615 Hz */
-    100,   /* 6 5 CIRCUIT BEND: -25.0 dB, 730 Hz */
+    204,   /* 6 5 BELL RING: -12.0 dB, 1170 Hz */
     220,   /* 6 6 PWM STRINGS: -10.3 dB, 823 Hz */
     106,   /* 6 7 FAT MONO: -24.4 dB, 182 Hz */
      99,   /* 6 8 OBOE-ISH: -25.3 dB, 497 Hz */
     212,   /* 6 9 STRING MACH: -11.2 dB, 1088 Hz */
-    129,   /* 6 10 DIAL TONE: -20.9 dB, 177 Hz */
+    164,   /* 6 10 ARP LEAD: -16.7 dB, 1004 Hz */
     129,   /* 6 11 SID BASS: -21.3 dB, 150 Hz */
     166,   /* 6 12 SYNC BASS: -17.4 dB, 3397 Hz */
     227,   /* 6 13 RAIN STRINGS: -9.3 dB, 656 Hz */
@@ -139,12 +139,12 @@ static const uint8_t JRNY_CTX[171] = {
     220,   /* 12 6 FROST BELLS: -9.6 dB, 1272 Hz */
     173,   /* 12 7 ALIEN CHIMES: -15.7 dB, 1992 Hz */
     212,   /* 12 8 HOUSE PIANO: -11.2 dB, 853 Hz */
-    202,   /* 12 9 ISLAND STEEL: -11.7 dB, 297 Hz */
+    163,   /* 12 9 BRASS STAB: -17.0 dB, 647 Hz */
     180,   /* 12 10 SALOON KEYS: -14.7 dB, 803 Hz */
     137,   /* 12 11 FRETLESS: -19.9 dB, 97 Hz */
     105,   /* 12 12 FM BASS 2: -23.9 dB, 112 Hz */
     195,   /* 12 13 TUBE BELLS: -13.0 dB, 434 Hz */
-     18,   /* 12 14 FM HAZE: -35.2 dB, 221 Hz */
+    163,   /* 12 14 FM STRINGS: -16.8 dB, 476 Hz */
     154,   /* 12 15 DUB DRAWBAR: -17.6 dB, 314 Hz */
     227,   /* 12 16 BELL STAB: -9.3 dB, 564 Hz */
     218,   /* 12 17 HORN SWELL: -9.9 dB, 268 Hz */
@@ -169,8 +169,8 @@ static const uint8_t JRNY_CTX[171] = {
     130,   /* 14 18 PURPLE FLUTE: -20.6 dB, 358 Hz */
     170,   /* 14 19 LICORICE: -15.7 dB, 307 Hz */
     203,   /* 14 20 BRASS PAD: -11.9 dB, 498 Hz */
-     88,   /* 14 21 KICK BASS: -25.5 dB, 55 Hz */
-    149,   /* 14 22 SCREAMER: -19.3 dB, 1760 Hz */
+    121,   /* 14 21 ODD BASS: -22.2 dB, 120 Hz */
+    156,   /* 14 22 SAW PAD: -18.4 dB, 1138 Hz */
     196,   /* 14 23 COMB PLUCK: -12.6 dB, 755 Hz */
     205,   /* 14 24 AIR POP: -11.5 dB, 1956 Hz */
     212,   /* 14 25 BOTTLE TAP: -11.4 dB, 1346 Hz */

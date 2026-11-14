@@ -437,6 +437,18 @@ asks of a factory sound: TRIM (the level), AT to the cutoff (not on FX), LFO tri
   with glide), #125 PWM STRINGS (STRINGS: pulses an octave apart, 8 cents of detune, the width moved by LFO 2, a slow attack, chorus).
 - **#119 HOUSE PIANO:** the imported DX7 voice Keys_17 of YM2612-Dexed-Presets (MIT), see 4.15.
 
+
+## 6.6 Weak sounds replaced by human-made patches (b13 PR 2, 2026-11-14)
+Owner: "not attached to all 170 sounds" and "a real sound". Sounds no factory multi plays, mostly novelty or outside his genres, gave
+their places to Felucca's own engine presets (as in 6.5: the values as the engine loads them; added only TRIM, AT, LFO triggers; End B
+from the seed, four re-picked by the audit's seed search) and two imported FM6 voices (#133 FM HAZE -> FM STRINGS: YM2612-Dexed-Presets Synth_04, MIT, F14). The engines' dearest sounds
+(bench_model.h BENCH_DEAR: GLASS SHARDS, DOO WOP, LESLIE STORM ...) stay: the CPU budget is calibrated on them. Identity, seed and list place stay (no number moves).
+#14 BULLFROG -> WOW BASS (VOICE WOW BASS), #23 KICK BASS -> ODD BASS (WAVE ODD BASS), #27 RAZORWIRE -> RAVE LEAD (ANALOG RAVE),
+#42 SCREAMER -> SAW PAD (WAVE SAW PAD), #67 ISLAND STEEL -> BRASS STAB (FM6 F13: YM2612-Dexed-Presets Brass_14, MIT; its name and OKS
+changed), #104 CRYSTAL CAVE -> PHASE BRASS, #105 SONAR PING -> PHASE STRING (PHASE BRASS /
+STRING), #106 DIVE BOMB -> CHIP LEAD (LOFI WAVE LEAD), #109 CIRCUIT BEND -> BELL RING (TRIO RING BELL), #120 DEAD BATTERY -> CHIP PULSE (LOFI PULSE LD), #124 DIAL
+TONE -> ARP LEAD (TRIO ARP LEAD).
+
 ---
 
 # 7. FACTORY MULTIS (DUELL 0.2.11: M05..M10; 0.2.12: driven by the keys; 0.2.13: in M01, M02, M07..M10; 0.2.23: all sixteen slots)

@@ -1237,8 +1237,8 @@ int main(void)
         ck("rename of the factory TECH HYPNO (record M19; M14 since MR9) stores it under the new name; the music of the record is the factory one", n == 0u &&
            str_eq(mu_names[MIDX(18u)], "STACK 2") && !project_factory(MIDX(18u)) && project_used(MIDX(18u)));
         project_load(MIDX(18u));
-        ck("  and it loads HARM BASS + FM HAZE as before (TECH HYPNO wherever the order puts it)", str_eq(ds_name(trk[0].eng_req, trk[0].preset), "HARM BASS") &&
-           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "FM HAZE"));
+        ck("  and it loads HARM BASS + FM STRINGS (b13: FM HAZE re-voiced) as before (TECH HYPNO wherever the order puts it)", str_eq(ds_name(trk[0].eng_req, trk[0].preset), "HARM BASS") &&
+           str_eq(ds_name(trk[1].eng_req, trk[1].preset), "FM STRINGS"));
     }
 
 

@@ -1,0 +1,3 @@
+## changelog
+### 1.0.0-b13
+- **Sounds (human-made only):** 12 weak sounds are replaced at the same numbers by Felucca's own engine presets and two imported FM voices: #14 WOW BASS, #23 ODD BASS, #27 RAVE LEAD, #42 SAW PAD, #67 BRASS STAB and #133 FM STRINGS (YM2612-Dexed-Presets by Nick Culbertson, MIT), #104 PHASE BRASS, #105 PHASE STRING, #106 CHIP LEAD, #109 BELL RING, #120 CHIP PULSE, #124 ARP LEAD (they were BULLFROG, KICK BASS, RAZORWIRE, SCREAMER, ISLAND STEEL, FM HAZE, CRYSTAL CAVE, SONAR PING, DIVE BOMB, CIRCUIT BEND, DEAD BATTERY, DIAL TONE). M19 TECH HYPNO's pad is FM STRINGS now. A saved version in one of these slots stays yours; RESTORE gives the new sound. They stay listed in their old TYPE groups, so no number moves.
