@@ -214,7 +214,7 @@ const ENGINE_TIP = {
     FB: "Offset on the voice's feedback.", MLVL: "Offset on the output level of the modulator operators (brightness).",
     MRAT: "Offset on the frequency ratio of the modulator operators.", MEG: "Offset on the ENV times of the modulator operators.",
     VMOD: "How much velocity moves the modulator levels.", DTUN: "Detune of the operators against each other.",
-    SLOT: "Where this part's FM6 voice comes from: a factory voice (F1 to F11), the part's OWN voice (edited in the ENGINE tab's OPERATORS editor or on the unit, saved with the patch), or a voice of the bank (B1 to B32).",
+    SLOT: "Where this part's FM6 voice comes from: a factory voice (F1 to F12), the part's OWN voice (edited in the ENGINE tab's OPERATORS editor or on the unit, saved with the patch), or a voice of the bank (B1 to B32).",
   },
   WAVE: { TABLE: "The wavetable this part plays: a factory table, or USER 1 to 3 (your own, imported from a WAV file on the WAVETABLES tab; an empty one is marked EMPTY).",
           STEPS: "Rounds the scan position POS to 2 to 19 places across the table, so it steps from frame to frame instead of gliding. OFF is the smooth scan." },

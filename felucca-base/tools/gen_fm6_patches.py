@@ -159,6 +159,33 @@ EXTRA = [
 ]
 
 
+# b13 (2026-11-14): ready-made voices imported as their packed 128-byte records (a DX7 32-voice bank file holds 32 of them, this
+# record byte for byte). Changed in each: the name bytes (TIDE's name), OKS on (byte 111 bit 3, as FM BASS 2:
+# every note starts its operators in phase, so a strike sounds the same each time) and the bytes in `sets` (said at each voice: the carriers'
+# output level, as the source voices sit ~10 dB under the factory set). Credits: NOTICE.md, SOUND_RECIPES.md.
+def imported(b, name, sets=None):
+    b = list(b)
+    assert len(b) == 128 and all(0 <= x < 128 for x in b) and len(name) <= 10
+    b[111] |= 8
+    b[118:128] = [ord(c) for c in name.ljust(10)]
+    for i, x in (sets or {}).items():
+        b[i] = x
+    return b
+
+
+# F12 HOUSE PIANO: YM2612-Dexed-Presets (Nick Culbertson, MIT, https://github.com/NickCulbertson/YM2612-Dexed-Presets), bank
+# YM2612_ROM2_KEYS_BELLS voice 17 "Keys_17": algorithm 1 with OP1 / OP2 off (a four-operator stack OP6 > OP5 > OP4 > OP3), feedback 7: a struck, bright FM piano that
+# falls away under a held key: the house piano stab. Changed: its one sounding carrier OP3 output level 87 -> 99 (byte 65)
+# and its levels 2 / 3 84 / 0 -> 95 / 90 (bytes 56, 57): the strike's body holds under the key, ~7 dB under the strike (a factory KEYS
+# sustains; the modulators still fall, so it darkens).
+HOUSE_PIANO = imported([
+    99, 60, 0, 99, 99, 84, 84, 0, 0, 0, 0, 0, 40, 0, 68, 0, 0, 99, 48, 19, 99, 99, 84, 0, 0, 0, 0, 0, 0, 48, 0, 60, 20, 0, 99, 36, 19, 99,
+    99, 84, 0, 0, 0, 0, 0, 0, 42, 0, 85, 0, 0, 99, 36, 16, 99, 99, 84, 0, 0, 0, 0, 0, 0, 42, 0, 87, 0, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39,
+    0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39, 0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 50, 50, 50, 50, 0, 7, 0, 0, 0, 0,
+    4, 24, 75, 101, 121, 115, 95, 49, 55, 32, 32, 32], "HSE PIANO", {65: 99, 56: 95, 57: 90})
+EXTRA += [("HOUSE PIANO", HOUSE_PIANO)]
+
+
 def c_rows(b):
     return ",\n".join("     " + ", ".join(f"{x:3d}" for x in b[i:i + 16]) for i in range(0, len(b), 16))
 

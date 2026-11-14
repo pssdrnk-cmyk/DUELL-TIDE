@@ -651,11 +651,11 @@ static void macros(void)
         trk[0].p[P_E7] = FM6_OWN;
         fm6_poll();
         check("SLOT back to OWN: the own patch again", fm6_slot[0] == FM6_OWN && !memcmp(fm6_patch[0], own, FP_SIZE));
-        check("SLOT: F1..F8, OWN, B1..B32 (1.4.1, the voice bank), then F9..F11 behind the bank (0.2.17), nothing past it",
-              ENG_FM6.edit[7].max == FM6_OWN + FM6_NBANK + FM6_NXF && FM6_OWN == FM6_NFACTORY && FM6_NBANK == 32u && FM6_NXF == 3u &&
+        check("SLOT: F1..F8, OWN, B1..B32 (1.4.1, the voice bank), then F9..F12 behind the bank (0.2.17; b13: F12 imported), nothing past it",
+              ENG_FM6.edit[7].max == FM6_OWN + FM6_NBANK + FM6_NXF && FM6_OWN == FM6_NFACTORY && FM6_NBANK == 32u && FM6_NXF == 4u &&
               !strcmp(ENG_FM6.edit[7].names[FM6_OWN], "OWN") && !strcmp(ENG_FM6.edit[7].names[FM6_OWN + 1], "B1") &&
               !strcmp(ENG_FM6.edit[7].names[FM6_OWN + FM6_NBANK], "B32") && !strcmp(ENG_FM6.edit[7].names[FM6_XBASE], "F9") &&
-              !strcmp(ENG_FM6.edit[7].names[FM6_XBASE + 2u], "F11") && !ENG_FM6.edit[7].names[FM6_XBASE + FM6_NXF]);
+              !strcmp(ENG_FM6.edit[7].names[FM6_XBASE + 3u], "F12") && !ENG_FM6.edit[7].names[FM6_XBASE + FM6_NXF]);
         {   /* 0.2.17: the factory patches behind the bank load like F1..F8; the stored SLOT values of OWN and the bank are untouched */
             uint8_t v[FP_SIZE + 1u];
             uint32_t x;
@@ -666,11 +666,12 @@ static void macros(void)
                 check("SLOT F9.. (behind the bank) loads its own factory patch", fm6_slot[0] == FM6_XBASE + x && !memcmp(fm6_patch[0], v, FP_SIZE));
                 check("  and a patch equal to it shows as that slot (project load: fm6_adopt_slot)", fm6_adopt_slot(v, 0) == (int32_t)(FM6_XBASE + x));
             }
-            check("  F9 FM BASS 2, F11 FRETLESS (the sounds' voices): the names", !memcmp(FM6_XFACTORY[0] + 118, "FM BASS 2 ", 10));
+            check("  F9 FM BASS 2, F12 HSE PIANO (the sounds' voices): the names", !memcmp(FM6_XFACTORY[0] + 118, "FM BASS 2 ", 10) &&
+                  !memcmp(FM6_XFACTORY[3] + 118, "HSE PIANO ", 10));
             check("  a stored SLOT above OWN is OWN (params.c param_fit)", param_fit(&ENG_FM6.edit[7], (int32_t)FM6_XBASE) == (int32_t)FM6_OWN &&
                   param_fit(&ENG_FM6.edit[7], 3) == 3);
-            check("  the SLOT knob (no bank here): OWN up goes on to F9, F11 is the end, F9 down is OWN again",
-                  param_turn(&ENG_FM6.edit[7], FM6_OWN, 1) == (int32_t)FM6_XBASE && param_turn(&ENG_FM6.edit[7], (int32_t)FM6_XBASE + 2, 1) == (int32_t)FM6_XBASE + 2 &&
+            check("  the SLOT knob (no bank here): OWN up goes on to F9, F12 is the end, F9 down is OWN again",
+                  param_turn(&ENG_FM6.edit[7], FM6_OWN, 1) == (int32_t)FM6_XBASE && param_turn(&ENG_FM6.edit[7], (int32_t)FM6_XBASE + 3, 1) == (int32_t)FM6_XBASE + 3 &&
                   param_turn(&ENG_FM6.edit[7], (int32_t)FM6_XBASE, -1) == (int32_t)FM6_OWN);
             trk[0].p[P_E7] = FM6_OWN;
             fm6_poll();

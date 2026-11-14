@@ -129,8 +129,11 @@ Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first
 - **Pushes and releases need the owner's OK.**
 - **Look first:** a visible change is shown to the owner on the unit (or emulator) and approved before tests and paperwork.
 - **The low end is welcome** (owner, 11 November): bass and sub may be in any multi or sound. The one rule: the FM-1 does not take over the drums (no kick-like thump on every beat, no drum-kit role). Nothing else limits the low end: no thresholds under 120 Hz, no caps, no registers kept free. The "leave the low end free" marks of the 9 November musical review ([audits](audits/2026-11-09/musical-review/REPORT.md)) were a suggestion for a few edge cases, never a rule.
+- Factory drums: removed (owner, 14 November). Their 12 slots become tonal sounds (see Planned: ex-drum slots).
 
 ## Planned, not yet scheduled
+
+**Ex-drum slots** (owner, 14 November: the factory drums removed; b13 lane b13-import, sources and licences in `work/b13/import/SOURCES.md`). Done (b13): all 12 hold tonal sounds at their places (no number moves): #95 NIGHT REESE, #96 ROUND SUB, #97 FAT MONO, #98 THUMB PIANO, #99 NIGHT WIND, #100 SEA BED, #101 SURF HISS, #119 HOUSE PIANO (an imported FM piano, YM2612-Dexed-Presets, MIT), #122 LOFI KEYS, #123 AAH CHOIR, #125 PWM STRINGS, #126 DUB MALLET (SOUND_RECIPES.md 6.5, 4.15). They are still listed in the PERC / OTHER groups of TYPE (the list group keeps the numbers). Open: two more imported FM6 sounds (an ORGAN stab, FM STRINGS: screened, audit-clean) wait for a place: a sound after #171 is a 176th patch slot, and `UP_SLOTS` 175 is fixed in the store and the editor (a change of its own), or an FM6 sound gives way.
 
 **Live performance assist** (owner, 12 November: "recording and overwriting, or add complementary logic to the voice not being played ... store a melody and it'll add a complementary bass in the same key, or a question answer logic, dubbing it on the other voice"). In design: one coherent system for a DAWless live player, phased by value and cost (flash / pool room comes from the b10 screen overhaul):
 - Capture what you play, loop it, overdub / replace, undo (builds on keys recording into ARP SEQ and REC ADD / REPLACE, and the live-record audit's open items).

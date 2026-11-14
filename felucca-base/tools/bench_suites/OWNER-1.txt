@@ -231,9 +231,9 @@ tail 3
 measure 0.0 9.0
 expect close
 
-test NOISE-101  NOISE #101 TIZZ HAT
+test NOISE-101  NOISE #101 SURF HISS
 mode STEREO
-load patch 1 #101 "TIZZ HAT"
+load patch 1 #101 "SURF HISS"
 at 0.0  note C3 vel 100 len 1.5
 at 2.0  chord C3 E3 G3 vel 100
 at 3.0  morph 0 127 over 3

@@ -47,11 +47,11 @@ static const uint8_t JRNY_CTX[171] = {
     131,   /* 2 3 WIRE HARP: -21.2 dB, 386 Hz */
     226,   /* 2 4 CLAVICLE: -8.9 dB, 232 Hz */
     157,   /* 2 5 CRYSTAL CAVE: -17.8 dB, 2675 Hz */
-    201,   /* 2 6 DEEP KICK: -12.4 dB, 136 Hz */
+     97,   /* 2 6 NIGHT REESE: -24.6 dB, 106 Hz */
     249,   /* 2 7 SONAR PING: -5.3 dB, 177 Hz */
     202,   /* 2 8 FAKE KOTO: -12.3 dB, 248 Hz */
     114,   /* 2 9 FUZZ BASS: -22.5 dB, 306 Hz */
-    129,   /* 2 10 HARD KICK: -20.8 dB, 157 Hz */
+     96,   /* 2 10 ROUND SUB: -24.7 dB, 67 Hz */
     219,   /* 2 11 AIR SHIMMER: -10.4 dB, 547 Hz */
     212,   /* 2 12 STAR FIELD: -10.5 dB, 1050 Hz */
     234,   /* 2 13 MELLOW EP: -8.1 dB, 342 Hz */
@@ -65,7 +65,7 @@ static const uint8_t JRNY_CTX[171] = {
     130,   /* 3 3 MARBLE RUN: -20.7 dB, 338 Hz */
     124,   /* 3 4 DIVE BOMB: -21.9 dB, 1389 Hz */
     114,   /* 3 5 DEAD BATTERY: -22.7 dB, 323 Hz */
-    171,   /* 3 6 PIXEL KICK: -16.3 dB, 385 Hz */
+    169,   /* 3 6 LOFI KEYS: -15.6 dB, 178 Hz */
     203,   /* 3 7 DUSTY DRONE: -11.6 dB, 409 Hz */
     114,   /* 3 8 ARP BASS: -23.3 dB, 186 Hz */
     210,   /* 3 9 GRID HUM: -11.0 dB, 324 Hz */
@@ -73,7 +73,7 @@ static const uint8_t JRNY_CTX[171] = {
     187,   /* 5 1 VESPERS: -13.9 dB, 430 Hz */
      83,   /* 5 2 DOO WOP: -27.4 dB, 457 Hz */
     171,   /* 5 3 GHOST VOICES: -15.7 dB, 668 Hz */
-    180,   /* 5 4 VOCAL BEATS: -15.1 dB, 1028 Hz */
+    219,   /* 5 4 AAH CHOIR: -10.3 dB, 564 Hz */
     212,   /* 5 5 WHISPER PAD: -11.5 dB, 749 Hz */
     202,   /* 5 6 PLATE CHOIR: -11.9 dB, 319 Hz */
     148,   /* 5 7 YO YA: -19.2 dB, 817 Hz */
@@ -83,8 +83,8 @@ static const uint8_t JRNY_CTX[171] = {
     211,   /* 6 3 TIN TOLL: -11.4 dB, 724 Hz */
     115,   /* 6 4 PEBBLE POP: -22.7 dB, 615 Hz */
     100,   /* 6 5 CIRCUIT BEND: -25.0 dB, 730 Hz */
-    173,   /* 6 6 GRAVEL SNARE: -15.6 dB, 2199 Hz */
-    134,   /* 6 7 FIELD CLANK: -20.8 dB, 3070 Hz */
+    220,   /* 6 6 PWM STRINGS: -10.3 dB, 823 Hz */
+    106,   /* 6 7 FAT MONO: -24.4 dB, 182 Hz */
      99,   /* 6 8 OBOE-ISH: -25.3 dB, 497 Hz */
     212,   /* 6 9 STRING MACH: -11.2 dB, 1088 Hz */
     129,   /* 6 10 DIAL TONE: -20.9 dB, 177 Hz */
@@ -112,8 +112,8 @@ static const uint8_t JRNY_CTX[171] = {
     179,   /* 9 4 ROSEWOOD: -15.5 dB, 558 Hz */
     236,   /* 9 5 MOTOR VIBES: -8.5 dB, 814 Hz */
     142,   /* 9 6 RAIN CHIMES: -20.5 dB, 3455 Hz */
-    171,   /* 9 7 TABLA TALK: -16.3 dB, 379 Hz */
-    186,   /* 9 8 FLOOR THUD: -13.8 dB, 295 Hz */
+    187,   /* 9 7 DUB MALLET: -13.9 dB, 374 Hz */
+    180,   /* 9 8 THUMB PIANO: -15.4 dB, 964 Hz */
     189,   /* 9 9 NURSERY KEYS: -13.8 dB, 1543 Hz */
     173,   /* 9 10 FAUX HARPSI: -15.6 dB, 1661 Hz */
     154,   /* 9 11 PLUCK BASS: -17.5 dB, 235 Hz */
@@ -122,9 +122,9 @@ static const uint8_t JRNY_CTX[171] = {
     213,   /* 11 2 SEA ORGAN: -11.1 dB, 1623 Hz */
     129,   /* 11 3 WHITE OUT: -21.3 dB, 176 Hz */
     212,   /* 11 4 MOOR WIND: -10.9 dB, 1268 Hz */
-    151,   /* 11 5 TIZZ HAT: -18.7 dB, 10003 Hz */
-    215,   /* 11 6 OPEN SIZZLE: -11.5 dB, 8633 Hz */
-    174,   /* 11 7 STATIC SNARE: -16.4 dB, 4366 Hz */
+    204,   /* 11 5 SURF HISS: -12.4 dB, 1005 Hz */
+    212,   /* 11 6 NIGHT WIND: -11.2 dB, 1359 Hz */
+    229,   /* 11 7 SEA BED: -8.8 dB, 2668 Hz */
     150,   /* 11 8 GEIGER: -19.2 dB, 3933 Hz */
     149,   /* 11 9 MODEM: -18.8 dB, 1637 Hz */
     149,   /* 11 10 REV CYMBAL: -19.4 dB, 2512 Hz */
@@ -138,7 +138,7 @@ static const uint8_t JRNY_CTX[171] = {
     187,   /* 12 5 BIG STAB: -14.2 dB, 595 Hz */
     220,   /* 12 6 FROST BELLS: -9.6 dB, 1272 Hz */
     173,   /* 12 7 ALIEN CHIMES: -15.7 dB, 1992 Hz */
-    180,   /* 12 8 TEMPLE BLOCK: -15.2 dB, 1302 Hz */
+    204,   /* 12 8 HOUSE PIANO: -11.6 dB, 915 Hz */
     202,   /* 12 9 ISLAND STEEL: -11.7 dB, 297 Hz */
     180,   /* 12 10 SALOON KEYS: -14.7 dB, 803 Hz */
     137,   /* 12 11 FRETLESS: -19.9 dB, 97 Hz */

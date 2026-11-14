@@ -282,7 +282,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.07.MEMB.K1  PHYS #7 TABLA TALK (MEMB), one core, 1 keys
+test PHYS.07.MEMB.K1  PHYS #7 DUB MALLET (MODAL), one core, 1 keys
 mode LAYER
 sound 1 PHYS 7
 sound 2 PHYS 7
@@ -302,7 +302,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.07.MEMB.K3  PHYS #7 TABLA TALK (MEMB), one core, 3 keys
+test PHYS.07.MEMB.K3  PHYS #7 DUB MALLET (MODAL), one core, 3 keys
 mode LAYER
 sound 1 PHYS 7
 sound 2 PHYS 7
@@ -322,7 +322,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.08.MEMB.K1  PHYS #8 FLOOR THUD (MEMB), one core, 1 keys
+test PHYS.08.MEMB.K1  PHYS #8 THUMB PIANO (MODAL), one core, 1 keys
 mode LAYER
 sound 1 PHYS 8
 sound 2 PHYS 8
@@ -342,7 +342,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.08.MEMB.K3  PHYS #8 FLOOR THUD (MEMB), one core, 3 keys
+test PHYS.08.MEMB.K3  PHYS #8 THUMB PIANO (MODAL), one core, 3 keys
 mode LAYER
 sound 1 PHYS 8
 sound 2 PHYS 8

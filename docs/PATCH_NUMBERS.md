@@ -102,13 +102,13 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 92 | PLATE BELL |
 | 93 | SYNTH BRASS |
 | 94 | WAVE CHIMES |
-| 95 | DEEP KICK |
-| 96 | HARD KICK |
-| 97 | FIELD CLANK |
-| 98 | FLOOR THUD |
-| 99 | OPEN SIZZLE |
-| 100 | STATIC SNARE |
-| 101 | TIZZ HAT |
+| 95 | NIGHT REESE |
+| 96 | ROUND SUB |
+| 97 | FAT MONO |
+| 98 | THUMB PIANO |
+| 99 | NIGHT WIND |
+| 100 | SEA BED |
+| 101 | SURF HISS |
 | 102 | STORM FRONT |
 | 103 | ALIEN CHIMES |
 | 104 | CRYSTAL CAVE |
@@ -126,14 +126,14 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 116 | FROZEN AIR |
 | 117 | RESO SWEEP |
 | 118 | GLASS SHARDS |
-| 119 | TEMPLE BLOCK |
+| 119 | HOUSE PIANO |
 | 120 | DEAD BATTERY |
 | 121 | DUSTY DRONE |
-| 122 | PIXEL KICK |
-| 123 | VOCAL BEATS |
+| 122 | LOFI KEYS |
+| 123 | AAH CHOIR |
 | 124 | DIAL TONE |
-| 125 | GRAVEL SNARE |
-| 126 | TABLA TALK |
+| 125 | PWM STRINGS |
+| 126 | DUB MALLET |
 | 127 | GEIGER |
 | 128 | MODEM |
 | 129 | FOG BANK |

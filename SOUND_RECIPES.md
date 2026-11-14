@@ -295,7 +295,7 @@ Purpose: typical settings of classic synth patches, in generic synth terms, as a
 - **Generic synth recipe:** sine/triangle plus a short burst of a higher partial; AENV A 0, D 150-500 ms (higher notes shorter), S 0, R 50-150 ms; filter low-pass with a fast closing envelope to make the upper partials decay faster than the fundamental. [G]
 - **FX:** short room/plate reverb, light stereo delay. **Velocity:** to brightness and level.
 - **0.2.20 MALLET WOOD (marimba, FM6 WOOD BARS):** a marimba bar is carved so its second mode sits at about 4x the fundamental [G, as above]; the DX7-style marimba is a strong fundamental plus a modulator at ratio 4 whose index falls within ~100 ms, the 'knock' of the mallet on wood [S: the factory WOOD BARS voice of tools/gen_fm6_patches.py is built that way; Dexed/DX7 'MARIMBA' voices]. Before, MLVL -4 left the modulator inaudible (a plain sine blip) and the FILTER ENV values set did nothing (FM6's amplitude is the patch's); now MLVL +14, MEG +25 (the knock lasts a few tens of ms), VMOD 4, room reverb 12 %, no delay (it smeared the knock). Measured at C3: the 300 Hz .. 1 kHz band is 3 dB under the total in the first frame and 33 dB under it by 100 ms.
-- **0.2.20 TEMPLE BLOCK:** a hollow wooden shell, higher than the bars and shorter, a hollow (odd-harmonic) tone [G, from memory: wood blocks and temple blocks sound at about 700 .. 2000 Hz; no source found]. The same patch with the modulators at ratio 2 (MRAT -2: odd sidebands, the hollow colour), MLVL +22, played 18.9 semitones up (EXPR is constant 127 until a CC11: two matrix routes of +63 and +38 on PITCH, no bend, C3 sounds as G4 = 392 Hz), and FILTER ENV on AMP closing the note in ~130 ms. Dry-ish: reverb 20 %, no delay.
+- **0.2.20 TEMPLE BLOCK (retired in b13, 2026-11-14: the factory drums were removed; its place is HOUSE PIANO, 4.15):** a hollow wooden shell, higher than the bars and shorter, a hollow (odd-harmonic) tone [G, from memory: wood blocks and temple blocks sound at about 700 .. 2000 Hz; no source found]. The same patch with the modulators at ratio 2 (MRAT -2: odd sidebands, the hollow colour), MLVL +22, played 18.9 semitones up (EXPR is constant 127 until a CC11: two matrix routes of +63 and +38 on PITCH, no bend, C3 sounds as G4 = 392 Hz), and FILTER ENV on AMP closing the note in ~130 ms. Dry-ish: reverb 20 %, no delay.
 
 ## 4.5 Hammond organ drawbar registrations
 - **Footage to harmonic:** 16' sub-octave, 5 1/3' (the 3rd harmonic of the sub, i.e. a fifth above the fundamental), 8' unison, 4' octave, 2 2/3' twelfth, 2' double octave, 1 3/5' and 1 1/3' the 17th and 19th, 1' the top. Levels 0-8. [S: [Wikipedia, Hammond organ](https://en.wikipedia.org/wiki/Hammond_organ) and SOS tonewheel articles via search]
@@ -346,6 +346,10 @@ Purpose: typical settings of classic synth patches, in generic synth terms, as a
 - **Method:** Chowning's FM bell: carrier : modulator = 1 : 1.4 (that is 5 : 7), the modulation index and the amplitude both falling exponentially. [S: John Chowning, 1973, as taught in the [SFU Truax FM tutorial](https://www.sfu.ca/~truax/fmtut.html) and a [University of Washington handout](https://courses.cs.washington.edu/courses/cse466/10wi/pdfs/FMSynthesisExamples.pdf): a bell of 200 Hz carrier, 280 Hz modulator, index about 10.] The decay times in seconds are not stated.
 - **DUELL's TUBE BELLS (FM6, our own patch F10):** algorithm 5 (three pairs), the pairs at 1.0, 2.76 and 5.4 with a 1.4 modulator each [G], feedback 2, key and rate scaling; every operator falls to nothing (the bell rings out within about 9 s and a release of about half a second), REV 30 %, CHO 6 %.
 
+
+## 4.15 House piano stab (HOUSE PIANO, b13, imported)
+- **The voice:** Keys_17 of **YM2612-Dexed-Presets** by Nick Culbertson (MIT, <https://github.com/NickCulbertson/YM2612-Dexed-Presets>), imported from its DX7 voice file into the FM6 factory patch F12 (`tools/gen_fm6_patches.py`): algorithm 1 with OP1 / OP2 off, a four-operator stack OP6 > OP5 > OP4 > OP3 with feedback 7: a struck, bright FM piano. Changes: the name, OKS on, the carrier OP3's output level (87 > 99) and its levels 2 / 3 (84 / 0 > 95 / 90) so the body holds under a key (a factory KEYS sustains: `tests/sound_audit.c` rule 1). Chosen by its measures only (soundlab, C3 chord: a 6 ms strike, 14 partials within 30 dB, a falling body), for the classic house piano stab (b13 genre gap list: house, Chicago / classic).
+- **Made ours:** chorus 40, spread 40, a short room (REV 24), AT to the cutoff; TRIM by the audit. End B from the seed (13064, the old slot's). Listed at #119 where TEMPLE BLOCK was (`lcat` OTHER), so no browse number moves.
 ---
 
 # 5. FX / OTHER
@@ -397,6 +401,8 @@ Purpose: typical settings of classic synth patches, in generic synth terms, as a
 
 # 6. PERC (batch R: the PERC sounds of the retired SLICE replaced)
 
+**Retired in b13 (2026-11-14, owner: the factory drums removed).** The notes below are history; the slots now hold the tonal sounds of 6.5.
+
 ## 6.1 Analogue bass drum (DEEP KICK)
 - **TR-909:** a sawtooth through a waveshaper, "very close to a sine wave", its pitch set by an envelope with an instant attack and a slow decay; a click (a pulse) mixed in for the beater. **TR-808:** a bridged-T oscillator that decays by itself, dropping slightly in pitch as it decays. [S: [SOS, Practical Bass Drum Synthesis](https://www.soundonsound.com/techniques/practical-bass-drum-synthesis)]
 - **Physics:** a struck head is at a higher pitch at the start and falls as it decays, by "around 10 percent" (a couple of semitones), while the loudness falls by 100 %; one decay rate for the important partials. [S: [SOS, Synthesizing Drums: The Bass Drum](https://www.soundonsound.com/techniques/synthesizing-drums-bass-drum)]
@@ -414,6 +420,22 @@ Purpose: typical settings of classic synth patches, in generic synth terms, as a
 ## 6.4 Hardstyle kick (HARD KICK, 0.2.17)
 - As 1.13 for the drop and the clipping. [S: EDMProd, ADSR Sounds; numbers G.] The sine is DEEP KICK's (6.1).
 - **DUELL's HARD KICK (PHASE):** a sine (SAW at DCW 0) with FILTER ENV (D 75 ms) on PITCH through two routes, ENV 14 for the click; AMP D 330, S 0, R 100; the HARD insert (A 127) and DIST 38 %; two octaves down in all (two routes EXPR to PITCH at -64: -24 semitones, 0.2.20: F3 gives 44 Hz, C4 65 Hz); no ducker, dry.
+
+
+## 6.5 The ex-drum slots, tonal (b13, 2026-11-14)
+Each keeps its slot's identity (engine, idx), its End B seed and its list place (the list group PERC or OTHER stays, so no browse
+number moves); each starts from the values of a TIDE sound of the same engine that passes the audit, changed toward the recipe; End B
+from the seed. Two are translations of Clipper's HYBRID patches (**Clipper** by 3dSam, <https://github.com/isod89/clipper-fm1>,
+GPL-3.0-only, `firmware/src/hybrid_patches.h`): the recipe, not code. Levels by `tests/sound_audit.c` (TRIM).
+- **#95 NIGHT REESE (PHASE 6, from ELASTIC BASS):** Clipper's REESE: two saws 27 cents apart (WAVE 1 and 2 SAW, DTN 27; b13 genres: a CZ-style Reese +-0.27 st), DCW 70, a sine sub an octave under at 70, the 24 dB low-pass at 56 with RES 20 and the slow cycle on it, drive 20, mono with glide. Atmospheric DnB, dub.
+- **#96 ROUND SUB (PHASE 10, from ELASTIC BASS):** PHASE with DCW 0 is a sine (genres: deep dubstep, dub roots); ENV 8, a soft saturation, the low-pass at 45, mono, held.
+- **#97 FAT MONO (TRIO 7, from BREADBIN):** Clipper's MOOG BASS: three saws, two an octave under (INT2 / INT3 -12), the low-pass at 40 with its snappy filter envelope, drive 20, mono with glide 40. Synthwave 16ths, Detroit, house.
+- **#98 THUMB PIANO (PHYS 8, from NURSERY KEYS):** a kalimba: MODAL as struck metal tines, STRC 100 (less stretched), BRIT 70, DAMP 60, POS 15, the thumb's knock EXC 30; a dub echo and a room.
+- **#99 NIGHT WIND, #100 SEA BED, #101 SURF HISS (NOISE 6 / 7 / 5, from MOOR WIND):** three beds (textures): wind (the band a little higher, the drift wider), a low sea (COLR 60, CUT 26, a slower swell), bright surf spray (COLR 120, CUT 50, an echo).
+- **#122 LOFI KEYS (LOFI 6, from PIXEL HERO):** an 8-bit triangle, a little crush, TONE 90, poly with chorus and a short room; no vibrato (a KEYS sound of the 128 moves only slowly). Lo-fi house.
+- **#123 AAH CHOIR (VOICE 4, from PLATE CHOIR):** the vowels moved to A (VOWL 1 0, VOWL 2 20), BUZZ 50, BRTH 20, a wider chorus and room.
+- **#125 PWM STRINGS (TRIO 6, from STRING MACH):** Clipper's STRINGS: pulses an octave apart (INT2 +12), 8 cents of detune, the width moved by LFO 2, the slow attack and a wide chorus: the string machine.
+- **#126 DUB MALLET (PHYS 7, from ROSEWOOD):** a darker, longer wooden mallet (CUT 36, BRIT 40, DAMP 50) into a dub echo.
 
 ---
 
