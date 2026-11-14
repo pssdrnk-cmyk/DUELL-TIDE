@@ -44,7 +44,8 @@ check("TIDE-DSP: the real crossings and the heavy scenes play part 2 on its own 
       all(any(w == "mode DUEL" for w, _ in br.setup_words(t)) for t in parsed if t.name.startswith(("TIDE.X.", "TIDE.HEAVY"))))
 ph = br.parse_suite(open(os.path.join(ROOT, "tools", "bench_suites", "PHYS-MODELS.txt")).read())[1]
 check("PHYS-MODELS: 12 factory PHYS sounds x (1 key, 3 keys), one core", len(ph) == 24 and all(any(w == "core1 off" for w, _ in br.setup_words(t)) for t in ph))
-check("PHYS-MODELS: the models of the sounds are 6 MODAL, 3 STRING, 2 MEMB, 1 SYMP", sorted(m for _, _, m in gen.phys_sounds()) == ["MEMB"] * 2 + ["MODAL"] * 6 + ["STRING"] * 3 + ["SYMP"])
+# b13 (2026-11-14): the two MEMB sounds were factory drums (FLOOR THUD, TABLA TALK); their slots are KALIMBA and MARIMBA (MODAL), so no factory sound benches MEMB now
+check("PHYS-MODELS: the models of the sounds are 8 MODAL, 3 STRING, 1 SYMP", sorted(m for _, _, m in gen.phys_sounds()) == ["MODAL"] * 8 + ["STRING"] * 3 + ["SYMP"])
 check("budget.c carries the four TIDE estimates", set(tm.budget_estimates()) == {"VALLEY", "WASH", "DIP", "FM6"})
 
 
