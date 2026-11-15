@@ -1460,10 +1460,10 @@ SOUNDS = [
             'ATK': 90, 'DEC': 90, 'SUS': 110, 'REL': 90, 'KTRK': 0, 'DIST': 0, 'CHOR': 30, 'DLY': 20, 'REV': 80, 'E1': 0, 'E2': 64, 'E3': 0, 'E4': 0, 'E5': 0, 'E6': 0, 'E7': 70, 'E8': 0, 'TRIM': 110, 'LTRIG': 1, 'L2TRIG': 1,
          }),
     # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset NOISE ARCADE (eng_*.c PRESETS, Leo Kuroshita /
-    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
-    dict(engine='NOISE', idx=7, name='RETRO ZAP', cat='OTHER', lcat='PERC', bseed=58051,  # #100 (b13: was STATIC SNARE, a drum; listed at its place: no number moves)
+    # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT and TRIM. A pitched chip note that decays: PLUCK. End B from the seed.
+    dict(engine='NOISE', idx=7, name='RETRO ZAP', cat='PLUCK', lcat='PERC', bseed=58051,  # #100 (b13: was STATIC SNARE, a drum; listed at its place: no number moves)
          p={
-            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 50, 'KTRK': 0, 'DIST': 0, 'CHOR': 0, 'DLY': 10, 'REV': 20, 'E1': 2, 'E2': 0, 'E3': 0, 'E4': 0, 'E5': 0, 'E6': 112, 'E7': 0, 'E8': 84, 'TRIM': 120, 'LTRIG': 1, 'L2TRIG': 1,
+            'ATK': 0, 'DEC': 80, 'SUS': 0, 'REL': 50, 'KTRK': 0, 'DIST': 0, 'CHOR': 0, 'DLY': 10, 'REV': 20, 'E1': 2, 'E2': 0, 'E3': 0, 'E4': 0, 'E5': 0, 'E6': 112, 'E7': 0, 'E8': 84, 'TRIM': 120, 'LTRIG': 1, 'L2TRIG': 1, 'MOD1': ('AT', 'CUT', 12),
          }),
     # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset NOISE METAL (eng_*.c PRESETS, Leo Kuroshita /
     # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
@@ -1745,7 +1745,7 @@ SOUNDS = [
     # short room: the classic house piano stab (chords on the offbeat). End B from the seed.
     dict(engine='FM6', idx=8, name='HOUSE PIANO', cat='KEYS', lcat='OTHER', bseed=13064,  # #119 (listed where TEMPLE BLOCK was: no number moves)
          p={
-            'KTRK': 20, 'CHOR': 40, 'REV': 24, 'SPRD': 40, 'TRIM': 118, 'E8': 44, 'MOD1': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+            'KTRK': 20, 'CHOR': 40, 'REV': 24, 'SPRD': 40, 'TRIM': 118, 'DKSRC': 0, 'E8': 44, 'MOD1': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
          }),
     dict(engine='LOFI', idx=5, name='DEAD BATTERY', cat='FX', lcat='OTHER', bseed=16860,  # #120
          p={
@@ -1815,7 +1815,7 @@ SOUNDS = [
          }),
     # b13 (2026-11-14, owner: the factory drums removed; "a real sound"): Felucca's own factory preset PHYS MARIMBA (eng_*.c PRESETS, Leo Kuroshita /
     # Hugelton Instruments, GPL-3.0), its values as the engine's preset loads them; added only AT -> CUT (non-FX) and TRIM. End B from the seed.
-    dict(engine='PHYS', idx=7, name='MARIMBA', cat='KEYS', lcat='OTHER', bseed=40371,  # #126 (b13: was TABLA TALK, a drum; listed at its place: no number moves)
+    dict(engine='PHYS', idx=7, name='MARIMBA', cat='PLUCK', lcat='OTHER', bseed=40371,  # #126 (b13: was TABLA TALK, a drum; listed at its place: no number moves)
          p={
             'ATK': 0, 'DEC': 90, 'SUS': 127, 'REL': 52, 'KTRK': 0, 'DIST': 0, 'CHOR': 0, 'DLY': 15, 'REV': 30, 'E1': 0, 'E2': 116, 'E3': 38, 'E4': 40, 'E5': 24, 'E6': 90, 'E7': 0, 'E8': 30, 'TRIM': 124, 'LTRIG': 1, 'L2TRIG': 1, 'MOD1': ('AT', 'CUT', 12),
          }),

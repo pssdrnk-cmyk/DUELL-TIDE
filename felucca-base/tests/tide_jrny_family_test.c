@@ -187,7 +187,7 @@ int main(void)
      * textures of its engine, a one-shot never reaches one */
     {
         static const char *const TEXTS[] = {"DUST BED", "TAPE HISS", "MOOR WIND", "WHITE OUT", "NIGHT DRONE", "STORM FRONT", "TAPE DRONE", "FROZEN AIR",
-                                              "SOLAR WIND", "GRID HUM", "IRON WORKS"};   /* (+ three of the b2 drones, #169-#171, 2026-11-08) */
+                                              "SOLAR WIND", "GRID HUM", "IRON WORKS", "NIGHT WIND"};   /* (+ three of the b2 drones, #169-#171, 2026-11-08; + NIGHT WIND, #99, b13: an ex-drum slot) */
         uint32_t g, nflag = 0, nonfx = 0, named = 0, fl, un, di, te, tj;
         const uint32_t NT = (uint32_t)(sizeof TEXTS / sizeof TEXTS[0]);   /* the names listed above: the flagged count is derived from them */
         for (g = 0; g < DS_N; g++) {

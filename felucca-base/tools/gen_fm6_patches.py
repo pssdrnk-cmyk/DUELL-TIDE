@@ -177,12 +177,13 @@ def imported(b, name, sets=None):
 # YM2612_ROM2_KEYS_BELLS voice 17 "Keys_17": algorithm 1 with OP1 / OP2 off (a four-operator stack OP6 > OP5 > OP4 > OP3), feedback 7: a struck, bright FM piano that
 # falls away under a held key: the house piano stab. Changed: its one sounding carrier OP3 output level 87 -> 99 (byte 65)
 # and its levels 2 / 3 84 / 0 -> 95 / 90 (bytes 56, 57): the strike's body holds under the key, ~7 dB under the strike (a factory KEYS
-# sustains; the modulators still fall, so it darkens).
+# sustains; the modulators still fall, so it darkens); OP3's release rate 99 -> 70 (byte 54): a short, smooth release, so a low note
+# ends at silence when the voice is culled (tests/cull_test.c: the tail under -54 dBFS).
 HOUSE_PIANO = imported([
     99, 60, 0, 99, 99, 84, 84, 0, 0, 0, 0, 0, 40, 0, 68, 0, 0, 99, 48, 19, 99, 99, 84, 0, 0, 0, 0, 0, 0, 48, 0, 60, 20, 0, 99, 36, 19, 99,
     99, 84, 0, 0, 0, 0, 0, 0, 42, 0, 85, 0, 0, 99, 36, 16, 99, 99, 84, 0, 0, 0, 0, 0, 0, 42, 0, 87, 0, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39,
     0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39, 0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 50, 50, 50, 50, 0, 7, 0, 0, 0, 0,
-    4, 24, 75, 101, 121, 115, 95, 49, 55, 32, 32, 32], "HSE PIANO", {65: 99, 56: 95, 57: 90})
+    4, 24, 75, 101, 121, 115, 95, 49, 55, 32, 32, 32], "HSE PIANO", {65: 99, 56: 95, 57: 90, 54: 70})
 EXTRA += [("HOUSE PIANO", HOUSE_PIANO)]
 
 

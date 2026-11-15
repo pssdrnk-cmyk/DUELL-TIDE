@@ -138,7 +138,7 @@ static const uint8_t JRNY_CTX[171] = {
     187,   /* 12 5 BIG STAB: -14.2 dB, 595 Hz */
     220,   /* 12 6 FROST BELLS: -9.6 dB, 1272 Hz */
     173,   /* 12 7 ALIEN CHIMES: -15.7 dB, 1992 Hz */
-    204,   /* 12 8 HOUSE PIANO: -11.6 dB, 915 Hz */
+    212,   /* 12 8 HOUSE PIANO: -11.2 dB, 853 Hz */
     202,   /* 12 9 ISLAND STEEL: -11.7 dB, 297 Hz */
     180,   /* 12 10 SALOON KEYS: -14.7 dB, 803 Hz */
     137,   /* 12 11 FRETLESS: -19.9 dB, 97 Hz */

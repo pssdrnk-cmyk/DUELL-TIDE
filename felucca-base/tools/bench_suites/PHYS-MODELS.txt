@@ -282,7 +282,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.07.MEMB.K1  PHYS #7 MARIMBA (MODAL), one core, 1 keys
+test PHYS.07.MODAL.K1  PHYS #7 MARIMBA (MODAL), one core, 1 keys
 mode LAYER
 sound 1 PHYS 7
 sound 2 PHYS 7
@@ -302,7 +302,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.07.MEMB.K3  PHYS #7 MARIMBA (MODAL), one core, 3 keys
+test PHYS.07.MODAL.K3  PHYS #7 MARIMBA (MODAL), one core, 3 keys
 mode LAYER
 sound 1 PHYS 7
 sound 2 PHYS 7
@@ -322,7 +322,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.08.MEMB.K1  PHYS #8 KALIMBA (MODAL), one core, 1 keys
+test PHYS.08.MODAL.K1  PHYS #8 KALIMBA (MODAL), one core, 1 keys
 mode LAYER
 sound 1 PHYS 8
 sound 2 PHYS 8
@@ -342,7 +342,7 @@ settle 1.2
 expect report
 repeat 2
 
-test PHYS.08.MEMB.K3  PHYS #8 KALIMBA (MODAL), one core, 3 keys
+test PHYS.08.MODAL.K3  PHYS #8 KALIMBA (MODAL), one core, 3 keys
 mode LAYER
 sound 1 PHYS 8
 sound 2 PHYS 8
