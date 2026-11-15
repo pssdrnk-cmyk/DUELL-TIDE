@@ -21,8 +21,8 @@
 /* DUELL-TIDE T0: the three re-made with DUELL 1.1 (its delay feedback rounding, mulq15r, and the 1.1 level stages); against 1.0: same level, spectrum and 100 ms envelope,
  * residual -66 dB (docs/JAM11_SOUND_REFERENCES.md). 1.0: 0x95e535e6638a3a73, 0xb8a39b104ccea803, 0xec69d9e302f65abd */
 #define H_ST_SEND0 0x085fb15db6c60f57ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x2d06d9a773c2f0db) */
-#define H_ST_DEPTH0 0xd5674bd9b999ce4full /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x63211e1720e2b2c3) */
-#define H_DUEL_CHO 0x8abc330bba8e0745ull /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x6ce4bea22e4e92a9) */               /* (audit R07: re-made; its CRT 44 is above the swing's anchor CRT 40, the sweep 0.81 of before; was 0x966eb25d94c84fefull) */
+#define H_ST_DEPTH0 0xfa3db9593e25c937ull /* (RE-BASED 2026-11-15, B13 level: the master knee's ceiling 32767 -> 21900 (fx.c MK_TOP), only samples past the limiter's threshold change; was 0xd5674bd9b999ce4f) */ /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x63211e1720e2b2c3) */
+#define H_DUEL_CHO 0xaf6f75e8465587ecull /* (RE-BASED 2026-11-15, B13 level: the master knee's ceiling 32767 -> 21900 (fx.c MK_TOP), only samples past the limiter's threshold change; was 0x8abc330bba8e0745) */ /* (audit R05 / R08: the master soft knee and the loops' dead bands closed; re-based on purpose, was 0x6ce4bea22e4e92a9) */               /* (audit R07: re-made; its CRT 44 is above the swing's anchor CRT 40, the sweep 0.81 of before; was 0x966eb25d94c84fefull) */
 
 static uint64_t sc_fnv(const int32_t *x, uint32_t n, uint64_t h)
 {
