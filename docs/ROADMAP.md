@@ -1,21 +1,40 @@
 # TIDE roadmap
 
-Updated 13 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
+Updated 15 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
-## Now: 1.0.0-b12 (jam11)
+## Now: 1.0.0-b13 (jam11)
 
-jam11 is the 1.0.0-b12 work (`TIDE_VERSION` reads 1.0.0-b12). The unit runs rc17-test, jam11 `b2a43e85`, flashed 13 November. Flash free on the unit: 1,404 B (3,012 B on rc12b, 1,528 B on rc6.8-test at the start of b11; the splash sea, M27 and the 175 slots took the room). What merged after that build (PR 102, test scenes; PR 95, the README guide and pictures) changes nothing on the unit. On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
+jam11 is the 1.0.0-b13 work (`TIDE_VERSION` still reads 1.0.0-b12 until the package is made). The unit runs Shrub at the moment: the owner put it on the FM-1 on 15 November. TIDE's last flash was rc19-test, jam11 `5cbbddd0`, flashed 14 November at 12:03, 396 B flash free (backup `TIDE-backup-2026-11-14-1205`, to restore after flashing TIDE back). jam11 `de8cf05d` holds the next package (PRs 114 to 119 on top of rc19), not flashed: it is flashed on the owner's word only, and about 85 B of flash would be free by the PR notes (measured when the package is built).
+
+On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
 
 | What | State |
 |---|---|
+| Item 156: the VOICE 2/2 cell overlaps the text beside it at GLIDE "54 ms" | Planned: a drawing fix, found in b13 |
 | Reverb on the second core, to free CPU (K4) | Built on the branch `fix/b6-k4` (head `98c8a38`, which holds `e5e0815` plus a console compile fix) only: it is not in jam11 and not on the unit. It costs +1,712 B of flash by its own commit message, so it makes room worse; it needs its own FM-1 sweep with K4 on and off |
-| The footer's patch number (for example "#131") is clipped by the REC mark | In progress (b13); rides with the next build |
+
+## B13: done (13 to 15 November)
+
+Housekeeping and bug hunting, plus the owner's CHORDS idea, a sound review against his own sample libraries, and the acid. State: Merged into jam11 (PRs 104 to 119); the unit last ran rc19-test, so everything after PR 113 waits for the next flash (Now).
+
+- **CHORDS answer** (PR 105): live assist's ANSWER gets a fifth choice, the other part holds each bar's chord of your take as a pad; ROLL or SWELL plays them as short genre stabs.
+- **Footer REC dot** (PR 104, the owner's pick): while recording, the REC mark is the red dot only, so the patch name fits and stops scrolling.
+- **Two live-assist fixes** from the bug hunt (PRs 107, 108): a 2- or 4-bar answer stays in step with the take; loading a multi with REC armed starts the pass again on the new music.
+- **Output +8 dB at the jacks** (PR 115; owner: "very quiet"): after the limiter, so the balance of the multis is the same; factory multis median -18.8 LUFS (were -26.8), true peak at most -1.0 dBFS. Not checked on the unit: that the analog stage stays clean at the new level.
+- **The ACID engine** (PR 116): RES goes to the edge of self-oscillation, a harder open SAT, the 303's accent decay; on ACID / ACSQ the ENGINE page has WAVE, MULTI CUTOFF and DECAY, so a squelch or scream can be set by hand.
+- **Real 303 voices** (PR 117): SAW 303 (#5), SQUARE 303 (#6) and SCREAM 303 (#27) on the 303's documented ranges; M09, M10 and M11 rebuilt around them.
+- **Sounds tuned against the owner's samples** (PRs 110 to 112): 57 sounds and 15 multis (width, a front on leads, darker basses, kick room, levels); the full run took four changes back.
+- **Factory drums removed and 23 slots replaced by human-made patches** (PRs 113, 118): the 12 drum slots hold tonal sounds at the same numbers, and 11 weak sounds became Felucca engine presets and two imported FM voices. Credits: Felucca, Clipper (GPL-3.0), Aquanode DX7 banks (CC0), YM2612-Dexed-Presets (MIT).
+- **Five genre multis** (PR 119): M05 HSE CHICAGO, M06 ELEC CRISP (IDM), M20 DUB ROOTS, M22 ELEC OUTRUN (synthwave), M26 AMB JUNGLE (atmospheric DnB).
+- **Housekeeping and docs:** this page and the known issues refreshed (PRs 103, 106); worktrees and merged branches cleaned with backup refs.
+
+Open from b13: the three rows under Planned (the ACID filter drawings, MORPH TO and DUCK SRC), and the item 156 VOICE 2/2 cell that overlaps text at GLIDE "54 ms" (row below).
 
 ## B12: done (13 November)
 
-What the owner got in b12, all merged into jam11; the unit runs it as rc17-test (PR 95 and PR 102 came after that build and change nothing on the unit). State: Done.
+What the owner got in b12, all merged into jam11; it ran on the unit as rc17-test (PR 95 and PR 102 came after that build and change nothing on the unit). State: Done.
 
 - **A TIDE home page.** HOME's round is MORPH, then AUTO TIDE, then TIDE SETTINGS; HOME still opens MORPH. AUTO TIDE shows the loop's bars beside each part's steps and, after a take, the answer on knob 1's line in the answering part's colour (PR 96, after the live lines of PR 90; the MORPH scene comes from another page, PR 100).
 - **The splash "sea".** The power-on splash is the sea at a third of the earlier speed (the owner's pick of 13 November; PR 97).
@@ -28,7 +47,7 @@ What the owner got in b12, all merged into jam11; the unit runs it as rc17-test 
 
 ## B11: done (12 to 14 November)
 
-The owner's two tracks from the roadmap review of 12 November (room on the unit, test and tool debt), plus quality checks, housekeeping, a design pass, the web restyle and the DUELL 1.2 crackle fixes. State: Done, all merged into jam11 (all are on the unit in rc17-test, named under Now). What stays open is Later 36 to 38.
+The owner's two tracks from the roadmap review of 12 November (room on the unit, test and tool debt), plus quality checks, housekeeping, a design pass, the web restyle and the DUELL 1.2 crackle fixes. State: Done, all merged into jam11 (all ran on the unit in rc17-test). What stays open is Later 36 to 38.
 
 - **Room on the unit.** Flash was 1,528 B free at the start of b11. Found: the 26 factory multis stored smaller (LZSS against a shared dictionary, -4,416 B, PR 67); the FM6 exp2 table at 513 entries (-2,052 B, PR 68, with the `fm6exp2` group and the third-octave tool of PR 69); one value size on card rows (-1,584 B: the 31 px number tables dropped, PR 87). The room report said SP5 (Later 18), HANDSKIP (Later 9), MOVECOST (Later 10) and GUARDS are not switched off: they have been ON by default since the rc3.1 package (`tools/build.py` and `tools/size_fns.py` default to `"1"`), so there is no saving left to win there; the 13 November unit sweep confirmed them (no worse; Later 22). Measured costs: SP5 -1,756 B, HANDSKIP -36 B, MOVECOST +228 B, GUARDS +80 B.
 - **Test and tool debt.** Done: Later 28 (a stale comment, PR 61), Later 30 (the store's cross-version fixture, PR 59), Later 33 (`budget` and `deadline` build the shipped MOVECOST=1 configuration, PR 57), the `benchsim` M17 finding, the live assist groups (`take`, `answer`, `guards`) now run in CI (PR 62), and the test tooling (PRs 63 to 65: every host group runs by default or says why not; `--changed` leaves out the slow tier; the WSL mirror's file mode). The one open point is the design for per-module host objects (the first open point under Tooling).
@@ -42,7 +61,7 @@ The owner's two tracks from the roadmap review of 12 November (room on the unit,
 
 ## On the unit
 
-The unit runs rc17-test (see Now). Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
+The unit last ran TIDE rc19-test (see Now). Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
 
 | What | State |
 |---|---|
