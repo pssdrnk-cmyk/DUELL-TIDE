@@ -126,27 +126,31 @@ MULTIS = [
                      steps=". . . -7 . . -7 . . . -7 - . . . -12A . . . -12 . . -12 . . . -12 - . . . -7A", bars=2, bseed=64940, amt=30, b={"E:MLVL": 0}),
                 dict(sound="AIR SHIMMER", set=dict(P_AMODE="SEQ", P_ARATE="1/1", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN", P_VOIC="CLOSE", P_SPRD=60, P_DLY=22, P_REV=70, P_LEVEL=85),
                      steps="12 - - -", len=4, bseed=25230, amt=30, b={"P_FREEA": 76, "P_CHOR": 100})]),
-    dict(slot=5, name="HSE ORGAN", mode="LAYER",
-         what="classic house, G minor: an FM drawbar organ riff in hollow fifths (the hook: G, B flat, C, down to E flat and F, 2 bars, swung 58) through a dotted echo, over a tonewheel organ pad holding G and F suspended chords with a slow rotor (124 BPM)",
-         g=dict(G_BPM=124, G_DTIME="8D", G_DFDBK=50, G_DMIX=71, G_DMODE="DIGI", G_RTYPE="PLATE", G_RSIZE=70, G_RDAMP=61),
-         parts=[dict(sound="DUB DRAWBAR", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 112, "P_ASWING": 58, "P_AHOLD": "OFF", "P_CHRD": "POW", "P_VOIC": "INV1", "E:MEG": -20, "E:MRAT": 2,
-                                               "P_CHOR": 80, "P_SPRD": 60, "P_DLY": 58, "P_REV": 40, "P_LEVEL": 108},
-                     steps=". . -5A . -5 . . -2 . . -5 . -7 . . . . . -5A . -5 . . 0 . . -2 . -9 . -7 .", bars=2, bseed=64940, amt=30, b={"E:MLVL": 6, "P_DIST": 20}),
-                dict(sound="ORGAN WASH", set={"P_AMODE": "SEQ", "P_ARATE": "1/1", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "SUS4", "P_VOIC": "CLOSE",
-                                               "P_ATK": 40, "P_REL": 90, "P_SUS": 127, "P_CHOR": 70, "P_SPRD": 60, "P_DLY": 28, "P_REV": 68, "P_LEVEL": 88},
-                     steps="7 - - 5", len=4, bseed=19366, amt=30, b={"E:TOP": 4, "P_FREEA": 78})]),
-    dict(slot=6, name="HSE FRENCH", mode="LAYER",
-         what="French house (filter house), A minor, written notes (it stays in its key; b9 rework3: was HSE PIANO, an FM grand): a mellow electric piano looping two chords, A minor 9 and F major 9 without fifths (A3-B4, F3-G4), a bar each, held and re-struck on a swung grid (60 %), pumped hard by the duck on the beat, a little saturation and a low-pass breathing slowly (about 0.07 Hz), a scoop near 500 Hz; under it a round fretless disco bass on the off-beat eighths, A2 and F2 with an octave pickup; a 1/16 ping-pong echo and a small room (124 BPM)",
-         g=dict(G_BPM=124, G_DTIME="1/16", G_DFDBK=40, G_DMIX=60, G_DMODE="PING", G_RTYPE="ROOM", G_RSIZE=50, G_RDAMP=61),
-         parts=[dict(sound="MELLOW EP", set={"P_AMODE": "OFF", "P_SGATE": 110, "P_SSWING": 60, "P_DIST": 38, "P_FREEA": 46, "P_FREEB": 34, "P_LRATE": 6, "P_LD_FLT": 18,
-                                             "P_EQMG": -3, "P_EQMF": -12, "P_DKSRC": "PUMP", "P_DKRATE": "1/4", "P_DKDEP": 60,
-                                             "P_CHOR": 50, "P_SPRD": 50, "P_DLY": 34, "P_REV": 26, "P_TRIM": 112, "P_LEVEL": 91},
-                     steps="n57+60+67+71v112 - - n57+60+67+71v84 - - n57+60+67+71v100 - - - n57+60+67+71v92 - n57+60+67+71v104 - - - "
-                           "n53+57+64+67v112 - - n53+57+64+67v84 - - n53+57+64+67v100 - - - n53+57+64+67v92 - n53+57+64+67v104 - - -", bars=2, bseed=25350, amt=30, b={"P_FREEA": 60}),
-                dict(sound="FRETLESS", set={"P_AMODE": "OFF", "P_SGATE": 80, "P_SSWING": 60, "P_TRANS": 0, "P_PRIO": 1, "P_DKSRC": "PUMP", "P_DKRATE": "1/4", "P_DKDEP": 15,
-                                                "P_CHOR": 20, "P_SPRD": 30, "P_DLY": 10, "P_REV": 8, "P_TRIM": 127, "P_LEVEL": 103},
-                     steps=". . n45v110 . . . n45v96 . . . n45v104 . . n57v80 n45v100 . "
-                           ". . n41v110 . . . n41v96 . . . n41v104 . . n53v80 n41v100 .", bars=2, bseed=33747, amt=30, b={})]),
+    # ---- b13-multis (2026-11-15, owner: real sounds, documented practice; the gap genres of work/b13/genres/MULTIS_VS_GENRES.md): M05 and M06 re-voiced. Pattern sources are
+    # GENRES.md's source tags ([H3] = its section 4 line "Roles and register", [A8] = section 10 "Roles and register" / "Recipes"). Was: M05 HSE ORGAN (DUB DRAWBAR + ORGAN WASH,
+    # house "near" only), M06 HSE FRENCH (MELLOW EP + FRETLESS, French house is outside the genre list); their records are in the git history (jam11 7af108b8).
+    dict(slot=5, name="HSE CHICAGO", mode="LAYER",
+         what="classic Chicago house, C minor (123 BPM, swing 54): an imported FM house piano stabbing two alternating minor-seventh chords on the off-beat eighths (C minor 7, F minor 7, a bar each, the last stab pushed a 16th early), into a dotted echo and a small room; under it an FM bass jacking in 16ths with octave jumps through the key, C2 to C3, never on the beat (the kick's)",
+         # GENRES.md 4: 80s Chicago 120-125 BPM at 50-55 % swing [H21]; "an active bass moving through the key with an FM-type bite, two alternating ... minor chords" [H3];
+         # the M1 piano stab of early-90s house [H32]; piano house on minor chords ("Move Your Body") [b9 S1]; dotted-1/8 delay [H4]; tape-style echo and reverb (Owens) [H4]
+         g=dict(G_BPM=123, G_DTIME="8D", G_DFDBK=40, G_DMIX=60, G_DMODE="DIGI", G_DCOLOR=30, G_RTYPE="ROOM", G_RSIZE=50, G_RDAMP=61),
+         parts=[dict(sound="HOUSE PIANO", set={"P_AMODE": "OFF", "P_SGATE": 64, "P_SSWING": 54, "P_CHOR": 40, "P_SPRD": 50, "P_DLY": 34, "P_REV": 26, "P_TRIM": 118, "P_LEVEL": 98},
+                     steps=". . n55+58+60+63v112 . . . n55+58+60+63v92 . . . n55+58+60+63v104 . . . n55+58+60+63v90 . "
+                           ". . n56+60+63+65v112 . . . n56+60+63+65v92 . . . n56+60+63+65v104 . . n56+60+63+65v98 - .", bars=2, bseed=13064, amt=30, b={"P_FREEA": 70}),
+                dict(sound="FM BASS 2", set={"P_AMODE": "OFF", "P_SGATE": 72, "P_SSWING": 54, "P_TRANS": 0, "P_DKDEP": 0, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 0, "P_REV": 6, "P_TRIM": 115, "P_LEVEL": 102},
+                     steps=". n36v110 n48v90 . . n36v104 n48v88 n36v96 . n36v108 n48v90 n46v84 . n36v104 n48v92 n36v86 "
+                           ". n41v110 n53v90 . . n41v104 n53v88 n41v96 . n41v108 n53v90 n51v84 . n48v100 n46v92 n48v96", bars=2, bseed=13225, amt=30, b={"P_FREEA": 58})]),
+    dict(slot=6, name="ELEC CRISP", mode="LAYER",
+         what="IDM, the crisp side, D minor (125 BPM, swing 52): a detuned two-oscillator triangle bass that is the melody, mono with glide, D2 to F3, a 2-bar line of 16ths and rests that climbs and falls through D dorian, into a 1/8 ping-pong echo; above it an FM string pad holding D minor 9 and B flat major 7, a bar each, its low-pass at about 1.1 kHz, chorused into one big hall",
+         # GENRES.md 10: Aphex "Ageispolis": "a detuned triangle bass that doubles as the melody, a square pluck, a DX7 string pad" [A8]; recipe: chords from DX7 STRINGS with
+         # LP ~1.12 kHz, bass triangle, 2-voice unison [A8]; stab 1/8 ping-pong 29 % [A8]; Autechre "Bike" 125 with an 8th-note 52 swing [D16]; melody first [b9 1]
+         g=dict(G_BPM=125, G_DTIME="1/8", G_DFDBK=40, G_DMIX=64, G_DMODE="PING", G_DCOLOR=30, G_RTYPE="HALL", G_RSIZE=96, G_RDAMP=64),
+         parts=[dict(sound="FOLD BASS", set={"P_AMODE": "OFF", "P_SGATE": 90, "P_SSWING": 52, "P_TRANS": 0, "P_VOICE": "LEG", "E:WAVE": 2, "E:DTN": 14, "E:MIX": 64, "P_DKDEP": 0,
+                                             "P_CHOR": 20, "P_SPRD": 30, "P_DLY": 40, "P_REV": 20, "P_LEVEL": 116},
+                     steps="n38v112 . n45 n50v104 . n48 n45 . n43v108 . n41 n43 . n45 - n48 "
+                           "n50v112 . n53 n50 . n48 n46 . n43v108 - n46 n48 . n50 n48 n46", bars=2, bseed=3697, amt=30, b={"P_FREEA": 56}),
+                dict(sound="FM STRINGS", set={"P_AMODE": "OFF", "P_SDIV": "1/1", "P_SGATE": 127, "P_FREEA": 50, "P_CHOR": 80, "P_SPRD": 60, "P_DLY": 20, "P_REV": 70, "P_LEVEL": 92},
+                     steps="n53+57+60+64v96 n46+50+53+57v92", len=2, bseed=32696, amt=30, b={"P_FREEA": 58})]),
     dict(slot=7, name="TECH DETROIT", mode="LAYER",
          what="Detroit techno, B minor: one saw minor-seventh block walking in parallel (B, F sharp, E), off the downbeats, each hit closing its filter gently and ringing into a long dotted echo, a 2-bar walk with its turnaround; under it, an octave below the stab (b13), a warm phase-distortion string chord swelling again every bar (E, A, B: the 11th, 7th and root of B minor, so no walk of the stab rubs it; b9 rework2: was square-ish string-machine fifths at B4 to F sharp 5) (125 BPM)",
          g=dict(G_BPM=125, G_DTIME="8D", G_DFDBK=55, G_DMIX=71, G_DMODE="PING", G_RTYPE="HALL", G_RSIZE=80, G_RDAMP=61),
@@ -290,9 +294,10 @@ MULTIS = apply_owner(MULTIS)
 # (firmware/src/tide_take.c) takes the key from SCL, else from here, else from the take itself (the header then shows a ?). Read by tools/gen_duell_multis.py (DF_KEY in duell_multis.h, one byte
 # a multi: 0xFF none, else the root 0 .. 11 | 16 for minor). The keys were read off each multi's own patterns (the key estimate of tide_take.c over both parts; M03, M06, M08, M15 agree with the
 # design report's hand-made keys). The record format is untouched: a multi saved by the player carries no key (0xFF) until it is saved with SCL.
-KEYS = {1: "G min", 2: "C min", 3: "A min", 4: "F min", 5: "G min", 6: "A min", 7: "E maj", 8: "C# min", 9: "A min", 10: "D min", 11: "E min", 12: "G min", 13: "F# min", 14: "D maj", 15: "F min",
-        16: "D# maj", 17: "C min", 18: "C min", 19: "F# min", 20: "G maj", 21: "G# min", 22: "A min", 23: "A min", 24: "A maj", 25: "G min", 26: "G maj"}
-DISPLAY_ORDER = [1, 2, 25, 20, 3, 4, 26, 5, 6, 21, 7, 8, 24, 19, 22, 9, 10, 11, 12, 13, 14, 23, 15, 16, 17, 18, 27]
+KEYS = {1: "G min", 2: "C min", 3: "A min", 4: "F min", 5: "C min", 6: "D min", 7: "E maj", 8: "C# min", 9: "A min", 10: "D min", 11: "E min", 12: "G min", 13: "F# min", 14: "D maj", 15: "F min",
+        16: "D# maj", 17: "C min", 18: "C min", 19: "F# min", 20: "G min", 21: "G# min", 22: "A min", 23: "A min", 24: "A maj", 25: "G min", 26: "D min"}
+# b13-multis (2026-11-15): M06 ELEC CRISP and M22 ELEC OUTRUN join the ELEC run, M26 AMB JUNGLE the AMB run (they left the HSE and TECH runs); M05 HSE CHICAGO, M20 DUB ROOTS stay in place
+DISPLAY_ORDER = [1, 2, 25, 20, 3, 4, 5, 21, 7, 8, 24, 19, 9, 10, 11, 12, 13, 14, 6, 22, 23, 26, 15, 16, 17, 18, 27]
 
 
 # ---- the firmware's names --------------------------------------------------------------------------------------------------------
