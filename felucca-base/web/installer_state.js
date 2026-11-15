@@ -44,10 +44,9 @@ export function eraseOutcome(rc, err = null) {
 export const SMART = {
   duell:   "Updating: your patches and settings are kept.",
   clean:   "Clean install recommended: the unit does not run TIDE or DUELL, so old data from another firmware is cleared.",
-  hint:    "Connect the FM-1 to check.",
   keepOwn: "You chose to keep the data: anything an older firmware left on the unit stays.",
   eraseOwn: "You chose to erase: your patches and settings will be erased after the install.",
-  detected: { duell: (v, tide = false) => tide ? "Detected: TIDE running" : `Detected: DUELL ${v} running`, other: "Detected: not TIDE or DUELL (or no answer)", none: "Not checked yet. Connect the FM-1 and press \"Check the unit\"." },
+  detected: { duell: (v, tide = false) => tide ? "Detected: TIDE running" : `Detected: DUELL ${v} running`, other: "Detected: not TIDE or DUELL (or no answer)", none: "Not checked yet." },
   checking: "Checking the unit ...",
 };
 // info: the version string from INFO (a string), or null/undefined/anything else when the unit gave no usable answer.
@@ -59,14 +58,15 @@ export function detectUnit(info) {      // (item 91: a test build "DUELL 1.1.0-t
 }
 // The erase box: detected = detectUnit(...) or null (not asked / could not talk yet); touched = the user clicked the box;
 // current = the box as it stands. Once touched the box is never changed. Returns what the page shows.
+// Before the page has talked to the unit (detected null) it says nothing about the unit and the box stays off (b13: it used to come up
+// ticked with "the unit does not run TIDE or DUELL" next to "Not checked yet").
 export function eraseDecision({ detected = null, touched = false, current = false } = {}) {
   const isDuell = !!detected && detected.kind === "duell";
-  const checked = touched ? !!current : !isDuell;
+  const checked = touched ? !!current : !!detected && !isDuell;
   const line = !detected ? SMART.detected.none : isDuell ? SMART.detected.duell(detected.version, detected.tide) : SMART.detected.other;
-  let help = isDuell ? SMART.duell : SMART.clean;
-  if (touched && checked && isDuell) help = SMART.eraseOwn;
-  else if (touched && !checked && !isDuell) help = SMART.keepOwn;
-  else if (!detected && !touched) help += " " + SMART.hint;
+  let help = !detected ? "" : isDuell ? SMART.duell : SMART.clean;
+  if (touched && checked && (isDuell || !detected)) help = SMART.eraseOwn;
+  else if (touched && !checked && detected && !isDuell) help = SMART.keepOwn;
   return { checked, line, help };
 }
 
@@ -139,7 +139,7 @@ export const NOT_RELEASED = {
 };
 export const HASH_TEXT = {
   checking: "Checking the SHA-256 in your browser ...",
-  ok: "SHA-256 checked in this browser: it matches the release data of this site. The release notes on GitHub print the same value: compare them.",
+  ok: "SHA-256 checked in this browser: it matches the release.",
   nohash: "The release data has no SHA-256 for this build, so it cannot be checked. Nothing will be written.",
   size: "The downloaded file has another size than the release says. It was not accepted. Nothing will be written.",
   bad: (want, got) => `The downloaded file does not match the release's SHA-256 (release ${want}, file ${got}). ` +
@@ -192,6 +192,21 @@ export function verifyDownload(entry, got) {
   const have = String(got.sha256 || "").toLowerCase();
   if (have !== entry.sha256) return { ok: false, text: HASH_TEXT.bad(entry.sha256, have || "(none)") };
   return { ok: true, text: HASH_TEXT.ok };
+}
+// the name a build is shown by: its TIDE version ("TIDE 1.0.0-b13 (beta)"); a build from before TIDE had versions (stable-2026-11-03) is
+// "TIDE stable" and its date says which one. The raw tag and commit are in the build details.
+const SEMVER = /^\d+\.\d+\.\d+(?:-b\d+)?$/;
+export function buildName(entry) {
+  if (!entry) return "TIDE";
+  const ch = entry.channel === "beta" ? "beta" : "stable";
+  const v = SEMVER.test(entry.version || "") ? entry.version : ((/^tide-(.+)$/.exec(entry.tag || "") || [])[1] || "");
+  return SEMVER.test(v) ? `TIDE ${v} (${ch})` : `TIDE ${ch}`;
+}
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// "2026-11-03" -> "3 Nov 2026" ("" for anything else)
+export function readableDate(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || "");
+  return m && +m[2] >= 1 && +m[2] <= 12 ? `${+m[3]} ${MONTHS[+m[2] - 1]} ${m[1]}` : "";
 }
 // the rows the page shows for "what will be written"
 export function infoRows(entry, product, size) {

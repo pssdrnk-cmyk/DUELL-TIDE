@@ -1,6 +1,6 @@
 // node test_installer_state.mjs : the installer's state -> UI mapping (no DOM, no device)
 import { uiState, ACTIONS, BANNERS, TEXT, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
-  CHANNELS, CHANNEL, BETA, HASH_TEXT, parseChannel, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText } from "./installer_state.js";
+  CHANNELS, CHANNEL, BETA, HASH_TEXT, parseChannel, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText, buildName, readableDate } from "./installer_state.js";
 import { readFileSync } from "node:fs";
 let failed = 0;
 const ok = (c, m) => { if (!c) { failed++; console.log("FAIL", m); } };
@@ -45,7 +45,7 @@ function installerState() {
 function pageWiring() {
   const h = readFileSync(new URL("./install/index.html", import.meta.url), "utf8");
   for (const a of ACTIONS) {
-    const card = h.match(new RegExp(`<div class="card ${a}" id="card-${a}">([\\s\\S]*?)\\n    </div>\\n(?:    </details>\\n)?  </section>`));
+    const card = h.match(new RegExp(`<div class="card ${a}" id="card-${a}">([\\s\\S]*?)\\n    </div>\\n`));      // (a card ends at its own </div>; in "Leave TIDE" the return card is followed by the plain-DUELL card)
     ok(card, `card ${a} exists`);
     if (!card) continue;
     for (const part of ["bar", "status", "result", "lock"])
@@ -102,8 +102,13 @@ function smartDefault() {
   ok(d.checked === false && d.help === "Updating: your patches and settings are kept." && d.line === "Detected: DUELL 0.2.4 running", "DUELL answered: unticked, update text, detected line");
   d = eraseDecision({ detected: detectUnit(null) });
   ok(d.checked === true && d.help === "Clean install recommended: the unit does not run TIDE or DUELL, so old data from another firmware is cleared." && d.line === "Detected: not TIDE or DUELL (or no answer)", "no answer / other: ticked, clean text, not-TIDE-or-DUELL line");
+  // b13 item 4: before the page has talked to the unit the box is off and nothing is said about the unit (it used to come up ticked, with
+  // "the unit does not run TIDE or DUELL" next to "Not checked yet")
   d = eraseDecision({});
-  ok(d.checked === true && d.help.startsWith(SMART.clean) && /Connect the FM-1 to check/.test(d.help), "not checked yet: ticked, clean text and the connect hint");
+  ok(d.checked === false && d.help === "" && d.line === SMART.detected.none, "not checked yet: unticked, no recommendation");
+  ok(!/TIDE|DUELL|does not run|recommended/i.test(d.line + " " + d.help), "not checked yet: says nothing about what the unit runs");
+  ok(eraseDecision({ touched: true, current: true }).checked === true && eraseDecision({ touched: true, current: true }).help === SMART.eraseOwn, "not checked yet, ticked by hand: stays ticked and says so");
+  ok(eraseDecision({ touched: true, current: false }).help === "", "not checked yet, unticked by hand: still says nothing about the unit");
   ok(!/Detected: (TIDE|DUELL|not TIDE)/.test(d.line) && /Not checked yet/.test(d.line), "never claims a detection without an answer");
   for (const det of [null, duell, detectUnit(null)]) {
     ok(eraseDecision({ detected: det, touched: true, current: true }).checked === true, "touched ticked stays ticked");
@@ -117,16 +122,23 @@ function smartDefault() {
   ok(/addEventListener\("change", \(\) => \{ touched = true;/.test(h), "a click on the box marks it touched");
   ok(/requestMIDIAccess/.test(h.split("a silent check at load")[1].split("// ---- install")[0]) && /state !== "granted"\) return/.test(h), "the load check asks nothing unless MIDI was already allowed");
 }
-// editor2 item 8 (owner A6): one button, no gating tick boxes, no numbered steps; the checks that protect the unit are enforced by code and stay (a test fails if one disappears)
+// editor2 item 8 (owner A6): one button, no gating tick boxes; the checks that protect the unit are enforced by code and stay (a test fails if one disappears).
+// b13 (owner 2026-11-15, "Yes, with numbers"): A6's "no numbered steps" is replaced by four numbered steps, 1 Connect, 2 Back up, 3 Choose a build,
+// 4 Install, and one folded "Leave TIDE" section (the official firmware and plain DUELL 1.1) after them.
 function onePage() {
   const h = readFileSync(new URL("./install/index.html", import.meta.url), "utf8"), ota = readFileSync(new URL("./fm1ota.js", import.meta.url), "utf8");
   ok(!/class="chk"/.test(h) && !/Flash checklist/.test(h) && !/checksOk/.test(h), "install page: no flash checklist, no tick box gates the Install button");
-  ok(!/<span class="n">\d<\/span>/.test(h), "install page: no numbered step headings");
+  const steps = [...h.matchAll(/<h2><span class="n">(\d)<\/span>([^<]+)<\/h2>/g)].map((m) => m[1] + " " + m[2]);
+  ok(steps.join("|") === "1 Connect|2 Back up|3 Choose a build|4 Install", `install page: four numbered steps in order (${steps.join("|")})`);
+  const leave = h.split('<section class="step leave" id="leave">')[1] || "";
+  ok(/^\s*<details id="leave-details">\s*<summary><h2>Leave TIDE<\/h2><\/summary>/.test(leave) && leave.indexOf('id="card-return"') > 0 && leave.indexOf('id="card-plain"') > 0 &&
+     h.indexOf('<button id="go"') < h.indexOf('id="leave"'), "install page: the official firmware and plain DUELL are together in one folded Leave TIDE section, after Install");
+  ok(!/<h2>(INSTALL TIDE|BACK UP|RETURN TO OFFICIAL FIRMWARE|PLAIN DUELL)/.test(h), "install page: one heading per step (no second card title)");
   ok(/Do not switch off or unplug the unit while it installs\./.test(h) && /first saves a backup file to your downloads and stops if that fails \(<a href="\.\.\/editor\/backup\.html">the Backup page<\/a> restores it\)/.test(h), "install page: the do-not-switch-off line and the Back up first link (a link, not a gate)");
   const go = h.split('$("go").addEventListener("click"')[1].split("\n});")[0];
   ok(/else if \(await backupBeforeInstall\(up\)\) \{ await up\.install\(/.test(go) && !/up\.install\(/.test(go.replace(/else if \(await backupBeforeInstall\(up\)\) \{ await up\.install\(/, "")), "install page: every fresh install goes through backupBeforeInstall (only the update-mode resume skips it)");
-  ok(h.indexOf("Do not switch off or unplug") < h.indexOf('<button id="go"') && h.indexOf('<button id="go"') < h.indexOf("RETURN TO OFFICIAL FIRMWARE"), "install page: the line stands above the one Install button");
-  ok(/<details id="backup-details">/.test(h) && h.includes('id="card-backup"') && /async function doBackup\(/.test(h) && /await doBackup\(up, "return"\)/.test(h), "install page: the Back up card is kept as a closed details; doBackup stays for the return");
+  ok(h.indexOf("Do not switch off or unplug") < h.indexOf('<button id="go"') && h.indexOf('<button id="go"') < h.indexOf('id="card-return"'), "install page: the line stands above the one Install button");
+  ok(h.indexOf('id="step-backup"') < h.indexOf('id="card-backup"') && h.indexOf('id="card-backup"') < h.indexOf('id="choose"') && /async function doBackup\(/.test(h) && /await doBackup\(up, "return"\)/.test(h), "install page: the Back up card is step 2, before the build choice; doBackup stays for the return");
   // kept, enforced by code (silent)
   ok(/FM-1_9\\d\\d/.test(h) && h.includes("FELUCCA-LOADER-1") && /if \(!\/\^FM-1_9/.test(h), "kept: package identity FM-1_9xx and the loader marker FELUCCA-LOADER-1 are checked before a package is accepted");
   ok(/addEventListener\("beforeunload"/.test(h) && /if \(busy\)/.test(h.split('addEventListener("beforeunload"')[1].split("\n")[0]), "kept: the beforeunload prompt while writing");
@@ -165,6 +177,11 @@ function channels() {
   ok(parseChannel("stable", { ...manifest.channels.stable, notes_url: "javascript:alert(1)" }).notesUrl === "", "manifest: a notes link must be https");
   const rows = infoRows(m.beta, "FM-1_901", 614666).map((r) => r.join("=")).join("|");
   ok(/Build=Beta, beta-2026-11-04/.test(rows) && /Date=2026-11-04/.test(rows) && /Commit=77a6df2/.test(rows) && rows.includes("SHA-256=" + SHA_B) && /614666 bytes, FM-1_901/.test(rows), "what will be written: build, date, commit, package, SHA-256");
+  // b13 item 6: readable names (the raw tag and commit stay in the build details)
+  ok(buildName(m.stable) === "TIDE stable" && buildName(m.beta) === "TIDE beta" && readableDate(m.stable.date) === "3 Nov 2026", "names: a dated build reads 'TIDE stable', '3 Nov 2026'");
+  ok(buildName(v.beta) === "TIDE 1.0.0-b1 (beta)" && buildName({ ...v.beta, version: "" }) === "TIDE 1.0.0-b1 (beta)" && buildName({ channel: "stable", tag: "tide-1.0.0", version: "1.0.0" }) === "TIDE 1.0.0 (stable)",
+     "names: a TIDE version reads 'TIDE 1.0.0-b1 (beta)' (from the version, or the tag)");
+  ok(buildName(null) === "TIDE" && readableDate("2026-13-01") === "" && readableDate("") === "" && readableDate("2026-01-09") === "9 Jan 2026", "names: no build, a bad date");
   ok(/BETA build beta-2026-11-04 \(77a6df2\)/.test(betaConfirmText(m.beta)) && /under test/.test(betaConfirmText(m.beta)), "beta: the confirmation names the build");
 }
 function hashCheck() {

@@ -32,84 +32,73 @@
     </nav>
   </div>
 </header>
-<main id="main" class="wrap" style="padding-top:32px;padding-bottom:24px">
-  <h1 style="font-size:clamp(34px,9vw,46px)">Install TIDE</h1>
-  <p class="lead" style="font-size:21px;font-weight:500;margin:10px 0 6px">Firmware for the M-VAVE FM-1, written from this page over USB.</p>
-  <p class="small">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.<br>Not made or endorsed by OSCILL/R or M-VAVE.</p>
+<main id="main" class="wrap inst">
+  <h1>Install TIDE</h1>
+  <p class="lead">Firmware for the M-VAVE FM-1, written from this page over USB.</p>
+  <p class="risk-line"><b>At your own risk.</b> Not made or endorsed by OSCILL/R or M-VAVE. The way back is under <a href="#leave">Leave TIDE</a>.</p>
 
   <div class="notice" id="notreleased" hidden>
     <p><b class="t" id="notreleased-title">TIDE is not released yet.</b></p>
     <p id="notreleased-text">No stable or beta package is published with this page, so there is nothing to install here.</p>
     <p><a href="../emu/">Web emulator</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code</a></p>
   </div>
-
-  <div class="notice risk" id="risknote" role="note">
-    <p><b class="t">Installing is at your own risk.</b> If something goes wrong, the way back is the official firmware (the last card below, "Go back to the official firmware"); the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">recovery notes</a> explain it. TIDE is not affiliated with M-VAVE. Back up first.</p>
-  </div>
-
-  <p class="small" id="browser"></p>
   <noscript><p class="warn"><b>This page needs JavaScript</b> to talk to the FM-1.</p></noscript>
 
-  <section class="step">
-    <details id="backup-details">
-    <summary><b>Back up (recommended)</b></summary>
+  <section class="step" id="step-connect">
+    <h2><span class="n">1</span>Connect</h2>
+    <div class="card connect" id="card-connect">
+      <p>Plug the FM-1 in by USB and switch it on. Close other MIDI programs and allow MIDI when Chrome asks.</p>
+      <p class="small" id="browser"></p>
+      <p class="row"><button id="detect" class="act quiet" type="button" disabled>Check the unit</button> <span class="small" id="erase-detect"></span></p>
+    </div>
+  </section>
+
+  <section class="step" id="step-backup">
+    <h2><span class="n">2</span>Back up</h2>
     <div class="card backup" id="card-backup">
-      <h2>BACK UP</h2>
-      <p>Reads the unit and saves a file with your current sounds and settings to this computer. Nothing is written to the FM-1. It needs a firmware that supports
-      backups (Felucca, DUELL or TIDE). The official M-VAVE firmware cannot be backed up from this page.</p>
-      <p class="small">The file holds every patch, the settings and the music of both parts; from DUELL 0.2.14 on also the MULTIs and the PATTERN slots, and the user wavetables. An older firmware cannot save the MULTIs and PATTERN slots: the message after the backup says so. A backup is restored in the editor (its Backup page).</p>
-      <p><button id="backup" class="act" disabled>Save a backup file</button></p>
+      <p>Saves your sounds and settings to a file. Nothing is written to the FM-1.</p>
+      <p class="small">Needs TIDE, DUELL or Felucca on the unit. Restore it on <a href="../editor/backup.html">the Backup page</a>.</p>
+      <p><button id="backup" class="act quiet" disabled>Save a backup file</button></p>
       <p class="lock" id="lock-backup"></p>
       <progress class="bar" id="bar-backup" max="100" value="0" hidden></progress>
       <p class="status" id="status-backup"></p>
       <p class="result" id="result-backup"></p>
     </div>
-    </details>
   </section>
 
   <div class="needpkg" hidden>
   <section class="step" id="choose">
-    <h2>Choose a build</h2>
-    <p class="small">Stable is the build the fork owner validated on a unit. Beta is newer and still under test.</p>
+    <h2><span class="n">3</span>Choose a build</h2>
     <div class="choices" role="radiogroup" aria-label="Build to install">
-      <label class="choice"><input type="radio" name="channel" id="ch-stable" value="stable" disabled><span class="body"><b>Stable</b> <span class="chip ok">Recommended</span><span class="meta" id="meta-stable">Not released yet</span></span></label>
-      <label class="choice"><input type="radio" name="channel" id="ch-beta" value="beta" disabled><span class="body"><b>Beta</b> <span class="chip test">Under test</span><span class="meta" id="meta-beta">Not released yet</span></span></label>
+      <label class="choice"><input type="radio" name="channel" id="ch-stable" value="stable" disabled><span class="body"><b id="name-stable">Stable</b> <span class="chip ok">Recommended</span><span class="meta" id="meta-stable">Not released yet</span></span></label>
+      <label class="choice"><input type="radio" name="channel" id="ch-beta" value="beta" disabled><span class="body"><b id="name-beta">Beta</b> <span class="chip test">Under test</span><span class="meta" id="meta-beta">Not released yet</span></span></label>
     </div>
     <div class="beta-panel" id="beta-panel" hidden>
-      <h3>Beta: under test</h3>
-      <p id="beta-warning">This is a beta. It is under test and has known issues. The stable build is the one the fork owner validated.</p>
+      <p><b class="t">Beta: under test.</b> <span id="beta-warning">It can have bugs the stable build does not.</span> <a id="notes-beta" href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases" target="_blank" rel="noopener">Release notes</a></p>
       <div id="beta-issues-wrap" hidden>
-        <p><b>Known open issues</b></p>
-        <ul class="plain" id="beta-issues"></ul>
+        <p class="small">Known open issues:</p>
+        <ul class="plain small" id="beta-issues"></ul>
       </div>
-      <p id="beta-noissues" hidden>No known issues are listed in the release notes. Read the notes before you install.</p>
-      <p><a id="notes-beta" href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases" target="_blank" rel="noopener">Read the beta's release notes</a></p>
+      <p class="small" id="beta-noissues" hidden>No known issues are listed in the release notes. Read the notes before you install.</p>
       <label><input type="checkbox" id="beta-ack"> <b id="beta-ack-label">I understand this is a beta under test. I have a backup, or I accept the risk without one.</b></label>
     </div>
-    <div class="panel" id="what-written">
-      <h3>What will be written</h3>
+    <p class="verify-line"><span class="verify" id="hashstate" role="status"></span> <span id="pkgstate">Looking for the build ...</span></p>
+    <details class="more" id="what-written">
+      <summary>Build details</summary>
       <dl class="facts" id="pkgfacts"></dl>
-      <p class="verify" id="hashstate" role="status"></p>
-      <p class="small" id="pkgstate">Looking for the build ...</p>
-      <p class="small" id="notes-line" hidden><a id="notes-link" href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases" target="_blank" rel="noopener">Release notes for this build</a></p>
-    </div>
+      <p class="small" id="notes-line" hidden>The release notes print the same SHA-256: <a id="notes-link" href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases" target="_blank" rel="noopener">compare them</a>.</p>
+    </details>
   </section>
 
-  <section class="step">
-    <h2>Connect</h2>
-    <p>Connect the FM-1 by USB and switch it on. Close other programs that use MIDI (a DAW, another browser tab). Chrome will ask to allow MIDI with SysEx: allow it.</p>
-  </section>
-
-  <section class="step">
-    <h2>Install</h2>
+  <section class="step" id="step-install">
+    <h2><span class="n">4</span>Install</h2>
     <div class="card install" id="card-install">
-      <h2>INSTALL TIDE</h2>
-      <p class="small" id="install-what"></p>
-      <p class="small">The page checks what your FM-1 runs now and sets the box below for you. You can always tick or untick it yourself.</p>
-      <p class="small"><b id="erase-detect"></b> <button id="detect" class="act quiet" style="min-height:36px;padding:4px 14px;font-size:16px" type="button" disabled>Check the unit</button></p>
       <label><input type="checkbox" id="erase-after"> <b id="erase-label">Erase my saved data after installing (start from scratch)</b></label>
       <p class="small" id="erase-smart"></p>
-      <p class="small" id="erase-help">Erases your settings (theme, scale, MIDI channels, favourites), the autosave, your patches, your multis and your patterns. The factory sounds, multis and patterns come back. This cannot be undone: back up first. Left off, your saved data stays and the unit comes back as you left it.</p>
+      <details class="more">
+        <summary>What does erasing remove?</summary>
+        <p class="small" id="erase-help">Erases your settings (theme, scale, MIDI channels, favourites), the autosave, your patches, your multis and your patterns. The factory sounds, multis and patterns come back. This cannot be undone: back up first. Left off, your saved data stays and the unit comes back as you left it.</p>
+      </details>
       <p class="small" id="erase-lock"></p>
       <p><b>Do not switch off or unplug the unit while it installs.</b> On a unit that runs TIDE or DUELL the page first saves a backup file to your downloads and stops if that fails (<a href="../editor/backup.html">the Backup page</a> restores it).</p>
       <p><button id="go" class="act" disabled>Install <span class="ver">TIDE</span></button></p>
@@ -117,53 +106,45 @@
       <progress class="bar" id="bar-install" max="100" value="0" hidden></progress>
       <p class="status" id="status-install"></p>
       <p class="result" id="result-install"></p>
-      <p class="small">If it stops: replug the cable and press Install again, with the same build chosen. The FM-1 stays in update mode until the write is finished, and the page resumes it.</p>
+      <p class="small">Stopped halfway? Replug and press Install again with the same build: it resumes. <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/TROUBLESHOOTING.md">Troubleshooting</a></p>
     </div>
   </section>
   </div>
 
-  <section class="step">
-    <h2>Go back to the official firmware</h2>
+  <section class="step leave" id="leave">
+    <details id="leave-details">
+    <summary><h2>Leave TIDE</h2></summary>
+    <h3>Go back to the official firmware</h3>
     <div class="card return" id="card-return">
-      <h2>RETURN TO OFFICIAL FIRMWARE</h2>
       <p class="retwarn">This writes the official M-VAVE firmware back. TIDE will be removed. Keep the cable connected until DONE.</p>
-      <p>Download the official FM-1 firmware (<code>FM-1.fwsc</code>, V15) yourself from M-VAVE's download page:
-      <a href="https://www.m-vave.com/download" target="_blank" rel="noopener">m-vave.com/download</a>. This project does not host or redistribute M-VAVE's files.
-      Select the unmodified file here; the page checks it in your browser (it is never uploaded) and only accepts V15.</p>
-      <p><label>Official FM-1.fwsc<br><input id="stock-file" type="file" accept=".fwsc"></label></p>
-      <p><button id="stock-go" class="act" disabled>Back up and return to official V15</button></p>
+      <p class="small">Get <code>FM-1.fwsc</code> (V15) from <a href="https://www.m-vave.com/download" target="_blank" rel="noopener">m-vave.com/download</a>; this site does not host it. The page checks it in your browser and never uploads it. TIDE music does not open on the official firmware.</p>
+      <p><input id="stock-file" type="file" accept=".fwsc" aria-label="Official FM-1.fwsc (V15)"></p>
+      <p class="small" id="stockstate"></p>
+      <p><button id="stock-go" class="act quiet" disabled>Back up and return to official V15</button></p>
       <p class="lock" id="lock-return"></p>
       <progress class="bar" id="bar-return" max="100" value="0" hidden></progress>
       <p class="status" id="status-return"></p>
       <p class="result" id="result-return"></p>
-      <p class="small">TIDE music and sounds cannot be opened by the official firmware.</p>
       <p class="small"><label><input id="stock-recovery" type="checkbox"> Resume an interrupted return: I already saved a complete backup to this computer</label></p>
-      <p class="small" id="stockstate"></p>
     </div>
-  </section>
-
-  <section class="step">
-    <h2>Go back to plain DUELL 1.1</h2>
+    <h3>Go back to plain DUELL 1.1</h3>
     <div class="card" id="card-plain">
-      <h2>PLAIN DUELL 1.1 (OSCILL/R)</h2>
-      <p>To leave TIDE and run the original DUELL 1.1, use the Install page on <a href="https://oscillr.github.io/DUELL/" target="_blank" rel="noopener">OSCILL/R's DUELL site</a>. This page does not host their package.
-      <b>Save a backup here first.</b> Plain DUELL does not read a patch whose End B morphs an FM6 sound (it shows the factory sound and drops that patch at its next save).
-      Details: <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">RECOVERY</a> and <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_LIMITS.md">Known limits</a>.</p>
+      <p>Use the Install page on <a href="https://oscillr.github.io/DUELL/" target="_blank" rel="noopener">OSCILL/R's DUELL site</a>. <b>Back up here first:</b> plain DUELL drops patches whose End B morphs an FM6 sound.</p>
+      <p class="small"><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">Recovery</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_LIMITS.md">Known limits</a></p>
     </div>
+    </details>
   </section>
 
-  <p class="small" style="margin-top:32px"><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">Recovery</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/TROUBLESHOOTING.md">Troubleshooting</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/INSTALL.md">Install guide</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_ISSUES.md">Known issues</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem</a></p>
+  <p class="small links"><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">Recovery</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/TROUBLESHOOTING.md">Troubleshooting</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/INSTALL.md">Install guide</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_ISSUES.md">Known issues</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem</a></p>
   <pre id="log"></pre>
 </main>
 <footer class="site">
   <div class="wrap">
     <p class="credit"><b>TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</b></p>
-    <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. Please send TIDE problems to this fork's <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">issues</a>, not to the DUELL author.</p>
-    <p><span class="ver">TIDE</span> installer. TIDE is free software under the GPL-3.0, with <b>no warranty</b>. DUELL is a fork of Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
-    The package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
+    <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> It is a fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1 and is not affiliated with, endorsed by or supported by OSCILL/R or M-VAVE (M-VAVE and FM-1 are their owners' trademarks). Free software under the GPL-3.0, with <b>no warranty</b>. Please send TIDE problems to this fork's <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">issues</a>.</p>
+    <p>DUELL is a fork of Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments, with the SHIM and RESO reverbs from JIANT. The package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
     <a href="./LICENSES/">Licence texts</a> · <a href="./LICENSING.md">LICENSING.md</a> · <a href="./LICENSE">GPL-3.0</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code (TIDE)</a> · <a href="https://github.com/oscillr/DUELL">Source code (DUELL)</a>.</p>
-    <p>M-VAVE and FM-1 are trademarks of their respective owners. TIDE is independent and not affiliated with, endorsed by or supported by them.</p>
-    <p>This page sets no cookies and loads nothing from other servers. The package is checked in your browser and never uploaded.</p>
+    <p>No cookies, nothing loaded from other servers. The package is checked in your browser and never uploaded.</p>
   </div>
 </footer>
 <script type="module">
@@ -172,7 +153,8 @@ import { Updater } from "../fm1ota.js";
 import { BackupConnection, eraseAllData, parseInfo } from "../fm1backup.js";
 import { captureUnitBackup } from "../installer_backup.js";
 import { uiState, TEXT, BACKUP_FIRST, SWITCH_OFF_ON, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
-         CHANNELS, CHANNEL, NOT_RELEASED, HASH_TEXT, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText } from "../installer_state.js";
+         CHANNELS, CHANNEL, NOT_RELEASED, HASH_TEXT, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText,
+         buildName, readableDate } from "../installer_state.js";
 
 const $ = (id) => document.getElementById(id);
 const log = (t) => { $("log").textContent += t + "\n"; };
@@ -230,9 +212,8 @@ if (!navigator.requestMIDIAccess) {
 
 // ---- the builds: channels.json lists Stable and Beta (tag, date, commit, file, size, SHA-256, notes link). Stable is chosen unless the address says #beta.
 const showVersion = () => {
-  const v = entry ? `${CHANNEL[channel].label} ${entry.version || entry.date || entry.tag}` : "TIDE";
+  const v = buildName(entry);       // "TIDE 1.0.0-b9 (beta)"; the raw tag and commit are in the build details
   document.querySelectorAll(".ver").forEach((e) => { e.textContent = v; });
-  $("install-what").textContent = entry ? `Writes: ${CHANNEL[channel].label} build ${entry.tag}${entry.commit ? " (" + entry.commit.slice(0, 7) + ")" : ""}. Chosen above.` : "";
 };
 function showFacts(rows) {
   const dl = $("pkgfacts");
@@ -261,7 +242,8 @@ function showEntry() {
 function showChoices() {
   for (const c of CHANNELS) {
     const e = manifest[c];
-    $("meta-" + c).textContent = e ? `${e.tag}${e.commit ? ", commit " + e.commit.slice(0, 7) : ""}${e.date ? ", " + e.date : ""}` : "Not released yet";
+    $("name-" + c).textContent = e ? buildName(e) : CHANNEL[c].label;
+    $("meta-" + c).textContent = e ? readableDate(e.date) || e.tag : "Not released yet";
   }
 }
 
@@ -280,7 +262,7 @@ async function acceptPackage(bytes, source, e, token) {
       throw new Error("no Felucca update loader in this file (never install a package made from an official file)");
     image = logicalImage(bytes); product = id;
     showFacts(infoRows(e, id, bytes.length));
-    $("pkgstate").textContent = `Ready to install: ${source}`;
+    $("pkgstate").textContent = "Ready to install.";      // (the file is named in the build details)
   } catch (err) {
     image = null; product = null;
     $("pkgstate").textContent = "This file cannot be installed: " + err.message;
@@ -559,6 +541,10 @@ $("stock-go").addEventListener("click", async () => {
   } catch (e) { fail("return", e); }
   finally { end("return"); }
 });
+// "Leave TIDE" is folded: a link to it (the line at the top) opens it
+const openLeave = () => { if (location.hash === "#leave") $("leave-details").open = true; };
+window.addEventListener("hashchange", openLeave); openLeave();
+document.querySelectorAll('a[href="#leave"]').forEach((a) => a.addEventListener("click", () => { $("leave-details").open = true; }));
 refresh();
 </script>
 </body>
