@@ -230,8 +230,8 @@ dialog.ask .row > label.row { margin: 0; }
 .rtick.bar { color: var(--fg); font-weight: 700; border-left-color: var(--dim); }
 .rkeys { overflow: hidden; border-right: 1px solid var(--line); }
 .keysin { position: relative; }
-.keysin .k { box-sizing: border-box; font-size: 10px; line-height: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; border-bottom: 1px solid #9a9a9a; overflow: hidden; white-space: nowrap; }
-.keysin .k.w { background: #f4f4f4; color: #222; } .keysin .k.b { background: #2a2a2a; color: #eee; margin-right: 0; } .keysin .k.c { border-bottom-color: #222; font-weight: 700; }
+.keysin .k { box-sizing: border-box; font-size: 10px; line-height: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; border-bottom: 1px solid #9CC2D3; overflow: hidden; white-space: nowrap; }
+.keysin .k.w { background: #F2FBFF; color: #02070D; } .keysin .k.b { background: #102A3C; color: #F2FBFF; margin-right: 0; } .keysin .k.c { border-bottom-color: #02070D; font-weight: 700; }   /* (b13: the night sea's ink and foam, no neutral greys) */
 .rwrap { position: relative; min-height: 0; min-width: 0; display: grid; }
 .rscroll { overflow: auto; min-height: 0; min-width: 0; }
 .rgrid { position: relative; outline: none; cursor: crosshair; touch-action: none; user-select: none; }

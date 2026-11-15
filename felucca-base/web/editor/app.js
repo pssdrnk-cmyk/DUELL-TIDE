@@ -776,7 +776,7 @@ function fill(i) {
   app.cells.slice(before).forEach((x) => { x.partBody = i; });
   c.body.scrollTop = 0;
   c.body.dataset.tab = tabKey(i);
-  const t = tabsOf(i).find((x) => x.key === tabKey(i)); document.title = `TIDE for FM-1 editor: ${i === 2 ? "GLOBAL " : "PART " + (i + 1) + " "}${TAB[t?.key] ?? t?.label ?? ""}`;
+  setTitle();
 }
 
 function renderMain() {
@@ -792,7 +792,13 @@ function renderMain() {
   applyTheme(app.pal);
   refreshAll();
 }
-function setView(v) { app.view = v; $("main").dataset.view = v; $("vparts").setAttribute("aria-pressed", v === "parts"); $("vglobal").setAttribute("aria-pressed", v === "global"); fitSoon(); }
+// the browser tab's title names what is on screen: the active part's tab in PARTS, the global tab in GLOBAL (b13: "GLOBAL GLOBAL" was the GLOBAL tab's)
+function setTitle() {
+  if (!app.unit) { document.title = "TIDE for FM-1 editor"; return; }
+  const i = app.view === "global" ? 2 : activePart(), t = tabsOf(i).find((x) => x.key === tabKey(i)), tab = TAB[t?.key] ?? t?.label ?? "";
+  document.title = `TIDE for FM-1 editor: ${i === 2 ? (tab === "GLOBAL" ? "GLOBAL" : "GLOBAL " + tab) : "PART " + (i + 1) + " " + tab}`;
+}
+function setView(v) { app.view = v; $("main").dataset.view = v; $("vparts").setAttribute("aria-pressed", v === "parts"); $("vglobal").setAttribute("aria-pressed", v === "global"); setTitle(); fitSoon(); }
 app.setView = setView;
 function refreshAll() {
   const u = app.unit; if (!u) return;
@@ -855,7 +861,7 @@ fitPage();
 
 // ---- the active part and the header (DUELL 1.1, owner items 47, 48): the part markers (the part number, the dim voices-left number), the battery, the octave view, the DEMO switch
 const activePart = () => app.active ?? app.unit?.selected ?? 0;
-function setActive(p) { if (app.active === p) return; app.active = p; applyTheme(app.pal); app.refresh(); }
+function setActive(p) { if (app.active === p) return; app.active = p; applyTheme(app.pal); app.refresh(); setTitle(); }
 app.setActive = setActive;
 const VOICES_LEFT = [8, 6];                           // the demo's voices-left numbers (the unit's polyphony budget: 8 to 10 notes per part); a real unit does not report them to the editor
 // the third cell (item 153): the number of voices still free in POLY; M, L, U in MONO, LEGATO, UNISON (as the unit's capsule)
@@ -949,12 +955,12 @@ let connecting = false, auto = false;   // auto: connect by itself when the unit
 async function connect() {
   if (connecting || app.unit) return;
   connecting = true; auto = true;
-  $("connect").disabled = true; setStatus("Looking for the FM-1 ..");
+  $("connect").disabled = true; $("connect").hidden = DEMO; setStatus(DEMO ? "" : "Looking for the FM-1 ..");
   try {
     let link;
     if (MOCK) {
       const { MockUnit, MockLink } = await import("./mockunit.js");
-      app.mock = new MockUnit({ slots175: MOCK !== "128" && MOCK !== "old", pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : MOCK === "u4" ? 127 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
+      app.mock = new MockUnit({ slots175: MOCK !== "128" && MOCK !== "old", pat32: MOCK === "pat32", caps: MOCK === "old" ? 3 : MOCK === "u4" || DEMO ? 127 : 31, playing: MOCK === "playing", patchRaw: MOCK !== "old", version: MOCK === "old" ? "FELUCCA DUELL 0.2.13 bet" : undefined });
       link = new MockLink(app.mock, 2);
       if (DEMO) seedDemo(app.mock);
     } else {
@@ -981,7 +987,7 @@ async function connect() {
       app.octave = 0; app.active = 0;
     }
     app.unit = u;
-    setStatus(DEMO ? "DEMO: a simulated TIDE unit, no unit connected" : `Connected: ${u.info.tide ? "TIDE (built on " + u.info.version.replace(/^FELUCCA /, "") + ")" : u.info.version.replace(/^FELUCCA /, "")}${MOCK ? " (simulated)" : ""}`, "good");
+    setStatus(DEMO ? "" : `Connected: ${u.info.tide ? "TIDE (built on " + u.info.version.replace(/^FELUCCA /, "") + ")" : u.info.version.replace(/^FELUCCA /, "")}${MOCK ? " (simulated)" : ""}`, "good");
     $("connect").hidden = true; $("disconnect").hidden = DEMO;
     startTheme(u);
     renderMain();
@@ -1004,7 +1010,7 @@ $("demoleave").addEventListener("click", leaveDemo); $("demobar").hidden = !DEMO
 $("octbtn").addEventListener("click", () => toggleOctave());
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && $("octview")) toggleOctave(false); });
 $("vparts").addEventListener("click", () => setView("parts")); $("vglobal").addEventListener("click", () => setView("global"));
-if (MOCK) {
+if (MOCK && !DEMO) {   // (the test controls of ?mock=; the DEMO says it is simulated once, in its bar)
   $("mockbar").hidden = false;
   $("mockturn").addEventListener("click", () => {
     const m = app.mock; if (!m) return;

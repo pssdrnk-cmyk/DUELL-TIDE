@@ -34,6 +34,7 @@ h2{font:600 16px/1.2 "Barlow Semi Condensed",sans-serif;margin:10px 0 4px;paddin
 ul{margin:4px 0 0;padding-left:18px}
 li{margin:3px 0;break-inside:avoid}
 li::marker{color:var(--a1)}
+a{color:var(--a1);text-underline-offset:2px}
 .dg{display:grid;gap:5px;margin:6px 0 4px;font-size:.85em;text-align:center}
 .dg .r{display:flex;gap:5px;align-items:stretch}
 .dg .r>div{flex:1;border:1px solid var(--line);border-radius:6px;padding:3px 2px;background:var(--chip)}
@@ -49,6 +50,7 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
  header{padding:0 0 1.5mm;border-bottom:1.5px solid var(--a1)}
  header h1{font-size:20pt;color:#000}
  header h1 .wm{display:none}
+ a{color:inherit;text-decoration:none}
  header h1 .pt{display:inline}
  header .tag{font-size:10pt;margin-top:1mm;color:#000}
  header .by{font-size:9pt;margin-top:.5mm;color:var(--mute)}
@@ -68,11 +70,11 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <body>
 <main>
 <header>
- <h1><img class="wm" src="../assets/tide-wordmark.svg" alt="TIDE" width="260" height="79"><span class="pt">TIDE</span></h1>
+ <h1><a href="../" aria-label="TIDE, home"><img class="wm" src="../assets/tide-wordmark.svg" alt="TIDE" width="260" height="79"></a><span class="pt">TIDE</span></h1>
  <p class="tag">A morph that plays and evolves by itself.</p>
  <p class="by">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</p>
  <p class="sub">cheat sheet for the M-VAVE FM-1</p>
- <p class="stamp">The gestures first, TIDE's pages at the end &middot; a quick reference, not by OSCILL/R; full details in docs/QUICKSTART.md and docs/TIDE_GUIDE.md</p>
+ <p class="stamp">The gestures first, TIDE's pages at the end &middot; a quick reference, not by OSCILL/R; full details in the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/QUICKSTART.md">quick start</a> and the <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/TIDE_GUIDE.md">TIDE guide</a></p>
  <p class="bar"><button type="button" onclick="window.print()">Print</button></p>
 </header>
 
@@ -80,7 +82,7 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 
 <section>
 <h2>Part marker</h2>
-<svg viewBox="0 0 440 150" width="100%" role="img" aria-label="The part marker at the top of a page: part number, morph end letter, voices" style="display:block;max-width:440px;color:var(--fg);font:12px/1.2 sans-serif">
+<svg viewBox="0 0 440 150" width="100%" role="img" aria-label="The part marker at the top of a page: part number, morph end letter, voices" style="display:block;max-width:440px;color:var(--fg);font:13px/1.2 &quot;Barlow Semi Condensed&quot;,sans-serif">
 <g fill="none" stroke="var(--mute)" stroke-width="1"><path d="M160 46V70H205"/><path d="M100 46V96H205"/><path d="M40 46V122H205"/></g>
 <rect x="10" y="10" width="180" height="36" rx="18" fill="var(--a1)"/>
 <rect x="70" y="11" width="119" height="34" rx="17" fill="var(--chip)" stroke="var(--a1)"/>
@@ -122,15 +124,15 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <section>
 <h2>Sequencer / patterns</h2>
 <div class="row"><div class="g">Turn a knob with <b>REC</b> armed</div><div class="e">Records a parameter lock. Tap <b>SEQ</b>, turn <b>SELECT</b> to PARAMETER LOCKS to change or delete them.</div></div>
-<div class="row"><div class="g">Hold <b>SEQ</b></div><div class="e">QUICK SEQ tools on the white keys from F3.</div></div>
+<div class="row"><div class="g">Hold <b>SEQ</b></div><div class="e">QUICK SEQ tools on the white keys from F3. With a live-assist answer standing: C4 SWELL makes it anew, D4 RIPPLE moves a few of its notes (both on the next loop).</div></div>
 </section>
 
 <section>
 <h2>Saving &amp; loading</h2>
 <div class="row"><div class="g">Tap <b>SAVE</b></div><div class="e">Opens the page that fits: PATTERNS on a sequencer page, otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. <b>SELECT</b> moves between PATCHES, PATTERNS, MULTIS, TOOLS.</div></div>
 <div class="row"><div class="g">Hold <b>SAVE</b></div><div class="e">Overwrites the slot your sound came from; <b>OCT+</b> yes, <b>OCT-</b> no. On the MORPH page with TARGET BOTH, each part goes over its own slot.</div></div>
-<div class="row"><div class="g">MIDI program change</div><div class="e">LAYER: program 0 to 25 on part 1's channel loads multis M01 to M26 (bank 0 only; 0 to 15 and M01 to M16 on plain DUELL). DUEL and STEREO: bank 0, program n loads entry n of the PATCHES list; bank 1, program n loads patch slot n.</div></div>
-<div class="row"><div class="g">Backup (installer page or editor Backup page)</div><div class="e">Saves patches, multis, patterns, user wavetables and settings. A flash keeps your saved data; back up before every flash. Room for 128 patches, 16 multis (M01 to M16), 32 patterns (P01 to P32).</div></div>
+<div class="row"><div class="g">MIDI program change</div><div class="e">LAYER: program 0 to 26 on part 1's channel loads multis M01 to M27 (bank 0 only; 0 to 15 and M01 to M16 on plain DUELL). DUEL and STEREO: program n loads sound #n+1 (bank 0 or 1); bank 2, program n loads #129 + n.</div></div>
+<div class="row"><div class="g">Backup (installer page or editor Backup page)</div><div class="e">Saves patches, multis, patterns, user wavetables and settings. A flash keeps your saved data; back up before every flash. Room for 128 patches, 26 multis (M01 to M26), 32 patterns (P01 to P32).</div></div>
 </section>
 
 <section>
@@ -171,13 +173,13 @@ footer{margin-top:10px;font-size:12px;color:var(--mute)}
 <div class="row"><div class="g"><b>ARC</b></div><div class="e">OFF, RISE or DROP: the long shape of rise, peak and breakdown. Acts in automatic EVOLVE and TRAVEL.</div></div>
 <div class="row"><div class="g"><b>KNOBS</b></div><div class="e">Which set K2, K3 and K4 play on HOME page 1 (K1 is always MORPH): AUTO (reads the first word of the multi's name), STD, DUB, HSE, TECH, ACID, ELEC, AMB. Every new End B is rolled MUSIC.</div></div>
 <div class="row"><div class="g"><b>AMOUNT</b></div><div class="e">0 to 100 %: how far a roll may go (the MORPH page's knob 4 until 1.0.0-b7). Not part of a STYLE.</div></div>
-<div class="row"><div class="g"><b>ANSWER</b> / <b>ANSWER ON</b></div><div class="e">When a recording pass closes, the other part is given a bass line in the key (BASS LINE, the default) or your notes a third above (DOUBLE), or a REPLY that ends on the tonic, or an ECHO of your last note (the last two double the loop: a call of 2 bars at most); OFF keeps nothing. ANSWER ON: OTHER (the other part) or OFF. OCT- held + a PRESETS turn goes back along the last 2 takes (left) or forward (right); ROLL on the part that holds the answer writes it again.</div></div>
+<div class="row"><div class="g"><b>ANSWER</b> / <b>ANSWER ON</b></div><div class="e">When a recording pass closes, the other part is given a bass line in the key (BASS LINE, the default), your notes a third above (DOUBLE), a REPLY that ends on the tonic, an ECHO of your last note, or the chord of each bar held as a pad (CHORDS); OFF keeps nothing. Every answer fits the part's own loop length (LEN). ANSWER ON: OTHER (the other part) or OFF. OCT- held + a PRESETS turn goes back along the last 2 takes (left) or forward (right); ROLL on the part that holds the answer writes it again.</div></div>
 <div class="row"><div class="g"><b>REC</b></div><div class="e">ADD (the default) or REPLACE: when you record live into a step that holds notes, a new note is added to them, or the first note of the pass takes their place (a chord played together is kept). On an ARP SEQ part a key sets the step's note (one note a step). Not part of a STYLE.</div></div>
 <div class="row"><div class="g"><b>PLAY MODE</b> / <b>XFADE</b> / <b>SPLIT</b></div><div class="e">The last three rows: LAYER, STEREO or DUEL; the velocity crossfade; the key split (OFF, MIDDLE, then a note). PLAY MODE is what ALGORITHM's middle plays (changing it moves ALGORITHM there). XFADE acts in the middle in LAYER; SPLIT in the middle in any mode. Knobs 2 to 4 move them by the clicks you turn; OCT+ / OCT- step XFADE 10 % and SPLIT an octave.</div></div>
 </section>
 
 </div>
-<footer>TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE. <a href="../">TIDE</a></footer>
+<footer>Not made or endorsed by OSCILL/R or M-VAVE. <a href="../">TIDE home</a></footer>
 </main>
 </body>
 </html>

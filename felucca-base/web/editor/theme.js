@@ -30,7 +30,6 @@ export const isDark = (i) => lum(palette(i).bgl) < 0.4;
 
 // DUELL 1.1 (owner items 47, 48): the editor's look follows the device design: only the ACTIVE part's colour plus greys. part 0 / 1: a part's column, 2: the global column and the page.
 // The part colours are the palette's (VIOLET: part 1 #de38ff, part 2 #ff1c8c; the demo uses the sampled #ff1c8b). The inactive part keeps its own colour with a weaker tint (item 99). A light palette keeps the old themeVars.
-export const GREY = "#737073", GREY_TEXT = "#cfcccf";
 export function look11Vars(i, part, active, partColours = null) {
   const p = palette(i), col = partColours ?? [p.r[0], p.r[2]];
   const sea = p.name === "TIDE";   // b11: TIDE's editor sits on the unit's night sea, the global column in sand
