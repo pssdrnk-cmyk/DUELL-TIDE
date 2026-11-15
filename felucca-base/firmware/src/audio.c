@@ -8,7 +8,7 @@
 #define HALF_WORDS (HALF_FRAMES * 2u)
 #define DAC_TICKS 544u            /* TIMER4 ticks per I2S frame (24 MHz / 44,117.6 Hz) */
 #define CPU_AVG (4096u / HALF_FRAMES)   /* halves the load meter averages: ~93 ms whatever the half */
-#define OUT_SHIFT 7               /* Q15 -> 24-bit, -6 dBFS ceiling (M0f ran clean at -18 dBFS) */
+#define OUT_SHIFT 8               /* Q15 -> 24-bit at full scale (B13: was 7, a -6 dBFS ceiling from the bring-up, "M0f ran clean at -18 dBFS"; the master's knee keeps the mix under it) */
 
 static int32_t abuf[2u * HALF_WORDS] __attribute__((aligned(4)));
 
@@ -56,7 +56,10 @@ static uint32_t meter_est_us(void)
  *  - the result keeps OUT_SHIFT fractional bits of Q15 (it used to be cut to Q15 first): a quiet knob position (gain 1/30) no longer loses 5 bits of the
  *    signal to truncation (distortion and grain in headphones at a low volume).
  * (0.2.30: the knob has no boost any more, its top is unity; the saturation stays as a safety.) A gain above 1 saturates at the old ceiling, never wraps. mdac_g < 0: not started (power-on: the first block takes the
- * knob's level, no fade-in). */
+ * knob's level, no fade-in).
+ * B13 (owner 2026-11-15: "very quiet compared to my other synths"; work/b13/level/REPORT.md): the DAC gets 8 dB more than before at every knob position, all of it after the limiter
+ * (the mix, the limiter and USB unchanged): OUT_SHIFT 8 (+6 dB: the 16-bit scale is the DAC's full scale, not -6 dBFS of it) and the target x 1.2588 (+2 dB); fx.c's knee holds the
+ * mix to 21900 (-3.5 dBFS), so the DAC's loudest sample is -1.5 dBFS and the saturation is never reached by the music (the click, added after, can). */
 #ifndef MDAC_SHIFT
 #define MDAC_SHIFT 9                                   /* the glide: 1/512 of the way a sample (tau 512 samples = 11.6 ms) */
 #endif
@@ -75,7 +78,9 @@ static inline int32_t mdac_apply(int32_t v, int32_t k, uint32_t s)   /* v (Q15) 
 static __attribute__((noinline)) void master_dac(int32_t *out, uint32_t n)   /* audio ISR, after uac_tap */
 {
     uint32_t i, s, q = song.master_q12, p = master_g16;
-    int32_t t = (int32_t)((p >> 4) == q ? p << 8 : q << 12), g = mdac_g < 0 ? t : mdac_g;   /* (the target, Q24) */
+    int32_t t = (int32_t)((p >> 4) == q ? p << 8 : q << 12), g;   /* (the target, Q24) */
+    t += (t >> 2) + (t >> 7) + (t >> 10);              /* B13: the DAC level +2.0 dB (x 1.2588; shifts, once a block): fx.c's knee ceiling (-3.5 dBFS) lands at -1.5 dBFS of the DAC; |out| <= 21900, k < 2^15 */
+    g = mdac_g < 0 ? t : mdac_g;
     for (i = 0; i < n && g != t; i++) {                /* gliding: the gain moves a step every sample */
         int32_t d = t - g, k;
         g += d > 0 ? (d + ((1 << MDAC_SHIFT) - 1)) >> MDAC_SHIFT : d >> MDAC_SHIFT;
