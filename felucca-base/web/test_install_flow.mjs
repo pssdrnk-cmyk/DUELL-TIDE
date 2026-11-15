@@ -9,6 +9,7 @@ import http from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { launch, CHROME } from "./cdp.mjs";
+import { VERSION as BACKUP_VERSION } from "./editor/duellbackup.js";
 
 const dir = process.argv[2] ? resolve(process.argv[2]) : "";
 if (!dir || !existsSync(join(dir, "install", "channels.json")) || !CHROME) {
@@ -186,14 +187,16 @@ await click("go");
 await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
 ok((await t("result-install")) === "Done. Switch the unit off and on once." && (await c.eval("__fake.identity")) === "FM-1_901" && (await c.eval("__fake.upgrades")) === 1, "Resume: a unit left in update mode is finished with the chosen build");
 
-// 6. a current DUELL / TIDE unit (the mock unit: INFO caps 63, 24 objects in the plain LIST and the patches in four pages): "Save a backup file"
+// 6. a current TIDE unit (the mock unit with the firmware's INFO caps 127: 29 objects in the plain LIST incl. the multis M17..M26, ids 42..46; 175 slots, the patches in
+// six pages; a saved patch in slot 160 travels as id 47): "Save a backup file" writes the editor's current file version (b13: the check said 5, the file is 7 since b12)
 const saved0 = "(async () => { const s = __fake.saved[0]; if (!s) return null; const j = JSON.parse(await s.blob.text()); return { name: s.name, format: j.format, version: j.version, ids: j.objects.map((o) => o.id) }; })()";
-await open("#stable", { startAs: "FM-1_901", duell: {} });
+await open("#stable", { startAs: "FM-1_901", duell: { caps: 127 } });
+await c.eval("(async () => { const m = await import('/editor/mockunit.js'); __fake.mock.setRecord(160, m.buildPatchRecord({ name: 'HI 160' })); __fake.mock.rebuild(); })()");
 await click("backup");
 await c.until("document.getElementById('result-backup').textContent.length > 0", 60000);
 const r6 = await t("result-backup"), f6 = await c.eval(saved0);
-ok(/^Backup saved/.test(r6) && f6 && f6.format === "duell-backup" && f6.version === 5 && [0, 1, 13, 21, 24, 40].every((id) => f6.ids.includes(id)),
-  `Backup: a current unit's file is saved (music, settings, multis, patterns, wavetables, patch records) [${r6.slice(0, 70)}]`);
+ok(/^Backup saved/.test(r6) && f6 && f6.format === "duell-backup" && f6.version === BACKUP_VERSION && [0, 1, 13, 21, 24, 40, 42, 46, 47].every((id) => f6.ids.includes(id)),
+  `Backup: a current unit's file is saved (music, settings, multis M01..M26, patterns, wavetables, patches of slots 1..175) [${r6.slice(0, 70)}; v${f6 && f6.version}]`);
 
 // 7. the install backs up first: the file is offered before the unit is told to switch to update mode
 await open("#stable", { startAs: "FM-1_901", duell: {} });
