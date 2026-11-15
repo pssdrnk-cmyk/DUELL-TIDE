@@ -10,6 +10,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { launch, CHROME } from "./cdp.mjs";
 import { VERSION as BACKUP_VERSION } from "./editor/duellbackup.js";
+import { BACKUP_FIRST } from "./installer_state.js";
 
 const dir = process.argv[2] ? resolve(process.argv[2]) : "";
 if (!dir || !existsSync(join(dir, "install", "channels.json")) || !CHROME) {
@@ -121,6 +122,10 @@ const dis = (id) => c.eval(`document.getElementById(${JSON.stringify(id)}).disab
 const click = (id) => c.eval(`document.getElementById(${JSON.stringify(id)}).click()`);
 const manifest = JSON.parse(readFileSync(join(dir, "install", "channels.json"), "utf8")).channels;
 const hasBeta = !!manifest.beta;
+// an action is finished when its banner is gone and its card has a result (the result line can carry a note while it runs)
+const finished = (card = "install", ms = 90000) => c.until(`document.getElementById('banner').hidden && document.getElementById('result-${card}').textContent.length > 0`, ms);
+// every text the install card's result line showed (a note while it runs is replaced by the outcome)
+const watchResults = () => c.eval("(() => { window.__results = []; const e = document.getElementById('result-install'); new MutationObserver(() => __results.push(e.textContent)).observe(e, { childList: true, characterData: true, subtree: true }); })()");
 const untick = () => c.eval("(() => { const e = document.getElementById('erase-after'); if (e.checked) e.click(); })()");
 
 // 1. Stable is the default
@@ -132,9 +137,11 @@ ok((await t("pkgfacts")).includes(manifest.stable.sha256) && (await t("pkgfacts"
 ok(!(await c.eval("document.getElementById('erase-after').checked")) && (await t("erase-smart")) === "" && /^Not checked yet/.test(await t("erase-detect")) &&
    !/TIDE|DUELL/.test((await t("erase-detect")) + (await t("erase-smart"))), "Erase box: unticked and silent about the unit before the check");
 await untick();
+await watchResults();
 await click("go");
-await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
+await finished();
 ok((await t("result-install")) === "Done. Switch the unit off and on once.", "Stable: installed end to end against the simulated unit (Done line)");
+ok((await c.eval("__results")).includes(BACKUP_FIRST.skipped), "Install from a firmware that cannot be backed up (the official one, Shrub): it goes on and says 'No backup' while it writes");
 const f1 = await c.eval("({ served: __fake.served, identity: __fake.identity, upgrades: __fake.upgrades })");
 ok(f1.served > 8 && f1.identity === "FM-1_901" && f1.upgrades === 2, `Stable: the unit went through update mode and reports the package identity (${JSON.stringify(f1)})`);
 ok((await t("log")).includes(`install: stable ${manifest.stable.tag} ${manifest.stable.sha256}`), "Stable: the log names the build and its SHA-256");
@@ -156,7 +163,7 @@ if (hasBeta) {
   ok((await c.eval("__confirms.length")) === 1 && /BETA build/.test(await c.eval("__confirms[0]")) && (await c.eval("__fake.sent")) === 0 && (await t("result-install")) === "", "Beta: the second confirmation is asked; 'Cancel' writes nothing");
   await c.eval("window.__answer = true");
   await click("go");
-  await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
+  await finished();
   ok((await t("result-install")) === "Done. Switch the unit off and on once." && (await c.eval("__fake.identity")) === "FM-1_901", "Beta: installed after the box and the confirmation");
   // switching away and back clears the box
   await open("#beta");
@@ -180,11 +187,18 @@ await click("go");
 ok((await c.eval("__fake.sent")) === 0 && !(await c.eval("document.getElementById('banner').hidden === false")), "Hash: nothing is sent to the unit, no install banner");
 mode.tamperPackage = false;
 
+// 4b. a unit that does not answer the editor protocol (the official firmware, Shrub): "Save a backup file", the same doBackup the return runs first,
+// says it cannot be backed up and saves nothing; it no longer throws the INFO timeout, which stopped the return to the official firmware (b13)
+await open("#stable");
+await click("backup");
+await finished("backup", 30000);
+ok((await t("result-backup")) === BACKUP_FIRST.none && (await c.eval("__fake.saved.length")) === 0 && (await c.eval("__fake.upgrades")) === 0, `Backup of a unit that cannot be backed up: a plain note, nothing saved or written [${(await t("result-backup")).slice(0, 80)}]`);
+
 // 5. resume: the unit is already in update mode
 await open("#stable", { startAs: "ota-FM-1_901" });
 await untick();
 await click("go");
-await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
+await finished();
 ok((await t("result-install")) === "Done. Switch the unit off and on once." && (await c.eval("__fake.identity")) === "FM-1_901" && (await c.eval("__fake.upgrades")) === 1, "Resume: a unit left in update mode is finished with the chosen build");
 
 // 6. a current TIDE unit (the mock unit with the firmware's INFO caps 127: 29 objects in the plain LIST incl. the multis M17..M26, ids 42..46; 175 slots, the patches in
@@ -202,7 +216,7 @@ ok(/^Backup saved/.test(r6) && f6 && f6.format === "duell-backup" && f6.version 
 await open("#stable", { startAs: "FM-1_901", duell: {} });
 await untick();
 await click("go");
-await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
+await finished();
 const q7 = await c.eval("__fake.seq"), f7 = await c.eval(saved0);
 ok((await t("result-install")) === "Done. Switch the unit off and on once." && f7 && f7.format === "duell-backup" && q7.indexOf("saved") >= 0 && q7.indexOf("saved") < q7.indexOf("upgrade"),
   `Install: a DUELL unit is backed up first, then written (${q7.join(" > ")})`);

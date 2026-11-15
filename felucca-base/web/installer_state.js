@@ -105,6 +105,9 @@ export const BACKUP_FIRST = {
   failed: (why) => `The backup failed (${why}). Nothing was written to the unit: the install did not start. Keep the cable connected, stop the unit if it plays, and press Install again.`,
   cannot: "This build cannot make a complete backup, so your sounds and settings cannot be saved first. Install anyway?",
   declined: "Nothing was written: the install did not start.",
+  // b13: a unit that does not answer the editor protocol (the official firmware, Shrub, ...) or runs another firmware has nothing this page can save
+  none: "This firmware cannot be backed up (only TIDE, DUELL and Felucca can). Nothing was saved.",
+  skipped: "No backup: this firmware cannot be backed up (only TIDE, DUELL and Felucca can). Installing without one.",
 };
 
 // texts per card

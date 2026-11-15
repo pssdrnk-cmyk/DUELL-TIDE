@@ -132,6 +132,33 @@ def channel_entry(channel, pkg, info_path):
     return entry, raw
 
 
+# Cache-busting (b13: the owner's browser kept the old site.css and installer_state.js under the new install page; the page's module then failed to load
+# and every button stayed off). Every link of a page or module to the site's own CSS, JS or JSON (href= / src= / from "..." / import("...") / import "...")
+# gets ?v=<a content hash of all of them>, so a new page always loads the code it was built with. emu/ (its own build, the wasm glue loads files by name)
+# and channels.json (fetched with no-store) are left alone. test_site_build.py fails on a local link without ?v=.
+ASSET_REF = re.compile(r"""(\b(?:href|src)=|\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])((?![a-zA-Z][a-zA-Z0-9+.-]*:|//|#|/)[^"'?#\s]+\.(?:m?js|css|json))\2""")
+ASSET_SUFFIXES = (".js", ".mjs", ".css", ".json")
+
+
+def site_files(out, suffixes):
+    return sorted(p for p in out.rglob("*") if p.is_file() and p.suffix in suffixes and p.relative_to(out).parts[0] != "emu"
+                  and p.relative_to(out).as_posix() != "install/channels.json")
+
+
+def version_assets(out):
+    h = hashlib.sha256()
+    for p in site_files(out, ASSET_SUFFIXES):
+        h.update(p.relative_to(out).as_posix().encode() + b"\0" + p.read_bytes() + b"\0")
+    v = h.hexdigest()[:10]
+    n = 0
+    for p in site_files(out, (".html", ".js", ".mjs")):
+        text = p.read_bytes().decode("utf-8")
+        new, k = ASSET_REF.subn(lambda m: f"{m[1]}{m[2]}{m[3]}?v={v}{m[2]}", text)
+        if k:
+            p.write_bytes(new.encode("utf-8")); n += k
+    return v, n
+
+
 def main():
     ap = argparse.ArgumentParser(description="Make the TIDE site folder")
     ap.add_argument("out", nargs="?", default=str(ROOT / "site"))
@@ -226,7 +253,8 @@ def main():
             f'<p><a href="../">Back</a> · <a href="https://github.com/{REPO}">Source code</a> · '
             f'<a href="https://github.com/{REPO}/releases">Releases</a></p></body></html>\n', encoding="utf-8")
         enote = "no emulator: placeholder page"
-    print(f"site: {out}\n  installer: " + "\n             ".join(notes) + f"\n  emu: {enote}")
+    ver, nref = version_assets(out)
+    print(f"site: {out}\n  installer: " + "\n             ".join(notes) + f"\n  emu: {enote}\n  assets: ?v={ver} on {nref} links")
 
 
 if __name__ == "__main__":
