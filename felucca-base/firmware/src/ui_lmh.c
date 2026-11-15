@@ -10,7 +10,7 @@
  * The look: in each MUTE card, under its row, three bands, HIGH on top, MID, LOW at the foot (pitch rises upward on every TIDE page), the label face's H M L left of them: each a
  * 4 px band with the note strip's rounded ends, the part's colour (DIM while the part is silent; ink on a muted card) on the LEVEL slider's dim track, filled on the LEVEL fader's
  * dB scale (lmh_px: a level of -6 dBFS ends where the LEVEL bar stands at -6.0 dB); the peak hold a 2 px tick as tall as the band (design review: the bands lead, not the ticks).
- * Each band its own small strip; after the first draw only the columns a band changed are sent */
+ * The MIXER's panel draws the labels and bands with its cards (lmh_card); after it only the columns a band changed are sent, and a part's labels and bands whole when its state changes */
 #define LMH_X 15                                         /* the bands: from x 15 of the card to the LEVEL bar's right end */
 #define LMH_W (UT_T4_W - UT_T4_PAD - LMH_X)
 #define LMH_Y0 25                                        /* the H band's middle row in the MUTE card, the rows LMH_DY apart */
@@ -94,56 +94,72 @@ static int32_t lmh_px(int32_t u16)                       /* units x 16 (16 an oc
     }
     return v * LMH_W / 127;
 }
-/* one band's columns x0 .. x1 - 1 (of LMH_W), drawn whole into a canvas that wide and sent: the track, the fill to px, the tick at hp */
-static void lmh_cols(uint32_t k, uint32_t r, int32_t x0, int32_t x1, int32_t px, int32_t hp, uint16_t under, uint16_t track, uint16_t col, uint16_t tick)
+/* part k's colours (under: the card's fill, the band's track, its fill, the tick) and its state (muted, sounding, the theme), as its bands were drawn last in lmh.lc */
+static uint32_t lmh_ink(uint32_t k, uint16_t *c)
 {
-    x0 = x0 < 0 ? 0 : x0;
-    x1 = x1 > LMH_W ? LMH_W : x1;
-    if (x1 <= x0)
-        return;
-    cv_begin((uint32_t)(x1 - x0), LMH_BH, under);
-    cv_rrect(-x0, 0, LMH_W, LMH_BH, 2, track, under);
+    const uint32_t mu = trk[k].p[P_MUTE] != 0, so = glo_sounding(k) != 0;
+    c[0] = mu ? T_PTHEME(k) : T_BG;
+    c[1] = mu ? ux_mix(c[0], T_INK, 30) : ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT);
+    c[2] = mu ? T_INK : so ? T_PTHEME(k) : T_DIM;
+    c[3] = mu ? T_INK : T_TEXT;
+    return mu * 2u + so + ux.gen * 4u;
+}
+/* one band at x, y of the canvas: the track, the fill to px, the tick at hp */
+static void lmh_band(int32_t x, int32_t y, int32_t px, int32_t hp, const uint16_t *c)
+{
+    cv_rrect(x, y, LMH_W, LMH_BH, 2, c[1], c[0]);
     if (px > 0)
-        cv_rrect(-x0, 0, px > 4 ? px : 4, LMH_BH, 2, col, track);
+        cv_rrect(x, y, px > 4 ? px : 4, LMH_BH, 2, c[2], c[1]);
     if (hp > 0)
-        cv_rect((hp < LMH_W - 2 ? hp : LMH_W - 2) - x0, 0, 2, LMH_BH, tick);
-    cv_blit((uint32_t)(UT_T4_X0 + UT_T4_DX * (int32_t)k + LMH_X + x0), (uint32_t)(UT_T4_MUTE_Y + LMH_Y0 - LMH_BH / 2 + (int32_t)r * LMH_DY));
+        cv_rect(x + (hp < LMH_W - 2 ? hp : LMH_W - 2), y, 2, LMH_BH, c[3]);
+}
+/* part k's H M L labels and three bands, the MUTE card's top left at x, y of the canvas. b13 (owner: "flickering when using the quick menus"): the MIXER's panel
+ * (ui_layer.c glo_mute_cards) draws them in its own picture; they were sent after it, over a card just painted without them: every band blinked on each open */
+static void lmh_card(uint32_t k, int32_t x, int32_t y)
+{
+    static const char LB[3][2] = {"H", "M", "L"};
+    uint16_t c[4];
+    uint32_t r;
+    lmh.lc[k] = (uint8_t)lmh_ink(k, c);
+    for (r = 0; r < 3u; r++) {
+        const uint32_t b = 2u - r;                       /* (row 0 HIGH, row 2 LOW) */
+        const int32_t px = lmh_px(lmh.lvl[k][b]), hp = lmh_px(lmh.hold[k][b]);
+        cv_text_on(x + 1 + UT_T4_PAD, y + LMH_Y0 - 6 + UT_TY(S, 11 + (int32_t)r * LMH_DY), &AF_S, LB[r], (lmh.lc[k] & 2u) ? T_INK : T_MID, c[0]);   /* (bit 1: muted) */
+        lmh_band(x + LMH_X, y + LMH_Y0 - LMH_BH / 2 + (int32_t)r * LMH_DY, px, hp, c);
+        lmh.lp[k][r] = (int16_t)px;
+        lmh.lh[k][r] = (int16_t)hp;
+    }
 }
 static void lmh_draw(void)
 {
-    static const char *const LB[3] = {"H", "M", "L"};
     uint32_t k, r;
-    const int force = ui.force || gm.sig != 0x1u;        /* (the panel's redraw clears gm.sig: draw_layer) */
     lmh_step();
     for (k = 0; k < NSHOWN; k++) {
-        const int mu = trk[k].p[P_MUTE] != 0;
-        const uint16_t under = mu ? T_PTHEME(k) : T_BG, col = mu ? T_INK : glo_sounding(k) ? T_PTHEME(k) : T_DIM;
-        const uint16_t track = mu ? ux_mix(under, T_INK, 30) : ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT), tick = mu ? T_INK : T_TEXT;
-        const uint8_t st = (uint8_t)(mu * 2 + glo_sounding(k) + ux.gen * 4u);
-        const int whole = force || st != lmh.lc[k];
-        lmh.lc[k] = st;
-        if (whole) {                                     /* the H M L labels, in the label face (their own strip: the card under them is the panel's) */
-            cv_begin(LMH_X - 2, 2 * LMH_DY + 12, under);
-            for (r = 0; r < 3u; r++)
-                cv_text_on(UT_T4_PAD - 1, UT_TY(S, 11 + (int32_t)r * LMH_DY), &AF_S, LB[r], mu ? T_INK : T_MID, under);
-            cv_blit((uint32_t)(UT_T4_X0 + UT_T4_DX * (int32_t)k + 2), (uint32_t)(UT_T4_MUTE_Y + LMH_Y0 - 6));
+        uint16_t c[4];
+        const int32_t cx = UT_T4_X0 + UT_T4_DX * (int32_t)k, by = UT_T4_MUTE_Y + LMH_Y0 - LMH_BH / 2;
+        if (lmh_ink(k, c) != lmh.lc[k]) {                /* the part's state changed (muted, sounding, the theme): its labels and bands whole, one strip over the card */
+            cv_begin(LMH_X + LMH_W - 2, 2 * LMH_DY + 12, c[0]);
+            lmh_card(k, -2, 6 - LMH_Y0);
+            cv_blit((uint32_t)(cx + 2), (uint32_t)(UT_T4_MUTE_Y + LMH_Y0 - 6));
+            continue;
         }
         for (r = 0; r < 3u; r++) {
-            const uint32_t b = 2u - r;                   /* (row 0 HIGH, row 2 LOW) */
-            const int32_t px = lmh_px(lmh.lvl[k][b]), hp = lmh_px(lmh.hold[k][b]), p0 = lmh.lp[k][r], h0 = lmh.lh[k][r];
-            if (whole)
-                lmh_cols(k, r, 0, LMH_W, px, hp, under, track, col, tick);
-            else if (px != p0 || hp != h0) {            /* only the columns that changed: from the fill's old or new end to the tick's old or new place (the rounded end 3 px either side) */
+            const uint32_t b = 2u - r;
+            int32_t px = lmh_px(lmh.lvl[k][b]), hp = lmh_px(lmh.hold[k][b]), p0 = lmh.lp[k][r], h0 = lmh.lh[k][r];
+            if (px != p0 || hp != h0) {                 /* only the columns that changed: from the fill's old or new end to the tick's old or new place (the rounded end 3 px either side) */
                 int32_t a0 = px < p0 ? px : p0, a1 = px > p0 ? px : p0;
                 if (hp != h0) {
                     a0 = a0 < (hp < h0 ? hp : h0) ? a0 : (hp < h0 ? hp : h0);
                     a1 = a1 > (hp > h0 ? hp : h0) ? a1 : (hp > h0 ? hp : h0);
                 }
-                lmh_cols(k, r, a0 - 3, a1 + 3, px, hp, under, track, col, tick);
+                a0 = a0 < 3 ? 0 : a0 - 3;
+                a1 = a1 + 3 > LMH_W ? LMH_W : a1 + 3;
+                cv_begin((uint32_t)(a1 - a0), LMH_BH, c[0]);
+                lmh_band(-a0, 0, px, hp, c);
+                cv_blit((uint32_t)(cx + LMH_X + a0), (uint32_t)(by + (int32_t)r * LMH_DY));
             }
             lmh.lp[k][r] = (int16_t)px;
             lmh.lh[k][r] = (int16_t)hp;
         }
     }
-    gm.sig = 0x1u;                                       /* (the strips are drawn) */
 }

@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* uigaps (b10 ui-a, Phase A cost #2): a full redraw of a grid layout no longer fills the whole body first (ui_draw.c grid_fill: only the BG the strips leave). Every page of every engine
- * (LAYER / STEREO / DUEL, both parts) and the QUICK layers is redrawn (ui.force) on a screen poisoned with one colour: no pixel of it may be left (nothing is left uncovered), and the
- * picture equals the one drawn over the old whole-body fill (live pictures, LFO 2 / CYCLE ENV, move between the two frames: counted, not failed). Prints the pixels the pre-fill sends per
- * grid layout (the old fill: 46,320 px, 37 ms at 20 MHz). Built and run by host_tests.sh (name uigaps). */
+/* uigaps (b10 ui-a, Phase A cost #2; b13): a full redraw fills nothing first (b13: gfx.c gut_mark, ui_draw.c gut_flush: the BG goes, at the end of the pass, only where nothing drew).
+ * Every page of every engine (LAYER / STEREO / DUEL, both parts) and the QUICK layers is redrawn (ui.force) on a screen poisoned with one colour: no pixel of it may be left (nothing is
+ * left uncovered), and the picture equals the one drawn over the old whole-body fill (live pictures, LFO 2 / CYCLE ENV, move between the two frames: counted, not failed). Then no press
+ * flashes (b13, owner on 1.0.0-b13: "flickering when using the quick menus and pressing buttons"). Built and run by host_tests.sh (name uigaps). */
 #define UI_TEST_NO_MAIN 1
 static int prefill_on = 1;
-#define GRID_PREFILL() do { if (prefill_on) gap_rows(H_HEAD, Y_FOOT + 15); else grid_fill(); } while (0)
+#define GRID_PREFILL() do { if (prefill_on) lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG); else gut_arm(T_BG); } while (0)   /* (1: the old whole-body fill, the reference) */
 #include <stdlib.h>
-static unsigned long long fillpx, gpx[64], gn[64];
+static unsigned long long fillpx;
 static unsigned long long maxfill;
 #define UI_FILL_HOOK(x_, y_, w_, h_) (fillpx += (unsigned long long)(w_) * (h_), maxfill = (unsigned long long)(w_) * (h_) > maxfill ? (unsigned long long)(w_) * (h_) : maxfill)
 #include "ui_test.c"
@@ -28,42 +28,22 @@ static void one(const char *eng, const char *key)
     for (k = 0; k < 240u * 240u; k++)
         bad += host_screen[k] != ref[k];
     ncase[g & 63]++;
-    fillpx = 0; grid_fill(); gut_flush(); gpx[g & 63] += fillpx; gn[g & 63]++;
     ntot++, nbadp += pz != 0u, nlive += bad;
     if (pz)
         printf("uigaps: FAIL %s|%s|grid %u: %u pixels left uncovered\n", eng, key, g, pz);
     memcpy(host_screen, ref, sizeof ref);
 }
-/* b11 stripe check (below, main): a stripe = gutter pixels (gfx.c GUT) that, in one frame, pass through a value that is neither the old picture's nor the new one's
- * (ui_test.c host_fl), in a row where nothing else does */
+/* a flash (b11: the gutters' stripes; b13: anywhere): pixels that, in one frame, pass through a value that is neither the old picture's nor the new one's (ui_test.c host_fl) */
 static uint32_t frame_stripes(void)
 {
-    uint32_t y, x, i, n = 0;
     host_fl_begin();
     frame();
-    for (y = GUT_Y0; y < GUT_Y0 + GUT_H; y++) {
-        uint32_t ing = 0, outg = 0, gut;
-        for (x = 0; x < 240u; x++) {
-            const uint32_t k = y * 240u + x;
-            if (host_fl_n[k] != 2u || host_fl_mid[k] == host_screen[k])
-                continue;
-            for (gut = 0, i = 0; i < 5u; i++)
-                gut |= x >= GUT[i][0] && x < (uint32_t)GUT[i][0] + GUT[i][1];
-            if (gut)
-                ing++;
-            else
-                outg++;
-        }
-        if (!outg)
-            n += ing;
-    }
-    host_fl_on = 0;
-    return n;
+    return host_fl_end(0, 240);
 }
-/* one action watched frame by frame for 12 frames: kind 0 a button (a), 1 an encoder step (role a), 2 a key (a); 0 when the layout changed (another layout fills the whole body first) */
+/* one action watched frame by frame for 12 frames: kind 0 a button (a), 1 an encoder step (role a), 2 a key (a): the pixels that flashed (b13: a change of layout too) */
 static uint32_t act_stripes(uint32_t kind, uint32_t a)
 {
-    uint32_t f, n = 0, g0 = grid_on;
+    uint32_t f, n = 0;
     if (kind == 0u)
         btn_down(a);
     else if (kind == 1u)
@@ -79,7 +59,7 @@ static uint32_t act_stripes(uint32_t kind, uint32_t a)
         if (f == 0u && kind == 1u)
             host_ticks += 200000u;
     }
-    return g0 == grid_on ? n : 0u;
+    return n;
 }
 int main(void)
 {
@@ -104,20 +84,68 @@ int main(void)
             btn_up(LY[l].b); frames(64);
         }
     }
-    {   /* b10 (rc6 "two vertical lines, a blink"): a page change to ANOTHER grid layout fills the whole body first (no thin BG stripes across the old page while the cards draw);
-         * a page change within the same layout only the cheap gap prefill */
+    {   /* b13 (was b10: another layout filled the whole body first): no page change fills the whole body, another layout or the same one */
         uint32_t fx = 12u, edit1 = 22u, voice = 33u, ok = 1;
-        prefill_on = 0;                                                     /* (the new gap prefill, not the old whole-body model) */
+        prefill_on = 0;
         ui_power_on(); go_main_to(HP_MORPH); frames(64);
         ui.page = (uint8_t)fx; page_entered(); frames(40);
         ok &= grid_on == 1u && page_visible(edit1) && page_visible(voice);
         maxfill = 0; ui.page = (uint8_t)edit1; page_entered(); frame();
-        ok &= grid_on == 14u && maxfill >= 240ull * 190ull;                 /* FX (grid 1) -> EDIT 1 (grid 14): the whole body */
+        ok &= grid_on == 14u && maxfill < 240ull * 190ull;                  /* FX (grid 1) -> EDIT 1 (grid 14) */
         frames(20);
         maxfill = 0; ui.page = (uint8_t)voice; page_entered(); frame();
-        ok &= grid_on == 14u && maxfill < 240ull * 190ull;                  /* EDIT 1 -> VOICE 1/2 (both 14): the gap prefill only */
-        printf("uigaps: %s: another layout fills the whole body first, the same layout only its gaps" "%c", ok ? "ok" : "FAIL", 10);
+        ok &= grid_on == 14u && maxfill < 240ull * 190ull;                  /* EDIT 1 -> VOICE 1/2 (both 14) */
+        printf("uigaps: %s: no page change fills the whole body (another layout or the same)" "%c", ok ? "ok" : "FAIL", 10);
         if (!ok) return 1;
+    }
+    {   /* b13 (owner on 1.0.0-b13: "I've still noticed flickering on the screen when using the quick menus and pressing buttons"): every button, tapped and held (its quick layer
+         * opened, a knob turned in it, let go), on MORPH, AMP ENV and AUTO TIDE; a dialog (PATCHES K3: a sound's delete) and a count-in's beats: no pixel flashes. Before: 88 of
+         * these 162 actions flashed, up to 9,676 px (the whole-body fill before every change of layout, the MIXER's bands sent over its cards, the step strip over QUICK SEQ's cards) */
+        static const char *const BASE[3] = {"MORPH", "AMP ENV", "AUTO TIDE"};
+        uint32_t v, b, n, tot = 0, nbad = 0, k;
+        prefill_on = 0;
+        for (v = 0; v < 3u; v++)
+            for (b = 0; b < NB; b++) {
+                if (b == B_PLAY || b == B_SAVE)
+                    continue;
+                ui_power_on(); if (v) go_title(BASE[v]); else go_main_to(HP_MORPH); frames(400);
+                btn_down(b);
+                for (k = n = 0; k < 52u; k++)
+                    n += frame_stripes();
+                n += act_stripes(1u, EN_K2);
+                btn_up(b);
+                for (k = 0; k < 20u; k++)
+                    n += frame_stripes();
+                n += act_stripes(0u, b);                /* (then a tap: a page or a page of the family) */
+                n += act_stripes(0u, b);
+                if (n)
+                    printf("uigaps: %s, %s held, K2, let go, tapped twice: %u pixels flashed\n", BASE[v], B_NAME[b], n), nbad++;
+                tot += n;
+            }
+        ui_power_on(); go_main_to(HP_MORPH); frames(200);
+        for (k = 0; k < NPAGES && strcmp(PAGES[k].title, "PATCHES"); k++)
+            ;
+        ui.page = (uint8_t)k; page_entered(); frames(300);
+        n = act_stripes(1u, EN_K3);                     /* (PATCHES K3: the delete dialog) */
+        if (!ui.confirm) { printf("uigaps: PATCHES K3 opened no dialog\n"); nbad++; }
+        n += act_stripes(1u, EN_K3);
+        ui_power_on(); go_main_to(HP_MORPH); frames(200);
+        song.playing = 0; song.rec = 1; cin_total = 4; cin_left = 4;
+        for (k = 0; k < 6u; k++)
+            n += frame_stripes();
+        for (b = 3u; b > 0u; b--) {                     /* (a count-in's beats: the screen drawn again each beat) */
+            cin_left = b;
+            for (k = 0; k < 6u; k++)
+                n += frame_stripes();
+        }
+        song.rec = 0; cin_left = cin_total = 0;
+        for (k = 0; k < 10u; k++)
+            n += frame_stripes();
+        if (n)
+            printf("uigaps: the delete dialog and a count-in: %u pixels flashed\n", n), nbad++;
+        tot += n;
+        printf("uigaps: %s: no press flashes (every button tapped and held on 3 pages, a dialog, a count-in: %u pixels flashed in %u cases)\n", nbad ? "FAIL" : "ok", tot, nbad);
+        if (nbad) return 1;
     }
     {   /* b11 (owner on rc8: "when a screen is redrawn there are still 3 vertical lines for a couple of milliseconds"; on SAVE > MULTIS turning ALGORITHM, and in QUICK SEQ
          * picking a tool): no vertical stripe through the old picture when a page is redrawn within one layout. The gutters' fill (gfx.c GUT: x 0..3, 79..81, 119..120,
@@ -159,7 +187,7 @@ int main(void)
     }
     for (g2 = 0; g2 < 64u; g2++) {
         if (!ncase[g2]) continue;
-        printf("uigaps: grid %2u: %4u screens, the pre-fill sends %5llu px (was 46320: %.1f ms -> %.1f ms)\n", g2, ncase[g2], gpx[g2] / gn[g2], 46320 * 0.0008, gpx[g2] / gn[g2] * 0.0008);
+        printf("uigaps: grid %2u: %4u screens\n", g2, ncase[g2]);
     }
     printf("uigaps: %u screens redrawn on a poisoned screen, %u with a pixel nothing drew, %u pixels in live pictures differ from the old fill\n", ntot, nbadp, nlive);
     if (nbadp) { printf("uigaps: FAIL\n"); return 1; }

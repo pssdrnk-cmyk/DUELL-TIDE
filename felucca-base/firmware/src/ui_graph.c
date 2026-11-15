@@ -1554,8 +1554,8 @@ static void graph_filt(const track_t *t, uint16_t c)
         int32_t md = clamp(t->p[P_FREEC], 0, UF_HP), res = clamp(t->p[P_FREEB], 0, 127), cut = clamp(t->p[P_FREEA], 0, UF_STEPS);
         wb = md <= 64 ? md << 4 : ((UF_HP - md) * 65) >> 2, wl = md < 64 ? 1024 - wb : 0, wh = md > 64 ? 1024 - wb : 0;
         s24 = t->p[P_FREED] == 2;
-        k1 = s24 ? UF_K24A : UF_K(res);
-        k2 = UF_K24B(res);
+        k1 = s24 ? UF_K24A : UF_K(t, res);
+        k2 = UF_K24B(t, res);
         kb = -1;
         fc = gf_cut_hz(40 + 396 * cut);
         flat = cut >= UF_STEPS && md <= 0;           /* (the bypass: the filter is not run) */

@@ -654,94 +654,41 @@ static void draw_head(void)
     /* (owner V9: no rule under any title; the gradient stays on the title text, values and bars) */
     cv_blit(0, Y_HEAD);
 }
-/* Rows y0 .. y1 - 1 across the screen: the BG */
-static void gap_rows(uint32_t y0, uint32_t y1)
-{
-    lcd_fill(0, y0, 240, y1 - y0, T_BG);
-}
-/* the BG beside the four columns (the cards; MIXER's strips) over rows y .. y + h - 1 */
-static void draw_gaps(uint32_t y, uint32_t h)
-{
-    uint32_t i;
-    lcd_fill(0, y, (uint32_t)CARD_X(0), h, T_BG);
-    for (i = 0; i < 4u; i++) {                          /* right of each column */
-        uint32_t x = (uint32_t)(CARD_X(i) + CARD_W), w = i < 3u ? (uint32_t)CARD_X(i + 1u) - x : 240u - x;
-        lcd_fill(x, y, w, h, T_BG);
-    }
-}
-/* b10 ui-a (Phase A, cost #2): a grid layout's strips (header, cards, panel, cells, footer) cover ~95 % of the body, so the whole-body fill (46,320 px, 37 ms of SPI) before them is
- * almost all drawn over. Only the BG the strips leave is filled: the rows between them (GAPB: grid, first row, rows) and the gutters beside the cards (every column set any grid
- * uses, x 0..3, 79..81, 119..120, 158..160, 236..239, rows 27 .. 216: a fill under a strip is only drawn over). Found with tests/gap_probe.c:
- * every page of every engine and the QUICK layers redrawn on a poisoned screen end equal to the whole-body fill's picture. A grid with no row here (13, any new one) is filled whole. */
-static void grid_fill(void)
-{
-    static const uint8_t GAPB[][3] = {{1, 24, 3}, {1, 103, 3}, {1, 160, 2}, {1, 216, 1}, {2, 24, 4}, {2, 112, 4}, {2, 200, 2}, {4, 24, 4},
-        {5, 24, 3}, {5, 51, 3}, {5, 130, 7}, {5, 209, 8}, {6, 24, 4}, {6, 80, 6}, {6, 198, 4}, {7, 24, 3}, {7, 90, 3}, {7, 152, 3}, {7, 214, 3},
-        {14, 24, 3}, {14, 119, 98}, {15, 24, 3}, {15, 51, 3}, {15, 133, 4}, {15, 216, 1},
-        {16, 24, 3}, {16, 150, 1}, {16, 170, 4}, {16, 184, 5}, {16, 194, 8}, {16, 209, 8}, {17, 24, 3}};
-    uint32_t i, n = 0;
-    for (i = 0; i < sizeof GAPB / sizeof GAPB[0]; i++)
-        n += GAPB[i][0] == grid_on;
-    if (!n) {
-        gap_rows(H_HEAD, Y_FOOT + 15);
-        return;
-    }
-    gut_arm(T_BG);                                      /* b11: the gutters (gfx.c GUT) at the end of the pass, only where nothing drew (ui_draw: gut_flush) */
-    for (i = 0; i < sizeof GAPB / sizeof GAPB[0]; i++)
-        if (GAPB[i][0] == grid_on)
-            lcd_fill(0, GAPB[i][1], 240, GAPB[i][2], T_BG);
-}
-/* b11: the gutter pixels nothing drew since gut_arm (gfx.c): BG, one fill a run of rows with the same uncovered columns (most passes: none or a few). Here, not in gfx.c: some host tests take gfx.c without an lcd_fill */
+/* b13: the body pixels nothing drew since gut_arm (gfx.c): the BG, one fill a run of uncovered columns over the rows that have the same coverage (most passes:
+ * the few rows and columns between the strips). Here, not in gfx.c: some host tests take gfx.c without an lcd_fill */
 static void gut_flush(void)
 {
-    uint32_t i, b0 = 0, r, r1, m, lo, hi;
+    uint32_t r, r0 = 0, x, x0;
     if (!gut_on)
         return;
     gut_on = 0;
-    for (i = 0; i < 5u; b0 += GUT[i][1], i++) {
-        const uint32_t all = (1u << GUT[i][1]) - 1u;
-        for (r = 0; r < GUT_H; r = r1) {
-            m = ~((uint32_t)gut_cov[r] >> b0) & all;
-            for (r1 = r + 1u; r1 < GUT_H && (~((uint32_t)gut_cov[r1] >> b0) & all) == m; r1++)
+    for (r = 1; r <= GUT_H; r++) {
+        if (r < GUT_H && !memcmp(gut_cov[r], gut_cov[r0], sizeof gut_cov[0]))
+            continue;                                   /* (the same columns as the run's first row) */
+        for (x = 0; x < 240u; x = x0) {                 /* each run of uncovered columns of rows r0 .. r - 1 */
+            for (; x < 240u && ((gut_cov[r0][x / 32u] >> (x % 32u)) & 1u); x++)
                 ;
-            for (lo = 0; lo < GUT[i][1]; lo = hi) {         /* each run of uncovered columns */
-                for (; lo < GUT[i][1] && !((m >> lo) & 1u); lo++)
-                    ;
-                for (hi = lo; hi < GUT[i][1] && ((m >> hi) & 1u); hi++)
-                    ;
-                if (hi > lo)
-                    lcd_fill(GUT[i][0] + lo, GUT_Y0 + r, hi - lo, r1 - r, gut_bg);
-            }
+            for (x0 = x; x0 < 240u && !((gut_cov[r0][x0 / 32u] >> (x0 % 32u)) & 1u); x0++)
+                ;
+            if (x0 > x)
+                lcd_fill(x, GUT_Y0 + r0, x0 - x, r - r0, gut_bg);
         }
+        r0 = r;
     }
 }
 #ifndef GRID_PREFILL
-#define GRID_PREFILL() grid_fill()
+#define GRID_PREFILL() gut_arm(T_BG)
 #endif
-static uint8_t gap_grid;                                /* the grid layout of the last full redraw (0: none / a page without a grid) */
-static uint16_t gap_bg;                                /* and the BG it was filled with */
-/* full redraw: the strips (header, cards, panel, footer) cover the rest; only the BG between them is filled */
+/* a full redraw (ui.force 1): nothing is filled first (b13, above gut_mark); the pass's transfers cover what they draw and gut_flush gives the rest the BG.
+ * item 152 A: the same page again (ui_refresh, ui.force 2): the strips and cards cover their own rows, the BG between them is already there */
 static void draw_frame(void)
 {
-    const uint32_t ch = CARD_H, gy = Y_GRAPH, gh = H_GRAPH;
-    if (ui.force == 2)                                 /* item 152 A: the same page again (ui_refresh): the strips and cards cover their own rows, the BG between them is already there */
-        return;
-    if (grid_on) {                                     /* the grid: everything under the header is drawn over the background */
-        if (gap_grid == grid_on && gap_bg == T_BG)      /* the same layout and BG as the last full redraw: the gaps are BG already, so the prefill changes nothing the player sees */
-            GRID_PREFILL();
-        else                                           /* another layout: its gutters and rows cut thin BG stripes through the OLD page's cards for the ~40 ms the cards take to draw (rc6: "two vertical lines, only a blink"):
-                                                        * the whole body first, as before Phase A (one blank, no stripes) */
-            gap_rows(H_HEAD, Y_FOOT + 15);
-        gap_grid = (uint8_t)grid_on;
-        gap_bg = T_BG;
-        return;
-    }
-    gap_grid = 0;
-    gap_rows(H_HEAD, Y_LABEL);
-    gap_rows(Y_LABEL + ch, gy);
-    gap_rows(gy + gh, Y_FOOT);
-    draw_gaps(Y_LABEL, ch);
+    if (ui.force != 2)
+        GRID_PREFILL();
 }
+/* b13: a screen drawn whole over the page (a dialog, the count-in, the update countdown): the BG where it draws nothing, at the end of the pass (it filled rows 24 .. 239
+ * first, and the count-in did on every beat: a blank body between) */
+#define body_clear() GRID_PREFILL()
 
 #ifndef CARD_HOOK
 #define CARD_HOOK(v, u) ((void)0)                       /* host: a card value set in S (M too wide with its unit) */
@@ -895,6 +842,7 @@ static void area_rect(int32_t *y, int32_t *h)
         *h = MROW_WAVES_END - UT_A_GR_Y;
 }
 /* the card of knob c (1 .. 3) in the area card row: x, y, w, h (w = h = 0: no card in that column) */
+static int foot_steps(void);
 static void area_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
     uint32_t cols = grid_on == 5 ? 3u : area_cols;
@@ -910,6 +858,8 @@ static void area_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
         *y = LP_CARD_Y;
         *h = LP_CARD_H;
     }
+    if (foot_steps() && *y + *h > Y_FOOT)             /* b13: the footer's step strip (row 1, from Y_FOOT) is drawn over the row's last rows (QUICK SEQ, PARAMETER LOCKS): the card stops there, its rows no longer flash under it */
+        *h = Y_FOOT - *y;
 }
 static void grid_geo(uint32_t c, int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
@@ -1178,7 +1128,7 @@ static void card_paint(const card_geo_t *g, uint32_t c, int32_t gx, int32_t gw, 
             } else
                 x = g->cut ? cv_text_on(pad, ty, vf, vb, col, T_BG) : cv_text_fit(pad, ty, vf, vb, col, T_BG, room - uw);
             if (unit[0])
-                cv_text_on(x + ug, card_ty(uf, g->val_base), uf, unit, ucol, T_BG);
+                cv_text_on(x + ug > text_ink1 ? x + ug : text_ink1 + 1, card_ty(uf, g->val_base), uf, unit, ucol, T_BG);   /* (item 156: a "4" ends its ink at its pen: "54ms" touched) */
         }
     }
     if ((ratio >= 0 && !two) || (g->seg && cell_seg_n > 1u && !big)) {   /* (item 156: a CHOICE's segment bar, also under a value of two lines) */
@@ -3266,7 +3216,7 @@ static void draw_uboot(void)
     if (!ui.force && shown == ui.uboot)
         return;
     shown = ui.uboot;
-    lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
+    body_clear();
     ui.head_sig = ~0u;
     draw_text_box(0, 76, 240, &AF_M, "STARTS IN", T_TEXT, 1);   /* (the title, UPDATE MODE, is the header's) */
     draw_text_box(0, 102, 240, &AF_L, d, T_THEME, 1);
@@ -3297,7 +3247,7 @@ static void draw_countin(void)
     if (!ui.force && shown == sig)
         return;
     shown = sig;
-    lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
+    body_clear();
     ui.head_sig = ~0u;
     if (total > 4u) {
         str_cpy(sub, "BAR 1 OF 2", sizeof sub);
@@ -3459,7 +3409,7 @@ static void draw_confirm_erase(void)
     const char *const *L = ERASE_LINES;
     const int32_t H = ERASE_H, BY = ERASE_BY, W = ERASE_W;
     uint32_t i, strip;
-    lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
+    body_clear();
     ui.head_sig = ~0u;
     for (strip = 0; strip < 2u; strip++) {
         const int32_t y0 = strip ? ERASE_STRIP : 0;
@@ -3500,7 +3450,7 @@ static void draw_confirm(void)
         return;
     }
     confirm_text(a, b);
-    lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, T_BG);
+    body_clear();
     ui.head_sig = ~0u;
     CV_BANDS(DLG_H + dh) {
         cv_begin(DLG_W, DLG_H + dh, T_BG);                /* a SURF card: warning, the question, the detail, two buttons */
