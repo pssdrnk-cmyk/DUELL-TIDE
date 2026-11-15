@@ -443,9 +443,9 @@ static void drones(void)
     static const char *const DS[2][2] = {{"HORN SWELL", "VOID SHIMMER"}, {"REESE BASS", "NIGHT DRONE"}};
     /* the sequences (tools/drone_pack.py, b6: owner "I'm missing some sequence from the drone multis"): the part, its RATE (params.c N_DIV: 6 1/2, 7 1/1; b7: the bed beside it is ARP SEQ too, 1/4 = 0, one note tied over its 16 steps), the 16 steps
      * (a digit: the offset from the held key plus DQ_BASE, '-' a tie, '.' a rest; b9 rework2: M18 AMB GROWL moves C3, E flat 3, G3 over its bed on C2: DQ_BASE -12, DQ_BED -24) */
-    static const uint8_t DQ[2] = {0, 1}, DQ_RATE[2] = {6, 7};
+    static const uint8_t DQ[2] = {0, 1}, DQ_RATE[2] = {0, 0}, DQ_LEN[2] = {32, 64};   /* (b13-grid: the moving part on the bed's 1/4 grid, its steps held by ties: was 1/2 and 1/1, 16 steps) */
     static const int8_t DQ_BASE[2] = {0, -12}, DQ_BED[2] = {0, -24};
-    static const char DQ_STEP[2][17] = {"0--.0--.5--.0--.", "0------.3---7--."};
+    static const char DQ_STEP[2][65] = {"0-----..0-----..5-----..0-----..", "0---------------------------....3---------------7-----------...."};
     uint8_t rec[MU_REC_MAX], obj[MU_NOBJ][MU_OBJ_MAX], amt[NSHOWN], set[6];
     uint16_t objn[MU_NOBJ];
     project_t q;
@@ -547,16 +547,16 @@ static void drones(void)
             const track_t *s = &trk[DQ[k - (MU_SLOTS - 2u)]], *d = &trk[1u - DQ[k - (MU_SLOTS - 2u)]];
             uint32_t bed_ok;
             ok &= trk[0].p[P_AHOLD] == 2 && trk[1].p[P_AHOLD] == 2 && d->p[P_AMODE] == AM_SEQ_ID && song.g[G_BPM] == 60;
-            ok &= s->p[P_AMODE] == AM_SEQ_ID && s->p[P_SLEN] == 16 && s->p[P_AGATE] == 127 && s->p[P_ARATE] == DQ_RATE[k - (MU_SLOTS - 2u)];
-            for (t = 0; ok && t < 16u; t++)
+            ok &= s->p[P_AMODE] == AM_SEQ_ID && s->p[P_SLEN] == DQ_LEN[k - (MU_SLOTS - 2u)] && s->p[P_AGATE] == 127 && s->p[P_ARATE] == DQ_RATE[k - (MU_SLOTS - 2u)];
+            for (t = 0; ok && t < DQ_LEN[k - (MU_SLOTS - 2u)]; t++)
                 ok &= DQ_STEP[k - (MU_SLOTS - 2u)][t] == '.' ? s->step[t].time == ST_REST : DQ_STEP[k - (MU_SLOTS - 2u)][t] == '-' ? s->step[t].time == ST_TIE :
                       s->step[t].time == ST_NOTE && s->step[t].n == 1u && s->step[t].note[0] == (uint32_t)(60 + DQ_BASE[k - (MU_SLOTS - 2u)] + (DQ_STEP[k - (MU_SLOTS - 2u)][t] - '0')) && !(s->step[t].flags & SF_ACCENT);
             for (bed_ok = 1, t = 0; t < 16u; t++)     /* (b7: the bed, ARP SEQ 1/4, GATE 127: one note, the root (M18: two octaves down), tied over all 16 steps) */
                 bed_ok &= t ? d->step[t].time == ST_TIE : d->step[t].time == ST_NOTE && d->step[t].n == 1u && d->step[t].note[0] == (uint32_t)(60 + DQ_BED[k - (MU_SLOTS - 2u)]);
             ok &= bed_ok && d->p[P_SLEN] == 16 && d->p[P_AGATE] == 127 && d->p[P_ARATE] == 0;
         }
-        ck(k == MU_SLOTS - 2u ? "  M23: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 1 ARP SEQ 1/2 root root fourth root, part 2 ARP SEQ 1/4 one tied root"
-                    : "  M24: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 2 ARP SEQ 1/1 an octave down: root, minor third, fifth, part 1 ARP SEQ 1/4 one tied root two octaves down", ok);
+        ck(k == MU_SLOTS - 2u ? "  M23: the ROM record is tools/drone_multis/M17.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 1 ARP SEQ 1/4 (b13-grid: was 1/2, held by ties) root root fourth root, part 2 ARP SEQ 1/4 one tied root"
+                    : "  M24: the ROM record is tools/drone_multis/M18.bin byte for byte (LAYER); LOAD gives its engines, sounds, every value and step; HOLD ALL, 60 BPM; part 2 ARP SEQ 1/4 (b13-grid: was 1/1, held by ties) an octave down: root, minor third, fifth, part 1 ARP SEQ 1/4 one tied root two octaves down", ok);
     }
     memcpy(snap, nor, sizeof snap);
     gen = multi_gen();

@@ -385,8 +385,8 @@ static __attribute__((noinline)) void arp_seq(track_t *t, const uint32_t *list, 
     uint32_t vel, i, ties = 0, m = arp_seq_notes(t, list, n, out, &vel);
     if (!m)
         return;                                     /* a rest */
-    while (ties < 31u && arp_seq_tie(t, t->arp_idx + ties + 1u))
-        ties++;                                     /* the TIE steps after it hold the note (audit G07: they were rests, every note a short stab) */
+    while (ties < NSTEP - 1u && arp_seq_tie(t, t->arp_idx + ties + 1u))
+        ties++;                                     /* the TIE steps after it hold the note (audit G07: they were rests, every note a short stab; b13: up to the whole 64-step pattern, was 31) */
     for (i = 0; i < m; i++) {
         arp_put(t, i, out[i]);
         if (rec_arp_on(t))
@@ -562,7 +562,7 @@ static __attribute__((noinline)) void atg_fire(track_t *t, uint32_t *list, uint3
         if (arp_roll(t))
             for (i = 0, m = arp_seq_notes(t, list, cnt, out, &vel); i < m; i++)
                 nt = out[i] < nt ? out[i] : nt;
-        while (ties < 31u && arp_seq_tie(t, t->arp_idx + ties + 1u))
+        while (ties < NSTEP - 1u && arp_seq_tie(t, t->arp_idx + ties + 1u))
             ties++;                                 /* the TIE steps after it hold it */
     } else if (t->p[P_AMODE] == AM_CHORD) {         /* CHORD: its lowest note, an octave up each step through OCT */
         o = t->arp_idx % (uint32_t)(t->p[P_AOCT] > 0 ? t->p[P_AOCT] : 1);

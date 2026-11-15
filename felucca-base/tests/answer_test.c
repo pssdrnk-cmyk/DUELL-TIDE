@@ -310,6 +310,8 @@ static void m02_pad(void)
         power();
         project_load(MIDX(1));
         frame();
+        trk[1].p[P_ARATE] = 9;                     /* (b13-grid: the factory pad is on the stab's 1/16 grid now; the slow-rate case is set here as the record had it until then) */
+        trk[1].p[P_SLEN] = 2;                      /* (4BAR, its two steps the note and a tie) */
         amode = trk[1].p[P_AMODE]; arate = trk[1].p[P_ARATE]; sdiv = trk[1].p[P_SDIV]; slen = trk[1].p[P_SLEN];
         memcpy(keep, trk[1].step, sizeof keep);
         fill(d);

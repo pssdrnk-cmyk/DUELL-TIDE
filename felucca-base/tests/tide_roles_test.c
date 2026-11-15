@@ -99,19 +99,19 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "HSE JUNO", {0, 0, 45, 65}},   /* (the bass runs 4.8 .. 6 a bar: its own band 4.5 .. 6.5) */
     { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_ATMOS}, 0, "HSE RHODES", {20, 50, 0, 0}},   /* (the Rhodes 2.5 .. 4.8: 2.0 .. 5.0; the pad is one chord in four bars) */
     { 5, STY_PEAK,    STY_DEEP,    {R_STAB,  R_BASS},  1, "HSE CHICAGO", {25, 50, 80, 130}},   /* (b13-multis: piano stabs 4 a bar on the off-beats: 2.5 .. 5.0 as M04 / M26 had; the jacking 16th bass 11 a bar: its own band 8 .. 13) */
-    { 6, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ELEC CRISP", {70, 130, 0, 0}},   /* (b13-multis: the melodic triangle bass 10.5 a bar: its own band 7 .. 13; the strings a chord a bar, a PROG) */
+    { 6, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ELEC CRISP", {70, 130, 5, 13}},   /* (b13-grid: the strings on the bass's 1/16 grid re-strike when TIDE re-aligns the parts at a phrase move, 1.0 .. 1.25 a bar: their own band 0.5 .. 1.3; b13-multis: the melodic triangle bass 10.5 a bar: its own band 7 .. 13; the strings a chord a bar, a PROG) */
     { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "TECH DETROIT", {20, 55, 0, 0}},   /* (the stabs 2.3 .. 5.3 a bar: 2.0 .. 5.5) */
     { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_STAB},  0, "TECH SOUL"},     /* (the second part 1.7 .. 4.0 a bar is a STAB, not a MOTIF of 3 .. 8) */
     { 9, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_ATMOS}, 0, "ACID HYPNO", {70, 160, 0, 0}},   /* (was MINIMAL 12; M09 is ACID HYPNO now: a 16th-note line, 8 .. 15 a bar: its own band 7 .. 16; the second part plays twice in eight bars) */
     {10, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_PULSE}, 0, "ACID TWO 303", {55, 115, 35, 100}},   /* (two 303 lines: 6 .. 11 and 4 .. 9.5 a bar; the second is no DRONE) */
     {11, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_ATMOS}, 1, "ACID LINES", {50, 110, 0, 0}},   /* (the bass line 5.3 .. 10.5 a bar; the second part 0.7 a bar) */
     {12, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ELEC ROBOT", {30, 85, 5, 15}},   /* (bass 3.3 .. 8, the second part 0.7 .. 1.3 a bar) */
-    {13, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_ATMOS}, 0, "ELEC DEEPSEA", {35, 105, 0, 0}},   /* (4 .. 10 a bar; the second part 0.3 .. 0.7 a bar) */
+    {13, STY_PEAK,    STY_MINIMAL, {R_MOTIF, R_ATMOS}, 0, "ELEC DEEPSEA", {35, 110, 0, 0}},   /* (4 .. 11 a bar since b13-grid, the pad on the arpeggio's grid; 4 .. 10 a bar before; the second part 0.3 .. 0.7 a bar) */
     {14, STY_AMBIENT, STY_DEEP,    {R_MOTIF, R_PROG},  0, "ELEC WARPED", {25, 80, 0, 0}},   /* (2.8 .. 4.5 a bar) */
     {15, STY_DEEP,    STY_MINIMAL, {R_PULSE, R_ATMOS}, 0, "AMB BERLIN", {60, 90, 0, 0}},   /* (6.5 .. 8.5 a bar; the second part plays once in eight bars) */
     {16, STY_AMBIENT, STY_DEEP,    {R_AIR,   R_ATMOS}, 0, "AMB LOOPS"},     /* (the second part 0.25 .. 0.5 a bar) */
     /* b10 sound lane: the ROM-only factory multis M19-M24 (tools/drone_pack.py MORE; M17, M18 are STYLE DRONE and not here) */
-    {19, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_ATMOS}, 1, "TECH HYPNO", {45, 70, 0, 0}},   /* (the bass figure every third 16th, 5.0 .. 6.75 a bar: its own band 4.5 .. 7.0; the pad one chord in eight bars) */
+    {19, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_ATMOS}, 1, "TECH HYPNO", {35, 70, 0, 0}},   /* (the bass figure every third 16th, 5.0 .. 6.75 a bar, 3.75 .. 6.75 since b13-grid (the pad on its grid: TIDE's dialogue thins it a little more): its own band 3.5 .. 7.0; the pad one chord in eight bars) */
     {20, STY_DUB,     STY_DEEP,    {R_BASS,  R_SKANK}, 1, "DUB ROOTS", {40, 80, 0, 0}},   /* (b13-multis: the roots bass 6 a bar: its own band 4 .. 8; the skank on 2 and 4, 2 a bar) */
     {21, STY_DEEP,    STY_DUB,     {R_MOTIF, R_BASS},  1, "HSE LOFI"},      /* (the electric-piano chord riff, 6 hits a bar, 5.0 .. 6.0 under TIDE: a MOTIF; the off-beat bass 2.25 .. 5.0) */
     {22, STY_PEAK,    STY_MINIMAL, {R_BASS,  R_PAD},   1, "ELEC OUTRUN", {75, 140, 0, 0}},   /* (b13-multis: the 16th saw bass, 12 a bar with the beats left out, 8 .. 12 under TIDE: its own band 7.5 .. 14; the strings a chord a bar) */

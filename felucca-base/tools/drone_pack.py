@@ -33,6 +33,8 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None, sets=None):
     for p, rate, steps in ([seq] if isinstance(seq, tuple) else seq or []):
         parts[p]["set"].update(P_AMODE="SEQ", P_ARATE=rate, P_AGATE=127)
         parts[p]["steps"] = steps
+        if len(steps.split()) not in (8, 16):           # (b13-grid: a drone part on its partner's grid is 32 or 64 steps)
+            parts[p]["len"] = len(steps.split())
     return dict(rom=rom, slot=slot, name=name, mode="LAYER", what=what, g=dict(G), parts=parts)
 
 
@@ -54,9 +56,9 @@ def multi(rom, slot, name, what, a, b, la=98, lb=82, seq=None, sets=None):
 BED_STEPS = "0 - - - - - - - - - - - - - - -"
 DRONES = [
     multi(17, 1, "AMB DUNEHORN", "a horn swelling once a bar, root and fourth, with a shimmer of void above it", "HORN SWELL", "VOID SHIMMER", 107, 99,
-          seq=[(0, "1/2", "0 - - . 0 - - . 5 - - . 0 - - ."), (1, "1/4", BED_STEPS)]),
+          seq=[(0, "1/4", "0 - - - - - . . 0 - - - - - . . " "5 - - - - - . . 0 - - - - - . ."), (1, "1/4", BED_STEPS)]),
     multi(18, 2, "AMB GROWL", "a deep growling drone: detuned low saws on C2 with their sub on C1, beating slowly, a little overdrive, the low-pass moving slowly; above it a dark haze turning C3, E flat 3, G3", "REESE BASS", "NIGHT DRONE", 106, 100,
-          seq=[(1, "1/1", "-12 - - - - - - . -9 - - - -5 - - ."), (0, "1/4", "-24" + BED_STEPS[1:])],
+          seq=[(1, "1/4", "-12 - - - - - - - - - - - - - - - " "- - - - - - - - - - - - . . . . " "-9 - - - - - - - - - - - - - - - " "-5 - - - - - - - - - - - . . . ."), (0, "1/4", "-24" + BED_STEPS[1:])],
           sets=[dict(P_TRANS=0, P_PRIO=1, P_DKDEP=0, P_DIST=45, P_FREEA=66, P_LD_FLT=20, P_EQHG=-6, P_CHOR=40, P_DLY=30, P_REV=70), dict(P_TRANS=0, P_EQHG=-6, P_CHOR=70, P_SPRD=64, P_DLY=40, P_REV=90)]),
 ]
 
@@ -71,9 +73,12 @@ MORE = [
          parts=[dict(sound="HARM BASS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=70, P_AHOLD="OFF", P_CHRD="OFF", P_TRANS=0, P_FREEA=34, P_FREEB=22, P_E2FLT=50, P_DIST=30,
                                                   P_DLY=40, P_REV=24, P_TRIM=127, P_LEVEL=104),
                      steps="-30A . . -30 . . -30 . . -18 . .", len=12, poly=True, bseed=4325, amt=30, b={"P_FREEA": 40}),
-                dict(sound="FM STRINGS", set=dict(P_AMODE="SEQ", P_ARATE="4BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=44, P_LRATE=14, P_LD_FLT=16, **{"E:DTUN": 10, "E:MLVL": -12},
+                dict(sound="FM STRINGS", set=dict(P_AMODE="SEQ", P_ARATE="1/16", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=44, P_LRATE=14, P_LD_FLT=16, **{"E:DTUN": 10, "E:MLVL": -12},
                                                 P_CHOR=60, P_SPRD=60, P_DLY=30, P_REV=60, P_LEVEL=92),
-                     steps="-6 -", len=2, bseed=27687, amt=30, b={"P_FREEA": 50})]),
+                     steps="-6 - - - - - - - - - - - - - - - "
+                           "- - - - - - - - - - - - - - - - "
+                           "- - - - - - - - - - - - - - - - "
+                           "- - - - - - - - - - - - - - - -", len=64, bseed=27687, amt=30, b={"P_FREEA": 50})]),
     # b13-multis (2026-11-15): M20 re-voiced (was DUB HOUSE, DARK MIN7 + PEDAL BASS, deep house / dub techno "near" only): the dub / roots gap. Sources: GENRES.md 2 [T6 T8 T11 T31].
     dict(rom=20, slot=4, name="DUB ROOTS", mode="LAYER",
          what="dub / roots, G minor (75 BPM, one drop): a deep round sine bass with its sub an octave under, a little saturation, mono, playing the line laid back: on the one, then the 'and's, the third beat left to the kick (G1 to G2, G minor then C minor, 2 bars); a short organ skank chord on beats 2 and 4, high-passed, thrown into a dark triplet echo of 4-5 repeats and a spring",
@@ -108,14 +113,18 @@ MORE = [
                            ". n29v100 n29v84 n29v92 . n29v100 n29v84 n41v96 . n29v100 n29v84 n29v92 . n29v100 n41v88 n29v92 "
                            ". n36v100 n36v84 n36v92 . n36v100 n36v84 n48v96 . n36v100 n36v84 n36v92 . n36v100 n48v88 n36v92 "
                            ". n31v100 n31v84 n31v92 . n31v100 n31v84 n43v96 . n31v100 n31v84 n31v92 . n31v100 n43v88 n31v92", len=64, bseed=8464, amt=30, b={"P_FREEA": 52}),
-                dict(sound="PWM STRINGS", set={"P_AMODE": "OFF", "P_SDIV": "1/1", "P_SGATE": 127, "P_TRANS": 0, "P_CHOR": 90, "P_SPRD": 64, "P_DLY": 26, "P_REV": 64, "P_TRIM": 90, "P_LEVEL": 90},
-                     steps="n64+69+72v96 n65+69+72v92 n64+67+72v96 n62+67+71v92", len=4, bseed=7996, amt=30, b={"P_FREEA": 68})]),
+                dict(sound="PWM STRINGS", set={"P_AMODE": "OFF", "P_SDIV": "1/16", "P_SGATE": 127, "P_TRANS": 0, "P_CHOR": 90, "P_SPRD": 64, "P_DLY": 26, "P_REV": 64, "P_TRIM": 90, "P_LEVEL": 90},
+                     steps="n64+69+72v96 - - - - - - - - - - - - - - - "
+                           "n65+69+72v92 - - - - - - - - - - - - - - - "
+                           "n64+67+72v96 - - - - - - - - - - - - - - - "
+                           "n62+67+71v92 - - - - - - - - - - - - - - -", len=64, bseed=7996, amt=30, b={"P_FREEA": 68})]),
     dict(rom=23, slot=7, name="AMB TECHNO", mode="LAYER",
          what="ambient techno, C major (120 BPM): a chorused saw pad in four parallel major-seventh chords a bar each (F, G, C, D: F3 to F sharp 4), and a soft harp arpeggio on each chord's root, tenth and fifth in eighths, through a dotted-quarter (750 ms) ping-pong echo with a drifting time and a big damped hall",
          g=dict(G_BPM=120, G_DTIME="4D", G_DFDBK=52, G_DMIX=70, G_DMODE="PING", G_DCOLOR=30, G_DMDEP=30, G_RTYPE="HALL", G_RSIZE=120, G_RDAMP=64),
-         parts=[dict(sound="SILK CHORUS", set={"P_AMODE": "SEQ", "P_ARATE": "1/1", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "MAJ7", "P_VOIC": "CLOSE", "P_REL": 60, "P_FREEA": 44, "P_LRATE": 10, "P_LD_FLT": 8,
+         parts=[dict(sound="SILK CHORUS", set={"P_AMODE": "SEQ", "P_ARATE": "1/8", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "MAJ7", "P_VOIC": "CLOSE", "P_REL": 60, "P_FREEA": 44, "P_LRATE": 10, "P_LD_FLT": 8,
                                                  "P_CHOR": 100, "P_SPRD": 60, "P_DLY": 30, "P_REV": 70, "P_TRIM": 92, "P_LEVEL": 84},
-                     steps="-7 -5 -12 -10", len=4, bseed=33289, amt=30, b={"P_FREEA": 52}),
+                     steps="-7 - - - - - - - -5 - - - - - - - "
+                           "-12 - - - - - - - -10 - - - - - - -", len=32, bseed=33289, amt=30, b={"P_FREEA": 52}),
                 dict(sound="GHOST HARP", set={"P_AMODE": "SEQ", "P_ARATE": "1/8", "P_AGATE": 90, "P_AHOLD": "OFF", "P_CHRD": "OFF", "P_TRANS": 0, "P_REL": 50, "P_FREEA": 54,
                                                 "P_CHOR": 40, "P_SPRD": 60, "P_DLY": 70, "P_REV": 60, "P_TRIM": 100, "P_LEVEL": 104},
                      steps="-7A 9 0 . 9 0 9 . -5A 11 2 . 11 2 . . -12A 4 -5 . 4 -5 4 . -10A 6 -3 . 6 -3 . .", len=32, bseed=10920, amt=30, b={"P_FREEA": 60})]),
@@ -134,9 +143,12 @@ MORE = [
          parts=[dict(sound="DUB BLIP", set={"P_AMODE": "SEQ", "E:WAVE": 0, "P_ARATE": "1/16", "P_AGATE": 100, "P_AHOLD": "OFF", "P_CHRD": "OFF", "P_TRANS": 0, "P_FREEA": 38,
                                              "P_CHOR": 50, "P_SPRD": 50, "P_DLY": 96, "P_REV": 30, "P_TRIM": 127, "P_LEVEL": 106},
                      steps=". . . -5A . . . . . . 2 . . . . . . . . -5 . . . -2 . . . . . . -7 .", bars=2, bseed=41213, amt=30, b={"P_FREEA": 36}),
-                dict(sound="TAPE HISS", set={"P_AMODE": "SEQ", "P_ARATE": "4BAR", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "OFF", "P_TRANS": 0, "P_EQLG": -12, "P_EQLF": 12, "P_EQHG": -6,
+                dict(sound="TAPE HISS", set={"P_AMODE": "SEQ", "P_ARATE": "1/16", "P_AGATE": 127, "P_AHOLD": "OFF", "P_CHRD": "OFF", "P_TRANS": 0, "P_EQLG": -12, "P_EQLF": 12, "P_EQHG": -6,
                                               "P_CHOR": 40, "P_SPRD": 64, "P_DLY": 20, "P_REV": 70, "P_TRIM": 106, "P_LEVEL": 82},
-                     steps="0 -", len=2, bseed=17761, amt=30, b={})]),
+                     steps="0 - - - - - - - - - - - - - - - "
+                           "- - - - - - - - - - - - - - - - "
+                           "- - - - - - - - - - - - - - - - "
+                           "- - - - - - - - - - - - - - - -", len=64, bseed=17761, amt=30, b={})]),
     # b13-multis (2026-11-15): M26 re-voiced (was HSE KEYS, SUNDAY KEYS + ROTOR HAZE: deep house had five multis, SUNDAY KEYS also plays M08): the atmospheric drum & bass gap.
     # Sources: GENRES.md 15 [W2 W3 W4 W7 W11].
     dict(rom=26, slot=10, name="AMB JUNGLE", mode="LAYER",
@@ -148,8 +160,11 @@ MORE = [
          parts=[dict(sound="NIGHT REESE", set={"P_AMODE": "OFF", "P_SDIV": "1/8", "P_SGATE": 127, "P_TRANS": 0, "P_DKSRC": "PUMP", "P_DKRATE": "1/2", "P_DKDEP": 18, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 0, "P_REV": 8, "P_TRIM": 94, "P_LEVEL": 112},
                      steps="n38v110 - - - - n38v96 - - n36v110 - - - - n33v100 - - "
                            "n34v110 - - - - n34v96 - - n36v110 - - - - n33v100 - n31v92", len=32, bseed=55474, amt=30, b={"P_FREEA": 64}),
-                dict(sound="PHASE STRING", set={"P_AMODE": "OFF", "P_SDIV": "2BAR", "P_SGATE": 127, "P_TRANS": 0, "P_EQLG": -9, "P_EQLF": 10, "P_CHOR": 60, "P_SPRD": 60, "P_DLY": 16, "P_REV": 44, "P_TRIM": 90, "P_LEVEL": 94},
-                     steps="n53+57+60+64v96 n50+53+57+62v92 n50+55+58+62v96 n52+57+62+64v92", len=4, bseed=64729, amt=30, b={"P_FREEA": 60})]),
+                dict(sound="PHASE STRING", set={"P_AMODE": "OFF", "P_SDIV": "1/8", "P_SGATE": 127, "P_TRANS": 0, "P_EQLG": -9, "P_EQLF": 10, "P_CHOR": 60, "P_SPRD": 60, "P_DLY": 16, "P_REV": 44, "P_TRIM": 90, "P_LEVEL": 94},
+                     steps="n53+57+60+64v96 - - - - - - - - - - - - - - - "
+                           "n50+53+57+62v92 - - - - - - - - - - - - - - - "
+                           "n50+55+58+62v96 - - - - - - - - - - - - - - - "
+                           "n52+57+62+64v92 - - - - - - - - - - - - - - -", len=64, bseed=64729, amt=30, b={"P_FREEA": 60})]),
     # b12 EMPTY (owner 2026-11-13: "an empty multi for easy clearance and performance"): a blank slate to play live from. Two plain sounds, no steps, no arp, the sends at 0, short tails.
     dict(rom=27, slot=11, name="EMPTY", mode="LAYER", empty=True,
          what="a blank slate for live playing: one plain FM6 electric piano on part 1, one plain ANALOG square lead on part 2, nothing in either pattern, no arp, no sends, short tails; AUTO TIDE idle (a load starts both parts at A)",

@@ -64,8 +64,25 @@ def write_names(folder, multis):
 
 # b11: the records are stored LZSS-coded against a shared dictionary (see main). DICT_RECS: indices (in record order: M01.., the drones, the ROM-only multis) of the
 # records whose raw bytes form DM_DICT; found by `gen_duell_multis.py --best-dict`, a choice that suits the set of the day (a stale choice still decodes)
-DICT_RECS = (18, 8)
+DICT_RECS = (18, 20, 1)   # (b13-grid: --best-dict again after the pads went on their partners' grid, the dictionary squeezed: dict_bytes)
 LZ_MINL, LZ_MAXL, LZ_MAXD = 3, 273, 4095
+
+
+def dict_bytes(rec, per=7, keep=2):
+    """a record as it goes into DM_DICT (b13-grid): a run of one repeated 7-byte block (MU_STEP: a pad's tie steps) longer than two blocks is cut to two;
+    a record's own run is a match inside the record, so the dictionary does not need it (DM_DICT is plain bytes to the decoder: any content decodes)"""
+    out, i = bytearray(), 0
+    while i < len(rec):
+        blk, n = rec[i:i + per], 1
+        while len(blk) == per and rec[i + n * per:i + (n + 1) * per] == blk:
+            n += 1
+        if n > keep:
+            out += blk * keep
+            i += n * per
+        else:
+            out.append(rec[i])
+            i += 1
+    return bytes(out)
 
 
 def lz_encode(rec, dic):
@@ -205,7 +222,7 @@ def main(argv):
         while True:
             top = None
             for c in range(len(recs)):
-                d = b"".join(recs[k] for k in chosen + [c])
+                d = b"".join(dict_bytes(recs[k]) for k in chosen + [c])
                 if c in chosen or len(d) > 2800:
                     continue
                 t = len(d) + sum(len(lz_encode(b, d)) for b in recs)
@@ -215,9 +232,9 @@ def main(argv):
                 break
             cur = top[0]
             chosen.append(top[1])
-        print("best dictionary: DICT_RECS = %s (%d bytes of dictionary + records = %d)" % (tuple(chosen), sum(len(recs[k]) for k in chosen), cur))
+        print("best dictionary: DICT_RECS = %s (%d bytes of dictionary + records = %d)" % (tuple(chosen), sum(len(dict_bytes(recs[k])) for k in chosen), cur))
     dict_idx = [k for k in DICT_RECS if k < len(recs)]
-    dic = b"".join(recs[k] for k in dict_idx) or bytes(1)
+    dic = b"".join(dict_bytes(recs[k]) for k in dict_idx) or bytes(1)
     flat, ats = bytearray(), []
     for b in recs:
         ats.append(len(flat))
