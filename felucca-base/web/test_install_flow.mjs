@@ -127,6 +127,9 @@ await open("");
 ok(await c.eval("document.getElementById('ch-stable').checked && document.getElementById('beta-panel').hidden"), "Stable is the default build, the beta panel is hidden");
 ok((await t("hashstate")).startsWith("SHA-256 checked") && !(await dis("go")), "Stable: the SHA-256 is checked in the browser and Install is on without a box");
 ok((await t("pkgfacts")).includes(manifest.stable.sha256) && (await t("pkgfacts")).includes(manifest.stable.tag), "Stable: the page shows the tag and the SHA-256 that will be written");
+// b13 item 4: MIDI was not allowed before, so the page has not talked to the unit: the erase box is off and nothing is said about the unit
+ok(!(await c.eval("document.getElementById('erase-after').checked")) && (await t("erase-smart")) === "" && /^Not checked yet/.test(await t("erase-detect")) &&
+   !/TIDE|DUELL/.test((await t("erase-detect")) + (await t("erase-smart"))), "Erase box: unticked and silent about the unit before the check");
 await untick();
 await click("go");
 await c.until("document.getElementById('result-install').textContent.length > 0", 90000);
