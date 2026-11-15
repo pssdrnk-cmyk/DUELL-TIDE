@@ -59,7 +59,7 @@ More: [TIDE SETTINGS in the guide](docs/TIDE_GUIDE.md#3-tide-settings-set-and-fo
 
 ### MORPH: the hand page
 
-<img align="right" src="docs/tide/morph.png" width="240" alt="The MORPH page while music plays: each part's live sound as waves, part 1 in sea glass above and part 2 in coral below; knob 1's line reads MORPH 95 TO A 6/16 and the footer shows SND, FDBK and TIME">
+<img align="right" src="docs/tide/morph.png" width="240" alt="The MORPH page while music plays: each part's live sound as waves, part 1 in sea glass above and part 2 in coral below; knob 1's line reads MORPH 126 TO B 16/16 and the footer shows SND, FDBK and TIME">
 
 HOME's first page, for your hands. **Knob 1** is the MORPH fader from A to B; knobs 2 to 4 are the macros of the loaded multi's genre (a single sound: FILTER, RESONANCE, ECHO). Most of the page shows the sound itself as waves, like an oscilloscope: a held note stands still, a chord beats.
 - **Hold OCT+ and click knob 1:** End B becomes a new random roll.
@@ -92,7 +92,7 @@ More: [QUICKSTART](docs/QUICKSTART.md).<br clear="right">
 
 ### Live assist: record a take, get an answer
 
-<img align="right" src="docs/tide/live-rec.png" width="240" alt="The MORPH page while a take records: the header says BASS LINE C MINOR (the answer), knob 1's line reads TAKE BAR 1/1, both parts' waves move and a red REC sits in the footer">
+<img align="right" src="docs/tide/live-rec.png" width="240" alt="The MORPH page while a take records: the header says BASS LINE C MINOR (the answer), knob 1's line reads TAKE BAR 1/1, both parts' waves move and a red dot sits in the footer">
 
 Play a line, and TIDE gives the other part something that fits. Hold **SEQ** and tap **REC** to arm recording (a tap of REC disarms), press PLAY, and play: your notes go into the pattern, a red REC shows in the footer and knob 1's line counts the take (`TAKE  BAR 1/1`). When the take closes, the header names the answer (`BASS LINE  C MINOR`), the other part gets an **ANSWER** that fits inside the loop and does not rub against your notes:
 - **BASS LINE:** a bass line in the key, one chord a bar, an octave under you, in the rhythm of the multi's genre. **DOUBLE:** your notes a scale third above. **REPLY:** your first half is the call, the second half the answer. **ECHO:** your last note thrown four times, fading.
@@ -103,7 +103,7 @@ More: [ANSWER and REC in the guide](docs/TIDE_GUIDE.md#3-tide-settings-set-and-f
 
 ### SWELL and RIPPLE: make the answer again
 
-<img align="right" src="docs/tide/swell-next.png" width="240" alt="The sequence tools (SEQ held): CLEAR, REVERSE, SHIFT, SWELL picked, RIPPLE, TRANS, and G4 KEEP; the header says SWELL NEXT LOOP">
+<img align="right" src="docs/tide/swell-next.png" width="240" alt="The sequence tools (SEQ held): CLEAR, REVERSE, SHIFT, SWELL, RIPPLE, TRANS, and G4 KEEP; the header says SWELL NEXT PASS (REC is armed)">
 
 Not happy with the answer? Hold **SEQ** and press **C4: SWELL** for a whole new answer, or **D4: RIPPLE** to move a few of its notes and keep its rhythm. It lands at the start of the next loop; the header says `SWELL  NEXT LOOP` until then (`NEXT PASS` while REC is armed), and a second press replaces the waiting one. Every press is one undo step: **OCT-** and a turn of **PRESETS**. **G4: KEEP** (also with SEQ held) makes what you hear the part's own, sound and pattern.<br clear="right">
 
