@@ -264,10 +264,15 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n)
  * ~150 ms release, threshold well inside the knee's linear part, so chords
  * get quieter instead of crushed. */
 #define LIM_T 18000
-/* the master's soft knee (audit R05, owner D22): linear (exact) up to the limiter's threshold LIM_T (-5.2 dBFS), above it (only the limiter's attack overshoot gets there) a tanh into the 16-bit
- * ceiling with the slope 1 at the knee; a tanh over the whole range, as before, bent a loud chord at 1 .. 3 % THD even below the limiter's threshold. 2272 / 1024 = 32768 / (32767 - LIM_T):
- * the tanh's scale; the input is held to 2^16 past the knee (the table is flat there) so the product fits 32 bits */
+/* the master's soft knee (audit R05, owner D22): linear (exact) up to the limiter's threshold LIM_T (-5.2 dBFS), above it (only the limiter's attack overshoot gets there) a tanh into the
+ * ceiling MK_TOP with the slope 1 at the knee; a tanh over the whole range, as before, bent a loud chord at 1 .. 3 % THD even below the limiter's threshold. B13 (owner 2026-11-15, "very quiet
+ * next to my other synths"): the ceiling is 21900 (-3.5 dBFS, was the 16-bit ceiling), so that audio.c's DAC stage, +2 dB over its old level, puts the loudest sample at -1.5 dBFS of the DAC.
+ * MK_R = (MK_TOP - LIM_T) x 32768 / TANH_Q15[256] (31588: the table's end, tanh 2): the tanh's range, so the knee's output never passes MK_TOP; MK_S / 1024 = 32768 / MK_R: the tanh's scale (the
+ * slope 1 at the knee). The input is held to 2^16 past the knee (the table is flat there) so the product fits 32 bits (65535 x 8293 < 2^31) */
 #define MK_K LIM_T
+#define MK_TOP 21900
+#define MK_R 4046
+#define MK_S 8293
 static __attribute__((noinline)) int32_t master_knee(int32_t x)
 {
     int32_t a = x < 0 ? -x : x;
@@ -275,7 +280,7 @@ static __attribute__((noinline)) int32_t master_knee(int32_t x)
         a -= MK_K;
         if (a > 65535)
             a = 65535;
-        a = MK_K + ((softclip((a * 2272) >> 10) * (32767 - MK_K)) >> 15);
+        a = MK_K + ((softclip((a * MK_S) >> 10) * MK_R) >> 15);
     }
     return x < 0 ? -a : a;
 }

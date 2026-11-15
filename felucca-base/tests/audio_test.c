@@ -237,8 +237,9 @@ static void dma(void)
     host_nest = 0;
 }
 /* MASTER and USB (DUELL 0.2.25: MENU > USB LEVEL is removed, USB is always at the fixed level): mix_block makes the mix at master_q12 = MASTER_USB_REF (2048) whatever
- * the knob says; USB (uac_tap) takes that; audio.c master_dac gives the DAC out * master_q12 / 2048 with OUT_SHIFT fractional bits, saturated, the gain gliding
+ * the knob says; USB (uac_tap) takes that; audio.c master_dac gives the DAC out * master_q12 / 2048 * 1.2588 (B13: +2 dB) with OUT_SHIFT fractional bits, saturated, the gain gliding
  * with a one-pole step every sample (tau 512 samples) to the knob's level, exactly on it once it is there */
+#define DAC_TRIM 1.2587890625                          /* (B13: audio.c master_dac's t + t/4 + t/128 + t/1024) */
 static int32_t usb_lim_min;                            /* the lowest lim_env of the last usb_run (the limiter's engagement) */
 static int usb_same_as_ref;                            /* the last usb_run's USB feed equals the reference run's, sample for sample */
 static int32_t usb_ref_tap[400][64];
@@ -250,9 +251,12 @@ static double block_rms(const int32_t *b, uint32_t n)
     for (i = 0; i < 2u * n; i++) s += (double)b[i] * b[i];
     return sqrt(s / (2.0 * n));
 }
-static int32_t want_dac(int32_t tap, int32_t master)    /* what master_dac gives once settled: Q15 x 2^OUT_SHIFT, saturated */
+static int32_t want_dac(int32_t tap, int32_t master)    /* what master_dac gives once settled: Q15 x 2^OUT_SHIFT x the trim, saturated (its integer steps: the target, its shift s, k) */
 {
-    int32_t v = (tap * (master * 8)) >> (14 - OUT_SHIFT);
+    int32_t t = master << 12, s, v;
+    t += (t >> 2) + (t >> 7) + (t >> 10);
+    s = t < (1 << 21) ? 6 : 9;
+    v = (tap * (t >> s)) >> (23 - s - OUT_SHIFT);
     return v > (((32768 << OUT_SHIFT) - 1)) ? (((32768 << OUT_SHIFT) - 1)) : v < -32768 * (1 << OUT_SHIFT) ? -32768 * (1 << OUT_SHIFT) : v;
 }
 static double usb_run(uint32_t master, int dac_exact_ok[1], double *dac_rms)
@@ -313,33 +317,33 @@ static void usb_level(void)
     }
     printf("audio: USB rms %.0f at every knob; DAC rms: 2048 %.0f, 1024 %.0f; limiter env min: knob 2048 %d, any knob %d\n", u_ref, d_ref, d_q, (int)lim_ref_min, (int)lim_min);
     check("USB is exactly the mix at master_q12 = 2048 (MASTER_USB_REF) whatever the knob (0, 64, 1024, 3000, 4088)", same && u_ref > 1000.0 && u_q == u_ref);
-    check("the DAC gets exactly USB * master_q12 / 2048 with 7 fractional bits, saturated (0: silent, 2048: = USB, 1024: -6 dB, from the first block: no fade-in)",
-          ok_ref && all_ok && fabs(d_ref - u_ref) < 1e-9 && fabs(20.0 * log10(d_q / u_q) + 6.02) < 0.2);
+    check("the DAC gets exactly USB * master_q12 / 2048 + 2 dB with OUT_SHIFT fractional bits, saturated (0: silent, 2048: USB + 2.0 dB, 1024: -4 dB, from the first block: no fade-in)",
+          ok_ref && all_ok && fabs(20.0 * log10(d_ref / u_ref) - 2.0) < 0.01 && fabs(20.0 * log10(d_q / u_q) + 6.02 - 2.0) < 0.2);
     check("the limiter works as at the default knob, at any knob (the held chord)", lim_min >= lim_ref_min);
     {   /* the DAC feed saturates, never wraps; unity is exact; a quiet knob keeps the fractional bits */
-        int32_t b[8] = {32767, -32768, 30000, -30000, 20000, -20000, 16383, 0};
-        int32_t c[4] = {32767, -32768, 1234, -1234}, d[4] = {1000, -1000, 31, 1};
+        int32_t b[8] = {32767, -32768, 30000, -30000, 20000, -20000, 12000, 0};
+        int32_t c[4] = {32767, -32768, 21900, -21900}, d[4] = {1000, -1000, 31, 1};
         int ok = 1;
         mdac_g = -1; song.master_q12 = 4088;
         master_dac(b, 4);
         ok &= b[0] == ((32768 << OUT_SHIFT) - 1) && b[1] == -32768 * (1 << OUT_SHIFT) && b[2] == ((32768 << OUT_SHIFT) - 1) && b[3] == -32768 * (1 << OUT_SHIFT) &&
-              b[4] == ((32768 << OUT_SHIFT) - 1) && b[5] == -32768 * (1 << OUT_SHIFT) && b[6] == (16383 * 4088 * 8) >> 7 && b[7] == 0;
+              b[4] == ((32768 << OUT_SHIFT) - 1) && b[5] == -32768 * (1 << OUT_SHIFT) && b[6] == 7718812 && b[7] == 0;   /* (12000 x k 41167 >> 6) */
         mdac_g = -1; song.master_q12 = 2048;
         master_dac(c, 2);
-        ok &= c[0] == 32767 * (1 << OUT_SHIFT) && c[1] == -32768 * (1 << OUT_SHIFT) && c[2] == 1234 << OUT_SHIFT && c[3] == -1234 * (1 << OUT_SHIFT);
-        mdac_g = -1; song.master_q12 = 64;               /* 1/32: Q15 1000 -> 31.25, kept as 4000 in Q22 (the old stage: 31) */
+        ok &= c[0] == (1 << (15 + OUT_SHIFT)) - 1 && c[1] == -(1 << (15 + OUT_SHIFT)) && c[2] == 7057275 && c[3] == -7057275;   /* (16-bit full scale + 2 dB saturates; the knee's ceiling 21900 x k 20624 >> 6 = -1.5 dBFS) */
+        mdac_g = -1; song.master_q12 = 64;               /* 1/32 + 2 dB: Q15 1000 -> 39.3, kept as 10070 in Q23 (k 5156 >> 9) */
         master_dac(d, 2);
-        ok &= d[0] == 4000 && d[1] == -4000 && d[2] == 124 && d[3] == 4;
-        check("master_dac saturates at the old ceiling at master_q12 4088 (no wrap), is unity at 2048 and keeps 7 fractional bits at a quiet knob", ok);
+        ok &= d[0] == 10070 && d[1] == -10071 && d[2] == 312 && d[3] == 10;
+        check("master_dac saturates at the 24-bit ceiling (no wrap), is +2.0 dB at 2048 (the knee's ceiling at -1.5 dBFS) and keeps the fractional bits at a quiet knob", ok);
         {   /* the knob's fraction (master_g16, Q16): used while its upper 12 bits are song.master_q12, otherwise the whole step alone */
             int32_t e[2] = {1000, -1000}, f[2] = {1000, -1000};
             ok = 1;
             mdac_g = -1; song.master_q12 = 3; master_g16 = 3u * 16u + 8u;       /* 3.5 / 2048 */
             master_dac(e, 1);
-            ok &= e[0] == 218 && e[1] == -219;                                  /* 1000 x 3.5 / 16 = 218.75, floor */
+            ok &= e[0] == 548 && e[1] == -549;                                  /* 1000 x 3.5 / 2048 x 2^8 x 1.2588 = 550.7: k 281 >> 9, floor */
             mdac_g = -1; song.master_q12 = 3; master_g16 = 999u;                 /* a torn pair: the whole step 3 */
             master_dac(f, 1);
-            ok &= f[0] == 187 && f[1] == -188;                                  /* 1000 x 3 / 16 = 187.5 */
+            ok &= f[0] == 470 && f[1] == -471;                                  /* 1000 x 3 / 2048 x 2^8 x 1.2588: k 241 >> 9 */
             master_g16 = 2048u * 16u; song.master_q12 = 2048;
             check("master_dac: the knob's 4 fraction bits are used while they belong to master_q12; a pair that does not agree is read as the whole step", ok);
         }
@@ -356,7 +360,7 @@ static void usb_level(void)
             memcpy(o, in, sizeof o);
             master_dac(o, 32);
             for (i = 0; i < 64; i += 2) {
-                double g = (double)o[i] / (20000.0 * (1 << OUT_SHIFT));
+                double g = (double)o[i] / (20000.0 * (1 << OUT_SHIFT) * DAC_TRIM);
                 if (n >= 2u && fabs(g - prev) > worst) worst = fabs(g - prev);
                 ok &= g <= prev + 1e-9;                   /* monotone down */
                 prev = g;
@@ -366,7 +370,7 @@ static void usb_level(void)
         }
         printf("audio: master glide 2048 -> 512: gain %.4f after 64 samples, largest step per sample %.5f of full scale, exactly on the knob's level at the end: %d\n", g_at_32, worst, settled);
         check("MASTER glides: a jump of the knob (-12 dB) moves the gain by at most 1/512 of the gap per sample (no step), only downwards, and ends exactly on the new level",
-              ok && settled && worst < 0.75 / 512.0 * 1.01 && g_at_32 > 0.90 && g_at_32 < 0.93);   /* (0.25 + 0.75 e^(-64/512) = 0.912) */
+              ok && settled && worst < 0.75 / 512.0 + 1.5 / 20624.0 && g_at_32 > 0.90 && g_at_32 < 0.93);   /* (0.25 + 0.75 e^(-64/512) = 0.912; a step may round up by one unit of k = g >> 9, 1/20624 of the level at 2048 since B13's +2 dB) */
     }
     {   /* PERFORM busy (DRIVE, FILTER): perf_master takes the level MASTER_USB_REF too, the USB feed is the same at every knob */
         int okp, okr;
