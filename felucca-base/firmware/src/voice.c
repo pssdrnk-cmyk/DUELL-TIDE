@@ -1093,17 +1093,24 @@ static uint32_t exp2_neg(uint32_t x);                 /* (fx.c: 2^-x, x Q16, Q15
 /* RES (audit P07): the damping falls exponentially, 2^-(RES x 3.79 / 127), so every step narrows it by the same ratio (about equal dB of peak a step;
  * the linear law of before, 8192 - res * 7600 / 127, gave no peak at all below RES 48 and spent its resonance in the top 30 steps). The same ends: 2.0 down to
  * 0.145 (Q 0.5 .. 6.9); the factory sounds' RES were moved to the step of the same damping (tools/duell_sounds.py) */
-#define UF_K(res) ((int32_t)(exp2_neg((uint32_t)(res) * 1956u) >> 2))   /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145) */
+#define UF_K(res) UF_KM(res, 1956u)                     /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145) */
+#define UF_KM(res, m) ((int32_t)(exp2_neg((uint32_t)(res) * (m)) >> 2))
+/* b13-acid: WAVE ACID / ACSQ (voice.c acid_on) take RES on to the edge of self-oscillation, as a 303 does (Open303's TeeBee filter at full RES): the same
+ * exponential law over a wider span, 12 dB 2.0 down to 0.010 (UF_KA 3943: 2^-7.64), the 24 dB second stage 0.765 down to 0.0070 (UF_K24BA 3500: 2^-6.78): a peak of
+ * about +38 dB at RES 127 in 24 dB (+14 before; +40 in 12 dB, +17 before). Every other sound keeps its law bit for bit */
+#define UF_KA 3943u
+#define UF_K24BA 3500u
 #define UF_K24A 7568                                    /* 24 dB: the first stage's (1.848), the second's from 0.765 down with RES */
-#define UF_K24B(res) ((int32_t)((exp2_neg((uint32_t)(res) * 1486u) * 3135u) >> 15))   /* (0.765 down to 0.104, 3135 .. 425, the same way: 2^-(RES x 2.88 / 127)) */
+#define UF_K24B(res) UF_K24BM(res, 1486u)               /* (0.765 down to 0.104, 3135 .. 425, the same way: 2^-(RES x 2.88 / 127)) */
+#define UF_K24BM(res, m) ((int32_t)((exp2_neg((uint32_t)(res) * (m)) * 3135u) >> 15))
 #define UF_KNEE 48000
 static __attribute__((noinline)) void uf_coef(tsvf_t *f, int32_t idx, int32_t k) { tsvf_coef_k(f, idx, k); }   /* (one copy: a divide) */
-/* one voice's block through the filter, in place: uc the effective cut (Q8 dial steps), p the part's values (RES MODE SLOPE) */
-static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t n, int32_t uc, const int16_t *p)
+/* one voice's block through the filter, in place: uc the effective cut (Q8 dial steps), p the part's values (RES MODE SLOPE), acid: the part plays WAVE ACID / ACSQ (its RES law) */
+static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t n, int32_t uc, const int16_t *p, uint32_t acid)
 {
     tsvf_t f, g;
-    uint32_t i, s24 = p[P_FREED] == 2, run2, lp;
-    int32_t md = clamp(p[P_FREEC], 0, UF_HP), res = clamp(p[P_FREEB], 0, 127), k1 = s24 ? UF_K24A : UF_K(res), k2 = UF_K24B(res);
+    uint32_t i, s24 = p[P_FREED] == 2, run2, lp, m1 = acid ? UF_KA : 1956u;
+    int32_t md = clamp(p[P_FREEC], 0, UF_HP), res = clamp(p[P_FREEB], 0, 127), k1 = s24 ? UF_K24A : UF_KM(res, m1), k2 = UF_K24BM(res, acid ? UF_K24BA : 1486u);
     int32_t bl = 0, blend = 0;                           /* MORPH (0.2.9): the two ends' SLOPEs cross-faded, 0 (12 dB) .. 32 (24 dB) */
     int32_t wb = md <= 64 ? md << 4 : ((UF_HP - md) * 65) >> 2, wl = md < 64 ? 1024 - wb : 0, wh = md > 64 ? 1024 - wb : 0;   /* MODE: LP .. BP
                                                          * .. HP (Q10; 1024 / 63 a step above BP, no divide) */
@@ -1118,7 +1125,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
         s24 = bl >= 32;
         blend = bl > 0 && bl < 32;
         if (blend)
-            k1 = UF_K(res) + (((UF_K24A - UF_K(res)) * bl) >> 5);   /* (the first stage's damping between the two) */
+            k1 = UF_KM(res, m1) + (((UF_K24A - UF_KM(res, m1)) * bl) >> 5);   /* (the first stage's damping between the two) */
     }
     if (!v->uft) {                                      /* from rest: no ramp */
         a1 = a2 = 0;
@@ -1179,7 +1186,7 @@ static __attribute__((noinline)) void uf_voice(const engine_t *e, track_t *t, vo
     for (i = 0; i < n; i++)
         tmp[i] = 0;
     e->render(t, v, tmp, n, m);
-    uf_run(v, tmp, n, uc, t->p);
+    uf_run(v, tmp, n, uc, t->p, acid_on(t));
     for (i = 0; i < n; i++)
         dst[i] += tmp[i];
 }
@@ -1202,7 +1209,7 @@ static __attribute__((noinline)) void uf_edge(const engine_t *e, track_t *t, voi
     e->render(t, v, tmp, n, m);
     for (i = 0; i < n; i++)
         dry[i] = tmp[i];
-    uf_run(v, tmp, n, uc, t->p);
+    uf_run(v, tmp, n, uc, t->p, acid_on(t));
     for (i = 0; i < n; i++) {
         int32_t w = (int32_t)(in ? i + 1u : n - 1u - i);  /* (the filter's share, of n) */
         dst[i] += dry[i] + (tmp[i] - dry[i]) * w / (int32_t)n;   /* (32-bit: |a difference| < 2^18, x 32) */

@@ -24,7 +24,7 @@
 # hunt1 (release_drafts/CLICK_HUNT1.md): the fader's steps of the sends, PATCH LEVEL and PAN are ramped inside the block (mod.c mod_mixmv counts the open morph window): M08 f127,
 # M09 f63 f127, M12 f63 f127 re-made once (2 to 16 samples in the first 12 ms differ, by at most 15 of a peak of 17,000: the step of the fader set at the start).
 # hunt1: SAT out of 0 and back into 0 without a step (fx.c track_dist_ramp): M12 f127 and S05_DEAD_BUFFER f127 re-made once (their matrix route lets the followed SAT run down
-# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 ). The other 103 renders are unchanged.
+# through the integer 0 at 1.43 s, 9 blocks; from there on the render differs by at most 89 of a peak of 12,900 / 19,700, 0.5 %). The other 103 renders are unchanged.
 # hunt1: the SPREAD mix's gains in a line while a route or the MORPH window moves them, SAT's blend ramp on a SPREAD part (fx.c spread_run / spread_post): M03 f63 f127, M05 f0 f63 f127,
 # M06 f63 f127, M07 f0 f63 f127, M10 f63 f127, M11 f63 f127 re-made once (14 of 105; the start of the render, the stored PAN's follower and the fader's first steps on SPREAD parts:
 # the largest difference is 266 of a peak of 17,000 (M10 f127), most 4 to 95). The other 91 renders are unchanged.
@@ -54,7 +54,6 @@
 # Audit P09, on purpose, 9 renders: ANALOG's PW card is E4, the slot that held the old VCF's CUT; the test scenes S13, S14 and the spare X06 still store a CUT value there on a PWM part, which now sets its width.
 # D31 (audit G14, 2026-11-05), on purpose, 45 of the 108: the sixteen factory multis are in the curated dub / house order (BASIC CHORD, DUB CHORD, CELLAR TAPE, NIGHT ORGAN, ORGAN SKANK, WARM ECHO, MINIMAL 12, TINE DUB, DEEP 332, then the owner's PAD SPLIT .. FINAL REEL), six of them new: every M01..M16 render but M13 COLD CHAPEL (which keeps its slot) is another record; DUB CHORD's TIDAL SUB line is an octave up and its LEVEL 4 lower. The scenes and the spare renders are unchanged.
 # b10 Later 19 (2026-11-12), on purpose, 8 of the 108: the MUSIC roll moves an FM6 carrier envelope once (morph_fm_shape.c), so the End B records of M02 M04 M06 M16 were rolled again (tools/factory_multis.py build): their fader 63 and 127 renders re-made; the others are unchanged.
-# B13 level (2026-11-15), on purpose, 67 of the 108: the master knee's ceiling 32767 -> 21900 (fx.c MK_TOP; only samples past the limiter's threshold): tools/render_third_octave.py old vs new over these and the regress golden, 266 renders: level within 0.03 dB, every third-octave band within 0.3 dB but one (FM6 MALLET WOOD 0.75 dB at 12.6 kHz, its attack)
 M01 f0 65396cca464d6267
 M01 f63 8bb6ff32c3cd6af3
 M01 f127 d45e30bc9770fa8d
@@ -79,15 +78,15 @@ M07 f127 e8aafbb918d335af
 M08 f0 669590af83d876d6
 M08 f63 3e15a2099ceb2103
 M08 f127 8fb2bb3d6529c4e2
-M09 f0 4e06980a1c2bba78
-M09 f63 9190b8611350c6b3
-M09 f127 8604fed871eea550
-M10 f0 5ad43e6b409b8613
-M10 f63 231c8eadffea24d1
-M10 f127 2917be0c1b0eb2fc
-M11 f0 7bf059b7aeb94bec
-M11 f63 1f7a41c116ff9b28
-M11 f127 dd01b0d81a32efd1
+M09 f0 a2335e4f1969d33e
+M09 f63 de3fedb9e8ec1cd1
+M09 f127 e93c58282589d88b
+M10 f0 f7880221b2e2f284
+M10 f63 491a213debb93bd0
+M10 f127 4c23e7b6e92f0f15
+M11 f0 0d4fc60045b3308b
+M11 f63 78ede647a777fc71
+M11 f127 2780cdcbffd687d6
 M12 f0 8ea36f7ee76a907f
 M12 f63 23698ffb12bbd4a5
 M12 f127 87fb406c822fc9b2

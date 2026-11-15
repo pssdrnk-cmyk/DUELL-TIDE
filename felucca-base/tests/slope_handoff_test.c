@@ -15,15 +15,15 @@ int main(void)
     v.msl = 0x8000u | 1024u;                             /* the morph's slope weight: nearly all 24 dB */
     for (uint32_t i = 0; i < CTL; i++)
         b[i] = i < 16 ? 9000 : -9000;
-    uf_run(&v, b, CTL, 30 << 8, p);
+    uf_run(&v, b, CTL, 30 << 8, p, 0);
     reference = v;
     reference.uft = 1;                                   /* the reference: a part already at 12 dB, no morph */
     reference.msl = 0;
     v.msl = 0x8000u | 1023u;                             /* the morph reaches the 12 dB end */
     for (uint32_t i = 0; i < CTL; i++)
         b[i] = expected[i] = i < 16 ? 9000 : -9000;
-    uf_run(&v, b, CTL, 30 << 8, p);
-    uf_run(&reference, expected, CTL, 30 << 8, p);
+    uf_run(&v, b, CTL, 30 << 8, p, 0);
+    uf_run(&reference, expected, CTL, 30 << 8, p, 0);
     same = !memcmp(b, expected, sizeof b);
     printf("slopehandoff: a slope morph reaching 12 dB does not restart the 24 dB fade: %s\n", same ? "PASS" : "FAIL");
     return !same;

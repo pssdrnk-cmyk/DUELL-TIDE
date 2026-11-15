@@ -3,9 +3,9 @@
  * build/host/acid_test (host_tests.sh acid):
  *   EXACT   a plain note with WAVE ACID renders bit for bit as WAVE SAW at velocity 42 (ACID_BASE), ACSQ as SQR; whatever its own velocity
  *   NONACID the same accent on WAVE SAW: ENV 2 keeps its Decay, the capacitor stays empty, the level step is the velocity's alone
- *   DECAY   an accented ACID note's ENV 2 falls to a half in about 30 ms whatever a long Decay says (a plain note keeps the Decay's time); a Decay
- *           shorter than that stays (the accent never makes it longer)
- *   LEVEL   the accent's level burst: +8 .. 11 dB over a plain note at the start (up to unity, no more: above it the amp ramp overflows), on it again after 200 ms
+ *   DECAY   an accented ACID note's ENV 2 falls to a half in about 140 ms (b13-acid: Open303's accent decay, a time constant of 200 ms, the 303's shortest) whatever a
+ *           long Decay says (a plain note keeps the Decay's time); a Decay shorter than that stays (the accent never makes it longer)
+ *   LEVEL   the accent's level burst: +8 .. 11 dB over a plain note at the start (up to unity, no more: above it the amp ramp overflows), falling with the accent's ENV 2
  *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; two accents in a row stack, more at high RES than at low
  *   SLIDE   a slid step (LEGATO, slide_glide as the sequencer sets it) does not retrigger and is an RC lag: 90 % of a semitone and of an
  *           octave in 45 .. 60 ms, 99 % in 90 .. 120 ms
@@ -157,33 +157,33 @@ static void decay(void)
 {
     uint32_t plain, acc, plain2;
     double ap, aa;
-    track_t *t = fresh(7, 85, 100);
-    plain = env2_half(t, 96, 3000);
-    t = fresh(7, 85, 100);
-    acc = env2_half(t, 127, 3000);
+    track_t *t = fresh(7, 110, 100);
+    plain = env2_half(t, 96, 6000);
     t = fresh(7, 110, 100);
-    plain2 = env2_half(t, 96, 6000);
+    acc = env2_half(t, 127, 6000);
+    t = fresh(7, 120, 100);
+    plain2 = env2_half(t, 96, 9000);
     ap = ms_of(plain);
     aa = ms_of(acc);
     {
         char s[160];
-        snprintf(s, sizeof s, "ACID: ENV 2 half time, Decay 85: plain %.0f ms, accent %.0f ms (the accent: ~30 ms = 200 ms to 99 %%)", ap, aa);
-        check(s, aa > 20.0 && aa < 42.0 && ap > 2.0 * aa);
+        snprintf(s, sizeof s, "ACID: ENV 2 half time, Decay 110: plain %.0f ms, accent %.0f ms (the accent: ~140 ms = tau 200 ms)", ap, aa);
+        check(s, aa > 125.0 && aa < 155.0 && ap > 2.0 * aa);
     }
-    t = fresh(7, 110, 100);
-    acc = env2_half(t, 127, 6000);
+    t = fresh(7, 120, 100);
+    acc = env2_half(t, 127, 9000);
     {
         char s[160];
-        snprintf(s, sizeof s, "ACID: the accent's time does not follow the Decay knob (Decay 85 / 110: %.0f / %.0f ms), a plain note does (%.0f ms)", aa, ms_of(acc), ms_of(plain2));
-        check(s, ms_of(acc) > aa * 0.9 && ms_of(acc) < aa * 1.1 && ms_of(plain2) > 3.0 * ap);
+        snprintf(s, sizeof s, "ACID: the accent's time does not follow the Decay knob (Decay 110 / 120: %.0f / %.0f ms), a plain note does (%.0f ms)", aa, ms_of(acc), ms_of(plain2));
+        check(s, ms_of(acc) > aa * 0.9 && ms_of(acc) < aa * 1.1 && ms_of(plain2) > 1.5 * ap);
     }
-    t = fresh(7, 61, 100);
+    t = fresh(7, 85, 100);
     plain = env2_half(t, 96, 3000);
-    t = fresh(7, 61, 100);
+    t = fresh(7, 85, 100);
     acc = env2_half(t, 127, 3000);
     {
         char s[160];
-        snprintf(s, sizeof s, "ACID: a short Decay (61) is never made longer by an accent: half time plain %.1f ms, accent %.1f ms", ms_of(plain), ms_of(acc));
+        snprintf(s, sizeof s, "ACID: a short Decay (85) is never made longer by an accent: half time plain %.1f ms, accent %.1f ms", ms_of(plain), ms_of(acc));
         check(s, acc <= plain + 1u);
     }
 }
@@ -203,8 +203,8 @@ static void level(void)
     e1 = energy(rec, 250, 290);
     {
         char s[160];
-        snprintf(s, sizeof s, "ACID: the accent's level over a plain note's: start +%.1f dB, 180 ms later %+.1f dB (+8 .. 11 dB, then on the plain level)", 20.0 * log10(e0 / l0), 20.0 * log10(e1 / l1));
-        check(s, 20.0 * log10(e0 / l0) > 8.0 && 20.0 * log10(e0 / l0) < 11.0 && fabs(20.0 * log10(e1 / l1)) < 1.0);
+        snprintf(s, sizeof s, "ACID: the accent's level over a plain note's: start +%.1f dB, 250 ms later %+.1f dB (+8 .. 11 dB, then falling with the accent's ENV 2: +1 .. 4 dB)", 20.0 * log10(e0 / l0), 20.0 * log10(e1 / l1));
+        check(s, 20.0 * log10(e0 / l0) > 8.0 && 20.0 * log10(e0 / l0) < 11.0 && 20.0 * log10(e1 / l1) > 1.0 && 20.0 * log10(e1 / l1) < 4.0);
     }
 }
 
@@ -235,8 +235,8 @@ static void push(void)
     run4(100, 0, p);
     run4(100, 15, hi);
     run4(0, 15, lo);
-    snprintf(s, sizeof s, "ACID: one accent at RES 100 charges the capacitor to %.2f of full (0.15 .. 0.25); a plain note, %d", a[0] / 32768.0, p[0]);
-    check(s, a[0] > 0.15 * 32768 && a[0] < 0.25 * 32768 && p[0] == 0 && p[3] == 0);
+    snprintf(s, sizeof s, "ACID: one accent at RES 100 charges the capacitor to %.2f of full (0.25 .. 0.40); a plain note, %d", a[0] / 32768.0, p[0]);
+    check(s, a[0] > 0.25 * 32768 && a[0] < 0.40 * 32768 && p[0] == 0 && p[3] == 0);
     snprintf(s, sizeof s, "ACID: four accents in a row at RES 100 stack: %.2f %.2f %.2f %.2f (each higher)", hi[0] / 32768.0, hi[1] / 32768.0, hi[2] / 32768.0, hi[3] / 32768.0);
     check(s, hi[1] > hi[0] * 1.2 && hi[2] > hi[1] && hi[3] > hi[2]);
     snprintf(s, sizeof s, "ACID: stacking grows with RES: second / first accent x%.2f at RES 0, x%.2f at RES 100; the first push is rounder (lower) at high RES (%.2f < %.2f)",
