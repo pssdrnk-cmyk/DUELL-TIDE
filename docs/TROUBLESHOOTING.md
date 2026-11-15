@@ -8,8 +8,8 @@ Symptom, then fix. For a failed or interrupted flash read [RECOVERY.md](RECOVERY
 | "MIDI (SysEx) access was not allowed" | Allow MIDI in the site settings in the address bar, then try again. |
 | "FM-1 not found" | Use a **data** USB cable, straight into the computer (no hub). Close DAWs and other tabs using MIDI. Switch the unit off and on. |
 | "The connected device is not an FM-1" | Unplug other MIDI devices and try again. |
-| Install button stays grey | Tick all four checklist boxes. If the page says the firmware is not yet released, no package was found next to it; try again later or see the releases page. |
-| "This file cannot be installed" | The file is not a DUELL/Felucca package. Rebuild with `tools/build.py --release`. Never use a patched official file. |
+| Install button stays grey | Pick a build in step 3 (for Beta, tick "I understand this is a beta under test") and let the page finish loading it. If the page says "TIDE is not released yet", no package is published with it; try again later or see the releases page. |
+| "This build cannot be installed" or "This file cannot be installed" | The package did not pass the page's check (its SHA-256 against the release, its identity, or no Felucca loader in it); nothing is written. Reload the page; if it stays, report it. Never use a package made from an official file. |
 | It stopped halfway / "USB connection was lost" | Replug and press Install again; the unit stays in update mode and the page resumes. |
 | "The update loader did not appear" | Replug the cable and press Install again. |
 | Done, but the unit does not behave | Unplug and plug it in again. Check HOME (hold) > ABOUT for the version. |
@@ -22,9 +22,9 @@ Symptom, then fix. For a failed or interrupted flash read [RECOVERY.md](RECOVERY
 | A sound does not change when I turn SELECT | SELECT switches sub-pages and moves rows; knobs 1-4 adjust. See [QUICKSTART.md](QUICKSTART.md). |
 | MIDI notes play the wrong part | Part 1 listens on channel 1 and part 2 on channel 2. In LAYER, channel 1 plays both parts. |
 | SAVE ERROR | The flash failed to write: try again, and report it if it repeats. |
-| STORE FULL | With TIDE the patch store holds 126 saved patches, not 128. Saving into a 127th empty slot is refused and nothing is written. Overwriting a saved slot always works; RESTORE a saved slot to make room ([KNOWN_ISSUES.md](KNOWN_ISSUES.md)). |
+| STORE FULL | With TIDE the patch store holds 126 saved patches among #1 to #128 and 24 among #125 to #171. A save past that is refused and nothing is written. Overwriting a saved slot always works; RESTORE a saved slot to make room ([KNOWN_ISSUES.md](KNOWN_ISSUES.md)). |
 | The tide does not move | It moves only while the transport plays: press PLAY (STOP pauses it). Twist knob 1 on AUTO TIDE to start a glide. If you moved the fader by hand, that stopped the glide. See [TIDE_GUIDE.md](TIDE_GUIDE.md). |
-| TURNS, POLY, OFFBEAT or ARC do nothing | They act only while the tide runs by itself on a pattern: MODE EVOLVE or TRAVEL, TARGET SEQ or BOTH, the music playing. TURNS also needs ALGORITHM on BOTH. With the tide stopped, or TARGET SOUND, your pattern plays as written. |
+| ARC (or STYLE's pattern feel) does nothing | It acts only while the tide runs by itself on a pattern: MODE EVOLVE or TRAVEL, TARGET SEQ or BOTH, the music playing. With the tide stopped, or TARGET SOUND, your pattern plays as written. |
 | TIDE SETTINGS shows STYLE CUSTOM | You changed one of the rows a style sets; your values are kept. Pick a style again to set them all. |
 | STOP TO SAVE | Saving needs the transport stopped. Press PLAY/STOP. |
 | Anything else | TIDE, or this fork's installer, emulator and editor: open a bug report on [this fork's issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose). A problem that plain DUELL has too: OSCILL/R's [bug report form](https://github.com/oscillr/DUELL/issues/new/choose). |

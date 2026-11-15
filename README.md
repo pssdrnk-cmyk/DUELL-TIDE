@@ -20,14 +20,14 @@ TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instr
 ## Start in 30 seconds
 
 1. Press **HOME** until **AUTO TIDE** shows (HOME's round is MORPH, AUTO TIDE, TIDE SETTINGS; HOME opens MORPH, so one more tap).
-2. Twist **knob 1** right (to B) and press **PLAY**. The glide starts on the next bar.
+2. Twist **knob 1** right (to B). If the music is stopped, this starts PLAY; if it plays, the glide starts on the next bar.
 3. Play over it. **STOP** pauses the glide; PLAY goes on from there.
 
 A fresh unit comes up ready: multi **M02 DUB CHORD**, AUTO TIDE on EVOLVE, both parts, 16 bars. The whole guide is [docs/TIDE_GUIDE.md](docs/TIDE_GUIDE.md).
 
 ## How it works
 
-Each block says what a function does for you and which control to use. The pictures are the unit's own screen, rendered from the firmware (release candidate `rc13`). The details of every row are in the [TIDE guide](docs/TIDE_GUIDE.md).
+Each block says what a function does for you and which control to use. The pictures are the unit's own screen on `1.0.0-b13`, shot from the web emulator with music playing. The details of every row are in the [TIDE guide](docs/TIDE_GUIDE.md).
 
 ### AUTO TIDE: the glide
 
@@ -94,8 +94,8 @@ More: [QUICKSTART](docs/QUICKSTART.md).<br clear="right">
 
 <img align="right" src="docs/tide/live-rec.png" width="240" alt="The MORPH page while a take records: the header says BASS LINE C MINOR (the answer), knob 1's line reads TAKE BAR 1/1, both parts' waves move and a red dot sits in the footer">
 
-Play a line, and TIDE gives the other part something that fits. Hold **SEQ** and tap **REC** to arm recording (a tap of REC disarms), press PLAY, and play: your notes go into the pattern, a red REC shows in the footer and knob 1's line counts the take (`TAKE  BAR 1/1`). When the take closes, the header names the answer (`BASS LINE  C MINOR`), the other part gets an **ANSWER** that fits inside the loop and does not rub against your notes:
-- **BASS LINE:** a bass line in the key, one chord a bar, an octave under you, in the rhythm of the multi's genre. **DOUBLE:** your notes a scale third above. **REPLY:** your first half is the call, the second half the answer. **ECHO:** your last note thrown four times, fading.
+Play a line, and TIDE gives the other part something that fits. Hold **SEQ** and tap **REC** to arm recording (a tap of REC disarms), press PLAY, and play: your notes go into the pattern, a red dot shows in the footer and knob 1's line counts the take (`TAKE  BAR 1/1`). When the take closes, the header names the answer (`BASS LINE  C MINOR`), the other part gets an **ANSWER** that fits inside the loop and does not rub against your notes:
+- **BASS LINE:** a bass line in the key, one chord a bar, an octave under you, in the rhythm of the multi's genre. **DOUBLE:** your notes a scale third above. **REPLY:** your first half is the call, the second half the answer. **ECHO:** your last note thrown four times, fading. **CHORDS:** the chord of each bar held as a pad.
 - **ANSWER ON** OTHER writes it to the other part; OFF keeps the take only. **REC** ADD adds notes to a step that already has some; REPLACE takes their place. Both are rows of TIDE SETTINGS.
 - **Undo:** hold **OCT-** and turn **PRESETS**: back along the last two takes (left) or forward again (right).
 

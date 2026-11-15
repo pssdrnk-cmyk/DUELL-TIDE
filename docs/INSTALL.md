@@ -24,13 +24,12 @@
 > - The backup, the way back to the official firmware and the resume after an interruption are as described below.
 > - After publishing or editing a release, run Host tests by hand on `jam11` (Actions > Host tests > Run workflow).
 >   - Pages refreshes the site and release channels only after that run passes, using exactly the tested commit.
-> - The text below was written for OSCILL/R's page, whose files and names differ (`duell-latest.fwsc`, `duell-version.json`).
 
 ## What you need
 - An M-VAVE FM-1.
 - A computer with **Chrome or Edge** (the installer uses WebMIDI with SysEx; Safari and Firefox will not work).
 - A **data** USB cable. Some cables only charge.
-- Nothing to download for DUELL: the installer page loads the package itself (see "The file" below). Only for the way back you need M-VAVE's official V15 file.
+- Nothing to download for TIDE: the installer page loads the package itself (see "The file" below). Only for the way back you need M-VAVE's official V15 file.
 
 ## Flash checklist
 1. Data USB cable, plugged **straight into the computer**. No hub, no dock.
@@ -44,7 +43,7 @@ The installer page is `felucca-base/web/install/index.html`. It keeps Felucca's 
 
 | Command | File written to `felucca-base/build/` |
 |---|---|
-| `tools/build.py --release` (recommended) | `tide-beta-<TIDE version>.fwsc` (`tide-beta-1.0.0-b12.fwsc`; the version is the `TIDE_VERSION` file; a release `1.0.0` is `tide-stable-1.0.0.fwsc`), plus a folder `release-tide-<TIDE version>/` with the package, the app, `SHA256SUMS`, licences |
+| `tools/build.py --release` (recommended) | `tide-beta-<TIDE version>.fwsc` (`tide-beta-1.0.0-b13.fwsc`; the version is the `TIDE_VERSION` file; a release `1.0.0` is `tide-stable-1.0.0.fwsc`), plus a folder `release-tide-<TIDE version>/` with the package, the app, `SHA256SUMS`, licences |
 | `tools/build.py` (no flag) | the same package, without the release folder |
 
 Every build also writes `tide-latest.fwsc` (the same file) and `tide-version.json` next to it.
@@ -57,51 +56,47 @@ Every build also writes `tide-latest.fwsc` (the same file) and `tide-version.jso
 - The packages on the releases are named after that version: [Versions](ROADMAP.md#versions-and-releases) says how a release is made.
 - Build steps: [felucca-base/BUILDING.md](../felucca-base/BUILDING.md).
 
-When you build the site yourself, the page does these things:
+When you build the site yourself (`felucca-base/web/make_site.py`), the page does these things:
 
-- Reads the version from `duell-version.json`.
-- Looks for **`duell-latest.fwsc` next to itself** (in `felucca-base/web/install/`).
-- If that file is missing, looks for `duell-<VERSION>.fwsc`, then the older names `duell-0.1-beta.fwsc`, `felucca-0.1-beta.fwsc`.
-- If none of those files are there, shows the notice **"DUELL firmware is not yet released"** and keeps the install flow hidden; the flow appears when the file exists.
-- Accepts only a Felucca-loader package (identity `FM-1_9xx`, which `tools/build.py` makes `FM-1_901`).
-- Shows the SHA-256 so you can compare it with `SHA256SUMS`.
+- Reads `install/channels.json`, which `make_site.py` writes from the packages you give it (`tide-stable-X.Y.Z.fwsc`, `tide-beta-X.Y.Z-bN.fwsc`) and their release data.
+- With no package, shows **"TIDE is not released yet."** and keeps the install flow hidden.
+- Accepts only a Felucca-loader package (identity `FM-1_9xx`, which `tools/build.py` makes `FM-1_901`), and checks its SHA-256 against `channels.json` in the browser before it writes.
+- Shows the SHA-256 under **Build details** so you can compare it with the release notes.
 
 To view the page, serve the folder `felucca-base/web/` with any static web server, for example `python3 -m http.server -d felucca-base/web 8000`, and open `http://localhost:8000/install/`. (Opening the file straight from disk does not work, because the page loads modules.) The same page is published at <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/> (GitHub Pages), which loads the package of the channel you pick from this fork's releases.
 
-## The three cards
-The installer page has three separate action cards, each with its own button, progress bar, status line and result line:
-- **BACK UP** (step 2): reads the unit and saves a file. Nothing is written to the FM-1.
-- **INSTALL DUELL** (step 5): writes DUELL. Shown only when a DUELL package is found or chosen. The bar says "Writing DUELL".
-- **RETURN TO OFFICIAL FIRMWARE** (the section "Go back to the official firmware"): writes the official M-VAVE firmware back and removes DUELL. It has its own amber border and warning ("This writes the official M-VAVE firmware back. DUELL will be removed. Keep the cable connected until DONE."), and its bar says "Writing official firmware".
+## The page
+Four numbered steps and a **Leave TIDE** section. Each action card has its own button, its progress (Check, Loader, Write, Restart, Done, a bar with the percent and one status line) and, folded under **Details**, the full log with **Copy log**:
+- **2 Back up**: reads the unit and saves a file. Nothing is written to the FM-1.
+- **4 Install**: writes TIDE. The bar says "Writing TIDE".
+- **Leave TIDE > Go back to the official firmware**: writes the official M-VAVE firmware back and removes TIDE ("This writes the official M-VAVE firmware back. TIDE will be removed. Keep the cable connected until DONE."); its bar says "Writing official firmware".
 
 While one of them runs:
-- a coloured banner at the top says which ("BACKING UP", "INSTALLING DUELL" or "RETURNING TO THE OFFICIAL FIRMWARE: do not unplug or close this page until it says DONE")
-- the other two buttons, the file pickers and the checklist are locked (grey, with a note)
+- a banner at the top says which ("BACKING UP", "INSTALLING TIDE" or "RETURNING TO THE OFFICIAL FIRMWARE: do not unplug or close this page until it says DONE")
+- the other buttons and the file picker are locked
 - the browser asks before the tab is closed
-- a progress bar appears only in the card that is running
 - a failure message stays in the card that failed: press the same button again and do not unplug
 
 ## Steps
-1. **Checklist.** Tick the four boxes on the page.
-2. **Back up.** Press "Save a backup file". It downloads a `DUELL-backup-DATE-TIME.json`. Limits: it works only if the FM-1 already runs Felucca or DUELL (not the official firmware). The file holds the patches, multis, patterns, user wavetables, settings and the current music; the restore is on the editor's Backup page.
-3. **The channel.** Pick **Stable** (the build the fork owner has validated; the one to take unless you want to help test) or **Beta** (the newest build, under test). The page loads that channel's package from the release; you do not choose a file. (Only the official M-VAVE file for the way back is chosen by hand.)
-4. **Connect** the FM-1 and allow MIDI/SysEx in the browser.
-5. **Install.** On a unit that runs DUELL the page first saves a backup file to your downloads, and stops with nothing written if the backup fails (stop the unit if it plays, then press Install again). A unit on the official firmware has nothing to save. Wait for "Done".
-6. **Switch the unit off and on**, then hold HOME and open ABOUT to see the version (DUELL 1.1, and TIDE's own version beside the date). While the firmware is written the unit shows the update screen (UPDATE, WRITING, the percent, a bar and DO NOT SWITCH OFF); a dark screen does not mean the write has stopped.
+1. **Connect.** Plug the FM-1 in by USB (a data cable, straight into the computer) and switch it on. Close other MIDI programs and allow MIDI when Chrome or Edge asks. "Check the unit" tells you what it runs.
+2. **Back up.** Press "Save a backup file". It downloads a `TIDE-backup-DATE-TIME.json`. It works only if the FM-1 already runs TIDE, DUELL or Felucca (not the official firmware). The file holds the patches, multis, patterns, user wavetables, settings and the current music; the restore is on the editor's Backup page.
+3. **Choose a build.** Pick **Stable** (the build the fork owner has validated) or **Beta** (the newest build, under test; tick "I understand this is a beta under test" to go on). The page loads that channel's package from the release; you do not choose a file. (Only the official M-VAVE file for the way back is chosen by hand.)
+4. **Install.** Press "Install TIDE". On a unit that runs TIDE or DUELL the page first saves a backup file to your downloads, and stops with nothing written if that fails (stop the unit if it plays, then press Install again). A unit on the official firmware has nothing to save. Wait for "Done".
+5. **Switch the unit off and on**, then hold HOME and open ABOUT to see the version (DUELL 1.1, and TIDE's own version beside the date). While the firmware is written the unit shows the update screen (UPDATE, WRITING, the percent, a bar and DO NOT SWITCH OFF); a dark screen does not mean the write has stopped.
 
 If anything stops: replug the cable and press Install again. The device stays in update mode until the write is finished. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) and [RECOVERY.md](RECOVERY.md).
 
 ## Keep or erase your data
-- **A reinstall keeps your data.** Installing DUELL again, even after going back to the official firmware, does not touch the area where the unit keeps its saved data, so it comes back as you left it: your settings, patches, multis and patterns.
+- **A reinstall keeps your data.** Installing TIDE again, even after going back to the official firmware, does not touch the area where the unit keeps its saved data, so it comes back as you left it: your settings, patches, multis and patterns.
 - **To start from scratch while installing:** do these steps on the installer page:
 
-  1. Open the INSTALL DUELL card. You see the box **"Erase my saved data after installing (start from scratch)"**.
-  2. The page checks what the FM-1 runs. Press "Check the unit" if the page has not talked to the unit yet.
+  1. Go to step 4, Install. You see the box **"Erase my saved data after installing (start from scratch)"**.
+  2. The page checks what the FM-1 runs. Press "Check the unit" (step 1) if the page has not talked to the unit yet; until then the box stays off.
   3. The line "Detected: ..." tells you which case it found.
-     - If the unit runs DUELL now, the box is unticked by default (an update keeps your patches and settings).
-     - Otherwise it is ticked by default (clean install).
+     - If the unit runs TIDE or DUELL, the box stays off (an update keeps your patches and settings).
+     - Otherwise it is ticked (a clean install).
   4. You can tick or untick the box yourself at any time. Your choice always wins over what the page detected.
-  5. If the box is ticked, after the install finishes and the unit restarts into DUELL:
+  5. If the box is ticked, after the install finishes and the unit restarts into TIDE:
      - The page connects to the unit.
      - It shows "Erasing your data ..." (the card stays locked: do not unplug).
      - Then it shows "Done. Your saved data was erased. The unit starts as new."
@@ -116,17 +111,17 @@ If anything stops: replug the cable and press Install again. The device stays in
   - the three user wave tables (USR1 to USR3)
   - the FM6 voice bank the editor loaded
 
-  The factory sounds come back. The factory multis M01 to M16 come back. The factory patterns come back. The unit starts as new: VIOLET, LAYER, M01; with TIDE, M02 DUB CHORD.
+  The factory sounds come back. The factory multis M01 to M26 come back. The factory patterns come back. The unit starts as new: TIDE's colours, M02 DUB CHORD, STYLE DUB.
 
   **Not erased:** the firmware itself.
 - **It cannot be undone: back up first** (step 2). The backup holds your multis and patterns too.
 
 ## Return to the official firmware
 1. Download the official FM-1 firmware (`FM-1.fwsc`, **V15**) yourself from M-VAVE: <https://www.m-vave.com/download>. This project does not host M-VAVE's files.
-2. On the installer page, choose that file under "Return to the official firmware". It is checked in your browser (size and SHA-256 must match the unmodified V15; nothing is uploaded).
-3. Press "Back up and return to official V15" in the amber RETURN card. The page saves a backup first (if the unit runs DUELL), then writes V15. All progress shows in that card only, under an amber banner. Keep the cable connected until the card says "Done. The official firmware is back. Switch the unit off and on." Then switch the unit off and on.
+2. On the installer page, under **Leave TIDE > Go back to the official firmware**, choose that file. It is checked in your browser (size and SHA-256 must match the unmodified V15; nothing is uploaded).
+3. Press "Back up and return to official V15". The page saves a backup first (if the unit runs TIDE or DUELL), then writes V15. All progress shows in that card only, under the RETURNING banner. Keep the cable connected until the card says "Done. The official firmware is back. Switch the unit off and on." Then switch the unit off and on.
 
-Your DUELL data cannot be opened by the official firmware. This path is the same method as for installing. It has worked on the author's unit about three times; it is untested on other units.
+Your TIDE data cannot be opened by the official firmware. This path is the same method as for installing. It has worked on the author's unit about three times; it is untested on other units.
 
 
 ## Source and licences
