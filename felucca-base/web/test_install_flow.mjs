@@ -144,7 +144,12 @@ ok((await t("result-install")) === "Done. Switch the unit off and on once.", "St
 ok((await c.eval("__results")).includes(BACKUP_FIRST.skipped), "Install from a firmware that cannot be backed up (the official one, Shrub): it goes on and says 'No backup' while it writes");
 const f1 = await c.eval("({ served: __fake.served, identity: __fake.identity, upgrades: __fake.upgrades })");
 ok(f1.served > 8 && f1.identity === "FM-1_901" && f1.upgrades === 2, `Stable: the unit went through update mode and reports the package identity (${JSON.stringify(f1)})`);
-ok((await t("log")).includes(`install: stable ${manifest.stable.tag} ${manifest.stable.sha256}`), "Stable: the log names the build and its SHA-256");
+ok((await t("log-install")).includes(`install: stable ${manifest.stable.tag} ${manifest.stable.sha256}`), "Stable: the log names the build and its SHA-256");
+// b13: the progress stays in step 4 (all phases passed, Done, 100%), the raw log is folded under Details in a box of fixed height
+ok(await c.eval("!document.getElementById('prog-install').hidden && document.getElementById('pct-install').textContent === '100%' && document.querySelector('#phases-install li:last-child').className === 'now' && document.querySelectorAll('#phases-install li.past').length === 4"),
+   "Install: done shows all phases passed and 100%");
+ok(await c.eval("(() => { const b = document.getElementById('logbox-install'), p = document.getElementById('log-install'); b.open = true; const h = p.getBoundingClientRect().height; return !b.hidden && h > 100 && h < 260 && p.scrollHeight > h && /install done FM-1_901/.test(p.textContent); })()"),
+   "Install: the log is folded under Details, fixed height, scrolls, ends with done");
 ok((await c.eval("__confirms.length")) === 0, "Stable: no extra confirmation");
 
 if (hasBeta) {

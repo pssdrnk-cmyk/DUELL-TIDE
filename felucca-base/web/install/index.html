@@ -60,9 +60,16 @@
       <p class="small">Needs TIDE, DUELL or Felucca on the unit. Restore it on <a href="../editor/backup.html">the Backup page</a>.</p>
       <p><button id="backup" class="act quiet" disabled>Save a backup file</button></p>
       <p class="lock" id="lock-backup"></p>
-      <progress class="bar" id="bar-backup" max="100" value="0" hidden></progress>
-      <p class="status" id="status-backup"></p>
-      <p class="result" id="result-backup"></p>
+      <div class="prog" id="prog-backup" hidden>
+        <div class="barrow"><progress class="bar" id="bar-backup" max="100" value="0" hidden></progress><span class="pct" id="pct-backup">0%</span></div>
+        <p class="status" id="status-backup" role="status"></p>
+      </div>
+      <p class="result" id="result-backup" role="status"></p>
+      <details class="log" id="logbox-backup" hidden>
+        <summary>Details</summary>
+        <pre id="log-backup" tabindex="0"></pre>
+        <p><button class="act quiet copy" type="button" data-log="backup">Copy log</button></p>
+      </details>
     </div>
   </section>
 
@@ -103,9 +110,17 @@
       <p><b>Do not switch off or unplug the unit while it installs.</b> On a unit that runs TIDE or DUELL the page first saves a backup file to your downloads and stops if that fails (<a href="../editor/backup.html">the Backup page</a> restores it).</p>
       <p><button id="go" class="act" disabled>Install <span class="ver">TIDE</span></button></p>
       <p class="lock" id="lock-install"></p>
-      <progress class="bar" id="bar-install" max="100" value="0" hidden></progress>
-      <p class="status" id="status-install"></p>
-      <p class="result" id="result-install"></p>
+      <div class="prog" id="prog-install" hidden>
+        <ol class="phases" id="phases-install" aria-label="Steps"><li>Check</li><li>Loader</li><li>Write</li><li>Restart</li><li>Done</li></ol>
+        <div class="barrow"><progress class="bar" id="bar-install" max="100" value="0" hidden></progress><span class="pct" id="pct-install">0%</span></div>
+        <p class="status" id="status-install" role="status"></p>
+      </div>
+      <p class="result" id="result-install" role="status"></p>
+      <details class="log" id="logbox-install" hidden>
+        <summary>Details</summary>
+        <pre id="log-install" tabindex="0"></pre>
+        <p><button class="act quiet copy" type="button" data-log="install">Copy log</button></p>
+      </details>
       <p class="small">Stopped halfway? Replug and press Install again with the same build: it resumes. <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/TROUBLESHOOTING.md">Troubleshooting</a></p>
     </div>
   </section>
@@ -122,9 +137,17 @@
       <p class="small" id="stockstate"></p>
       <p><button id="stock-go" class="act quiet" disabled>Back up and return to official V15</button></p>
       <p class="lock" id="lock-return"></p>
-      <progress class="bar" id="bar-return" max="100" value="0" hidden></progress>
-      <p class="status" id="status-return"></p>
-      <p class="result" id="result-return"></p>
+      <div class="prog" id="prog-return" hidden>
+        <ol class="phases" id="phases-return" aria-label="Steps"><li>Check</li><li>Loader</li><li>Write</li><li>Restart</li><li>Done</li></ol>
+        <div class="barrow"><progress class="bar" id="bar-return" max="100" value="0" hidden></progress><span class="pct" id="pct-return">0%</span></div>
+        <p class="status" id="status-return" role="status"></p>
+      </div>
+      <p class="result" id="result-return" role="status"></p>
+      <details class="log" id="logbox-return" hidden>
+        <summary>Details</summary>
+        <pre id="log-return" tabindex="0"></pre>
+        <p><button class="act quiet copy" type="button" data-log="return">Copy log</button></p>
+      </details>
       <p class="small"><label><input id="stock-recovery" type="checkbox"> Resume an interrupted return: I already saved a complete backup to this computer</label></p>
     </div>
     <h3>Go back to plain DUELL 1.1</h3>
@@ -136,7 +159,6 @@
   </section>
 
   <p class="small links"><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/RECOVERY.md">Recovery</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/TROUBLESHOOTING.md">Troubleshooting</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/INSTALL.md">Install guide</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/docs/KNOWN_ISSUES.md">Known issues</a> · <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem</a></p>
-  <pre id="log"></pre>
 </main>
 <footer class="site">
   <div class="wrap">
@@ -157,10 +179,34 @@ import { uiState, TEXT, BACKUP_FIRST, SWITCH_OFF_ON, ERASE, eraseOutcome, SMART,
          buildName, readableDate } from "../installer_state.js";
 
 const $ = (id) => document.getElementById(id);
-const log = (t) => { $("log").textContent += t + "\n"; };
-// every card has its own status line (progress while running) and result line (the outcome; failures stay here)
+// b13: the raw log goes into the folded "Details" box of the card that runs (fixed height, scrolls, "Copy log"); before, it ran down the page under the links
+const log = (t) => {
+  const c = busy || "install", pre = $("log-" + c), atEnd = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 24;
+  pre.textContent += t + "\n";
+  if (atEnd) pre.scrollTop = pre.scrollHeight;          // follows the newest line unless the user scrolled up to read
+  $("logbox-" + c).hidden = false;
+};
+document.querySelectorAll("button.copy").forEach((b) => b.addEventListener("click", async () => {
+  const pre = $("log-" + b.dataset.log);
+  try { await navigator.clipboard.writeText(pre.textContent); b.textContent = "Copied"; }
+  catch { const r = document.createRange(); r.selectNodeContents(pre); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Selected: press Ctrl+C"; }
+  setTimeout(() => { b.textContent = "Copy log"; }, 2000);
+}));
+// every card has its own progress block (the phases, a bar with %, one status line) and result line (the outcome; failures stay here)
 const say = (card, t) => { $("status-" + card).textContent = t; };
-const result = (card, t, bad = false) => { const e = $("result-" + card); e.textContent = t; e.classList.toggle("warn", bad); };
+const DONE_LINE = /^(Done|Backup saved)/;
+const result = (card, t, bad = false) => { const e = $("result-" + card); e.textContent = t; e.classList.toggle("warn", bad); e.classList.toggle("ok", !bad && DONE_LINE.test(t)); };
+// the phases of an install or a return: check (and back up), start the update loader, write, restart, done
+const PHASES = ["check", "loader", "write", "restart", "done"];
+const phase = { backup: null, install: null, return: null };
+let shown = null;        // the card whose progress block stays visible: while it runs, then its outcome (done, or the phase that failed)
+function setPhase(card, p, state = "now") {
+  phase[card] = p;
+  const ol = $("phases-" + card); if (!ol) return;
+  const i = PHASES.indexOf(p);
+  [...ol.children].forEach((li, k) => { li.className = k < i ? "past" : k === i ? state : ""; });
+}
+function setBar(card, pc) { pc = Math.max(0, Math.min(100, pc)); $("bar-" + card).value = pc; $("pct-" + card).textContent = Math.round(pc) + "%"; }
 
 // busy: null | "backup" | "install" | "return". Only one action can run; everything else is locked meanwhile.
 let image = null, product = null, stock = null, busy = null, ready = false;
@@ -181,9 +227,8 @@ function refresh() {
   const u = uiState({ busy, ready, hasImage: !!image, hasStock: !!stock, channel: channel || "stable", betaAck });
   for (const a of Object.keys(BTN)) {
     $(BTN[a]).disabled = !u.buttons[a].enabled;
-    $("lock-" + a).textContent = u.buttons[a].note;
-    $("bar-" + a).hidden = !u.bars[a];
-    if (!u.bars[a]) $("bar-" + a).value = 0;
+    $("lock-" + a).textContent = busy === a ? "" : u.buttons[a].note;      // (the running card says it in its progress block and the banner)
+    $("bar-" + a).hidden = $("prog-" + a).hidden = !(u.bars[a] || shown === a);
   }
   const b = $("banner");
   b.hidden = !u.banner;
@@ -192,7 +237,7 @@ function refresh() {
   for (const c of CHANNELS) $("ch-" + c).disabled = u.channelLocked || !manifest[c];
   $("beta-ack").disabled = u.channelLocked;
   $("erase-after").disabled = u.eraseBox.disabled;
-  $("erase-lock").textContent = u.eraseBox.note || (probing ? SMART.checking : "");
+  $("erase-lock").textContent = (busy && busy !== "install" ? u.eraseBox.note : "") || (probing ? SMART.checking : "");
   if (probing) for (const a of Object.keys(BTN)) $(BTN[a]).disabled = true;      // the check uses the unit's MIDI ports: nothing else starts meanwhile
   $("detect").disabled = !ready || !!busy || probing;
   showErase();
@@ -200,9 +245,24 @@ function refresh() {
 // start an action: clears every card's status and result (so the other cards show nothing while this one runs), locks the rest
 function begin(card) {
   for (const c of Object.keys(BTN)) { say(c, ""); result(c, ""); }
-  busy = card; refresh();
+  busy = card; shown = card; $("prog-" + card).classList.remove("nobar");
+  setPhase(card, "check"); setBar(card, 0); say(card, card === "backup" ? "Reading the unit" : "Checking the unit");
+  log(`--- ${new Date().toLocaleString()}: ${card} ---`);
+  refresh();
 }
-function end(card) { say(card, ""); busy = null; refresh(); }
+// the outcome stays: done (100%), or the phase that failed in red; anything else (cancelled before anything happened) hides the block
+function end(card) {
+  say(card, "");
+  const r = $("result-" + card).classList;
+  if (phase[card] === "done") { /* written: stays done, even when the erase after it could not run (its line says so) */ }
+  else if (r.contains("warn")) {
+    setPhase(card, phase[card], "bad");
+    if (!+$("bar-" + card).value) { if ($("phases-" + card)) $("prog-" + card).classList.add("nobar"); else shown = null; }   // failed before anything moved: no empty 0% bar
+  }
+  else if (r.contains("ok")) { setPhase(card, "done"); setBar(card, 100); }
+  else shown = null;
+  busy = null; refresh();
+}
 window.addEventListener("beforeunload", (e) => { if (busy) { e.preventDefault(); e.returnValue = "Writing. Do not close the page."; } });
 
 if (!navigator.requestMIDIAccess) {
@@ -315,7 +375,7 @@ $("beta-ack").addEventListener("change", () => { betaAck = $("beta-ack").checked
 })();
 
 // ---- shared messages
-const STEPS = { start: "Starting", verify: "Verifying", loader: "Switching to update mode", reboot: "Restarting" };
+const STEPS = { start: "Starting the update loader", verify: "Sending the update loader", loader: "Switching to update mode", reboot: "Restarting the unit" };
 const ERR = {
   nomidi: "This browser cannot do it. Open the page in Chrome or Edge.",
   denied: "MIDI (SysEx) access was not allowed. Allow MIDI in the site settings (address bar) and try again.",
@@ -332,10 +392,11 @@ const fail = (card, e) => { result(card, e && e.code && ERR[e.code] ? ERR[e.code
 const progress = (card, total) => (k, a) => {
   log(`${card} ${k} ${a ?? ""}`);
   if (STEPS[k]) say(card, STEPS[k]);
-  if (k === "write") say(card, TEXT.writing[card]);
-  if (k === "verify") $("bar-" + card).value = (a / total) * 100;
-  if (k === "write") $("bar-" + card).value = ((74 + a) / total) * 100;
-  if (k === "done") $("bar-" + card).value = 100;
+  if (k === "start" || k === "verify" || k === "loader") { if (phase[card] !== "loader") setPhase(card, "loader"); }
+  if (k === "verify") setBar(card, (a / total) * 100);
+  if (k === "write") { if (phase[card] !== "write") { setPhase(card, "write"); say(card, TEXT.writing[card]); } setBar(card, ((74 + a) / total) * 100); }
+  if (k === "reboot") setPhase(card, "restart");
+  if (k === "done") { setPhase(card, "done"); setBar(card, 100); }
 };
 
 // ---- what does the unit run now? (decides the erase box's default; installer_state.js has the texts and the rule)
@@ -399,7 +460,7 @@ $("detect").addEventListener("click", async () => {
 // rc 0 is reported as "installed, data NOT erased, use MENU > SYSTEM > ERASE DATA": never "erased" unless the unit said so.
 async function eraseAfterInstall(midi) {
   say("install", ERASE.status);
-  $("bar-install").value = 100;
+  setBar("install", 100);      // (written and restarted: the phases show done, the status line says it erases)
   try {
     const up = new Updater(midi, log);
     const device = await up.waitFor((id) => id.model === "FM-1", 30000);   // the restarted DUELL
@@ -447,8 +508,8 @@ $("go").addEventListener("click", async () => {
   // what is written is the verified package of the chosen build (image comes only from bytes whose SHA-256 matched the release data)
   if (channel === "beta" && (!betaAck || !confirm(betaConfirmText(entry)))) return;      // a beta: the box, and once more at the click
   const wantErase = $("erase-after").checked;       // read once, before anything locks
-  log(`install: ${channel} ${entry.tag} ${entry.sha256}`);
   begin("install");
+  log(`install: ${channel} ${entry.tag} ${entry.sha256}`);
   try {
     let midi;
     try { midi = await navigator.requestMIDIAccess({ sysex: true }); } catch { result("install", ERR.denied, true); return; }
@@ -493,7 +554,7 @@ async function doBackup(up, card) {
     if (!detected) { detected = detectUnit(info.version); refresh(); }      // the backup just talked to the unit: reuse its answer
     if (!info.supported) { result(card, "This firmware cannot make a complete backup (the official firmware, or an old build). Nothing was saved.", card === "backup"); return false; }
     const { file, name } = await captureUnitBackup((r, o) => link.request(r, o), info.raw,
-      (d, t) => { const pc = d / Math.max(1, t) * 100; say(card, `Saving backup ${Math.round(pc)}%`); if (card === "backup") $("bar-backup").value = pc; });
+      (d, t) => { const pc = d / Math.max(1, t) * 100; say(card, `Saving backup ${Math.round(pc)}%`); if (card === "backup") setBar("backup", pc); });
     saveArchive(file, name);
     result(card, "Backup saved to your downloads." + (info.caps & 4 ? "" : " MULTIs and PATTERN slots are not in it (this firmware cannot save them)."));
     return true;
