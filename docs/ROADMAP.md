@@ -6,7 +6,7 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 ## Now: 1.0.0-b13 (jam11)
 
-jam11 is the 1.0.0-b13 work (`TIDE_VERSION` still reads 1.0.0-b12 until the package is made). The unit runs Shrub at the moment: the owner put it on the FM-1 on 15 November. TIDE's last flash was rc19-test, jam11 `5cbbddd0`, flashed 14 November at 12:03, 396 B flash free (backup `TIDE-backup-2026-11-14-1205`, to restore after flashing TIDE back). jam11 `de8cf05d` holds the next package (PRs 114 to 119 on top of rc19), not flashed: it is flashed on the owner's word only, and about 85 B of flash would be free by the PR notes (measured when the package is built).
+jam11 is past 1.0.0-b13: the beta `tide-1.0.0-b13` was published on 15 November (a GitHub pre-release, package built from jam11 `a7f4a05b`); the install page offers it as the beta. The owner had Shrub on the FM-1 for part of 15 November and installed 1.0.0-b13 from the site that night, so the unit runs the published beta; its louder output, the 303 voices, the 11 replaced sounds and the five new multis are new on the unit (tested on the computer before). The last TIDE backup in the workspace is `TIDE-backup-2026-11-14-1205` (rc19-test).
 
 On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
 
@@ -123,6 +123,8 @@ Numbers are kept as they were (code comments, the CHANGELOG and the audits cite 
 
 | Version | Date | What you got |
 |---|---|---|
+| 1.0.0-b13 | 15 November | 8 dB louder at the jacks, three 303 voices with a filter that squelches and screams, 23 sounds from human-made patches (the factory drums are gone), live assist's CHORDS answer, five new genre multis (classic house, IDM, dub roots, synthwave, atmospheric drum and bass), the REC dot; it carries b10 to b12, which were never released on their own ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b13)) |
+| 1.0.0-b9 | 11 November | All 18 factory multis re-voiced, genre knobs on HOME page 1 (KNOBS row), AUTO TIDE with EVOLVE and TRAVEL, USB audio off by default, a smaller USB resampler; it carries b7 and b8 ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b9)) |
 | 1.0.0-b6 | 9 November | b5's MORPH wave picture and PART 1 / PART 2 / BOTH, then the WAVE LAB stack with depth at an even pace, two drone scenes with sequences (M17, M18), AMOUNT kept on factory loads, JOURNEY close in level, notes in your register, FM6 End B levels, a 20 MHz screen link, 4.8 KB of flash back ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b6)) |
 | 1.0.0-b4 | 8 November | No notes cut when the CPU runs hot (ease ladder), less CPU while a part is silent, STYLE DRONE, screen cleanups |
 | 1.0.0-b3 | 8 November | CPU and missed-block readout, patch list order, live recording into ARP SEQ, HOME without the MODE page |
@@ -227,6 +229,7 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 - Live assist's `take`, `answer` and `guards` groups were not in `host_tests.sh`'s default list, so CI never ran them. Done in b11 (PR 62): CI runs them now, and all three PASS.
 - The `emu` CI job: fixed in [#4](https://github.com/pssdrnk-cmyk/DUELL-TIDE/pull/4) (emsdk sourced under bash; merged 8 November), and the job gates.
 - Rename `jam11` to `tide`.
+- Split the largest source files, behaviour-neutral (housekeeping, 15 November): over 2,500 lines are `tests/ui_test.c` (10,190), `ui_draw.c` (3,868), `fx.c` (3,654), `tests/ui_render.c` (3,246), `ui_graph.c` (3,023), `tests/perform_test.c` (2,744), `morph.c` (2,719), `bench.c` (2,572) and `ui_input.c` (2,569). One file a PR, the firmware image byte for byte the same.
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
 - ~~Retire the plain build~~ Done (b10 tools lane): `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256`, the `tideoff` and `multiv8` groups (and the 1.0 -> 1.1 record converter) are gone, and the `#if DUELL_TIDE` sides are folded; the TIDE image is byte for byte the one before.
 - Test quality notes left from finding 38: ~~split the FM6 budget check by crossing state~~ and ~~one generated multi-name table~~ built in b10 (tools-b); the `F_NONE` hang exemption if it flakes.
@@ -262,6 +265,7 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 
 - ~~More factory multis~~ (built in b10 as M19 to M24: hypnotic techno, cinematic hypnotic techno, dub house, lo-fi house, ambient techno, minimal; researched from Attack Magazine technique articles in b9): about 0.5 KB each, room from USB AUDIO OFF and its int16 resampler taps (b9) and SP5.
 - **From the musical review** ([report](audits/2026-11-09/musical-review/REPORT.md)): the three ideas (a chord-rhythm vocabulary, voicing that breathes with the arc, a real call and answer) are built in b7.
+- **From Shrub** (b13's look at Shrub, the FM-1 firmware by Serum's maker; nothing of it ships): a chaos LFO, a chance per arp step, a ring round a knob that shows its modulation.
 - **Keep current patterns on MULTI load** (U2 route A): an explicit load that keeps both playing patterns.
 - **Musical evaluations kept from the earlier plan** (no work scheduled): M2a chord movement; M5 / M10a level and slow-glide behaviour only for a found defect; M7d polymeter first by hand; CHANGE / ENERGY rows only with useful behaviour. Details in [design/TIDE_MUSICAL_DESIGN.md](design/TIDE_MUSICAL_DESIGN.md).
 
