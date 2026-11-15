@@ -7,9 +7,27 @@ New lines for the fork go here, not into CHANGELOG.md.
 
 Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrnk-cmyk/DUELL-TIDE>), adding TIDE, a morph that plays and evolves by itself. TIDE has its own version, `MAJOR.MINOR.PATCH`, kept in the file `TIDE_VERSION` and shown in MENU > SYSTEM > ABOUT beside the DUELL version (1.1). A build flashed for testing is a beta, `1.0.0-b1`, `1.0.0-b2`, ...; the first build the fork owner has validated on the unit is `1.0.0`; a fix is `1.0.1`, a feature `1.1.0`. The git tag is `tide-` and the version (`tide-1.0.0-b1`); the GitHub release has the same name. Each version has a section below, `## 1.0.0-b1`, newest first; a section heading names the tag and, once known, the commit and the date it was flashed. The commit stays in the release notes, not in the name. The installer page offers the stable and the beta build of the [GitHub releases](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases); the [README](README.md#builds-stable-and-beta) says which they are.
 
-## 1.0.0-b14 (in progress)
+## Next (in progress)
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
+
+## 1.0.0
+
+The first stable TIDE: 1.0.0-b13 plus the fixes and polish found while playing it. In short:
+
+- **Multis easier to change live:** in every factory multi both parts step on the same grid; slow pads are held notes on it, so rolling a change in no longer needs menu diving. A few very long pads are struck again every few bars: 1 DUB BASIC, 2 DUB CHORD, 3 DUB MINIMAL, 12 TECH HYPNO, 17 ELEC DEEPSEA, 23 AMB BERLIN.
+- **No screen blink:** quick menus, button presses, dialogs and the count-in no longer flash the screen.
+- **MORPH TO keeps its ducking:** a saved patch or multi whose End B ducks from another source plays that source after a save and a load, as the live morph did.
+- **Small screen fixes:** VOICE 2/2's GLIDE no longer runs into its unit ("54ms"); on the 303 waves the filter pictures show the resonance you hear.
+- **Docs, site and pictures** match this build; the installer shows progress inside each step.
+
+The lines below are the detailed record.
+
+- **Fixed (MORPH TO and DUCK SRC):** a saved or reloaded patch or multi whose End B is a MORPH TO sound that ducks from another source now plays that source at B, as the live morph did; End B stores DUCK SRC (`morph.c` mbv_never; `tools/endb.py`, the editor's `patchrecord.js` follow). A patch saved before keeps B on the part's own source, as it played. A build before this one refuses a block that carries it (End B then loads as the Original). Test: `tidekeep`.
+- **Fixed: the screen no longer blinks when a quick menu opens or closes, or when a button changes the page.** A full redraw filled the whole screen with the background first and the new page came in over it; now each pixel goes straight from the old picture to the new one. The MIXER's LOW / MID / HIGH bands, the cards under QUICK SEQ's and PARAMETER LOCKS' step strip, the dialogs and the count-in (which blinked on every beat) are fixed the same way.
+- **Fixed: a value ending in 4 no longer touches its unit** ("54ms" on VOICE 2/2's GLIDE, and on every card and cell).
+- **Fixed: on WAVE ACID / ACSQ the filter pictures draw the resonance peak you hear** (they used the ordinary RES law).
+- **Changed (every factory multi on one step grid; owner: "disperse it over the same 16 notes as the other voice, so rolling in a change doesn't require such menu diving"):** 21 parts that stepped at 4BAR, 2BAR, 1/1, 1/2 or 1/4 now step at their partner's RATE, each held note written as the note plus ties, so they sound as before. Pads held longer than 64 steps are struck again: 1 DUB BASIC, 2 DUB CHORD, 12 TECH HYPNO and 3 DUB MINIMAL (one note held 8 bars, now every 4), 17 ELEC DEEPSEA (a 6-bar chord cycle, now 2 + 1 + 1 bars), 23 AMB BERLIN (a 16-bar cycle, now 2 + 1 + 1 bars). An ARP SEQ note now holds up to NSTEP - 1 ties (was 31); `factory_multis.py` refuses a multi whose parts step at different RATEs (PR 134).
 
 ## 1.0.0-b13
 
