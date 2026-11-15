@@ -6,7 +6,7 @@ State words on this page: Released in bN, Ready (built and tested, waiting for a
 
 ## Now: 1.0.0-b13 (jam11)
 
-jam11 is past 1.0.0-b13: the beta `tide-1.0.0-b13` was published on 15 November (a GitHub pre-release, package built from jam11 `a7f4a05b`); the install page offers it as the beta. It is not on the unit: the owner put Shrub on the FM-1 on 15 November. TIDE's last flash there was rc19-test, jam11 `5cbbddd0`, flashed 14 November at 12:03 (backup `TIDE-backup-2026-11-14-1205`, to restore after flashing TIDE back). The next TIDE flash is on the owner's word; b13's louder output, the 303 voices, the 11 replaced sounds and the five new multis have not played on the unit yet.
+jam11 is past 1.0.0-b13: the beta `tide-1.0.0-b13` was published on 15 November (a GitHub pre-release, package built from jam11 `a7f4a05b`); the install page offers it as the beta. The owner had Shrub on the FM-1 for part of 15 November and installed 1.0.0-b13 from the site that night, so the unit runs the published beta; its louder output, the 303 voices, the 11 replaced sounds and the five new multis are new on the unit (tested on the computer before). The last TIDE backup in the workspace is `TIDE-backup-2026-11-14-1205` (rc19-test).
 
 On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
 
