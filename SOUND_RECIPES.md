@@ -36,6 +36,7 @@ Purpose: typical settings of classic synth patches, in generic synth terms, as a
 - **AENV:** A 0, D ~0.2-1 s or percussive, S high, R very short. [G]
 - **FX:** distortion/overdrive (often a pedal or overdriven mixer input) and a delay (dotted 8th or 1/16 feedback ~30-40%). [S for distortion, G for the delay]
 - **Arp/seq:** a 16-step repeating pattern with accents and slides is the instrument; cutoff and resonance are moved live. [S]
+- **b13 (2026-11-15), measured ranges:** Open303 (Robin Schmidt, MIT; the x0x engine's `bass303.c` port) gives the numbers: cutoff knob 314 .. 2394 Hz (exponential), ENV MOD sweeps 0.8 .. 4.6 octaves (its measured mapping), the filter decay is a time constant of 200 .. 2000 ms, an accent forces the shortest decay, the amp decays with tau 1230 ms (flat over a step) and releases in 1 ms; no key tracking. [S: source code] On TIDE (ANALOG WAVE ACID / ACSQ; b13 also takes their RES to the edge of self-oscillation and their SAT harder): CUT 22 .. 45 as the resting floor, E2FLT 7 .. 42, E2DEC 94 .. 126, RES up to ~118, KTRK 0, MIX 0, LEGATO + GLIDE TIME. The voices: **#5 SAW 303** (CUT 30, RES 90, E2FLT 24, E2DEC 98: Chicago), **#6 SQUARE 303** (CUT 26, RES 84, E2FLT 20, E2DEC 94: deep and rubbery), **#27 SCREAM 303** (CUT 28, RES 118, E2FLT 40, DRV 24, DIST 45: Hardfloor / Josh Wink). Multis M09 .. M11 use them.
 
 ## 1.3 Sub bass
 - **Oscillator:** pure sine or triangle, optionally plus a very quiet saw/square an octave up for audibility on small speakers. [G]
@@ -132,6 +133,7 @@ Purpose: typical settings of classic synth patches, in generic synth terms, as a
 - **Setting guesses:** follower +7 to +24 semitones above the leader (typical sweep range, [G]), sweep with ENV (D 300-800 ms) or LFO (0.2-1 Hz) or mod wheel; filter fairly open (cutoff 80-110), resonance low; AENV A 0, S 100%, R 100-200 ms. [G]
 - **FX:** drive, delay, phaser. [G]
 - Disagreement/uncertainty: no source gave numeric sweep ranges.
+- **b13: RAZORWIRE's slot (#27) is SCREAM 303 now** (1.2 above); the notes below are its history.
 - **0.2.20, RAZORWIRE and BANSHEE told apart** (audit 3.63): RAZORWIRE keeps the Ultravox hard-sync cry but sweeps faster and wider (FILTER ENV on the sync interval 100 %, D 260 ms), more drive (36), velocity also opens the sweep (a harder key = a wider cry), delay 14 %. BANSHEE (TRIO) becomes the slow wail: the slave a full octave up (INT2 +12), the sweep rises over 220 ms before it falls, the note swells in over 320 ms, a lower cutoff (CUT 66), and a slow FLANG insert (0.3 Hz, 45 %) in place of the delay. [G, on the source's 'sweep the slave'; S: SOS brass notes for the delayed onset]
 
 ## 2.3 Brassy polysynth lead (Prophet / Oberheim style)

@@ -8409,10 +8409,10 @@ static int test_item156_cells(void)
         {"DUCK 2/2", -1, -1, 0, -1, -1, 0, 3},          /* (item 158: DUCK 2/2 with SOURCE OFF has no card: it is out of the page order, test_item158_pages) */
         {"VOICE 1/2", -1, V_POLY, -1, -1, -1, 0, 2}, {"VOICE 1/2", -1, V_MONO, -1, -1, -1, 0, 3}, {"VOICE 1/2", -1, V_LEGATO, -1, -1, -1, 0, 3}, {"VOICE 1/2", -1, V_UNISON, -1, -1, -1, 0, 4},
         {"VOICE 2/2", -1, V_POLY, -1, -1, -1, 0, 4}, {"VOICE 2/2", -1, V_MONO, -1, -1, -1, 0, 3}, {"VOICE 2/2", -1, V_UNISON, -1, -1, -1, 0, 4}, {"VOICE 2/2", -1, V_POLY, -1, -1, -1, 1, 3},
-        {"EDIT 1", 0, -1, -1, -1, -1, 0, 2}, {"EDIT 1", 2, -1, -1, -1, -1, 0, 3}, {"EDIT 1", 3, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 5, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 6, -1, -1, -1, -1, 0, 2},
+        {"EDIT 1", 0, -1, -1, -1, -1, 0, 3}, {"EDIT 1", 2, -1, -1, -1, -1, 0, 3}, {"EDIT 1", 3, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 5, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 6, -1, -1, -1, -1, 0, 2},
         {"EDIT 1", 9, -1, -1, -1, -1, 0, 4}, {"EDIT 1", 11, -1, -1, -1, -1, 0, 2}, {"EDIT 1", 14, -1, -1, -1, -1, 0, 3},
         {"EDIT 2", 3, -1, -1, -1, -1, 0, 1}, {"EDIT 2", 5, -1, -1, -1, -1, 0, 1}, {"EDIT 2", 9, -1, -1, -1, -1, 0, 1},
-    };
+    };   /* (b13-acid: ANALOG's default sound is SAW 303, WAVE ACID: its EDIT 1 is NOIS, DRV and MIX (params.c pg_id: MIX moves there from the ENGINE page), 3 cells) */
     static const struct { const char *title; int8_t eng; uint8_t grid; } KEEP[] = {   /* pages with a real picture: as they were */
         {"EDIT 1", 7, 1}, {"EDIT 1", 12, 1}, {"EDIT 2", 12, 1}, {"ENGINE", 0, 5}, {"SUB OSC", -1, 1}, {"AMP ENV", -1, 1}, {"LFO 1", -1, 1}, {"ARP 1/3", -1, 16}, {"ARP 3/3", 0, 14}, {"ARP 3/3", 12, 14}, {"STEREO MASTER", -1, 1},
     };

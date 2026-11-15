@@ -12,8 +12,8 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 2 | FOLD BASS |
 | 3 | LADDER BASS |
 | 4 | RUBBER BAND |
-| 5 | SQUELCH |
-| 6 | TIDAL SUB |
+| 5 | SAW 303 |
+| 6 | SQUARE 303 |
 | 7 | FM BASS 2 |
 | 8 | FRETLESS |
 | 9 | SLAP DOCTOR |
@@ -34,7 +34,7 @@ The 171 factory sounds in the order the device lists them in PATCHES (TYPE ALL):
 | 24 | REESE BASS |
 | 25 | DRIVEN SAW |
 | 26 | FUNFARE |
-| 27 | RAZORWIRE |
+| 27 | SCREAM 303 |
 | 28 | SQUARE LEAD |
 | 29 | TORCH SONG |
 | 30 | WALL OF SAW |

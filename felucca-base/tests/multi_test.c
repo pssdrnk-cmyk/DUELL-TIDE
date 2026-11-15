@@ -375,7 +375,7 @@ static void keys_drive(void)
         play_run(10, 1u << e4, sec, sec / 2u, 0, r);         /* (reel: M11 ACID LINES has no arp on either part: the direct path, the transport stopped; until the reel the owner's PAD SPLIT, M10) */
         play_run(10, 1u << f4, sec, sec / 2u, 0, q);
         pr_recall = 0;
-        ck("M11 ACID LINES: part 1 (SQUELCH, TRN -12) plays E4 at E3, part 2 (DEEP BLUE, TRN 0) plays F4 at F4 (no TRN of part 1 on part 2)",
+        ck("M11 ACID LINES: part 1 (SAW 303, TRN -12) plays E4 at E3, part 2 (DEEP BLUE, TRN 0) plays F4 at F4 (no TRN of part 1 on part 2)",
            trk[0].p[P_TRANS] == -12 && trk[1].p[P_TRANS] == 0 && r[0].n >= 1u && r[0].note[0] == 52u && r[1].n >= 1u && r[1].note[0] == 64u && q[1].n >= 1u && q[1].note[0] == 65u);
         play_run(2, 1u << pr_key(60), sec, sec / 2u, 0, r);   /* M03 HSE JUNO: the bass's own TRN -12 is heard from the keys (until the reel: the owner's FINAL REEL, M16, its strings TRN +12) */
         printf("multi:   M03 key C4: part 1 note %u, part 2 note %u (TRN %d / %d)\n", r[0].note[0], r[1].note[0], trk[0].p[P_TRANS], trk[1].p[P_TRANS]);
@@ -1133,8 +1133,8 @@ int main(void)
         /* (reel, 2026-11-10: the fifteen new factory multis, one curated programme (tools/factory_multis.py); M02 DUB CHORD is the owner's record as before) */
         static const char *const SN[16][2] = {{"CHORD ECHO", "WARM WASH"}, {"BIG STAB", "SLOW TIDE"}, {"WARM WASH", "RUBBER BAND"},
                                               {"TINE ROOM", "AIR SHIMMER"}, {"DUB DRAWBAR", "ORGAN WASH"}, {"MELLOW EP", "FRETLESS"},
-                                              {"LOW STAB", "LAMPLIGHT"}, {"SUNDAY KEYS", "SYNTH BRASS"}, {"SQUELCH", "FOG BANK"},
-                                              {"TIDAL SUB", "SQUELCH"}, {"SQUELCH", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
+                                              {"LOW STAB", "LAMPLIGHT"}, {"SUNDAY KEYS", "SYNTH BRASS"}, {"SQUARE 303", "FOG BANK"},
+                                              {"SCREAM 303", "SQUARE 303"}, {"SAW 303", "DEEP BLUE"}, {"LADDER BASS", "VOWEL PAD"},
                                               {"DIGI PLUCK", "PWM PAD"}, {"WAVE CHIMES", "TAPE CLOUD"}, {"RUBBER BAND", "CHOIR LOFT"},
                                               {"FROST BELLS", "EVOLVING PAD"}};
         static const uint8_t MD[16] = {DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER, DM_LAYER,
@@ -1273,13 +1273,13 @@ int main(void)
         turn(EN_K3, 1);
         ck("  one more right: M11 TECH MINIMAL (b10 genre order)", proj_cur == 10u && loaded_is(10u));
         turn(EN_K3, 7);
-        ck("  7 more right: M18 ACID LINES (ANALOG SQUELCH + PHASE DEEP BLUE; MR9: two multis before it)", proj_cur == 17u &&
-           trk[0].eng_req == 0u && trk[1].eng_req == 2u && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SQUELCH") &&
+        ck("  7 more right: M18 ACID LINES (ANALOG SAW 303 + PHASE DEEP BLUE; MR9: two multis before it)", proj_cur == 17u &&
+           trk[0].eng_req == 0u && trk[1].eng_req == 2u && str_eq(ds_name(trk[0].eng_req, trk[0].preset), "SAW 303") &&
            str_eq(ds_name(trk[1].eng_req, trk[1].preset), "DEEP BLUE") && loaded_is(17u));
         test_multi_name(b);
         sound_name(&trk[0], nm_a);
-        ck("  the engine and patch names the panel draws follow (ANALOG / SQUELCH, M18 ACID LINES)", str_eq(b, "M18 ACID LINES") &&
-           str_eq(nm_a, "SQUELCH") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
+        ck("  the engine and patch names the panel draws follow (ANALOG / SAW 303, M18 ACID LINES)", str_eq(b, "M18 ACID LINES") &&
+           str_eq(nm_a, "SAW 303") && str_eq(ENGINES[trk[0].eng_req]->name, "ANALOG"));
         turn(EN_K3, 40);
         ck("  many detents right: stops at the last used, M26 AMB GROWL (the last ROM multi)", proj_cur == MU_SHOWN - 1u && loaded_is(MU_SHOWN - 1u));
         turn(EN_K3, -(int32_t)(MU_SHOWN - 18u));

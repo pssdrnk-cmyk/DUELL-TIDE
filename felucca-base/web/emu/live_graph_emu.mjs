@@ -54,7 +54,7 @@ for (const pal of palettes) {
   d.render(800);
   d.ex.web_palette(pal);
   d.render(300);
-  const preset = (n) => { for (let i = 0; i < Math.abs(n); i++) { d.ex.web_enc(2, Math.sign(n)); d.render(40); } d.render(300); };   // the PRESETS knob: part 1 to #5 SQUELCH (ANALOG)
+  const preset = (n) => { for (let i = 0; i < Math.abs(n); i++) { d.ex.web_enc(2, Math.sign(n)); d.render(40); } d.render(300); };   // the PRESETS knob: part 1 to #5 SAW 303 (ANALOG)
   preset(-75);
   const p = `p${pal}`;
   // ---- AMP ENV: a held note (attack, decay, sustain), then its release

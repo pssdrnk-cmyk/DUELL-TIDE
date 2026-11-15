@@ -6,12 +6,12 @@
 #define JRNY_CTX_H
 static const uint8_t JRNY_CTX[171] = {
     113,   /* 0 0 LADDER BASS: -22.9 dB, 137 Hz */
-     96,   /* 0 1 TIDAL SUB: -24.7 dB, 68 Hz */
+    147,   /* 0 1 SQUARE 303: -19.4 dB, 383 Hz */
     114,   /* 0 2 BEHIVE: -23.2 dB, 316 Hz */
     154,   /* 0 3 RUBBER BAND: -18.2 dB, 197 Hz */
-    113,   /* 0 4 SQUELCH: -23.0 dB, 129 Hz */
+    131,   /* 0 4 SAW 303: -21.1 dB, 714 Hz */
     178,   /* 0 5 TORCH SONG: -14.9 dB, 187 Hz */
-    155,   /* 0 6 RAZORWIRE: -18.3 dB, 488 Hz */
+    118,   /* 0 6 SCREAM 303: -22.9 dB, 2997 Hz */
     211,   /* 0 7 FUNFARE: -11.4 dB, 657 Hz */
     147,   /* 0 8 WALL OF SAW: -19.0 dB, 619 Hz */
     203,   /* 0 9 SILK CHORUS: -11.7 dB, 485 Hz */
