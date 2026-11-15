@@ -38,7 +38,7 @@ Turn **SELECT** (or press **OCT+** / **OCT-**) to go through it; on the two ques
   - A sound brings its own loudness (its **PATCH LEVEL**, saved with the patch, on EDIT > VOICE 2/2 knob 4).
   - Your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it.
   - The part plays at the patch level and the level together.
-- **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, TIDE SETTINGS, AUTO TIDE). Hold HOME for the menu (ABOUT shows the version and credits).
+- **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, AUTO TIDE, TIDE SETTINGS). Hold HOME for the menu (ABOUT shows the version and credits).
 - **MIXER** (GLO's first page since the 0.2.25 layout round):
   - Both parts are side by side, part 1 left and part 2 right, with the level meters between them.
   - Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown).
@@ -82,16 +82,16 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2.
    - The middle selects both parts (every knob moves both, each from its own value, both part numbers light up) and plays the mode of the PLAY MODE row on TIDE SETTINGS; the header names it, LAYER, STEREO or DUEL.
    - PART 1 and PART 2 play that part alone on every key.
-   **With TIDE:** tap HOME twice more for TIDE SETTINGS. It has ten rows:
-   - STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, then REC, PLAY MODE, XFADE and SPLIT.
+   **With TIDE:** tap HOME once for AUTO TIDE and once more for TIDE SETTINGS. TIDE SETTINGS has twelve rows:
+   - STYLE, MODE, TARGET, ARC, KNOBS, AMOUNT, then REC, ANSWER, ANSWER ON, PLAY MODE, XFADE and SPLIT.
    - KNOBS picks which knob set HOME page 1 plays. AUTO follows the tag, the first word of the multi's name: DUB, HSE (house), TECH (techno), ACID, ELEC (electro) or AMB (ambient).
    - AMOUNT is how far a roll goes.
    - STYLE DUB is the default.
 
-   Then AUTO TIDE. Press PLAY and twist K1 on AUTO TIDE right: the parts evolve by themselves. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
-4. Press **SAVE**. The first page is **PATCHES**: 128 slots, #1 to #128.
+   To hear it: twist K1 on AUTO TIDE right (stopped, this starts PLAY too): the parts evolve by themselves. With no notes coming in TIDE plays its own chord on C; send or hold one note to set its key. The [TIDE guide](TIDE_GUIDE.md) has the rest.
+4. Press **SAVE**. The first page is **PATCHES**: a slot for every factory sound, #1 to #171, and four USER slots.
 
-   - The factory sounds fill them. With TIDE the last four are empty USER slots (U1 to U4) for new sounds. The factory sounds go to #171. (#129 and up are read-only places.)
+   - The factory sounds fill them. With TIDE four empty USER slots (U1 to U4, after #124) are for new sounds. Every slot can be saved over (up to 150 of your own versions at once).
    - The list shows: factory sounds first, then your saved sounds, then the empty USER slots last.
    - **Hold SAVE** asks "OVERWRITE #12 \<name\>?" — the slot your sound came from.
      - Turn **knob 1** in the dialog to pick another slot.
@@ -102,12 +102,12 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    **Tip:** a short press of SAVE opens the page that fits where you are: PATTERNS when you are on a sequencer page (STEP, PARAMETER LOCKS), otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Hold SAVE on PATTERNS or MULTIS saves over the slot you picked ("SAVE OVER <name>?", OCT+ yes); an empty multi slot asks for a name first.
 
 ## Saving things
-- **PATCHES**: one list of 128 slots. With TIDE the last four (U1 to U4) are USER slots, shown as USER EMPTY until you save into them; the four factory sounds they stand in for (#125 to #128) and 43 more (#129 to #171, the last eight are drones: [PATCH_NUMBERS](PATCH_NUMBERS.md)) are read-only places that load but do not save (SAVE offers USER 1), and can be marked FAV like a slot.
+- **PATCHES**: one list of 175 slots. With TIDE four of them (U1 to U4, after #124) are USER slots, shown as USER EMPTY until you save into them; the four factory sounds they stand in for (#125 to #128) and 43 more (#129 to #171, the last eight are drones: [PATCH_NUMBERS](PATCH_NUMBERS.md)) follow them. Since `1.0.0-b12` every slot loads and saves (up to 150 of your own versions at once: 126 among #1 to #128 and 24 among #125 to #171), and any can be marked FAV.
   - **The list order:** all the factory sounds (#1 to #124, then #125 to #171), then every sound you saved (a sound saved over #12 is there too), then the empty USER slots; the numbers and MIDI program change stay the same.
   - A slot holds the sound you saved there, or else its factory sound.
   - Knob 1 steps the slots, knob 2 filters by type, knob 3 marks favourites, knob 4 RESTORE brings the factory sound back (the card is not shown when the slot holds the factory sound already).
   - **SAVE > TOOLS** has RESTORE ALL (every slot gets its factory sound).
-  - MIDI program change n loads slot n (bank 2: the places from #129, program 0 is #129 and program 42 is #171).
+  - MIDI program change n loads sound #n+1 (bank 0 or 1; bank 2: program 0 is #129 and program 42 is #171, programs 124 to 127 are #125 to #128).
   - Saving needs the transport stopped.
 - **PATTERNS**: 32 named, overwritable step patterns (P01 to P32). With TIDE P29 to P32 are USER slots (empty until saved); the default patterns they stand in for stay listed after them, read-only. The picked entry is opened with a preview of its 16 steps (or NO SEQUENCE). The page always opens with LOAD picked: knob 1 to the pattern, OCT+ loads it (knob 3 picks SAVE instead). **To save a pattern**, hold SAVE on the PATTERNS page: the picked slot is offered over itself ("SAVE OVER ... ?"), OCT+ writes it and OCT- cancels. Saving does not need STOP: the pattern is kept at once, and it goes to flash when nothing plays.
 - **MULTIS**: 27 slots (M01 to M26, and M27 EMPTY, a blank template) that hold both parts, effects, arps, patterns, mode and morph settings. The page always opens with LOAD picked.
@@ -128,9 +128,9 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 - The device backup lives on the installer page, and the editor's **Backup** page. It holds:
   - Patches, MULTIs, PATTERNs, the user wavetables, settings, and the current music.
   - **Back up before you update, and before you switch between the stable and the beta build.**
-- From the next build on, the backup includes TIDE's own settings (the TIDE SETTINGS rows). A restore brings them back; a backup made by an older build holds none of them and leaves the unit's TIDE settings as they are.
+- The backup includes TIDE's own settings (the TIDE SETTINGS rows, since `1.0.0-b1`). A restore brings them back; a backup made by an older build holds none of them and leaves the unit's TIDE settings as they are.
 - The FM6 voice bank (SLOT B1 to B32) is in the backup, too. A backup made by an older build has none of it and leaves the unit's bank as it is.
-- A restore reports every object that failed and still restores the others. A full patch store (126 saved patches with TIDE) reads **STORE FULL**.
+- A restore reports every object that failed and still restores the others. A full patch store (with TIDE 126 saved in #1 to #128, or 24 in #125 to #171) reads **STORE FULL**.
 
 ## Playing and modulation
 - **ARP**, **SEQ**, **PLAY/STOP**, **REC**:
@@ -158,7 +158,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 
   On TIDE the answer to a take is yours to re-roll: hold **SEQ** and press **C4 SWELL** (a whole new wave) or **D4 RIPPLE** (a few notes move); it lands at the start of the next loop (the header says SWELL  NEXT LOOP until then) and **OCT-** + a PRESETS turn takes it back.
 
-  While a part is armed for recording, a red dot and REC show in the bottom row of every page, next to the page number.
+  While a part is armed for recording, a red dot shows in the bottom row of every page, next to the page number.
 
   **PLAY/STOP** lights **green** when stopped and **red** when playing (it blinks red on each beat of the count-in).
   When stopped, a short press of PLAY/STOP starts on its release.
@@ -170,7 +170,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
     - RES gives resonance over the whole knob. On the 12 dB slope the peak is about 1 dB at 32, 6 dB at 64, 11 dB at 96 and 17 dB at 127.
     - CUT is smoothed over a few milliseconds, so a sweep or CC74 does not zipper.
   - **MULTI FILTER 2/2:** KTRK, then ENV 2 and LFO 1.
-    - KTRK makes the cutoff follow the note you play, from -100 to +100 %. A new or initialised sound and most factory sounds start at +51 %; the basses, percussion and kicks start at 0.
+    - KTRK makes the cutoff follow the note you play, from -100 to +100 %. A new or initialised sound and most factory sounds start at +51 %; the basses start at 0.
     - ENV 2 and LFO 1 are their amounts on this filter's cutoff. The same values are on the DEST pages of those modules: ENV 2 DEST and LFO 1 DEST.
   - The engines' own filter pages (VCF, TRIO FILTER, NOISE FILT) are gone.
   - A second filter, the **TWIN FILTER**, comes after the first. TYPE is OFF at first; TWIN MOD and TWIN CHAIN show only while it is on.
@@ -225,7 +225,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
 - Tap FX to go back to where you were. SPACE and KILL then fade back to neutral in under half a second. They do the same when you load another patch or multi.
 - If you want them to stay as you left them, set MENU > CONTROL > LEAVING PERFORM to KEEP.
 
-**MODULES.** On the GLO pages (tap GLO, then SELECT: MIXER, TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, REVERB, SHIMMER with TYPE SHIM, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN; these pages draw in a third colour of their own, neither part's; ALGORITHM still picks the part the keys and the other pages use, but nothing on these pages):
+**MODULES.** On the GLO pages (tap GLO, then SELECT: MIXER, TEMPO, CHORUS, DELAY 1/2, DELAY 2/2, COLR LFO, REVERB, SHIMMER with TYPE SHIM, STEREO MASTER, COMPRESSOR, MODULES, SIDECHAIN, MIDI, MIDI LEARN; these pages draw in a third colour of their own, neither part's; ALGORITHM still picks the part the keys and the other pages use, but nothing on these pages):
 - Four switches turn whole parts of DUELL off for the unit: knob 1 ARP, knob 2 SEQ, knob 3 SENDS, knob 4 PART FX.
 - Each is ON (the default) or OFF (turn left for OFF, right for ON).
 - ARP OFF: the keys play directly, no arp.
@@ -290,7 +290,7 @@ Part 1 listens on channel 1 and part 2 on channel 2 (editable).
 - On the device: clock in, program change and bank select.
 - The mod wheel (CC1) moves the MORPH fader and is also a matrix source.
 - CC 70 morph, 102 roll (0 to 42 rolls End A, 85 to 127 rolls End B), 103 amount.
-- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 25, M01 to M26, the built-in scenes or what you saved over them; bank 0 only).
+- In LAYER, program change 0 to 15 on part 1's channel recalls MULTIs M01 to M16 (with TIDE: 0 to 26, M01 to M27, the built-in scenes or what you saved over them; bank 0 only).
 - With an external clock, MIDI Start plays step 0 on the first clock pulse after it.
 - The tempo is averaged over four beats so a steady clock keeps the delay time and the TEMPO display still.
 - PLAY on this unit while a master's clock is arriving waits for the master's next bar (STOP, STOP ALL or the master's Stop cancel the wait).
