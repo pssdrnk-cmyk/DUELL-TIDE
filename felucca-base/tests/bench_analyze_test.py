@@ -418,8 +418,8 @@ else:
     open(suite, "w").write("""suite MINI
 test SILENCE  5 s of nothing
 tail 2
-test M07-CHORDS  M07 FINAL REEL, four chords
-load multi M09
+test M07-CHORDS  a keyed pair (b13-multis: unit slot M19 ELEC CRISP, the bass and the strings), four chords
+load multi M19
 at 0.0 chord C3 E3 G3 B3 vel 90
 at 3.0 chord A2 C3 E3 G3 vel 90
 at 6.0 release
@@ -719,8 +719,8 @@ check("prune: the newest run keeps everything; an older run loses its clean audi
 if os.path.exists(SIM):
     suite3 = os.path.join(tmp, "rep.txt")
     open(suite3, "w").write("""suite REP
-test M07-CHORDS  M07 FINAL REEL, four chords
-load multi M09
+test M07-CHORDS  a keyed pair (b13-multis: unit slot M19 ELEC CRISP, the bass and the strings), four chords
+load multi M19
 repeat 2
 at 0.0 chord C3 E3 G3 B3 vel 90
 at 3.0 chord A2 C3 E3 G3 vel 90

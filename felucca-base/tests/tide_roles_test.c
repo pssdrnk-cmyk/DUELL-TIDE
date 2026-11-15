@@ -98,8 +98,8 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     { 2, STY_DUB,     STY_DEEP,    {R_SKANK, R_ATMOS}, 0, "DUB CHORD"},    /* (re-voiced: the stab over a held pad, no bass line; the pad plays one chord in eight bars: an ATMOS, not a PAD of 0.5 .. 2) */
     { 3, STY_DEEP,    STY_DUB,     {R_PAD,   R_BASS},  1, "HSE JUNO", {0, 0, 45, 65}},   /* (the bass runs 4.8 .. 6 a bar: its own band 4.5 .. 6.5) */
     { 4, STY_DEEP,    STY_DUB,     {R_STAB,  R_ATMOS}, 0, "HSE RHODES", {20, 50, 0, 0}},   /* (the Rhodes 2.5 .. 4.8: 2.0 .. 5.0; the pad is one chord in four bars) */
-    { 5, STY_DEEP,    STY_PEAK,    {R_MOTIF, R_ATMOS}, 0, "HSE ORGAN"},     /* (the organ's second part is a held stab, 0.3 .. 0.5 a bar: an ATMOS) */
-    { 6, STY_PEAK,    STY_DEEP,    {R_MOTIF, R_BASS},  1, "HSE FRENCH", {0, 0, 30, 65}},   /* (b9 rework3: French house, electric-piano chords over a disco bass; the chords 3.3 .. 5.3 a bar are a MOTIF, the bass 3.3 .. 6 has its own band 3.0 .. 6.5) */
+    { 5, STY_PEAK,    STY_DEEP,    {R_STAB,  R_BASS},  1, "HSE CHICAGO", {25, 50, 80, 130}},   /* (b13-multis: piano stabs 4 a bar on the off-beats: 2.5 .. 5.0 as M04 / M26 had; the jacking 16th bass 11 a bar: its own band 8 .. 13) */
+    { 6, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_PROG},  1, "ELEC CRISP", {70, 130, 0, 0}},   /* (b13-multis: the melodic triangle bass 10.5 a bar: its own band 7 .. 13; the strings a chord a bar, a PROG) */
     { 7, STY_PEAK,    STY_DEEP,    {R_STAB,  R_PAD},   0, "TECH DETROIT", {20, 55, 0, 0}},   /* (the stabs 2.3 .. 5.3 a bar: 2.0 .. 5.5) */
     { 8, STY_DEEP,    STY_PEAK,    {R_PROG,  R_STAB},  0, "TECH SOUL"},     /* (the second part 1.7 .. 4.0 a bar is a STAB, not a MOTIF of 3 .. 8) */
     { 9, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_ATMOS}, 0, "ACID HYPNO", {70, 160, 0, 0}},   /* (was MINIMAL 12; M09 is ACID HYPNO now: a 16th-note line, 8 .. 15 a bar: its own band 7 .. 16; the second part plays twice in eight bars) */
@@ -112,14 +112,14 @@ static const struct { uint8_t slot, style, near, role[2], bass; const char *name
     {16, STY_AMBIENT, STY_DEEP,    {R_AIR,   R_ATMOS}, 0, "AMB LOOPS"},     /* (the second part 0.25 .. 0.5 a bar) */
     /* b10 sound lane: the ROM-only factory multis M19-M24 (tools/drone_pack.py MORE; M17, M18 are STYLE DRONE and not here) */
     {19, STY_MINIMAL, STY_PEAK,    {R_BASS,  R_ATMOS}, 1, "TECH HYPNO", {45, 70, 0, 0}},   /* (the bass figure every third 16th, 5.0 .. 6.75 a bar: its own band 4.5 .. 7.0; the pad one chord in eight bars) */
-    {20, STY_DUB,     STY_DEEP,    {R_STAB,  R_BASS},  1, "DUB HOUSE"},     /* (chord stabs 3.0 .. 3.5 a bar over a held sub, 3.0 .. 3.5) */
+    {20, STY_DUB,     STY_DEEP,    {R_BASS,  R_SKANK}, 1, "DUB ROOTS", {40, 80, 0, 0}},   /* (b13-multis: the roots bass 6 a bar: its own band 4 .. 8; the skank on 2 and 4, 2 a bar) */
     {21, STY_DEEP,    STY_DUB,     {R_MOTIF, R_BASS},  1, "HSE LOFI"},      /* (the electric-piano chord riff, 6 hits a bar, 5.0 .. 6.0 under TIDE: a MOTIF; the off-beat bass 2.25 .. 5.0) */
-    {22, STY_PEAK,    STY_MINIMAL, {R_PAD,   R_ATMOS}, 1, "TECH CINEMA"},   /* (a chord a bar, 2 bars on the first; the A1 drone one note in four bars) */
+    {22, STY_PEAK,    STY_MINIMAL, {R_BASS,  R_PAD},   1, "ELEC OUTRUN", {75, 140, 0, 0}},   /* (b13-multis: the 16th saw bass, 12 a bar with the beats left out, 8 .. 12 under TIDE: its own band 7.5 .. 14; the strings a chord a bar) */
     {23, STY_AMBIENT, STY_DEEP,    {R_PAD,   R_MOTIF}, 0, "AMB TECHNO"},    /* (a chord a bar; the harp arpeggio 4.75 .. 6.25 a bar) */
     {24, STY_MINIMAL, STY_PEAK,    {R_MOTIF, R_BASS},  1, "TECH MINIMAL", {0, 0, 35, 80}},   /* (the koto 5.0 .. 7.25 a bar; the off-beat 16th sub, 5 a bar, 4.0 .. 6.5 under TIDE: its own band 3.5 .. 8.0) */
     /* b10 MR9: the two roles the set lacked (musical review M5) */
     {25, STY_MINIMAL, STY_DUB,     {R_STAB,  R_ATMOS}, 0, "DUB MINIMAL"},   /* (a saw blip 2 .. 3 a bar into the echo; the tape hiss held three bars of four) */
-    {26, STY_DEEP,    STY_DUB,     {R_STAB,  R_ATMOS}, 1, "HSE KEYS", {25, 50, 0, 0}},   /* (the keys stab 4 a bar, 2.5 .. 4.5 under DEEP: 2.5 .. 5.0, as M04's; the organ holds G2 D3 G3 for eight bars: an ATMOS, under C3) */
+    {26, STY_AMBIENT, STY_DEEP,    {R_BASS,  R_ATMOS}, 1, "AMB JUNGLE", {15, 40, 0, 0}},   /* (b13-multis: the half-time Reese, 2 .. 2.5 a bar: its own band 1.5 .. 4.0; the strings a chord in two bars) */
 };
 /* density bounds per role: onsets a bar, averaged over a 4-bar window, as tenths (5 = 0.5) */
 static const struct { uint8_t lo, hi; } DENS[14] = {{0, 0}, {20, 60}, {5, 20}, {0, 10}, {10, 40}, {30, 80}, {5, 20}, {2, 10}, {60, 80}, {20, 50}, {10, 30}, {5, 10}, {10, 80}, {0, 0}};
