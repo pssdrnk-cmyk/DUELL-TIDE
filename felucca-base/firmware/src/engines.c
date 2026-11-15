@@ -322,7 +322,7 @@ static __attribute__((noinline)) uint32_t pat_fl(uint32_t k, uint32_t i)
 }
 
 /* the parts at power-on (engine, preset, PATTERNS[n - 1] in the sequencer, 0 = empty: all are): bass, pad (lead and drums: the hidden parts 3 and 4, gone, memory trim 1).
- * DUELL: the preset is the engine's factory sound k (sounds.c; ANALOG 4 = SQUELCH), INIT for an engine with none yet
+ * DUELL: the preset is the engine's factory sound k (sounds.c; ANALOG 4 = SAW 303), INIT for an engine with none yet
  * (FM6 until its sounds come); the host renders (tests/hostsim.c host_preset) still read Felucca's presets with it */
 static const uint8_t TRK_DEF[NPART][3] = {{0, 4, 0}, {ENGI_FM6, 4, 0}   /* ANALOG ACID, FM6 PAD (was DIGITAL PAD) */
 #if NPART > 2

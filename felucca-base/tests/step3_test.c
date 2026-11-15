@@ -224,7 +224,7 @@ static void t_old_projects(void)
         for (i = 0; i < P_E0; i++)
             ok &= trk[t].p[i] == (int16_t)param_fit(param_desc_of(trk[t].eng_req, i), nt.p[i]);
     }
-    ck("  restored onto the device: parts A B with DUELL's values on the reused ids", ok && trk[0].p[P_M4AMT] == 21 && trk[1].p[P_M5AMT] == -40);   /* (packed: the routes after the three of the default sounds) */
+    ck("  restored onto the device: parts A B with DUELL's values on the reused ids", ok && trk[0].p[P_M2AMT] == 21 && trk[1].p[P_M5AMT] == -40);   /* (packed: the routes after the default sounds' own: part A's SAW 303 has one (b13-acid; SQUELCH had three), part B's three) */
 }
 
 /* the backup (editor_backup.c): an archive's project is refused when it is not this firmware's FUN11; the settings object of DUELL's keeps its map */

@@ -82,33 +82,27 @@ SOUNDS = [
             'E7': 22, 'SUB LEVEL': 28, 'CYCLE RISE': 6, 'CYCLE FALL': 76, 'CYCLE CURVE': -2, 'AMPENV SATN': -3, 'FILTERENV MRES': -3, 'CYCLE PAN': 4,
             'LFO2 MMODE': 2,
          }),
-    dict(engine='ANALOG', idx=4, name='SQUELCH', cat='BASS', bseed=57877,  # #5
+    # b13-acid (2026-11-15, owner: "make the acid real"): was SQUELCH (a plain SAW: the 303 path never ran in the sound itself). The classic Chicago saw 303 on WAVE ACID:
+    # one oscillator, 24 dB low-pass resting at ~300 Hz (a 303 knob of ~500 Hz less its envelope offset), RES 90 (~70 %), ENV MOD ~50 % (E2FLT 24 = 2.6 octaves), filter decay tau ~270 ms
+    # (E2DEC 98), 3 ms envelope attack, flat amp, short release, LEGATO + glide for the slides, dry (the echo comes from the multi). Open303 (Robin Schmidt, MIT) as ported in fm1-x0x bass303.c: cutoff knob 314 .. 2394 Hz, ENV MOD sweep 0.8 .. 4.6 octaves (Open303's measured mapping), filter decay a time constant of 200 .. 2000 ms, accent = the shortest decay, amp flat (tau 1230 ms), 1 ms release; no key tracking; work/b13/acid/NOTES.md.
+    # End B is the hand on the knobs: cutoff, resonance, env mod and decay up (the "Acid Tracks" ride).
+    dict(engine='ANALOG', idx=4, name='SAW 303', cat='BASS', bseed=57877,  # #5 (b13-acid: was SQUELCH; the name keeps every browse number)
          p={
-            'ATK': 0, 'DEC': 86, 'SUS': 110, 'REL': 32, 'KTRK': 13, 'TRANS': -12, 'DIST': 25, 'DLY': 32, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
-            'FREEA': 26, 'FREEB': 69, 'FREED': 2, 'E2ATK': 0, 'E2DEC': 61, 'E2SUS': 0, 'E2REL': 0, 'L2RATE': 21, 'TRIM': 93, 'E2FLT': 27, 'L2FLT': 4,
-            'E2': 0, 'E3': 0, 'E7': 30, 'MOD1': ('AT', 'SAT', 14), 'MOD2': ('VEL', 'FRES', 12), 'MOD3': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1,
-            'CYCLE RISE': 120, 'CYCLE FALL': 0,
+            'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'TRANS': -12, 'DIST': 0, 'DLY': 30, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
+            'FREEA': 30, 'FREEB': 90, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 98, 'E2SUS': 0, 'E2REL': 98, 'TRIM': 100, 'E2FLT': 24,
+            'E1': 7, 'E2': 0, 'E3': 0, 'E7': 0, 'MOD1': ('AT', 'SAT', 14), 'LTRIG': 1, 'L2TRIG': 1,
          },
-         bend={
-            'ATK': 5, 'DEC': 85, 'SUS': 102, 'REL': 39, 'ED_SHP': 4, 'LRATE': 54, 'LPHASE': 8, 'LFADE': 6, 'LD_FLT': -5, 'LD_SHP': 5, 'LD_AMP': 5,
-            'KTRK': 18, 'DIST': 29, 'CHOR': 1, 'DLY': 35, 'REV': 8, 'DETUNE': 41, 'FREEA': 31, 'FREEB': 65, 'FREEC': 5, 'M2AMT': 8, 'M3AMT': 15,
-            'M4AMT': -3, 'E2ATK': 2, 'E2DEC': 65, 'E2SUS': 3, 'E2REL': 8, 'L2RATE': 26, 'L2PHASE': 5, 'L2FADE': 1, 'E2FLT': 21, 'E2': 3, 'E3': 8,
-            'E4': 6, 'E7': 28, 'SUB LEVEL': 5, 'CYCLE RISE': 113, 'CYCLE FALL': 8, 'CYCLE CURVE': -7, 'AMPENV SATN': 1, 'FILTERENV MRES': 9,
-            'CYCLE PAN': -8, 'LFO2 MMODE': -2,
-         }),
-    dict(engine='ANALOG', idx=1, name='TIDAL SUB', cat='BASS', bseed=42452,  # #6
+         bend={'FREEA': 44, 'FREEB': 104, 'E2FLT': 30, 'E2DEC': 108}),
+    # b13-acid (2026-11-15): was TIDAL SUB (a sine sub, no filter envelope). The deep, rubbery square 303 on WAVE ACSQ (Plastikman / hypnotic acid): the filter resting low
+    # (~210 Hz), RES 84, little env mod (E2FLT 20 = 2.2 octaves, a 303 at ~35 %), the shortest decay (E2DEC 94 = tau 200 ms, the 303's minimum), flat amp, LEGATO + glide, dry. Open303 (Robin Schmidt, MIT) as ported in fm1-x0x bass303.c: cutoff knob 314 .. 2394 Hz, ENV MOD sweep 0.8 .. 4.6 octaves (Open303's measured mapping), filter decay a time constant of 200 .. 2000 ms, accent = the shortest decay, amp flat (tau 1230 ms), 1 ms release; no key tracking; work/b13/acid/NOTES.md.
+    # End B: cutoff, env mod and decay up (MORPH); TIDE rolls it from seed 19222 (x1.6 brighter, +1.2 dB, inside the audit's window).
+    dict(engine='ANALOG', idx=1, name='SQUARE 303', cat='BASS', bseed=19222,  # #6 (b13-acid: was TIDAL SUB; the name keeps every browse number)
          p={
-            'ATK': 22, 'SUS': 127, 'KTRK': 13, 'TRANS': -12, 'DIST': 7, 'VOICE': 2, 'FREEA': 41, 'E2ATK': 0, 'E2DEC': 69, 'E2SUS': 0, 'L2RATE': 17,
-            'L2WAVE': 1, 'TRIM': 88, 'E2FLT': 4, 'L2FLT': 4, 'E1': 3, 'E2': 0, 'E3': 0, 'E7': 16, 'MOD1': ('AT', 'SAT', 14),
-            'MOD2': ('CYCLE', 'E7', 7), 'LTRIG': 1, 'L2TRIG': 1, 'SUB LEVEL': 17, 'CYCLE RISE': 105, 'CYCLE FALL': 105,
+            'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'TRANS': -12, 'DIST': 0, 'DLY': 25, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
+            'FREEA': 26, 'FREEB': 84, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 94, 'E2SUS': 0, 'E2REL': 94, 'TRIM': 106, 'E2FLT': 20,
+            'E1': 8, 'E2': 0, 'E3': 0, 'E7': 0, 'MOD1': ('AT', 'SAT', 14), 'LTRIG': 1, 'L2TRIG': 1,
          },
-         bend={
-            'ATK': 20, 'DEC': 64, 'SUS': 123, 'REL': 59, 'ED_SHP': 1, 'LRATE': 52, 'LPHASE': 3, 'LFADE': 4, 'LD_FLT': 1, 'LD_SHP': -4, 'LD_AMP': 3,
-            'KTRK': 10, 'DIST': 10, 'CHOR': 7, 'DLY': 3, 'REV': 1, 'DETUNE': 41, 'FREEA': 43, 'FREEB': 2, 'FREEC': 5, 'M2AMT': 13, 'M3AMT': -2,
-            'E2ATK': 6, 'E2DEC': 62, 'E2SUS': 1, 'E2REL': 54, 'L2RATE': 18, 'L2PHASE': 4, 'L2FADE': 3, 'E2FLT': -4, 'E2': 2, 'E3': 7, 'E4': 3,
-            'E7': 21, 'SUB LEVEL': 16, 'CYCLE RISE': 113, 'CYCLE FALL': 103, 'CYCLE CURVE': 3, 'AMPENV SATN': 6, 'FILTERENV MRES': -1, 'CYCLE PAN': -4,
-            'LFO2 MMODE': -4,
-         }),
+         bend={'FREEA': 36, 'FREEB': 96, 'E2FLT': 26, 'E2DEC': 104}),
     dict(engine='FM6', idx=12, name='FM BASS 2', cat='BASS', bseed=13225,  # #7
          p={
             'LRATE': 30, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 21, 'KTRK': 0, 'TRANS': -12, 'REV': 6, 'VOICE': 2, 'TWTYPE': 1, 'FREEA': 51, 'FREEB': 4,
@@ -414,23 +408,16 @@ SOUNDS = [
             'E2FLT': 50, 'E2': 5, 'E3': 63, 'E4': 13, 'E7': 19, 'SUB LEVEL': 8, 'CYCLE RISE': 109, 'CYCLE FALL': 114, 'CYCLE CURVE': -10,
             'AMPENV SATN': -3, 'FILTERENV MRES': -4, 'CYCLE PAN': 20, 'LFO2 MMODE': 6,
          }),
-    dict(engine='ANALOG', idx=6, name='RAZORWIRE', cat='LEAD', bseed=22036,  # #27
+    # b13-acid (2026-11-15): was RAZORWIRE (a sync lead, one of four flat ANALOG leads). The screaming saw 303 (the Hardfloor / Josh Wink squelch): WAVE ACID, RES 118 (near the top,
+    # never self-oscillating), ENV MOD at the 303's maximum (E2FLT 40 = 4.4 octaves), a little drive into the filter (DRV 24) and an overdrive after it (DIST 45: the pedal), decay tau ~300 ms,
+    # flat amp, LEGATO + glide. Played where it sounds (TRANS 0): a 303 line an octave over the bass. Open303 (Robin Schmidt, MIT) as ported in fm1-x0x bass303.c: cutoff knob 314 .. 2394 Hz, ENV MOD sweep 0.8 .. 4.6 octaves (Open303's measured mapping), filter decay a time constant of 200 .. 2000 ms, accent = the shortest decay, amp flat (tau 1230 ms), 1 ms release; no key tracking; work/b13/acid/NOTES.md. End B (TIDE rolls it from the seed): seed 45205, the one that opens it (x1.3 brighter, -1.2 dB) inside the audit's window.
+    dict(engine='ANALOG', idx=6, name='SCREAM 303', cat='LEAD', bseed=45205,  # #27 (b13-acid: was RAZORWIRE; the name keeps every browse number)
          p={
-            'ATK': 0, 'SUS': 47, 'REL': 69, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 5, 'DRV2': 41, 'DLY': 18, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
-            'TWTYPE': 1, 'FREEA': 47, 'FREEB': 26, 'E2ATK': 0, 'E2DEC': 77, 'E2SUS': 0, 'E2REL': 69, 'L2RATE': 44, 'L2WAVE': 1, 'ITYPE': 6, 'IA': 44,
-            'IMIX': 51, 'CUT2': 66, 'TRIM': 108, 'E2FLT': 17, 'E2SHP': 63, 'L2SHP': 16, 'E1': 5, 'E2': 37, 'E3': 102, 'E7': 36,
-            'MOD1': ('AT', 'CUT', 12), 'MOD2': ('VEL', 'SHP', 13), 'MOD3': ('CYCLE', 'CUT', 7), 'LTRIG': 1, 'L2TRIG': 1, 'TWIN LINK': 0,
-            'TWIN LFO2': 4, 'CYCLE RISE': 97, 'CYCLE FALL': 97, 'ED_FLT': 48,
+            'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'DIST': 45, 'DLY': 35, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
+            'FREEA': 28, 'FREEB': 118, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 100, 'E2SUS': 0, 'E2REL': 100, 'TRIM': 86, 'E2FLT': 40,
+            'E1': 7, 'E2': 0, 'E3': 0, 'E7': 24, 'MOD1': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
          },
-         bend={
-            'ATK': 16, 'DEC': 50, 'SUS': 31, 'REL': 88, 'ED_SHP': -20, 'LRATE': 19, 'LPHASE': 20, 'LFADE': 5, 'LD_FLT': -11, 'LD_SHP': 5,
-            'LD_AMP': 1, 'DRV2': 33, 'KTRK': 45, 'DIST': 8, 'CHOR': 14, 'DLY': 7, 'REV': 4, 'DETUNE': 53, 'FREEA': 50, 'FREEC': 19, 'M2AMT': -8,
-            'M3AMT': 13, 'M4AMT': 48, 'M5AMT': 9, 'E2ATK': 10, 'E2DEC': 60, 'E2SUS': 15, 'E2REL': 56, 'L2RATE': 54, 'L2PHASE': 8, 'L2FADE': 8,
-            'IA': 52, 'IB': 80, 'IC': 95, 'IMIX': 55, 'BLEND': 10, 'CUT2': 69, 'E2FLT': -1, 'E2': 24, 'E3': 122, 'E4': 9, 'E7': 55, 'TWIN KTRK2': 4,
-            'TWIN ENV2': 15, 'TWIN LFO1': 1, 'TWIN LFO2': 23, 'SUB LEVEL': 9, 'CYCLE RISE': 89, 'CYCLE FALL': 85, 'CYCLE CURVE': 8,
-            'AMPENV SATN': -11, 'FILTERENV FBLND': 17, 'FILTERENV FDRV': -16, 'FILTERENV MRES': 5, 'CYCLE TCUT': -15, 'CYCLE PAN': 9,
-            'LFO2 TRES': 12, 'LFO2 MMODE': 21, 'LFO2 FBLND': 1,
-         }),
+         bend={'FREEA': 40, 'E2FLT': 44, 'E2DEC': 110, 'DIST': 60}),
     dict(engine='ANALOG', idx=17, name='SQUARE LEAD', cat='LEAD', bseed=64088,  # #28
          p={
             'ATK': 22, 'SUS': 57, 'REL': 73, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 107, 'DLY': 23, 'REV': 19, 'VOICE': 2, 'GLIDE': 61,

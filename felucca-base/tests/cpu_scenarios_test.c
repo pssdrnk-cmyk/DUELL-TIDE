@@ -306,9 +306,9 @@ static double cap_run(const scn_t *s, int capped, uint32_t *c, double *pred)
 static void cap_tests(void)
 {
     static const struct { const char *what, *e1, *s1, *e2, *s2; int uf, mode; } CS[] = {
-        {"#60 DIGITAL PAD (WAVE) 24 dB HP + #5 SQUELCH (ANALOG), STEREO", "WAVE", "DIGITAL PAD", "ANALOG", "SQUELCH", 1, DM_STEREO},
-        {"#60 DIGITAL PAD (WAVE) as stored (12 dB) + #5 SQUELCH, STEREO", "WAVE", "DIGITAL PAD", "ANALOG", "SQUELCH", 0, DM_STEREO},
-        {"#60 DIGITAL PAD (WAVE) 24 dB HP + #5 SQUELCH, LAYER (4 + 4)", "WAVE", "DIGITAL PAD", "ANALOG", "SQUELCH", 1, DM_LAYER},
+        {"#60 DIGITAL PAD (WAVE) 24 dB HP + #5 SAW 303 (ANALOG), STEREO", "WAVE", "DIGITAL PAD", "ANALOG", "SAW 303", 1, DM_STEREO},
+        {"#60 DIGITAL PAD (WAVE) as stored (12 dB) + #5 SAW 303, STEREO", "WAVE", "DIGITAL PAD", "ANALOG", "SAW 303", 0, DM_STEREO},
+        {"#60 DIGITAL PAD (WAVE) 24 dB HP + #5 SAW 303, LAYER (4 + 4)", "WAVE", "DIGITAL PAD", "ANALOG", "SAW 303", 1, DM_LAYER},
         {"#47 GLASS HALL (FM6) + #60 DIGITAL PAD (WAVE), 24 dB HP both", "FM6", "GLASS HALL", "WAVE", "DIGITAL PAD", 1, DM_SPLIT},
         {"#47 GLASS HALL (FM6) + #60 DIGITAL PAD (WAVE), 24 dB LP both", "FM6", "GLASS HALL", "WAVE", "DIGITAL PAD", 3, DM_SPLIT},
         {"#47 GLASS HALL (FM6) + #60 DIGITAL PAD (WAVE) as stored", "FM6", "GLASS HALL", "WAVE", "DIGITAL PAD", 0, DM_SPLIT},

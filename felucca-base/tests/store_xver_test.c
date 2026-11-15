@@ -131,7 +131,7 @@ int main(void)
         uint32_t n;
         morph_part_t *mp;
         set_engine_of(&trk[0], 0u);
-        apply_preset_to(&trk[0], 1u);
+        apply_preset_to(&trk[0], 2u);                  /* (b13-acid: BEHIVE, WAVE SAW; ANALOG 1 is SQUARE 303 now, an ACSQ sound, whose WAVE End B cannot set by hand: morph.c morph_tag MF_NFADE) */
         trk[0].p[P_E0] = 7;
         trk[0].p[P_E1] = 44;
         ck("B: a sound with End B (ACID to ACSQ) stores", store_with_b(&trk[0], 62u, "NEW ACID EB", ed, 3u) == 0 && pt_raw(62) && (pt_raw(62)[4] & PTF_MB));

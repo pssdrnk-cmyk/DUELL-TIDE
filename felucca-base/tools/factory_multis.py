@@ -164,11 +164,10 @@ MULTIS = [
                 dict(sound="SYNTH BRASS", set=dict(P_AMODE="SEQ", P_ARATE="1/8", P_AGATE=120, P_AHOLD="OFF", P_CHRD="OFF", P_FREEA=40, P_CHOR=50, P_SPRD=50, P_DLY=50, P_REV=50, P_LEVEL=98),
                      steps="8A - - 6 4 - 1 . 1 - 4 - 6 - 1 . 11A - - 8 6 - -1 . 4 - 1 - -1 - 1 .", bars=2, bseed=64940, amt=30, b={"P_FREEA": 46})]),
     dict(slot=9, name="ACID HYPNO", mode="LAYER",
-         what="hypnotic acid techno, A minor, written notes (it stays in its key): a 303 square line of fifteen 16ths against the bar (mostly A, accents on 1, 6, 10 and 14, octave pops on 4 and 10, the flat seventh on 8, one slide from C into the accent on 14), heavily distorted, its filter opening slowly by itself, home again every fifteen bars, ringing into a dotted echo over a dark fog pad holding A3 in fifths (128 BPM)",
+         what="hypnotic acid techno, A minor (b13-acid): the deep square 303 (SQUARE 303) on one note, A1, in sixteen 16ths that leave every kick free (rests on 1, 5, 9 and 13), accents on the off-beats 3, 7, 12 and 15, octave pops on 3, 8 and 14, the flat seventh G on 15 and one slide from C down into the accent on 12; a little overdrive, a dotted echo, the hand on the filter in the ride, over a dark fog pad holding A3 in fifths (128 BPM, straight, gate 58 %)",
          g=dict(G_BPM=128, G_DTIME="8D", G_DFDBK=64, G_DMIX=84, G_DMODE="DIGI", G_DCOLOR=40, G_RTYPE="HALL", G_RSIZE=84, G_RDAMP=64),
-         parts=[dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 8, "P_FREEA": 30, "P_FREEB": 100, "P_E2FLT": 55, "P_E2DEC": 78, "P_E2ATK": 15, "P_DIST": 75,
-                                           "P_CHOR": 30, "P_SPRD": 40, "P_DLY": 55, "P_REV": 32, "P_LEVEL": 106},
-                     steps="n45A n45 n45 n57 n45 n45A n45 n43 n45 n57A n45 n45 n48S n45A n45", len=15, bseed=20216, amt=30, b={"P_FREEA": 48}),
+         parts=[dict(sound="SQUARE 303", set={"P_AMODE": "OFF", "P_SGATE": 74, "P_DIST": 20, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 45, "P_REV": 12, "P_LEVEL": 104},
+                     steps=". n33 n45A n33 . n33 n33A n45 . n33 n36S n33A . n45 n43A n33", bseed=20216, amt=0, b={"P_FREEA": 38, "P_E2FLT": 26, "P_E2DEC": 106}),
                 dict(sound="FOG BANK", set=dict(P_AMODE="SEQ", P_ARATE="2BAR", P_AGATE=127, P_AHOLD="OFF", P_CHRD="MIN7", P_VOIC="OPEN", P_FREEA=40, P_L2RATE=10, P_L2FLT=30, P_CHOR=70, P_SPRD=60, P_DLY=40, P_REV=78, P_LEVEL=88),
                      steps="-3 -", len=2, bseed=26818, amt=30, b={"P_FREEA": 42})]),
     # ---- 10-16: colour: the owner's pads and textures, kept byte for byte (tools/owner_multis.py; their old slots in brackets) ----
@@ -199,20 +198,17 @@ MULTIS = [
                                                    P_CHOR=70, P_SPRD=50, P_DLY=30, P_REV=78, P_LEVEL=110),
                      steps="-7 - -9 -14", len=4, bseed=43134, amt=30, b={"P_IB": 110, "P_FREEA": 56})]),
     dict(slot=10, name="ACID TWO 303", mode="LAYER",
-         what="acid techno, D minor, the Hardfloor / Josh Wink way: two distorted 303s and no pad, a saw line (16 steps, accents before the kick, a slide up into an accent and an octave drop) hard left against a square line (13 steps, answering in the saw's rests) hard right, so they meet again only every thirteen bars, the long dotted echo carrying the gaps (130 BPM, straight, gate 58 %)",
+         what="acid techno, D minor, the Hardfloor / Josh Wink way (b13-acid): two 303s and no pad. SCREAM 303 (saw, resonance and env mod near the top, overdriven), slightly left, rolls under D2 and never touches a kick (rests on 1, 5, 9 and 13), its accents just before the kicks (4, 8, 12, 16), each but one slid into (the octave down to the flat seventh, the minor third up to the fourth, the octave drop at the end of the bar: the bend); SQUARE 303, slightly right and a little brighter (its cutoff opened to ~300 Hz), answers an octave up in the saw's rests: a slide from D4 down into the accent on C4, then a climb F3, G3 into the accent on A3, the long dotted echo carrying both (130 BPM, straight, gate 58 %)",
          g=dict(G_BPM=130, G_DTIME="8D", G_DFDBK=66, G_DMIX=84, G_DMODE="PING", G_DCOLOR=40, G_RTYPE="HALL", G_RSIZE=90, G_RDAMP=64),
-         parts=[dict(sound="TIDAL SUB", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 7, "P_ATK": 0, "E:MIX": 0, "P_SUS": 110, "P_REL": 100, "P_GLIDE": 55, "P_GLMODE": 1, "P_FREEA": 30, "P_FREEB": 100, "P_E2FLT": 63, "P_E2DEC": 78, "P_E2ATK": 15,
-                                               "P_DIST": 72, "P_PAN": -48, "P_CHOR": 25, "P_SPRD": 30, "P_DLY": 70, "P_REV": 55, "P_LEVEL": 105},
-                     steps="n38 . n38 n45A . n38 n41S n43A . n38 n38 n45A . n50S n38 n48A", bseed=20216, amt=30, b={"P_FREEA": 52}),
-                dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 8, "E:MIX": 0, "P_REL": 100, "P_FREEA": 34, "P_FREEB": 92, "P_E2FLT": 58, "P_E2DEC": 74, "P_E2ATK": 15,
-                                           "P_DIST": 72, "P_PAN": 48, "P_CHOR": 25, "P_SPRD": 30, "P_DLY": 70, "P_REV": 55, "P_LEVEL": 105},
-                     steps=". n57 . . n50A . n53S n55 n50A . . n60 n50A", len=13, bseed=26818, amt=30, b={"P_FREEA": 56})]),
+         parts=[dict(sound="SCREAM 303", set={"P_AMODE": "OFF", "P_SGATE": 74, "P_PAN": -24, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 40, "P_REV": 10, "P_LEVEL": 114},
+                     steps=". n38 n50S n48A . n38 n38 n50A . n38 n41S n43A . n38 n50S n38A", bseed=20216, amt=0, b={"P_FREEA": 38, "P_E2DEC": 108}),
+                dict(sound="SQUARE 303", set={"P_AMODE": "OFF", "P_SGATE": 74, "P_FREEA": 32, "P_E2FLT": 24, "P_DIST": 20, "P_PAN": 24, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 55, "P_REV": 15, "P_LEVEL": 104},
+                     steps=". . . . n50 n62S n60A n50 . . . . n53 n55 n57A n50", bseed=26818, amt=0, b={"P_FREEA": 36, "P_FREEB": 100})]),
     dict(slot=11, name="ACID LINES", mode="LAYER",
-         what="Chicago acid house, E minor: a 303 saw line (ACID wave) of sixteen 16ths, accents on the off-beat eighths, three slides into accents (one an octave down, the bend), a resonant filter that snaps shut on every plain note and a hand on the cutoff in the ride; under it a slow dark pad holding A minor 7, F major 7 and G 6, its sends feeding the dotted echo (122 BPM, straight)",
+         what="Chicago acid house, E minor (b13-acid): the classic saw 303 (SAW 303), clean, sixteen 16ths around E2: root and octave, accents off the beat (4, 7, 11, 15), three slides into accents (E up to G, the octave drop E3 to E2: the bend, B down to A), F as the chromatic neighbour, rests on 3, 8, 13 and 16 for the bounce; the filter ride in End B; under it a slow dark pad holding A minor 7, F major 7 and G 6, its sends feeding the dotted echo (122 BPM, straight, gate 58 %)",
          g=dict(G_BPM=122, G_DTIME="8D", G_DFDBK=64, G_DMIX=84, G_DMODE="PING", G_DCOLOR=40, G_RTYPE="HALL", G_RSIZE=78, G_RDAMP=64),
-         parts=[dict(sound="SQUELCH", set={"P_AMODE": "OFF", "P_SGATE": 74, "E:WAVE": 7, "E:MIX": 0, "P_FREEA": 28, "P_FREEB": 95, "P_E2FLT": 63, "P_E2DEC": 80, "P_E2ATK": 15,
-                                            "P_GLIDE": 55, "P_DIST": 45, "P_CHOR": 35, "P_SPRD": 40, "P_DLY": 55, "P_REV": 35, "P_LEVEL": 106},
-                     steps="n52 n40 n52A n40 . n43S n45A n40 n40 n52S n40A . n50 n40S n43A .", bseed=20216, amt=30, b={"P_FREEA": 50, "P_FREEB": 108, "P_E2DEC": 86}),
+         parts=[dict(sound="SAW 303", set={"P_AMODE": "OFF", "P_SGATE": 74, "P_DIST": 0, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 45, "P_REV": 10, "P_LEVEL": 100},
+                     steps="n40 n52 . n50A n40 n40S n43A . n40 n52S n40A n41 . n47S n45A .", bseed=20216, amt=0, b={"P_FREEA": 46, "P_FREEB": 106, "P_E2DEC": 110}),
                 dict(sound="DEEP BLUE", set=dict(P_AMODE="OFF", P_SDIV="1/1", P_SGATE=127, P_ATK=84, P_EQHG=-8, P_L2RATE=10, P_L2FLT=30, P_CHOR=90, P_SPRD=60, P_DLY=80, P_REV=80, P_LEVEL=98, **{"E:DTN": 6}),
                      steps="n57+60+64+67v90 - n52+55+59+62v90 n55+59+62+64v90", len=4, bseed=26818, amt=30, b={"P_FREEA": 58})]),
     dict(slot=12, name="ELEC ROBOT", mode="LAYER",
@@ -644,6 +640,7 @@ def check(snd=None):
     resolve(snd)
     by_idx = {(s["engine"], s["idx"]): s["name"] for s in snd}
     cat = {s["name"]: (s["engine"], s["cat"]) for s in snd}
+    acid = {s["name"] for s in snd if s["engine"] == "ANALOG" and s["p"].get("E1") in (7, 8)}   # (b13-acid: the 303 voices are ACID in the sound itself, not by a part's WAVE)
     P = p_ids()
     err, entries = [], []
     if len({m["slot"] for m in MULTIS}) != len(MULTIS) or len({m["name"] for m in MULTIS + SPARE}) != len(MULTIS) + len(SPARE):
@@ -665,8 +662,8 @@ def check(snd=None):
             snds = (m["parts"][0]["sound"], m["parts"][1]["sound"])
             kinds = [cat[x] for x in snds]
             for t, p in enumerate(m["parts"]):      # (b8: an ANALOG part set to WAVE 7 ACID / 8 ACID SQR is another sound and another kind (ANALOG/ACID: a 303), not the saw bass it is loaded from)
-                if p.get("set", {}).get("E:WAVE") in (7, 8):
-                    snds, kinds[t] = snds[:t] + ("%s+WAVE%d" % (snds[t], p["set"]["E:WAVE"]),) + snds[t + 1:], (kinds[t][0], "ACID")
+                if p.get("set", {}).get("E:WAVE") in (7, 8) or (snds[t] in acid and "E:WAVE" not in p.get("set", {})):
+                    snds, kinds[t] = (snds if snds[t] in acid else snds[:t] + ("%s+WAVE%d" % (snds[t], p["set"]["E:WAVE"]),) + snds[t + 1:]), (kinds[t][0], "ACID")
             entries.append((m["slot"], m["name"], b[4], snds, b[-1], tuple(kinds), bool(m.get("owner"))))
     for m in SPARE:                                   # (the spare records exist and name their sounds)
         for t, p in enumerate(m["parts"]):

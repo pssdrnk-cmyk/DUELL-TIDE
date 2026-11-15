@@ -2186,7 +2186,7 @@ static void al_table(void)
 
 /* ------------------------------------------------------------------ ui_target: the ten final-design pictures --- */
 /* ui_render --target OUTDIR: one scene per picture of DUELL/release_drafts/ui_redesign/FINAL_V1_01 .. 10 (240 x 240, VIOLET, part 1 selected,
- * ANALOG, patch #5 SQUELCH), drawn by the firmware's own page code; OUTDIR/ppm/NN_name.ppm (tests/ui_render.py --target makes the PNGs,
+ * ANALOG, patch #5 SAW 303), drawn by the firmware's own page code; OUTDIR/ppm/NN_name.ppm (tests/ui_render.py --target makes the PNGs,
  * tools/ui_diff.py compares them with the pictures). No lint, no other scene. */
 static void target_prelude(void)
 {
@@ -2194,7 +2194,7 @@ static void target_prelude(void)
     pal(UI_DEFAULT_INDEX);
     song.sel = 0; song.playing = 0; song.rec = 0; usb.config = 0; usb.suspended = 0; song.batt_raw = 500;
     duell_mode_req = DM_STEREO; ui_mode_set = DM_STEREO;
-    sl_load(4);                                      /* patch #5 SQUELCH (slot 4: ANALOG's factory sound 5) */
+    sl_load(4);                                      /* patch #5 SAW 303 (slot 4: ANALOG's factory sound 5) */
     ui.msg_t = 0;
 }
 static void target_draw(void)
