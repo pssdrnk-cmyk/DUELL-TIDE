@@ -288,6 +288,32 @@ class Build(unittest.TestCase):
         self.assertEqual(self.manifest(), {"stable": None, "beta": None})
         self.assertTrue((self.out / "install" / "index.html").is_file() and (self.out / "index.html").is_file() and (self.out / "assets" / "site.css").is_file())
 
+    def test_every_local_css_js_json_link_is_versioned(self):
+        # b13: the owner's browser kept the old site.css / installer_state.js under the new install page (the module failed, the buttons stayed off).
+        # Every link to the site's own CSS, JS or JSON carries ?v=<hash>, the same everywhere, and points at a file that exists (emu/ is its own build).
+        self.run_site()
+        ref = re.compile(r"""(?:\b(?:href|src)\s*=\s*|\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)["']([^"']+)["']""")
+        seen, versions = 0, set()
+        for p in sorted(self.out.rglob("*")):
+            rel = p.relative_to(self.out)
+            if not p.is_file() or p.suffix not in (".html", ".js", ".mjs") or rel.parts[0] == "emu":
+                continue
+            for url in ref.findall(p.read_text(encoding="utf-8")):
+                path, _, query = url.partition("?")
+                if re.match(r"[a-zA-Z][a-zA-Z0-9+.-]*:|//|#", url) or not path.endswith((".js", ".mjs", ".css", ".json")):
+                    continue
+                seen += 1
+                v = re.fullmatch(r"v=([0-9a-f]{10})", query)
+                self.assertTrue(v, f"{rel.as_posix()}: unversioned local link {url!r}")
+                versions.add(v[1])
+                self.assertTrue((p.parent / path).resolve().is_file(), f"{rel.as_posix()}: {url!r} points at no file")
+        self.assertGreater(seen, 50)
+        self.assertEqual(len(versions), 1, versions)
+        page = (self.out / "install" / "index.html").read_text(encoding="utf-8")
+        for name in ("../assets/site.css", "../installer_state.js", "../fm1ota.js", "../fm1pkg.js", "../fm1backup.js", "../installer_backup.js"):
+            self.assertIn(f'{name}?v=', page)
+        self.assertIn('fetch("./channels.json", { cache: "no-store" })', page)       # (the release data is fetched fresh, not versioned)
+
     def test_stable_and_beta(self):
         s, b = self.pkg("duell-tide-stable-2026-11-03.fwsc"), self.pkg("duell-tide-beta-2026-11-04.fwsc", extra=b"beta")
         self.run_site("--stable-pkg", s, "--stable-info", self.info("stable", s, published_at="2026-11-04T07:00:00Z"),

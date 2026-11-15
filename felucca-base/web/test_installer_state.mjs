@@ -1,5 +1,5 @@
 // node test_installer_state.mjs : the installer's state -> UI mapping (no DOM, no device)
-import { uiState, ACTIONS, BANNERS, TEXT, ERASE, eraseOutcome, SMART, detectUnit, eraseDecision,
+import { uiState, ACTIONS, BANNERS, TEXT, ERASE, BACKUP_FIRST, eraseOutcome, SMART, detectUnit, eraseDecision,
   CHANNELS, CHANNEL, BETA, HASH_TEXT, parseChannel, parseManifest, chooseChannel, verifyDownload, infoRows, betaConfirmText, buildName, readableDate } from "./installer_state.js";
 import { readFileSync } from "node:fs";
 let failed = 0;
@@ -135,6 +135,14 @@ function onePage() {
      h.indexOf('<button id="go"') < h.indexOf('id="leave"'), "install page: the official firmware and plain DUELL are together in one folded Leave TIDE section, after Install");
   ok(!/<h2>(INSTALL TIDE|BACK UP|RETURN TO OFFICIAL FIRMWARE|PLAIN DUELL)/.test(h), "install page: one heading per step (no second card title)");
   ok(/Do not switch off or unplug the unit while it installs\./.test(h) && /first saves a backup file to your downloads and stops if that fails \(<a href="\.\.\/editor\/backup\.html">the Backup page<\/a> restores it\)/.test(h), "install page: the do-not-switch-off line and the Back up first link (a link, not a gate)");
+  // b13: a unit that cannot be backed up (the official firmware, Shrub: no answer to INFO) can still install TIDE and return to the official firmware
+  const bbi = h.split("async function backupBeforeInstall")[1].split("\n}")[0], dob = h.split("async function doBackup")[1].split("\n}")[0];
+  const ret = h.split('$("stock-go").addEventListener("click"')[1].split("\n});")[0];
+  ok(/try \{ raw = await link\.request\(\[1, \[\]\]\); \} catch \{ result\("install", BACKUP_FIRST\.skipped\); return true; \}/.test(bbi), "no answer to INFO: the install goes on without a backup and says so");
+  ok(/try \{ raw = await link\.request\(\[1, \[\]\]\); \} catch \{ result\(card, BACKUP_FIRST\.none, card === "backup"\); return false; \}/.test(dob) &&
+     /if \(!\(await doBackup\(up, "return"\)\)\) \{ if \(!confirm\("No backup was made\. Return to official V15 anyway\?"\)\) return; \}/.test(ret) && ret.indexOf("doBackup") < ret.lastIndexOf("up.install("),
+     "no answer to INFO: the return's backup step says so and returns false, the return asks once and goes on");
+  ok(/only TIDE, DUELL and Felucca/.test(BACKUP_FIRST.none) && /Installing without one/.test(BACKUP_FIRST.skipped), "the one-line notes name what can be backed up");
   const go = h.split('$("go").addEventListener("click"')[1].split("\n});")[0];
   ok(/else if \(await backupBeforeInstall\(up\)\) \{ await up\.install\(/.test(go) && !/up\.install\(/.test(go.replace(/else if \(await backupBeforeInstall\(up\)\) \{ await up\.install\(/, "")), "install page: every fresh install goes through backupBeforeInstall (only the update-mode resume skips it)");
   ok(h.indexOf("Do not switch off or unplug") < h.indexOf('<button id="go"') && h.indexOf('<button id="go"') < h.indexOf('id="card-return"'), "install page: the line stands above the one Install button");

@@ -422,11 +422,11 @@ async function backupBeforeInstall(up) {
   const link = new BackupConnection(input, output);
   try {
     let raw;
-    try { raw = await link.request([1, []]); } catch { return true; }       // no answer to INFO: nothing to save
+    try { raw = await link.request([1, []]); } catch { result("install", BACKUP_FIRST.skipped); return true; }       // no answer to INFO (the official firmware, Shrub): nothing to save
     const info = archiveInfo(raw);
     if (!detected) { detected = detectUnit(info.version); refresh(); }
     if (!info.supported) {
-      if (detectUnit(info.version).kind !== "duell") return true;
+      if (detectUnit(info.version).kind !== "duell") { result("install", BACKUP_FIRST.skipped); return true; }
       if (confirm(BACKUP_FIRST.cannot)) return true;
       result("install", BACKUP_FIRST.declined);
       return false;
@@ -485,7 +485,11 @@ async function doBackup(up, card) {
   const input = device.link.input, output = device.link.output; device.link.close();
   const link = new BackupConnection(input, output);
   try {
-    const info = archiveInfo(await link.request([1, []]));
+    let raw;
+    // b13: a unit that does not answer INFO (the official firmware, Shrub) cannot be backed up: say so and return false (the return then asks
+    // "No backup was made. Return to official V15 anyway?"); before, the INFO timeout was thrown and stopped the return
+    try { raw = await link.request([1, []]); } catch { result(card, BACKUP_FIRST.none, card === "backup"); return false; }
+    const info = archiveInfo(raw);
     if (!detected) { detected = detectUnit(info.version); refresh(); }      // the backup just talked to the unit: reuse its answer
     if (!info.supported) { result(card, "This firmware cannot make a complete backup (the official firmware, or an old build). Nothing was saved.", card === "backup"); return false; }
     const { file, name } = await captureUnitBackup((r, o) => link.request(r, o), info.raw,
