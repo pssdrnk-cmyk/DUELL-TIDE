@@ -19,8 +19,8 @@ LAYOUT = json.loads((ROOT / "web" / "editor" / "layout.json").read_text())
 E0 = LAYOUT["P_E0"]
 HDR, PIN_BYTES, FM_N, FM_BYTES = 22, 20, 65, 57
 FM6_ENGINE = next(i for i, e in enumerate(LAYOUT["ENG"]) if e["name"] == "FM6")
-# the wide values End B never differs in (firmware/src/morph.c mbv_never)
-MBV_NEVER = {0, 5, 21, 22, 23, 24, 29, 30, 31, 32, 40, 81, 82, 86, 94, 105, 111, 112, 115, 116, 117, 118, 149, 153, 154, 155}
+# the wide values End B never differs in (firmware/src/morph.c mbv_never; b13: DUCK SRC 111 is no longer one)
+MBV_NEVER = {0, 5, 21, 22, 23, 24, 29, 30, 31, 32, 40, 81, 82, 86, 94, 105, 112, 115, 116, 117, 118, 149, 153, 154, 155}
 
 
 def wid_ok(w):

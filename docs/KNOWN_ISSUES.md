@@ -7,7 +7,6 @@ Fixed in earlier builds: see [CHANGELOG-TIDE](../CHANGELOG-TIDE.md) (every beta'
 ## Open in TIDE
 
 - **New on the unit:** the owner installed b13 on 15 November. The louder output (+8 dB at the jacks), the 303 voices, the 11 replaced sounds and the five new multis were tested on the computer before that. Whether the analog output stays clean at the new level is not checked yet.
-- **MORPH TO and DUCK SRC:** a MORPH TO switches the part's DUCK SRC to the target sound's halfway, but End B does not store DUCK SRC. So a saved patch whose target ducks from another source plays the part's own source at B after loading. No factory pair shows it.
 - **VOICE 2/2 page:** the cell overlaps the text beside it when GLIDE reads "54 ms". Picture only; a drawing fix is planned.
 - **ACID filter drawing:** on WAVE ACID / ACSQ the filter pictures draw the resonance peak lower than you hear it (they use the old RES law). Picture only; the sound is right.
 - **Delay TIME changes sweep slowly** with the delay's wobble on: a big TIME change glides for about a second (up to five for a bar's worth). Small steps settle in about a tenth of a second.

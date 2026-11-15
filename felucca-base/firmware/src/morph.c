@@ -2211,7 +2211,8 @@ static uint32_t morph_sig(void)
  *   [MBV_FMB]  57 bytes: End B's 65 FM6 bytes (fm_byte order, 0..99), 7 bits each, LSB first
  *   [MBV_FMT]  TIDE only, 3 bytes: End B's MORPH TO target on FM6 (morph_tide.c tide_mbv_make)
  *   MBV_W4 (b9): ANALOG's WAVE (0..8 since b8) takes 4 bits in this block. A block WITHOUT it was made before b8 (WAVE 0..6, 3 bits): wv_bitsl reads it so. morph_bv_make always sets it
- * The 26 wide values that never differ between the ends (mbv_never: never rolled, not in WILD either, not editable at B, kept equal by the fold) have no bit.
+ * The 25 wide values that never differ between the ends (mbv_never: never rolled, not in WILD either, not editable at B, kept equal by the fold) have no bit. b13: DUCK SRC
+ * has one (a MORPH TO end plays the target's at B); a block without it (every block before b13) keeps B on the Original's, as it played then.
  * Lossless: a value is stored inside its range, which is what a load fits it to anyway (param_fit). From the alpha on these ranges are part of the format
  * (frozen: a changed range in params.c or an engine's edit table would read stored patches wrong) */
 #define MBV_PINS 1u
@@ -2219,7 +2220,7 @@ static uint32_t morph_sig(void)
 #define MBV_W4 8u                                        /* (4 is MBV_FMT, TIDE) */
 #define MBV_HDR 22u
 #define MBV_FMN ((NFM * 7u + 7u) / 8u)                   /* 57 */
-#define MBV_VMAX 96u                                     /* the values' most bytes: every wide value but mbv_never's at the worst engine (762 bits, the placeholder of the retired engines; FM6 745); morph_bv_limits_ok */
+#define MBV_VMAX 96u                                     /* the values' most bytes: every wide value but mbv_never's at the worst engine (764 bits, the placeholder of the retired engines; FM6 747); morph_bv_limits_ok */
 #define MBV_MAX (MBV_HDR + MBV_VMAX + PIN_BYTES + MBV_FMN + TIDE_MBV_FMT_N)   /* 195 (TIDE: 198) */   /* TIDE hook (H9) */
 _Static_assert(PIN_BYTES == 20u && EXT_P_LEN <= 160u && MBV_FMN == 57u && MBV_MAX == 195u + TIDE_MBV_FMT_N, "MBV: the two bitmaps and the FM6 bytes");
 static int mbv_wid(uint32_t w) { return w < P_COUNT || (w >= XW_BASE && w < EXT_P_LEN); }
@@ -2227,7 +2228,7 @@ static int mbv_never(uint32_t w)                         /* a wide value End B n
 {
     switch (w) {
     case P_LEVEL: case P_MUTE: case P_ASWING: case P_APROB: case P_AHOLD: case P_AORDER: case P_SLEN: case P_SDIV: case P_SSWING: case P_SGATE:
-    case P_CHRD: case P_VOIC: case P_ATGT: case P_SQNT: case P_DKCRV: case P_DKSRC: case P_DKRATE:     /* T_NEV (MF_NEVER: no roll, not editable) */
+    case P_CHRD: case P_VOIC: case P_ATGT: case P_SQNT: case P_DKCRV: case P_DKRATE:     /* T_NEV (MF_NEVER: no roll, not editable; b13: not DUCK SRC, a MORPH TO end flips it) */
     case P_ED_FLT: case P_E2SHP: case P_L2PIT: case P_L2FLT: case P_L2SHP:                             /* T_GONE on every engine */
     case XW_BASE + X_CYPIT: case XW_BASE + X_L2BLD + 1u: case XW_BASE + X_L2BLD + 2u: case XW_BASE + X_L2BLD + 3u:   /* CYCLE to PITCH, the LFO LEVELs, STRUM (morph_tag: never) */
         return 1;

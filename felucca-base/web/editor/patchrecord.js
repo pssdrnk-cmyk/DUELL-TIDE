@@ -41,9 +41,9 @@ const widCode = (eng, w, v) => { const r = rangeOf(eng, w); return Math.max(r.mi
 const widVal = (eng, w, c) => { const r = rangeOf(eng, w); return Math.min(r.min + c, r.max); };                       // wv_val
 function bsPut(b, at, v, n) { for (let i = 0; i < n; i++, at.n++) if (v >> i & 1) b[at.n >> 3] |= 1 << (at.n & 7); }          // upreset.c / morph.c bs_put
 function bsGet(b, at, n) { let v = 0; for (let i = 0; i < n; i++, at.n++) v |= (b[at.n >> 3] >> (at.n & 7) & 1) << i; return v; }
-// the wide values End B never differs in (morph.c mbv_never): P_LEVEL, P_MUTE, the arp's SWING / PROB / HOLD / ORDER, the sequencer's five, CHRD, VOIC, ARP TARGET, QUANTIZE, the DUCK's CURVE / SOURCE / RATE,
+// the wide values End B never differs in (morph.c mbv_never): P_LEVEL, P_MUTE, the arp's SWING / PROB / HOLD / ORDER, the sequencer's five, CHRD, VOIC, ARP TARGET, QUANTIZE, the DUCK's CURVE / RATE (b13: not its SOURCE),
 // the gone ED / E2 / L2 depths, CYCLE to PITCH and the three last slots
-const NEVER = new Set([0, 5, 21, 22, 23, 24, 29, 30, 31, 32, 40, 81, 82, 86, 94, 105, 111, 112, 115, 116, 117, 118, 149, 153, 154, 155]);
+const NEVER = new Set([0, 5, 21, 22, 23, 24, 29, 30, 31, 32, 40, 81, 82, 86, 94, 105, 112, 115, 116, 117, 118, 149, 153, 154, 155]);
 
 export const engineIndex = (name) => L.ENG.findIndex((e) => e.name === name);
 const P_TRIM = L.ID?.P_TRIM ?? 109, P_LEVEL_STORE_DEF = 104;   // id 0 is the mixer level (default 112) but the store's default for it is the old LEVEL's 104 (upreset.c up_def); a record never writes it now

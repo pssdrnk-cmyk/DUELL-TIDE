@@ -512,6 +512,48 @@ static void t_savenote(void)
     }
 }
 
+/* b13 (KNOWN_ISSUES, MORPH TO and DUCK SRC): a MORPH TO end whose target ducks from another source than the Original keeps that source at B
+ * through a patch save and load and a multi save and load, as the live morph plays it; a block without DUCK SRC (every block saved before b13) leaves
+ * B on the Original's source */
+static int src_at(uint32_t v) { int16_t x[EXT_P_LEN]; fader(v); morph_view_all(0, x); return x[P_DKSRC]; }
+static void t_dksrc(void)
+{
+    static uint8_t old_blk[MBV_MAX];
+    int sb, sa;
+    fresh();
+    set_engine_of(&trk[0], ENGI_FM6);
+    trk[0].engine = ENGI_FM6;
+    apply_preset_to(&trk[0], (uint32_t)sound_a);
+    frames(64);
+    sb = ds_value(ds_get(ENGI_FM6, (uint32_t)sound_b), P_DKSRC, TP[P_DKSRC].def);
+    sa = sb == 0 ? 2 : 0;                                /* (PUMP or MIDI: never PART, which also sets the other part) */
+    trk[0].p[P_DKSRC] = (int16_t)sa;
+    frames(16);
+    ablocks(16);
+    morph_ready(0);
+    morph_to_sound(0, 1u, (uint32_t)sound_b);
+    mph[0].sm_r = 32768;
+    printf("tidekeep: DUCK SRC Original %d, target %d; live at A %d, at B %d\n", sa, sb, src_at(0), src_at(127));
+    CHECK("DUCK SRC: the live morph plays the Original's at A and the target's at B", src_at(0) == sa && src_at(127) == sb);
+    CHECK("DUCK SRC: patch saved", up_patch_save_part(0, 6) == 0);
+    other_sound();
+    CHECK("DUCK SRC: patch loaded", up_load(6) == 0);
+    frames(16);
+    CHECK("DUCK SRC: the patch loaded plays the Original's at A, the target's at B", src_at(0) == sa && src_at(127) == sb);
+    CHECK("DUCK SRC: multi saved", project_save(4) == 0);
+    other_sound();
+    project_load(4);
+    frames(16);
+    CHECK("DUCK SRC: the multi loaded plays the Original's at A, the target's at B", src_at(0) == sa && src_at(127) == sb);
+    memset(old_blk, 0, sizeof old_blk);                  /* a block with no value of End B's (the bit for DUCK SRC clear, as every block before b13) */
+    old_blk[0] = MBV_W4;
+    morph_ldv = old_blk;
+    morph_rebase_part(0);
+    morph_ldv = 0;
+    frames(8);
+    CHECK("DUCK SRC: a block without it keeps B on the Original's", src_at(127) == sa && src_at(0) == sa);
+}
+
 int main(void)
 {
     pick();
@@ -526,6 +568,7 @@ int main(void)
     t_savenote();
     t_store();
     t_limit();
+    t_dksrc();
     printf("tidekeep: %d of %d checks failed\n", bad, checks);
     return bad != 0;
 }
