@@ -184,7 +184,22 @@ HOUSE_PIANO = imported([
     99, 84, 0, 0, 0, 0, 0, 0, 42, 0, 85, 0, 0, 99, 36, 16, 99, 99, 84, 0, 0, 0, 0, 0, 0, 42, 0, 87, 0, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39,
     0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39, 0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 50, 50, 50, 50, 0, 7, 0, 0, 0, 0,
     4, 24, 75, 101, 121, 115, 95, 49, 55, 32, 32, 32], "HSE PIANO", {65: 99, 56: 95, 57: 90, 54: 70})
-EXTRA += [("HOUSE PIANO", HOUSE_PIANO)]
+# F13 BRASS STAB (b13 PR 2): the same collection (MIT), bank YM2612_ROM1_BASS_BRASS voice 24 "Brass_14": algorithm 22, four operators
+# (OP1 / OP2 off), feedback 7: a short brass stab that holds (15 ms strike, 16 partials within 30 dB). Changed: the name and OKS only.
+BRASS_STAB = imported([
+    60, 99, 0, 99, 99, 99, 99, 0, 0, 0, 0, 0, 48, 0, 40, 4, 0, 57, 99, 0, 60, 99, 99, 99, 0, 0, 0, 0, 0, 48, 0, 68, 2, 0, 57, 33, 0, 60,
+    99, 93, 93, 0, 0, 0, 0, 0, 50, 0, 81, 2, 0, 71, 99, 0, 65, 99, 99, 99, 0, 0, 0, 0, 0, 50, 0, 98, 2, 0, 99, 99, 99, 99, 99, 99, 99, 0,
+    39, 0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39, 0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 50, 50, 50, 50, 7, 7, 0, 0,
+    0, 0, 4, 24, 66, 114, 97, 115, 115, 95, 49, 52, 32, 32], "BRASS STAB")
+# F14 FM STRINGS (b13 PR 2): the same collection (MIT), bank YM2612_ROM4_SYNTH voice 4 "Synth_04": algorithm 5, two pairs (OP1 / OP2 off), a
+# ~0.35 s swell to a held, saw-like body. Changed: the name, OKS, the two carriers OP3 and OP5 output level 78 -> 90 (bytes 65, 31) and
+# release rate 87 / 76 -> 45 (bytes 54, 20): a smooth release, so a culled note ends at silence (tests/cull_test.c).
+FM_STRINGS = imported([
+    71, 30, 19, 0, 99, 93, 0, 0, 0, 0, 0, 0, 42, 0, 81, 2, 0, 74, 0, 0, 76, 99, 99, 99, 0, 0, 0, 0, 0, 74, 0, 78, 4, 0, 71, 30, 19, 0,
+    99, 93, 0, 0, 0, 0, 0, 0, 74, 0, 87, 0, 0, 74, 0, 0, 87, 99, 99, 99, 0, 0, 0, 0, 0, 42, 0, 78, 0, 0, 99, 99, 99, 99, 99, 99, 99, 0,
+    39, 0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 99, 99, 99, 0, 39, 0, 0, 0, 56, 0, 0, 2, 0, 99, 99, 99, 99, 50, 50, 50, 50, 4, 7, 0, 0,
+    0, 0, 4, 24, 83, 121, 110, 116, 104, 95, 48, 52, 32, 32], "FM STRINGS", {65: 90, 31: 90, 54: 45, 20: 45})
+EXTRA += [("HOUSE PIANO", HOUSE_PIANO), ("BRASS STAB", BRASS_STAB), ("FM STRINGS", FM_STRINGS)]
 
 
 def c_rows(b):
