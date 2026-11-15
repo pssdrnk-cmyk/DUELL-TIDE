@@ -800,6 +800,7 @@ static void glo_meters(void)
 }
 /* DUELL 1.1 MIXER, TEMPLATE 4 (item 117; FINAL_V1_09_mixer, ui_tokens.h UT_T4_*): two MUTE cards (round, 116 x 60: the word MUTE n, the hint "Hold GLO" / "and press OCT -" ("OCT +") with its keycaps standing on the text's
  * baselines, the part's small level meter at the right), the four cards under them (grid_on 7, ui_draw.c card_t4_paint). A muted part's card is filled in its colour (ink text) as before */
+static void lmh_card(uint32_t k, int32_t x, int32_t y);   /* (ui_lmh.c) */
 static void glo_mute_cards(void)
 {
     uint32_t e;
@@ -814,6 +815,7 @@ static void glo_mute_cards(void)
         kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill) + 6;   /* b11 (design review 2.3): MUTE n and the keys that flip it, chips on one row */
         kx = cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, KC_GLO, T_KEY, T_KINK, fill) + UT_T4_KEY_GAP;
         cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
+        lmh_card(e, x, y);                              /* b13: the LOW / MID / HIGH bands in this picture (ui_lmh.c), not sent after it over the card */
     }
 }
 #include "ui_lmh.c"                                     /* b11: the MIXER's LOW / MID / HIGH (its one call: lmh_draw, below) */

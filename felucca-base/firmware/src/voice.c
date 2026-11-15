@@ -1093,7 +1093,8 @@ static uint32_t exp2_neg(uint32_t x);                 /* (fx.c: 2^-x, x Q16, Q15
 /* RES (audit P07): the damping falls exponentially, 2^-(RES x 3.79 / 127), so every step narrows it by the same ratio (about equal dB of peak a step;
  * the linear law of before, 8192 - res * 7600 / 127, gave no peak at all below RES 48 and spent its resonance in the top 30 steps). The same ends: 2.0 down to
  * 0.145 (Q 0.5 .. 6.9); the factory sounds' RES were moved to the step of the same damping (tools/duell_sounds.py) */
-#define UF_K(res) UF_KM(res, 1956u)                     /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145) */
+#define UF_ACID(t) (!(t)->engine && (t)->p[P_E0] >= ACID_WAVE)   /* (acid_on, written out: the pictures do not make the audio path's inline copy a call) */
+#define UF_K(t, res) UF_KM(res, UF_ACID(t) ? UF_KA : 1956u)   /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145); b13: the pictures of a part on WAVE ACID / ACSQ with its own law (UF_KA, below) */
 #define UF_KM(res, m) ((int32_t)(exp2_neg((uint32_t)(res) * (m)) >> 2))
 /* b13-acid: WAVE ACID / ACSQ (voice.c acid_on) take RES on to the edge of self-oscillation, as a 303 does (Open303's TeeBee filter at full RES): the same
  * exponential law over a wider span, 12 dB 2.0 down to 0.010 (UF_KA 3943: 2^-7.64), the 24 dB second stage 0.765 down to 0.0070 (UF_K24BA 3500: 2^-6.78): a peak of
@@ -1101,7 +1102,7 @@ static uint32_t exp2_neg(uint32_t x);                 /* (fx.c: 2^-x, x Q16, Q15
 #define UF_KA 3943u
 #define UF_K24BA 3500u
 #define UF_K24A 7568                                    /* 24 dB: the first stage's (1.848), the second's from 0.765 down with RES */
-#define UF_K24B(res) UF_K24BM(res, 1486u)               /* (0.765 down to 0.104, 3135 .. 425, the same way: 2^-(RES x 2.88 / 127)) */
+#define UF_K24B(t, res) UF_K24BM(res, UF_ACID(t) ? UF_K24BA : 1486u)   /* (0.765 down to 0.104, 3135 .. 425, the same way: 2^-(RES x 2.88 / 127); ACID: UF_K24BA) */
 #define UF_K24BM(res, m) ((int32_t)((exp2_neg((uint32_t)(res) * (m)) * 3135u) >> 15))
 #define UF_KNEE 48000
 static __attribute__((noinline)) void uf_coef(tsvf_t *f, int32_t idx, int32_t k) { tsvf_coef_k(f, idx, k); }   /* (one copy: a divide) */

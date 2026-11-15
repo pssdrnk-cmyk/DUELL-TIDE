@@ -216,7 +216,6 @@ static void rp_put(uint32_t f, uint32_t v)
  * Not in a patch, a multi or the project: a load never touches them (ui_input.c sc_get / sc_put / sc_sync) */
 #define ui_sc_set (&favorites.factory[15][14])
 static const char *const DM_NAME[DM_N] = {"DUEL", "STEREO", "LAYER"};
-static void draw_gaps(uint32_t y, uint32_t h);        /* (ui_draw.c) */
 
 static uint8_t sync_reload;                  /* engine / preset / project / user preset loaded: editor RELOAD push */
 

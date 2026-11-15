@@ -237,7 +237,7 @@ static void cv_site_note(const char *file, int line, uint32_t h, int inb)
     if (!strstr(seen, k)) { strcat(seen, k); fprintf(stderr, "OVER %s:%d h %u\n", file, line, h); }
 }
 #define UI_FILL_HOOK(x, y, w, h) hk_fill(x, y, w, h)
-#define GRID_PREFILL() do { hk_fill(0, H_HEAD, 240, Y_FOOT + 15 - H_HEAD); grid_fill(); } while (0)   /* (b10 ui-a: the model sees the old whole-body fill: the page drawn next replaces what stood there) */
+#define GRID_PREFILL() do { hk_fill(0, H_HEAD, 240, 240 - H_HEAD); gut_arm(T_BG); } while (0)   /* (b10 ui-a, b13: the model sees the old whole-body fill: the page drawn next replaces what stood there) */
 static uint32_t cv_over_n;                               /* (b10 ui-c: pictures taller than a canvas band begun outside CV_BANDS: they would be cut) */
 #define GFX_HOOK_OVER(h, inb) ((h) > CV_BAND && !(inb) ? cv_over_n++ : 0u)
 static void fm6_hook(uint32_t kind, uint32_t a, uint32_t b);

@@ -851,7 +851,7 @@ static void t_exact(void)
                     rs = rs * 1664525u + 1013904223u;
                     a[j] = b[j] = (int32_t)(ph >> 17) - 16384 + (int32_t)(rs >> 22) - 512;
                 }
-                ref_uf_run(&rv, a, CTL, cq, UF_K(res));
+                ref_uf_run(&rv, a, CTL, cq, UF_KM(res, 1956u));
                 uf_run(&v, b, CTL, hp ? cq : (UF_STEPS << 8) + cq, p, 0);
                 if (!hp)
                     nsame += !memcmp(a, b, sizeof a);

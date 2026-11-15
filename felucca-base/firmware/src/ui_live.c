@@ -399,7 +399,7 @@ static void lv_filt_draw(const track_t *t)           /* MULTI FILTER: graph_filt
 {
     int32_t md = clamp(t->p[P_FREEC], 0, UF_HP), res = clamp(t->p[P_FREEB], 0, 127);
     int32_t wb = md <= 64 ? md << 4 : ((UF_HP - md) * 65) >> 2, wl = md < 64 ? 1024 - wb : 0, wh = md > 64 ? 1024 - wb : 0;
-    int32_t s24 = t->p[P_FREED] == 2, k1 = s24 ? UF_K24A : UF_K(res), k2 = UF_K24B(res), px = 0, py = 0;
+    int32_t s24 = t->p[P_FREED] == 2, k1 = s24 ? UF_K24A : UF_K(t, res), k2 = UF_K24B(t, res), px = 0, py = 0;
     uint32_t i, f = GF_F0;
     if (clamp(t->p[P_FREEA], 0, UF_STEPS) >= UF_STEPS && md <= 0)   /* (the bypass: graph_filt draws a flat line and no cutoff) */
         return;
