@@ -30,7 +30,7 @@ Housekeeping and bug hunting, plus the owner's CHORDS idea, a sound review again
 - **Five genre multis** (PR 119): M05 HSE CHICAGO, M06 ELEC CRISP (IDM), M20 DUB ROOTS, M22 ELEC OUTRUN (synthwave), M26 AMB JUNGLE (atmospheric DnB).
 - **Housekeeping and docs:** this page and the known issues refreshed (PRs 103, 106); worktrees and merged branches cleaned with backup refs.
 
-Open from b13: the three rows under Planned (the ACID filter drawings, MORPH TO and DUCK SRC), and the item 156 VOICE 2/2 cell that overlaps text at GLIDE "54 ms" (row below).
+Open from b13: the rows under Planned (the ACID filter drawings), and the item 156 VOICE 2/2 cell that overlaps text at GLIDE "54 ms" (row below).
 
 ## B12: done (13 November)
 
@@ -249,7 +249,6 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 | Bus B effect code (a second full copy of the reverbs, delays, SHIM and SPRING) | ~9 KB flash | One copy taking a bus pointer. It touches the effect loops in the audio interrupt: needs the bit-exact pins and a DUEL CPU sweep on the FM-1. 10.6 KB of `_b` symbols by the b4 sizes; re-measure ([review F2](audits/2026-11-09/firmware-review/REPORT.md)). |
 | `midi_play`'s chord-keeping code, written twice | ~150 B flash | One helper called twice; unmeasured (review A7). |
 - **ACID's filter drawing** (b13-acid): the filter-curve pictures (ui_graph.c, twin_graph.c, ui_live.c) still draw RES with the ordinary law, so on WAVE ACID / ACSQ the drawn peak is lower than the one heard. Drawing only; the sound is right. (Doing it for the three drawings estimated at ~70 B, over the 40 B allowed.)
-- **MORPH TO and DUCK SRC (found by b13, tests/tide_keep_test.c):** a MORPH TO end switches the part's DUCK SRC to the target sound's at the middle (`morph_xfer.c` morph_xnote), but the End B block never stores DUCK SRC (`morph.c` mbv_never), so a saved patch whose target ducks from another source plays the part's own SRC at B after loading. Either the morph keeps the part's SRC (DUCK is a mix tool and never rolls) or the block stores it. No factory pair shows it since b13 (HOUSE PIANO's SRC matches SLAP DOCTOR's, DEPTH 0).
 - **Ex-drum slots** (owner, 14 November: the factory drums removed; the sources and their licences in NOTICE.md). Done (b13): all 12 hold tonal sounds at their places (no number moves): #95 NIGHT REESE, #96 PHASE ORGAN, #97 FAT MONO, #98 KALIMBA, #99 NIGHT WIND, #100 RETRO ZAP, #101 STEEL NOISE, #119 HOUSE PIANO (an imported FM piano, YM2612-Dexed-Presets, MIT), #122 PIXEL ARP, #123 AAH CHOIR, #125 PWM STRINGS, #126 MARIMBA (SOUND_RECIPES.md 6.5, 4.15). They are still listed in the PERC / OTHER groups of TYPE (the list group keeps the numbers). Open: two more imported FM6 sounds (an ORGAN stab, FM STRINGS: screened, audit-clean) wait for a place: a sound after #171 is a 176th patch slot, and `UP_SLOTS` 175 is fixed in the store and the editor (a change of its own), or an FM6 sound gives way.
 
 ## Waiting on you
