@@ -245,9 +245,13 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n)
     }
     g = 4096 + d * d * 2;                                /* Q12: 1x .. ~9x, gentle at first */
     k = 32000 - d * 95;                                  /* tone: transparent at low drive .. ~3 kHz, Q15 */
+    if (!t->engine && t->p[P_E0] >= ACID_WAVE) {         /* b13-acid: a 303 into a pedal (the acid scream: the resonant peak driven into the clipper): ~33x at the top, the tone kept open (~7 kHz) */
+        g = 4096 + d * d * 8;
+        k = 32000 - d * 40;
+    }
     mk = 30000 - d * 120;                                /* make-up */
     b0 = softclip(bias);
-    xl = g > 9216 ? 57500 : 230000;                      /* the largest input whose product with the drive stays in 32 bits (the clip is flat well before; 57500 x 36354 and 230000 x 9216 are both under 2^31) */
+    xl = g > 36354 ? 16000 : g > 9216 ? 57500 : 230000;                      /* the largest input whose product with the drive stays in 32 bits (the clip is flat well before; 57500 x 36354 and 230000 x 9216 are both under 2^31) */
     for (i = 0; i < (int32_t)n; i++) {
         int32_t x = b[i], dry = x, y;
         t->dist_hp += (x - t->dist_hp + 64) >> 7;           /* ~55 Hz low cut: keep the bass out of the clipper */

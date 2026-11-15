@@ -1133,6 +1133,10 @@ static uint32_t pg_id(const page_t *pg, uint32_t slot)
     uint32_t id = pg->id[slot & 3u];
     if (pg->scope == SC_ENGINE && id >= P_E0 && id < P_E0 + 8u) {
         const uint8_t *o = ENGINES[TSEL->eng_req % NENGINES]->uiord;
+        uint32_t k = id - P_E0;
+        if (!TSEL->eng_req && TSEL->p[P_E0] >= (int16_t)ACID_WAVE && (k == 1u || k == 2u || k == 6u))   /* b13-acid: WAVE ACID / ACSQ, the 303's own knobs: the ENGINE page is WAVE,
+                                                         * MULTI CUTOFF (ENV 2's depth: the ENV MOD) and DECAY (ENV 2's) in place of DETUNE and MIX; MIX moves to EDIT 1's free card, DETUNE (OSC B's) is not shown */
+            return k == 1u ? P_E2FLT : k == 2u ? P_E2DEC : P_E2;
         if (o)
             return P_E0 + o[id - P_E0];                        /* (card position id - P_E0 -> E index) */
     }

@@ -23,26 +23,27 @@
 static __attribute__((noinline)) void chain_f1(const engine_t *e, track_t *t, voice_t *v, int32_t *tmp, uint32_t n, int32_t uc)
 {
     int32_t dry[CTL];
-    uint32_t i;
+    uint32_t i, ac;
     if (!e->ufilt)
         return;
+    ac = acid_on(t);                                    /* (b13-acid: WAVE ACID / ACSQ, the filter's RES law) */
     if ((uc < UF_TOP || t->p[P_FREEC] > 0) && !BYP(t, BY_MULTI)) {   /* the filter runs (DUELL 1.1: not while the BYPASS switch is on) */
         if (v->uft == UF_BYP) {                         /* out of the bypass while sounding: from rest, faded in over the block */
             for (i = 0; i < n; i++)
                 dry[i] = tmp[i];
             v->uft = 0;
-            uf_run(v, tmp, n, uc, t->p);
+            uf_run(v, tmp, n, uc, t->p, ac);
             for (i = 0; i < n; i++)
                 tmp[i] = dry[i] + (tmp[i] - dry[i]) * (int32_t)(i + 1u) / (int32_t)n;
         } else {
-            uf_run(v, tmp, n, uc, t->p);
+            uf_run(v, tmp, n, uc, t->p, ac);
         }
         return;
     }
     if (v->uft && v->uft != UF_BYP) {                   /* into the bypass while sounding: the filter's last block fades to dry */
         for (i = 0; i < n; i++)
             dry[i] = tmp[i];
-        uf_run(v, tmp, n, UF_TOP, t->p);
+        uf_run(v, tmp, n, UF_TOP, t->p, ac);
         for (i = 0; i < n; i++)
             tmp[i] = dry[i] + (tmp[i] - dry[i]) * (int32_t)(n - 1u - i) / (int32_t)n;
     }
