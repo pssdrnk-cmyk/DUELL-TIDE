@@ -61,18 +61,17 @@
 <div id="mockbar" class="mockbar" hidden>SIMULATED UNIT: nothing on this page touches a real FM-1.</div>
 <header class="site"><div class="bar">
   <a class="brand" href="../" aria-label="TIDE, home"><img src="../assets/tide-wordmark.svg" alt="" width="87" height="26"></a>
-  <nav aria-label="Main"><a href="./">Sound editor</a><a href="../install/">Install</a><a href="../emu/">Emulator</a></nav>
+  <nav aria-label="Main"><a id="tosound" href="./">Sound editor</a><a href="../install/">Install</a><a href="../emu/">Emulator</a></nav>
 </div></header>
 <main>
   <h1>Backup</h1>
-  <p class="tag">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0.<br>The TIDE pages are not editable here; their settings are in the backup.</p>
-  <p><b>Editor: Backup</b> for the M-VAVE FM-1 running TIDE. <a id="tosound" href="./">Back to the sound editor</a></p>
+  <p class="tag">Your FM-1's sounds, multis, patterns and settings (the TIDE pages' too) in one file, and back onto the unit.</p>
 
   <p class="small" id="browser"></p>
 
   <section>
     <h2><span class="n">1</span>Connect</h2>
-    <p>Connect the FM-1 by USB and press the button. Chrome or Edge asks for MIDI access with SysEx.</p>
+    <p>Plug the FM-1 into the computer with a USB data cable, straight in (no hub). Chrome or Edge.</p>
     <p><button id="connect">Connect the FM-1</button></p>
     <p id="unit" class="status"></p>
     <p id="unitnote" class="small"></p>
@@ -108,7 +107,7 @@
     <p class="small">Before it writes, this page saves a safety backup of the unit to your downloads. If a restore stops half way, the safety file and the file you chose both stay valid: restore again.</p>
   </section>
 
-  <p class="small" id="foot">Firmware before DUELL 0.2.14 cannot back up or restore multis and pattern slots; update with the <a href="../install/">installer</a>. This page never updates the firmware. DUELL is released under the GPL-3.0 with no warranty; see <a href="https://github.com/oscillr/DUELL/blob/main/NOTICE.md">NOTICE</a>.</p>
+  <p class="small" id="foot">This page never changes the firmware; the <a href="../install/">installer</a> does. TIDE is free software under the GPL-3.0 with no warranty; see <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/NOTICE.md">NOTICE</a>.</p>
   <footer class="credit">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (Hügelton Instruments). GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.</footer>
 </main>
 <script>{ const q = location.search; if (q) document.getElementById("tosound").href = "./" + q; }</script>

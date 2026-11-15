@@ -73,14 +73,18 @@ def summary_of(body):
 
 
 def known_issues_of(body):
-    """the bullets under a 'Known open issues' / 'Known issues' line of the release notes (plain text)"""
+    """the bullets under a 'Known open issues' / 'Known issues' line of the release notes (plain text): a bold line or a
+    heading ("## Known issues", as the tide-X.Y.Z-bN notes have it). A bullet that only points to the full list ("More in
+    [KNOWN_ISSUES.md](...)") is left out: as plain text it is a dead reference, and the pages link the list themselves."""
     lines = (body or "").replace("\r\n", "\n").split("\n")
     for n, line in enumerate(lines):
-        if re.match(r"\s*\**\s*Known (open )?issues", line, re.I):
+        if re.match(r"\s*(#+\s*)?\**\s*Known (open )?issues", line, re.I):
             out = []
             for item in lines[n + 1:]:
                 if re.match(r"\s*[-*] ", item):
-                    out.append(plain(re.sub(r"^\s*[-*] ", "", item)))
+                    text = plain(re.sub(r"^\s*[-*] ", "", item))
+                    if not re.match(r"More (in|on|at) \S+\.md\W*$", text, re.I):
+                        out.append(text)
                 elif item.strip() or out:
                     break              # the list ended (a blank line before the first bullet is skipped)
             return out

@@ -34,7 +34,7 @@ window.addEventListener("beforeunload", (e) => { if (busy) { e.preventDefault();
 if (!MOCK && !navigator.requestMIDIAccess) {
   say("browser", "This browser cannot talk to the FM-1. Open this page in Chrome or Edge on a computer.", "warn");
   $("connect").disabled = true;
-} else if (!MOCK) say("browser", "Browser OK (WebMIDI available).");
+}   // (a browser that can talk to the unit gets no line: only a problem is shown)
 if (MOCK) { $("mockbar").hidden = false; say("browser", "Simulated unit (?mock): " + (MOCK === "old" ? "firmware 0.2.13" : MOCK === "playing" ? "a unit that is playing" : "firmware 0.2.14") + "."); }
 
 // ---- connect

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only. DUELL 1.1 editor look (owner items 47, 48): the approved device design. Barlow Semi Condensed (SIL Open Font Licence 1.1, fonts/OFL.txt), the unit's colours
-   (only the ACTIVE part's colour plus greys; the colours come from theme.js look11Vars as CSS variables), the header with the part markers and the battery, knob marks as white circles with the
+   (only the ACTIVE part's colour on TIDE's night sea, b13: no neutral greys; the colours come from theme.js look11Vars as CSS variables), the header with the part markers and the battery, knob marks as white circles with the
    number cut out. Loaded after editor.css; nothing here changes what a control does. */
 @font-face { font-family: "Barlow Semi Condensed"; font-weight: 400; src: url("./fonts/BarlowSemiCondensed-Regular.ttf") format("truetype"); }
 @font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; src: url("./fonts/BarlowSemiCondensed-Medium.ttf") format("truetype"); }
@@ -7,38 +7,38 @@
 @font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; src: url("./fonts/BarlowSemiCondensed-Bold.ttf") format("truetype"); }
 
 /* dark from the start, as the unit (before a unit's colour is read) */
-:root { --bg: #18181b; --fg: #fffbff; --dim: #a09da0; --line: #35343a; --panel: #0d0d0f; --acc: #3BE8D6; --accfg: #02070D; --page: #040B13; --p1: #3BE8D6; --p2: #FF8A5E; --grey: #737073; --greytext: #cfcccf;
+:root { --bg: #0A1824; --fg: #fffbff; --dim: #9CC2D3; --line: #1D5E77; --panel: #040B13; --acc: #3BE8D6; --accfg: #02070D; --page: #040B13; --p1: #3BE8D6; --p2: #FF8A5E; --grey: #1D5E77; --greytext: #9CC2D3;
   --fs: 15px; --tabfs: 15px; --ttlfs: 12px; --labfs: 12px; --valfs: 16px; --unitfs: 12px; --ctlfs: 13px; --namefs: 15px; --top: 44px; color-scheme: dark; }
 html, body { background: var(--page); }
 body, button, input, select, textarea { font-family: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif; }
 body { font-size: var(--fs); font-weight: 500; letter-spacing: .01em; }
 button { font-weight: 600; }
 html:not([data-scheme=dark]) #top .hdr { filter: none; }
-#top { background: #0b0b0d; border-bottom: 1px solid #26252a; }
+#top { background: #040B13; border-bottom: 1px solid #0A1824; }
 
 /* the header: the title block at the left, the DEMO switch, the status; at the right the octave button, the part markers and the battery (the device header) */
 .demosw { background: transparent; color: var(--greytext); border: 1px solid var(--grey); border-radius: 11px; padding: 0 12px; height: 22px; line-height: 20px; letter-spacing: .1em; font-weight: 700; font-size: 12px; }
 .demosw[aria-pressed=true] { background: var(--grey); color: #fff; }
-.demobar { display: flex; align-items: center; gap: 12px; padding: 3px 16px; background: #26252a; color: var(--greytext); font-size: 13px; flex: none; border-bottom: 1px solid #35343a; }
+.demobar { display: flex; align-items: center; gap: 12px; padding: 3px 16px; background: #0A1824; color: var(--greytext); font-size: 13px; flex: none; border-bottom: 1px solid #102A3C; }
 .demobar b { background: var(--grey); color: #fff; border-radius: 3px; padding: 0 8px; letter-spacing: .12em; }
 .demobar span { flex: 1; } .demobar button { color: var(--greytext); border-color: var(--grey); }
 .octbtn { background: transparent; color: var(--fg); border: 1px solid var(--grey); border-radius: 4px; padding: 0 10px; height: 22px; font-size: 12px; letter-spacing: .08em; }
 .octbtn b { color: #fff; margin-left: 4px; } .octbtn.on { background: var(--grey); color: #fff; }
 .markers { display: inline-flex; gap: 6px; }
-.pm { --pc: var(--grey); --pcd: #2b2a2d; display: inline-flex; align-items: stretch; height: 22px; padding: 0; border: 1px solid var(--pc); border-radius: 7px; overflow: hidden; background: var(--pcd); color: var(--greytext); cursor: pointer; }
-.pm[data-part="0"] { --pc: var(--p1); --pcd: color-mix(in srgb, var(--p1) 14%, #0b0b0d); }
-.pm[data-part="1"] { --pc: var(--p2); --pcd: color-mix(in srgb, var(--p2) 14%, #0b0b0d); }
-.pm[data-part="0"].act { --pcd: color-mix(in srgb, var(--p1) 28%, #0b0b0d); }
-.pm[data-part="1"].act { --pcd: color-mix(in srgb, var(--p2) 28%, #0b0b0d); }
+.pm { --pc: var(--grey); --pcd: #102A3C; display: inline-flex; align-items: stretch; height: 22px; padding: 0; border: 1px solid var(--pc); border-radius: 7px; overflow: hidden; background: var(--pcd); color: var(--greytext); cursor: pointer; }
+.pm[data-part="0"] { --pc: var(--p1); --pcd: color-mix(in srgb, var(--p1) 14%, #040B13); }
+.pm[data-part="1"] { --pc: var(--p2); --pcd: color-mix(in srgb, var(--p2) 14%, #040B13); }
+.pm[data-part="0"].act { --pcd: color-mix(in srgb, var(--p1) 28%, #040B13); }
+.pm[data-part="1"].act { --pcd: color-mix(in srgb, var(--p2) 28%, #040B13); }
 .pm .pn { display: inline-flex; align-items: center; justify-content: center; width: 24px; background: var(--pc); color: #fff; font-style: normal; font-weight: 700; font-size: 13px; }
 .pm .pv { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; padding: 0 6px; font-style: normal; font-weight: 600; font-size: 13px; color: var(--greytext); }
 .pm .pv:empty { display: none; }
-.batt { position: relative; display: inline-block; width: 30px; height: 14px; border: 1px solid var(--grey); border-radius: 5px; background: #2b2a2d; margin-right: 2px; flex: none; }
+.batt { position: relative; display: inline-block; width: 30px; height: 14px; border: 1px solid var(--grey); border-radius: 5px; background: #102A3C; margin-right: 2px; flex: none; }
 .batt::after { content: ""; position: absolute; right: -4px; top: 3px; width: 2px; height: 6px; border-radius: 0 2px 2px 0; background: var(--grey); }
 .batt i { position: absolute; left: 2px; top: 2px; bottom: 2px; width: 68%; border-radius: 3px; background: var(--greytext); }
 .unit { color: var(--greytext); } .unit.good { color: var(--greytext); }
-.mockbar { background: #26252a; color: var(--greytext); } .mockbar button { background: #35343a; color: #fff; border-color: #4a494e; }
-#foot { background: #0b0b0d; border-top: 1px solid #26252a; } .msg.good { color: var(--greytext); }
+.mockbar { background: #0A1824; color: var(--greytext); } .mockbar button { background: #102A3C; color: #fff; border-color: #1D5E77; }
+#foot { background: #040B13; border-top: 1px solid #0A1824; } .msg.good { color: var(--greytext); }
 
 /* the columns */
 #main { position: relative; background: var(--page); }
@@ -47,7 +47,7 @@ html:not([data-scheme=dark]) #top .hdr { filter: none; }
 .tab { font-weight: 700; letter-spacing: .05em; border-radius: 4px 4px 0 0; color: var(--greytext); }
 .tab[aria-selected=true] { background: var(--acc); color: var(--accfg); }
 button { border-radius: 4px; }
-button.ghost { color: var(--fg); border-color: #4a494e; }
+button.ghost { color: var(--fg); border-color: #1D5E77; }
 .card, .block { border-radius: 6px; }
 .card > h3, .block > h3 { font-weight: 700; letter-spacing: .1em; }
 .ttl { border-radius: 5px 0 5px 0; background: color-mix(in srgb, var(--acc) 22%, var(--bg)); }
@@ -114,7 +114,7 @@ button.ghost { color: var(--fg); border-color: #4a494e; }
 .octnum { font-size: 230px; font-weight: 700; line-height: 1; color: #fff; min-width: 360px; text-align: center; }
 .octstep { background: transparent; color: var(--fg); border: 1px solid var(--grey); font-size: 18px; letter-spacing: .08em; padding: 12px 22px; border-radius: 6px; }
 .octstep:hover { border-color: #fff; }
-.octdots { display: flex; gap: 22px; } .octdots i { width: 14px; height: 14px; border-radius: 50%; background: #4a494e; } .octdots i.on { background: #fff; }
+.octdots { display: flex; gap: 22px; } .octdots i { width: 14px; height: 14px; border-radius: 50%; background: #1D5E77; } .octdots i.on { background: #fff; }
 .octclose { position: absolute; right: 20px; bottom: 16px; }
 
 /* small fixes */
@@ -129,7 +129,7 @@ button.small:not(.ghost):not(.mute) { color: var(--accfg); }
 .card .modbyp.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .card.bypassed { border-color: var(--grey); }
 .card.bypassed > .grid, .card.bypassed > .grid.k4 { opacity: .32; filter: grayscale(1); }
-.card.bypassed > h3 .ttl { background: #2b2a2d; color: var(--greytext); }
+.card.bypassed > h3 .ttl { background: #102A3C; color: var(--greytext); }
 
 /* PARAMETER LOCKS tab (lockview.js): one box, a head line, one row per record, the add row at the foot. Left-aligned, the part's colour (--acc), Barlow like every tab. */
 .tabbody.lockstab { display: block; height: 100%; }
@@ -154,3 +154,5 @@ button.lkind { background: none; border: 0; padding: 0; text-align: left; cursor
 .ladd { justify-self: end; grid-column: 5; font-weight: 700; letter-spacing: .06em; white-space: nowrap; padding: 4px 10px; background: var(--acc); color: var(--accfg); border-color: var(--acc); }
 .ladd:disabled { opacity: .4; }
 .lrow .valin { width: 66px; color: var(--fg); background: var(--page); border-color: var(--acc); font-size: 18px; font-weight: 700; height: 24px; }
+/* b13: a native range input (MENU's TUNE) on the sea, not the browser's grey track */
+.cell input[type=range] { background: transparent; accent-color: var(--acc); }

@@ -248,6 +248,9 @@ class Pick(unittest.TestCase):
         self.assertEqual(make_site.known_issues_of(releases.info(releases.pick(FIXTURE)["stable"], "stable")["body"]), [])
         self.assertTrue(make_site.summary_of(b["body"]).startswith("Beta: under test. Build 77a6df2"))
         self.assertNotIn("`", make_site.summary_of(b["body"]))
+        # b13: the tide-X.Y.Z-bN notes have a "## Known issues" heading; a bullet that only points to the full list is left out
+        notes = "## Fixed\n\n- a fix\n\n## Known issues\n\n- The acid filter picture draws RES the old way.\n- More in [KNOWN_ISSUES.md](https://x/KNOWN_ISSUES.md).\n\n## Install\n\n- open it\n"
+        self.assertEqual(make_site.known_issues_of(notes), ["The acid filter picture draws RES the old way."])
 
 
 class Build(unittest.TestCase):

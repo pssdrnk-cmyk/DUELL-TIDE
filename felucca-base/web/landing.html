@@ -27,7 +27,7 @@
     <nav aria-label="Main">
       <a href="install/">Install</a>
       <a href="emu/">Emulator</a>
-      <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable#readme">Guide</a>
+      <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/TIDE_GUIDE.md">Guide</a>
       <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source</a>
     </nav>
   </div>
@@ -45,7 +45,6 @@
       <a class="btn beta" id="go-beta" href="install/#beta">Install Beta<small id="go-beta-sub">under test</small></a>
       <a class="btn second" href="emu/">Try the emulator<small>in your browser, no FM-1 needed</small></a>
     </div>
-    <p class="builds-line" id="builds-line" aria-live="polite">The builds are listed on the installer page.</p>
     <p class="credit">TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.<br>Not made or endorsed by OSCILL/R or M-VAVE.</p>
   </div>
 </section>
@@ -68,23 +67,24 @@
         </figure>
         <figure class="shot">
           <img src="img/tide-settings.png" width="240" height="240" alt="The TIDE SETTINGS page: STYLE DUB, MODE EVOLVE, TARGET BOTH, ARC RISE, KNOBS AUTO, AMOUNT 15 percent." loading="lazy">
-          <figcaption><b>TIDE SETTINGS</b>The style, what the tide moves and how far a new End B goes.</figcaption>
+          <figcaption><b>TIDE SETTINGS</b>The style, what the tide moves, how far a new End B goes, the live assist and the play mode.</figcaption>
         </figure>
         <figure class="shot">
           <img src="img/morph.png" width="240" height="240" alt="The MORPH page while music plays: each part's sound drawn as live waves, part 1 in sea glass above and part 2 in coral below; knob 1's line reads MORPH 95 TO A 6/16; the footer shows both patches." loading="lazy">
-          <figcaption><b>MORPH</b>PART 1, PART 2 or BOTH: each part's real sound as live waves, like an oscilloscope: a held note stands still, a chord beats; at rest the lines lie flat.</figcaption>
+          <figcaption><b>MORPH</b>One part or both: each part's real sound as live waves, like an oscilloscope: a held note stands still, a chord beats; at rest the lines lie flat.</figcaption>
         </figure>
       </div>
       <p class="small">Screenshots from the <a href="emu/">web emulator</a>.</p>
 
-      <h3>Five modes</h3>
+      <h3>Two modes</h3>
       <ul class="plain">
-        <li><b>ONCE</b>: one trip, then it stops.</li>
-        <li><b>LOOP</b>: back and forth between A and B, the same two ends every time.</li>
-        <li><b>DRIFT</b>: new twists on your sound, never far from the original.</li>
-        <li><b>WNDR</b>: wanders away from your sound, one step per trip, the steps growing with the phrase.</li>
-        <li><b>JRNY</b>: travels through the factory sounds, on the part's own engine.</li>
+        <li><b>EVOLVE</b>: your own sound changes a little on every trip, the steps growing with the phrase, and never runs away from the original.</li>
+        <li><b>TRAVEL</b>: travels through the factory sounds of the part's own engine, staying a pad, a bass or a lead.</li>
       </ul>
+      <p>A <b>STYLE</b> on TIDE SETTINGS (DUB, DEEP, MINIMAL, AMBIENT, PEAK, DRONE) sets the mode, the trip length and the wait in one turn.</p>
+
+      <h3>Live assist</h3>
+      <p>Arm REC and play a take: when it closes, the other part answers it with a <b>BASS LINE</b>, a <b>DOUBLE</b> a third above, a <b>REPLY</b>, an <b>ECHO</b> or held <b>CHORDS</b> (the ANSWER row on TIDE SETTINGS). Hold SEQ and press C4 (<b>SWELL</b>) for a new answer, D4 (<b>RIPPLE</b>) to move a few of its notes.</p>
     </div>
   </section>
 
@@ -93,11 +93,11 @@
       <h2>Play a tide in four steps</h2>
       <ol class="steps">
         <li>Press <b>HOME</b> until <b>AUTO TIDE</b> shows.</li>
-        <li>Pick a <b>MODE</b> with knob 2, a trip length (<b>TIME</b>, in bars) with knob 3 and a rest at each end (<b>WAIT</b>) with knob 4. Turn <b>ALGORITHM</b> to BOTH to glide both parts at once.</li>
-        <li>Twist <b>knob 1</b> right (to B) or left (to A) and press <b>PLAY</b>. While the music plays, the glide starts on the next bar.</li>
+        <li>Pick a <b>MODE</b> (EVOLVE or TRAVEL) with knob 2, a trip length (<b>TIME</b>, in bars) with knob 3 and a rest at each end (<b>WAIT</b>) with knob 4. Turn <b>ALGORITHM</b> to the middle (LAYER, STEREO or DUEL) to glide both parts at once.</li>
+        <li>Twist <b>knob 1</b> right (to B) or left (to A). If the music is stopped, this starts PLAY; if it plays, the glide starts on the next bar.</li>
         <li>Play over it. <b>STOP</b> pauses the glide and PLAY goes on from there. Twist knob 1 two detents while it glides and it stops where it is.</li>
       </ol>
-      <p class="small">On the very first start TIDE comes up ready: multi M02 DUB CHORD, AUTO TIDE on JRNY, both parts, 16 bars, WAIT 2. Just press PLAY.</p>
+      <p class="small">On the very first start TIDE comes up ready: multi M02 DUB CHORD with STYLE DUB (AUTO TIDE on EVOLVE, 16 bars, WAIT 2). Just press PLAY.</p>
     </div>
   </section>
 
@@ -107,7 +107,8 @@
       <div class="grid two">
         <div class="panel" id="card-stable">
           <h3>Stable <span class="chip ok">Recommended</span></h3>
-          <p>Tested and validated on the fork owner's FM-1. Build this one unless you want to help test.</p>
+          <p>Tested and validated on the fork owner's FM-1. Install this one unless you want to help test.</p>
+          <p class="small">It is an earlier TIDE: its TIDE SETTINGS page is still called MORPH SETTINGS, with no STYLE and no live assist. The pictures and steps on this page are the beta's.</p>
           <p class="small" id="meta-stable">Release data not loaded.</p>
           <p><a class="btn" href="install/#stable">Install Stable</a></p>
         </div>
@@ -118,6 +119,7 @@
           <div id="beta-issues" hidden>
             <p><b>Known open issues</b></p>
             <ul class="plain" id="beta-issues-list"></ul>
+            <p class="small"><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/KNOWN_ISSUES.md">All known issues</a></p>
           </div>
           <p><a class="btn beta" href="install/#beta">Install Beta</a></p>
         </div>
@@ -131,11 +133,11 @@
       <h2>More</h2>
       <ul class="links">
         <li><a href="emu/">Web emulator<span>TIDE in your browser. Press HOME until AUTO TIDE, then twist KNOB 1.</span></a></li>
-        <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable#readme">What TIDE adds<span>Every control and value.</span></a></li>
+        <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/TIDE_GUIDE.md">TIDE guide<span>Every TIDE page, control and value.</span></a></li>
         <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues">Report a TIDE problem<span>On this fork's issue page. Please do not send TIDE problems to the DUELL author.</span></a></li>
         <li><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE">Source code on GitHub<span>pssdrnk-cmyk/DUELL-TIDE, branch jam11 (the repository keeps its old name).</span></a></li>
         <li><a href="cheatsheet/">Cheat sheet<span>One printable page: the gestures and the TIDE pages.</span></a></li>
-        <li><a href="editor/">Editor and backup page<span>The sound editor and backup, for a unit connected by USB (Chrome or Edge). It does not edit the TIDE pages; their settings are in the backup.</span></a></li>
+        <li><a href="editor/">Editor and backup page<span>The sound editor and backup, for a unit connected by USB (Chrome or Edge). DEMO shows it without a unit. It does not edit the TIDE pages; their settings are in the backup.</span></a></li>
         <li><a href="https://oscillr.github.io/DUELL/">The original DUELL<span>OSCILL/R's site, with plain DUELL 1.1.</span></a></li>
       </ul>
     </div>
@@ -144,30 +146,27 @@
 
 <footer class="site">
   <div class="wrap">
-    <p class="credit"><b>TIDE for FM-1 by pssdrnk. Built on DUELL (OSCILL/R) and Felucca (H&uuml;gelton Instruments). GPL-3.0.</b></p>
     <p><b>TIDE is by pssdrnk, not by OSCILL/R.</b> TIDE is pssdrnk's fork of <a href="https://github.com/oscillr/DUELL">DUELL</a> 1.1, which is made by OSCILL/R. It is not made, affiliated with or endorsed by OSCILL/R or M-VAVE. M-VAVE and FM-1 are trademarks of their respective owners. DUELL and its credit belong to OSCILL/R.</p>
     <p>TIDE is free software under the GPL-3.0, with <b>no warranty</b>. It is a modified version of DUELL by OSCILL/R, itself a modified version of
       <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments, with the SHIM and RESO reverbs from JIANT.
       The firmware package also holds three JieLi AC79 SDK files (uboot.boot, cfg_tool.bin, eq_cfg_hw.bin; JieLi Technology, Apache-2.0).
-      See <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/stable/NOTICE.md">NOTICE</a>, <a href="install/LICENSES/">the licence texts</a> and <a href="install/LICENSE">the GPL-3.0</a>.</p>
+      See <a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/NOTICE.md">NOTICE</a>, <a href="install/LICENSES/">the licence texts</a> and <a href="install/LICENSE">the GPL-3.0</a>.</p>
     <p>This site sets no cookies and loads nothing from other servers. The font is Barlow Semi Condensed (SIL Open Font License 1.1).</p>
   </div>
 </footer>
 
 <script type="module">
 // What is released: install/channels.json (written by the site build from the GitHub releases). Without it the page keeps its fallback text.
-import { parseManifest, CHANNEL } from "./installer_state.js";
+import { parseManifest } from "./installer_state.js";
 const $ = (id) => document.getElementById(id);
 const line = (e) => `${e.tag}${e.commit ? " (" + e.commit.slice(0, 7) + ")" : ""}`;
 try {
   const r = await fetch("install/channels.json", { cache: "no-store" });
   if (!r.ok) throw new Error("no manifest");
   const m = parseManifest(await r.json());
-  const parts = [];
   for (const c of ["stable", "beta"]) {
     const e = m[c];
     if (e) {
-      parts.push(`${CHANNEL[c].label} ${e.date || e.tag}` + (c === "beta" ? ", under test" : ""));
       $("go-" + c + "-sub").textContent = (e.date || e.tag) + (c === "beta" ? ", under test" : ", recommended");
       $("meta-" + c).textContent = `Build ${line(e)}, ${e.date || "date unknown"}.`;
     } else {
@@ -175,14 +174,13 @@ try {
       $("meta-" + c).textContent = c === "stable" ? "No stable build is published yet." : "No beta is published right now.";
     }
   }
-  $("builds-line").textContent = parts.length ? "Available now: " + parts.join(" · ") + "." : "No release is published yet. The emulator works without a unit.";
   if (m.beta && m.beta.issues.length) {
     const ul = $("beta-issues-list");
     for (const t of m.beta.issues) { const li = document.createElement("li"); li.textContent = t; ul.append(li); }
     $("beta-issues").hidden = false;
   }
 } catch {
-  $("builds-line").textContent = "The builds are listed on the installer page.";
+  // (no manifest: the cards keep "Release data not loaded." and the buttons their plain words)
 }
 </script>
 </body>
