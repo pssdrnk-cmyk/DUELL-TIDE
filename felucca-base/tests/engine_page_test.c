@@ -173,11 +173,24 @@ static void test_knob2(void)
                 continue;
             v0 = TSEL->p[id];
             turn(EN_K1 + j, v0 < d->max ? 1 : -1);
-            ok &= TSEL->p[id] != v0 && id == P_E0 + (ENGINES[e]->uiord ? ENGINES[e]->uiord[j - 1u] : j - 1u);
+            ok &= TSEL->p[id] != v0 && (id == P_E0 + (ENGINES[e]->uiord ? ENGINES[e]->uiord[j - 1u] : j - 1u) ||
+                                        (!e && TSEL->p[P_E0] >= (int16_t)ACID_WAVE && id == (j == 2u ? P_E2FLT : P_E2DEC)));   /* (b13-acid: WAVE ACID / ACSQ: K3 K4 are ENV 2's depth and decay) */
             frames(320);
         }
         snprintf(w, sizeof w, "%s: ENGINE K2..K4 turn the engine's first three controls; the sound, FAV and the page stay, no dialog", ENGINES[e]->name);
         expect(w, ok && snd() == s0 && preset_favorite() == fav0 && TSEL->eng_req == e && !ui.confirm && on_engine_page());
+        if (!e) {                                    /* b13-acid: on WAVE ACID / ACSQ the ENGINE page is WAVE, ENV 2's depth (MULTI CUTOFF), ENV 2's DECAY; EDIT 1's free card is MIX; back on SAW, DETUNE and MIX */
+            int16_t w0 = TSEL->p[P_E0];
+            const page_t *pg = cur_page();
+            TSEL->p[P_E0] = 7;
+            ok = pg_id(pg, 1) == P_E0 && pg_id(pg, 2) == P_E2FLT && pg_id(pg, 3) == P_E2DEC;
+            TSEL->p[P_E0] = 8;
+            ok &= pg_id(pg, 2) == P_E2FLT && pg_id(pg, 3) == P_E2DEC;
+            TSEL->p[P_E0] = 0;
+            ok &= pg_id(pg, 2) == P_E1 && pg_id(pg, 3) == P_E2;
+            TSEL->p[P_E0] = w0;
+            expect("ANALOG: WAVE ACID / ACSQ put ENV 2's depth and decay on K3 K4 (the 303's knobs); SAW gives DETUNE and MIX back", ok);
+        }
         if (ENGINES[e] == &ENG_LOFI) {               /* DUELL 1.1: K4 (PULSE WIDTH) is a card with WAVE = PLS only; with any other WAVE it is hidden and its knob does nothing */
             int16_t w0, p0;
             TSEL->p[P_E1] = RW_PLS;
