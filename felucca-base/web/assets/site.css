@@ -183,12 +183,34 @@ label.choice .meta { display: block; color: var(--dim); font-size: 16px; margin-
 .card.install { border: 1px solid var(--line); border-top: 2px solid var(--accent); }
 .card.return { border: 2px solid var(--amber-line); }
 .card.return h2 { color: var(--amber); }
-.card .bar { width: 100%; height: 10px; margin: 8px 0; }
-.card .status { min-height: 1.6em; margin: 4px 0; font-weight: 600; }
-.card .result { min-height: 1.2em; margin: 4px 0 8px; }
+.card .status { margin: 2px 0 0; font-weight: 600; }
+.card .result { margin: 4px 0 10px; }
+.card .result.ok, .card .result.warn { font-weight: 600; }
+.card .result.ok { color: var(--ok); }
+.prog.nobar .barrow { display: none; }
+.prog.nobar ol.phases { margin-bottom: 0; }
+/* b13: the progress of an action, inside its card: the phases, a bar with %, one status line; the raw log folded under "Details" */
+.prog { margin: 4px 0 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+ol.phases { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+ol.phases li { padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--dim); }
+ol.phases li.past { color: var(--accent); border-color: var(--accent); }
+ol.phases li.past::before { content: "\2713\00a0"; }
+ol.phases li.now { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+ol.phases li.bad { color: var(--warn); background: var(--warn-bg); border-color: var(--warn); }
+.barrow { display: flex; align-items: center; gap: 12px; }
+progress.bar { flex: 1; min-width: 0; height: 12px; margin: 0; -webkit-appearance: none; appearance: none; border: 0; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+progress.bar::-webkit-progress-bar { background: var(--surface-2); border-radius: 6px; }
+progress.bar::-webkit-progress-value { background: var(--accent); border-radius: 6px; }
+progress.bar::-moz-progress-bar { background: var(--accent); border-radius: 6px; }
+.pct { flex: none; min-width: 3em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+details.log { margin: 0 0 12px; }
+details.log > summary { font-weight: 500; font-size: 16px; color: var(--accent); padding: 2px 0; }
+details.log pre { height: 12.5em; overflow: auto; margin: 6px 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--dim);
+  font: 13px/1.5 ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace; white-space: pre; }
+details.log p { margin: 0; }
+button.act.copy { min-height: 36px; padding: 4px 14px; font-size: 15px; }
 .card .lock { color: var(--dim); font-size: 15px; min-height: 1.2em; margin: 0 0 8px; }
 .retwarn { border: 2px solid var(--amber-line); background: var(--amber-bg); border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px; font-weight: 700; }
-#log { color: var(--dim); font-size: 12px; white-space: pre-wrap; }
 /* b13: the installer as four numbered steps (a heading, then one card each) and a folded "Leave TIDE" */
 .inst { padding-top: 32px; padding-bottom: 24px; }
 .inst h1 { font-size: clamp(34px, 9vw, 46px); }
@@ -218,3 +240,9 @@ p.links { margin-top: 32px; }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 @media print { .hero svg.waves { display: none; } }
+@media (max-width: 480px) {      /* phone: the five phases in one even row (the colour says past / now; no tick) */
+  ol.phases { flex-wrap: nowrap; gap: 4px; font-size: 13px; }
+  ol.phases li { flex: 1 1 0; min-width: 0; padding: 1px 0; text-align: center; white-space: nowrap; overflow: hidden; overflow-wrap: normal; }
+  ol.phases li.past::before { content: none; }
+  .prog { padding: 10px 12px; }
+}

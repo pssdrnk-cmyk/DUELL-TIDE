@@ -56,6 +56,13 @@ function pageWiring() {
   ok(/This writes the official M-VAVE firmware back\. TIDE will be removed\. Keep the cable connected until DONE\./.test(h), "return warning text");
   ok(/Go back to the official firmware/.test(h), "return section title");
   ok(!/id="(bar|status)"/.test(h), "no shared bar/status left");
+  // b13: each card shows its progress (phases, bar with %, one status line) and folds its raw log; no log runs down the page any more
+  for (const a of ACTIONS) {
+    const card = h.match(new RegExp(`<div class="card ${a}" id="card-${a}">([\\s\\S]*?)\\n    </div>\\n`))?.[1] || "";
+    ok(new RegExp(`<div class="prog" id="prog-${a}" hidden>`).test(card) && card.includes(`id="pct-${a}"`) && (a === "backup" || card.includes(`id="phases-${a}"`)), `card ${a}: a progress block (bar with %${a === "backup" ? "" : ", the phases"})`);
+    ok(new RegExp(`<details class="log" id="logbox-${a}" hidden>\\s*<summary>Details</summary>\\s*<pre id="log-${a}"`).test(card) && card.includes(`data-log="${a}">Copy log</button>`), `card ${a}: its raw log is folded under Details, with Copy log`);
+  }
+  ok(!/id="log"/.test(h) && !/<\/footer>[\s\S]*<(pre|div|p)\b/.test(h.split("<script")[0]), "no page-wide log; nothing after the footer");
   // the return card is not inside the package-gated blocks
   const gated = [...h.matchAll(/<div class="needpkg" hidden>([\s\S]*?)\n  <\/div>/g)].map((m) => m[1]).join("");
   ok(!gated.includes('id="card-return"') && !gated.includes('id="card-backup"') && gated.includes('id="card-install"'), "only install is package-gated");
