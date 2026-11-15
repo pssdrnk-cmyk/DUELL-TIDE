@@ -121,7 +121,7 @@ Not happy with the answer? Hold **SEQ** and press **C4: SWELL** for a whole new 
 
 ## Install
 
-**Stable: [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable)** (played and validated on the fork owner's unit) · **Beta: [`1.0.0-b9`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b9)** (under test). [Which is which, and building it yourself](docs/BUILDS.md).
+**Stable: [`stable-2026-11-03`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/tree/stable)** (played and validated on the fork owner's unit) · **Beta: [`1.0.0-b13`](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b13)** (under test). [Which is which, and building it yourself](docs/BUILDS.md).
 
 Use the **installer page** (Chrome or Edge): <https://pssdrnk-cmyk.github.io/DUELL-TIDE/install/>. It offers both channels, saves a backup of the unit first, then writes the package. Use a **data** USB cable straight into the computer (no hub). Steps, the checklist and the way back: [docs/INSTALL.md](docs/INSTALL.md).
 
