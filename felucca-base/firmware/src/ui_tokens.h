@@ -207,7 +207,7 @@
 #define UT_T4_BAR_MIN 3
 #define UT_T4_TICK_DY 1         /* PAN's middle tick starts this many rows above the bar and ends this many under it */
 #define UT_T4_TRACK_PCT 13      /* a bar's and the meter's empty track: card -> TEXT, % */
-#define UT_T4_KEY_GAP 3         /* the word -> its keycap */
+#define UT_T4_KEY_GAP 5         /* GLO's keycap -> OCT's (b14: 5, was 3, so the rings a muted card gives them stay 3 px apart) */
 
 /* ---- TEMPLATE 5, the SENDS page (the 'fxsum' page, FX's last; item 117; FINAL_V1_04_fx-send): no card, no box, no bar, everything on the background, left aligned; screen rows (the capitals' last row = the baseline) ----
  * The state text (M, TEXT-MID colour) at x 9, baseline 48; two info rows, labels (S, grey) at x 9 and 148, values (M, the part's colour; dim when that effect is not fed) at x 66 and 186, baselines 92 (DELAY: mode, TIME)

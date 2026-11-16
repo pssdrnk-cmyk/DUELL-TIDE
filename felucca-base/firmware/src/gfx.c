@@ -160,7 +160,7 @@ static uint8_t cv_flip;          /* cv_alpha_hc: the cell mirrored left <-> righ
 static struct {
     uint16_t bg, base, text, theme, accent;
     uint16_t mid, dim, line, sel, tint, ink, rec, raise, key, lane, grid;
-    uint16_t kink;               /* a keycap label: the background (INK, the label on a THEME / SEL fill, follows the part colour) */
+    uint16_t kink;               /* a keycap label: INK (the label on a THEME fill, follows the part colour) */
     uint8_t light, mono;
     /* DUELL (SPEC 5a): part 1 draws with THEME, part 2 with THEME2; theme, sel, tint and lane are the SELECTED part's
      * (part_theme), pth / psel / ptint / plane both parts' (T_PTHEME(k) ...: a screen about both parts, ui_graph.c) */
@@ -186,11 +186,11 @@ static struct {
 #define T_LINE ux.line           /* 1 px dividers, gauge track */
 #define T_SEL ux.sel             /* selection and gauge fill */
 #define T_TINT ux.tint           /* a faint theme area */
-#define T_KINK ux.kink           /* a keycap's label (on T_KEY / T_DIM fills) */
+#define T_KINK ux.kink           /* a keycap's label on a T_KEY fill (INK; on a T_DIM fill the label is T_BG) */
 #define T_INK ux.ink             /* text on T_SEL / T_THEME */
 #define T_REC ux.rec             /* REC: fixed red (GREY, MONO: the accent) */
 #define T_RAISE ux.raise         /* a raised area on a surface: stubs, guides, slots, chips, button wells */
-#define T_KEY ux.key             /* a keycap's fill (its label: T_INK; unavailable: a T_DIM fill) */
+#define T_KEY ux.key             /* a keycap's fill: THEME (b14; MONO: white), its label T_KINK; unavailable: a T_DIM fill, T_BG label */
 #define T_PFILL(k) ux.pfill[(k) & 1u]   /* part k's brief colour at its MORPH fader (the MORPH bar) */
 #define T_PACC(k) ux.pacc[(k) & 1u]
 #define T_PEND(k, b) ux.pend[(k) & 1u][(b) & 1u]   /* part k's colour at its A (0) or B (1) end, whatever the fader */
@@ -267,8 +267,6 @@ static void part_theme(uint32_t part)
         ux.raise = both ? ux_mix(p->raise[0], p->raise[1], 50) : p->raise[part];
     }
     ux.dim = ux_mix(ux.bg, p->text, UI_DIM_PCT);
-    ux.key = ux_mix(ux.bg, p->text, UI_KEY_PCT);
-    ux.kink = ux.bg;
     ux.light = ux_luma(ux.bg) > 128u;
     ux.grid = ux_mix(ux.base, p->text, 6);
     for (k = 0; k < 2u; k++) {
@@ -290,7 +288,7 @@ static void part_theme(uint32_t part)
         ux.plane[k] = ux_mix(ux.base, ux.pth[k], 10);
     }
     if (ux.bw) {                                 /* MONO: black and white, set, not blended (tools/gen_ui_palettes.py) */
-        ux.mid = ux.key = ux.rec = p->text;      /* a selection, a keycap, REC: white, its INK black */
+        ux.mid = ux.rec = p->text;               /* a selection, REC: white, its INK black (a keycap too: below) */
         ux.dim = ux.line = ux.raise = ux.lane = UI_BW_GREY;
         ux.tint = ux.grid = p->bg[0];
         ux.psel[0] = ux.psel[1] = p->text;
@@ -319,6 +317,9 @@ static void part_theme(uint32_t part)
         ux.lane = ux.plane[part];
     }
     if (ux.bw) { ux.tint = p->bg[0]; ux.ink = ux.bg; }
+    ux.key = ux.bw ? p->text : ux.pth[part];     /* b14 (owner, 16 November: "teal I guess"): a key chip in the selected part's colour (part 1: teal; also on a GLOBAL page,
+                                                  * whose blend of both reads khaki), its label the better contrast of BG and TEXT on it (MONO: white, label black); was a grey (UI_KEY_PCT) */
+    ux.kink = ux_cr(ux.bg, ux.key) >= ux_cr(p->text, ux.key) ? ux.bg : p->text;
     ux.gen++;                                    /* the text ramps change with the coverage curve and the background */
 }
 /* the global gradient's colour at screen column x (0 .. 239): part 1's first colour to part 2's first colour; MONO: the text colour */
@@ -1044,7 +1045,7 @@ static int32_t kh_ink(uint32_t id, const char *act)
 }
 static int32_t cv_key_hint(int32_t x, int32_t y, uint32_t id, const char *act, int on, uint16_t under)
 {
-    x = cv_keycap(x, y, id, on ? T_KEY : T_DIM, T_KINK, under);
+    x = cv_keycap(x, y, id, on ? T_KEY : T_DIM, on ? T_KINK : T_BG, under);
     if (act && act[0]) {
         GFX_HOOK_ALIGN(0, y, 0, y + KC_H, AL_V | AL_PASS, "key hint word on its keycap's line");
         x = cv_text_on(x + KH_GAP, y - 3, &AF_S, act, on ? T_TEXT : T_DIM, under);   /* item 122: the word's capitals are centred on the pill's rows (S 15: 11 capital rows, the pill 13: the word's line top 3 rows above the pill's, was 1) */
