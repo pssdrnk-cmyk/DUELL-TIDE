@@ -327,8 +327,31 @@ static int sound_diff(void)
     return 0;
 }
 
+static int fm6_ops(void)
+{
+    uint32_t e, k, o;
+    uint8_t fv[FP_SIZE + 1u];
+    char lb[24];
+    for (e = 0; e < NENGINES && strcmp(ENGINES[e]->name, "FM6"); e++) ;
+    for (k = 0; k < ds_count(e); k++) {
+        int32_t sl = ds_value(ds_get(e, k), P_E7, ENGINES[e]->edit[7].def);
+        uint32_t car;
+        ds_label(e, k, lb);
+        if (fm6_slot_patch((uint32_t)clamp(sl, 0, 255), fv)) { printf("%-20s no patch\n", lb); continue; }
+        car = fm6_carriers(fv[FP_ALG] & 31u);
+        printf("%2u %-18s alg %2u fb %u |", k, lb, fv[FP_ALG] & 31u, fv[FP_FB]);
+        for (o = 0; o < 6u; o++) {
+            const uint8_t *op = fv + o * FP_OP;
+            printf(" %c OL%2u L%2u/%2u/%2u/%2u R%2u/%2u/%2u/%2u |", (car >> o) & 1u ? 'C' : 'm', op[FP_OL], op[FP_L1], op[FP_L1 + 1], op[FP_L1 + 2], op[FP_L1 + 3], op[FP_R1], op[FP_R1 + 1], op[FP_R1 + 2], op[FP_R1 + 3]);
+        }
+        printf("\n");
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
+    if (getenv("TRAVELCPU_OPS")) return fm6_ops();
     if (getenv("TRAVELCPU_DIFF")) return sound_diff();
     uint32_t only = argc > 1 ? (uint32_t)atoi(argv[1]) : 7u, mode = argc > 2 ? (uint32_t)atoi(argv[2]) : GM_JOURNEY, tidx = argc > 3 ? (uint32_t)atoi(argv[3]) : 5u;
     uint32_t ntrip = argc > 4 ? (uint32_t)atoi(argv[4]) : 6u, bpm = argc > 5 ? (uint32_t)atoi(argv[5]) : 0u, slot;

@@ -183,6 +183,16 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
             uint32_t pitem = (id >= 54u && id < 61u) || id == 63u;
             fend[id] = pitem && !(morph.cfg & MC_PIT) ? mp->fb[id] : (uint8_t)clamp(fv[fm_byte(id)], 0, 99);
         }
+        if (TIDE_KEEP_ENV) {                             /* b14: .. and on FM6 no carrier releases slower than the loudest, whose envelope the part's AMP ENV sets (eng_fm6.c fm6_env_derive): a voice ends
+                                                          * only when every carrier is silent, and SALOON KEYS' quieter carriers (R4 50, 60) kept M07's stabs ringing after the loudest (67) had gone */
+            uint32_t car = fm6_carriers(fv[FP_ALG] & 31u), top = 0, r = 0;
+            for (id = 0; id < 6u; id++)
+                if ((car >> id) & 1u && fv[id * FP_OP + FP_OL] >= top)
+                    top = fv[id * FP_OP + FP_OL], r = fend[id * 9u + 3u];
+            for (id = 0; id < 6u; id++)
+                if ((car >> id) & 1u && fend[id * 9u + 3u] < r)
+                    fend[id * 9u + 3u] = (uint8_t)r;
+        }
     }
     MORPH_LOCK();
     morph_ramp(mp, x);
