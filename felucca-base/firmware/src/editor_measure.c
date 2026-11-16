@@ -5,7 +5,7 @@
  * header of HOME's pages), read over the editor's SysEx: no new counter, nothing in the audio interrupt. jam/measure/travel_watch.py drives it.
  *   MEASURE 91  0              READ: replies 0, then four 32-bit values as 7-bit groups of five (low first): the longest elapsed half since the last READ (us; the budget
  *                              is CPU_BUDGET_US), the DMA periods missed since power-on, the voices shed (audio.c), and bits: 0 playing, 1 glide running, 2 the end it goes to, 3.. the ease level
- *              1, time, mode   GLIDE: AUTO TIDE's MODE (GM_*: 4 TRAVEL, 3 EVOLVE) and TIME (an index of GLIDE_BARS), then K1 turned right (glide_launch: PLAY starts with it); replies 1, glide running
+ *              1, time, mode[, seed]  GLIDE (the seed, 0..127, default 0, restarts the draw stream): AUTO TIDE's MODE (GM_*: 4 TRAVEL, 3 EVOLVE) and TIME (an index of GLIDE_BARS), then K1 turned right (glide_launch: PLAY starts with it); replies 1, glide running
  *              2               STOP the glide (K1's two detents): replies 2
  *              anything else   no reply */
 enum { ED_MEASURE = 91 };
@@ -40,7 +40,8 @@ static int ed_measure_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         }
         return 1;
     }
-    if (n == 3u && a[0] == 1u && a[1] < GLIDE_TIMES && a[2] <= GM_JOURNEY) {
+    if ((n == 3u || n == 4u) && a[0] == 1u && a[1] < GLIDE_TIMES && a[2] <= GM_JOURNEY) {
+        morph.gen = n == 4u ? a[3] : 0u;                /* (the seed: TRAVEL's and EVOLVE's draws repeat run to run, morph.c morph_new_seed) */
         gl.time = a[1];
         gl.mode = a[2];
         if (!glide_running())

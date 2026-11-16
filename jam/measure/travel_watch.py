@@ -29,6 +29,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", default="DUELL"); ap.add_argument("--multi", type=int, default=7); ap.add_argument("--mode", type=int, default=4)
     ap.add_argument("--time", type=int, default=5); ap.add_argument("--secs", type=float, default=240); ap.add_argument("--out", default="")
+    ap.add_argument("--seed", type=int, default=0, help="0..127: the measuring build's draw stream restarts here at the launch, so runs repeat")
     ap.add_argument("--preset", default="", help="ENGINE,INDEX: a factory sound loaded on part 1 after the multi (the editor's PRESET), e.g. 8,10 = FM6 SALOON KEYS")
     a = ap.parse_args()
     c = jd.open_midi(a.port)
@@ -43,7 +44,7 @@ def main():
             e, k = (int(x) for x in a.preset.split(","))
             print("preset:", t.request(8, [e, k], 3.0)); time.sleep(1.0)
         s0 = read(t)
-        r = t.request(ED_MEASURE, [1, a.time, a.mode], 1.0)
+        r = t.request(ED_MEASURE, [1, a.time, a.mode, a.seed & 127], 1.0)
         if r != [1, 1]:
             raise SystemExit(f"travel_watch: the launch gave {r!r}")
         t0 = time.time(); rows = []
@@ -59,7 +60,7 @@ def main():
         t.request(ED_MEASURE, [2], 1.0)
         t.out.send(t._mido.Message("stop"))
         el = sorted(x["el_pct"] for x in rows)
-        print(f"travel_watch: M{a.multi:02d} mode {a.mode} time {a.time}, {len(rows)} s: busiest second {el[-1]:.1f} %, median {el[len(el) // 2]:.1f} %, "
+        print(f"travel_watch: M{a.multi:02d} mode {a.mode} time {a.time} seed {a.seed}, {len(rows)} s: busiest second {el[-1]:.1f} %, median {el[len(el) // 2]:.1f} %, "
               f"seconds over 100 % {sum(x > 100 for x in el)}, missed {rows[-1]['miss_d']}, shed {rows[-1]['shed_d']}")
     finally:
         t.close()
