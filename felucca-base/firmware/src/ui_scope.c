@@ -27,7 +27,7 @@
 #define WL_NP 56                                     /* points of a ridge (b6: 56, one every 3.9 px, so 13 ridges fit the RAM rule), spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
 #define WL_X0 22
 #define WL_X1 239                                     /* (b6: to the screen's last column, owner 2026-11-09) */
-#define WL_SOFT 24                                    /* b11: the waves' soft ends, px (the tide line's and the splash's fade) */
+#define WL_SOFT 24                                    /* b11: the waves' soft ends, px (the splash's fade) */
 #define WL_HN 13                                     /* ridges kept: as many as fit 2 rows apart over the 68-row lanes (2 parts x 13 x 56 B; the build keeps 4 KB of RAM headroom) */
 #define WL_AMAX 31                                   /* the largest half height of a ridge, px (31 x 4 quarters fit a byte) */
 #define WL_STEP 2                                    /* the fewest rows between two ridges (WAVE LAB's) */
@@ -71,7 +71,7 @@ static uint32_t wl_tk = 0xFFFFFFFFu;
 static uint32_t wl_pn[2];                            /* each part's pushes so far: a ridge's ripple rides back with it */
 static uint32_t wl_bpos, wl_brem, wl_bms, wl_bpn[2]; /* the belt's place (1/256 of a ridge) and the remainder of its last step, fm1_ms when it was last moved, the belt step at each part's last push */
 static uint32_t wl_brate = 256u / WL_FLOW_IDLE;     /* the speed now, 1/256 of a line a 16th: eased between 256 / WL_FLOW_PACE (a part sounds) and 256 / WL_FLOW_IDLE (rest) over a beat */
-static int wl_quiet(void)                            /* no part above the wave's floor: both fronts flat (or none yet); off the wave page (its tap shut, the tide line's clock), the transport stopped */
+static int wl_quiet(void)                            /* no part above the wave's floor: both fronts flat (or none yet); off the wave page (its tap shut), the transport stopped */
 {
     if ((int32_t)(wv_want - wv_blk) <= 0)
         return !song.playing;
@@ -676,7 +676,7 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
             y0f = yn;
         }
     }
-    {   /* b11 MORPH polish (design review 2.1): soft ends, as the tide line's: the columns within WL_SOFT px of each end fade into the background */
+    {   /* b11 MORPH polish (design review 2.1): soft ends: the columns within WL_SOFT px of each end fade into the background */
         int32_t row;
         for (c = WL_X0; c <= WL_X1; c++) {
             const int32_t e = c - WL_X0 < WL_X1 - c ? c - WL_X0 : WL_X1 - c;

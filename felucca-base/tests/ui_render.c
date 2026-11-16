@@ -1018,7 +1018,7 @@ static void setup(int s)
     case S_HOME_IDLE: song.playing = 0; song.batt_raw = 570; ui.hot_col = 1; ui.hot_t = 30; break;
     case S_MESSAGE: ui_say("LOADED ", "07 A VERY LONG PATTERN NAME"); break;
     case S_MESSAGE_KEY: ui_message("[SAVE] HOLD TO UNDO"); break;            /* a message with a keycap */
-    case S_SWELL_NEXT: go_home(); song.playing = 1; tk_fresh = 1; tk_cnt = tk_pos = 1; tk_who = 1; tk_sw_k = 1; tk_sw_p = 2; ui_say("SWELL  NEXT LOOP", ""); break;                  /* b11: a SWELL waits for the loop start (header + the tide line's accent dashes) */
+    case S_SWELL_NEXT: go_home(); song.playing = 1; tk_fresh = 1; tk_cnt = tk_pos = 1; tk_who = 1; tk_sw_k = 1; tk_sw_p = 2; ui_say("SWELL  NEXT LOOP", ""); break;                  /* b11: a SWELL waits for the loop start */
     case S_SWELL_LANDED: go_home(); tk_sw_k = 0; tk_fresh = 0; tk_cnt = tk_pos = 0; tk_who = 0; ui_say("SWELL  BASS LINE  C MINOR", ""); break;
     case S_MESSAGE_NOFILE:                          /* a part on a retired engine (ui_input.c gone_notice): NO ENGINE */
         eng_retired(4); memset(snd_said, 0, sizeof snd_said); gone_notice(); break;

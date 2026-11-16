@@ -738,20 +738,17 @@ cards:
     draw_column(3, "WAIT", val, unit, VAL(3u), -1, ICON_NONE);
 }
 
-/* b10 TIDE identity: the tide line's state (ui_draw.c tide_line_draw): 0 off, 1 armed, 2 running, 3 waiting (slack water), 4 paused; the trip's progress (Q16),
- * its beat, the parts it moves */
-static int tide_line_state(uint32_t *prog, uint32_t *beat, uint32_t *mask)
+/* AUTO TIDE's state, as its water draws it (aw_lane, tide_water): 0 off, 1 armed, 2 running, 3 waiting (slack water), 4 paused; a take: 5 its count-in, 6 recording;
+ * 7 a SWELL / RIPPLE waits for the loop start (b14: the tide line under the header that also showed it is gone, owner 16 Nov) */
+static int tide_state(void)
 {
-    uint32_t tk = take_line(prog);                       /* b10 round 9: a take records: the line is REC red (5 the count-in, 6 recording) */
+    uint32_t pr = 0, tk = take_line(&pr);
     if (tk)
         return (int)tk + 4;
     if (!glide_running())
         return 0;
-    *mask = gl.mask & 3u ? gl.mask & 3u : 3u;
     if (gl.armed)
         return 1;
-    *prog = gl.prog;
-    *beat = gl.beats;
     return !song.playing ? 4 : gl.hold ? 3 : 2;
 }
 
@@ -1059,8 +1056,7 @@ static int32_t aw_cov(int32_t y, int32_t lo, int32_t hi)  /* coverage (0 .. 16) 
 static uint32_t aw_fader(uint32_t k) { return gl.target == GT_SEQ ? seqm_fader_of(k) : morph_fader_of(k); }   /* (the fader the glide moves: SOUND, SEQ with TARGET SEQ) */
 static void aw_lane(uint32_t k, int32_t y0)
 {
-    uint32_t prog = 0, beat = 0, mask = 3u;
-    const int st = tide_line_state(&prog, &beat, &mask);
+    const int st = tide_state();
     const uint16_t pc = tide_pc(k), sc = st >= 5 ? T_REC : st == 3 ? T_MID : st == 2 ? pc : ux_mix(T_BG, pc, 45);
     const int32_t sy = y0 + AW_BOT - (int32_t)aw_fader(k) * (AW_BOT - AW_TOP) / 127, ybot = y0 + AW_BOT + 1;
     int32_t x, y;
@@ -1104,10 +1100,10 @@ static void graph_tide(void)
 static uint32_t aw_rh[NSHOWN][AW_ROWS] __attribute__((section(".pool")));
 static void tide_water(int whole)
 {
-    uint32_t k, r, s, h, i, prog = 0, beat = 0, mask = 3u;
+    uint32_t k, r, s, h, i;
     if (!whole) {
         const uint32_t tk = mv_tick(), dt = fm1_ms - aw_ms;
-        const int st = tide_line_state(&prog, &beat, &mask);
+        const int st = tide_state();
         if (!tk || tk == aw_tk)
             return;
         aw_tk = tk;
