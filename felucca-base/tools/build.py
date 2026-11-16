@@ -387,7 +387,7 @@ def build_app():
     v = os.environ.get("FELUCCA_HANDSKIP", "1")     # firmware/src/morph.c (Later 9): 1 = a hand- or MIDI-moved morph fader blends every other block, as a GLIDE's does; unset or 1: every other block (ON in the rc3.1 package, 0 turns it off; host tests compile without it)  [was: unset or 0: every block (the default until the unit sweep)
     if v in ("0", "1"):
         flags.append(f"-DFELUCCA_HANDSKIP={v}")
-    if os.environ.get("DUELL_WAVE_ROWS", "1") == "1":   # ROADMAP Later 21: the wave page sends only the screen rows that changed (ui_scope.c wl_rows); OFF unless asked, +164 B
+    if os.environ.get("DUELL_WAVE_ROWS", "1") == "1":   # ROADMAP Later 21: the wave page sends only the screen rows that changed (ui_scope.c wl_rows); ON by default since the rc3.1 package (0 turns it off), +188 B
         flags.append("-DWL_ROWS_DIFF=1")
     v = os.environ.get("FELUCCA_USB_LAYOUT")   # firmware/src/usb.c: how the USB composite presents itself (#67), 0..3
     if v in ("0", "1", "2", "3"):
