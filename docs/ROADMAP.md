@@ -260,7 +260,6 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 | Question | Default if you don't mind |
 |---|---|
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
-| The grey OCT- / GLO key chips (SAVE confirm, MIXER): teal with an outline on muted mixer cards, or keep them grey. A look choice. | Keep them grey. |
 | D46: the levels of the multis, by ear on the unit. | The musical review's trims are in (PAD SPLIT and WHISPER TIDE 5 to 6 dB down, FINAL REEL and the drones adjusted). Listen to the set with a chord held and without keys; say which multi still sits too loud or too quiet. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones and their beds; the six electronic-genre multis; M16 FINAL REEL's switch bar on a TRAVEL; the hand-and-return of the MORPH fader; call and answer; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; the chord part's rhythm cells.
