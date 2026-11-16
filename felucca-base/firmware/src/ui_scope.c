@@ -737,7 +737,7 @@ static void wl_card(int32_t y0, int32_t y1)
     wl_stack(0, y0, ym);
     wl_stack(1, ym, y1);
 }
-#if WL_ROWS_DIFF   /* (OFF by default: build.py DUELL_WAVE_ROWS=1; not proven on the unit, +164 B of flash) */
+#if WL_ROWS_DIFF   /* (ON in device builds since the rc3.1 package, +188 B: build.py, DUELL_WAVE_ROWS=0 turns it off; B14 emulator: 11 to 19 ms of the link a picture instead of 26) */
 /* Only the rows that changed go to the panel (ROADMAP Later 21: the SPI link costs ~44 ms for a whole picture, 32,640 px): a 32-bit hash of every screen row of what the panel
  * holds, kept in the canvas's unused tail (a half is 68 rows, the canvas holds 124: from row 72 on, a word a screen row; anything else drawn there only costs a row sent, never a
  * wrong picture), the changed rows blitted in runs. Every row after a page change or any redraw of the screen (ui.force: the area may hold anything).

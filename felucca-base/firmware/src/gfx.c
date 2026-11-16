@@ -87,7 +87,7 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
                                    * 68 = a wave lane (ui_scope.c: two lanes a picture), so the wave page still draws once a lane */
 #define CV_MAX (240u * CV_BAND)
 #ifndef WL_ROWS_DIFF
-#define WL_ROWS_DIFF 0                    /* 1: the wave page sends only the rows that changed (ui_scope.c wl_rows; build.py DUELL_WAVE_ROWS=1; ROADMAP Later 21) */
+#define WL_ROWS_DIFF 0                    /* 1: the wave page sends only the rows that changed (ui_scope.c wl_rows; ROADMAP Later 21). Device builds: ON (build.py, DUELL_WAVE_ROWS=0 turns it off); 0 here is the host tests' default */
 #endif
 static uint16_t cv_px[CV_MAX] __attribute__((section(".pool"), aligned(4)));
 static uint32_t cv_w, cv_h;      /* the canvas: width, the rows of this band */
