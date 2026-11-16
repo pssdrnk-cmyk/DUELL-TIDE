@@ -21,6 +21,8 @@
 #include <time.h>
 static void fm1_irq_off(void);
 static void fm1_irq_on(void);
+static unsigned ease_probe[2];
+#define EASE_PROBE(k) (ease_probe[k]++)
 #include "ui_test.c"
 
 static uint8_t nor[0x100000];
@@ -112,13 +114,22 @@ static void probe_mix_block(int32_t *out, uint32_t n, double *t)
 }
 
 /* ---------------------------------------------------------------- a run */
+static double irq_t0, irq_sum, irq_max;                 /* the main loop's interrupts-off windows (MORPH_LOCK ...), ticks: this trip's sum and longest */
+static uint32_t irq_dep, irq_n;
+static void irq_hook(int on)
+{
+    if (!on) { if (!irq_dep++) irq_t0 = wall_ns(); return; }
+    if (irq_dep && !--irq_dep) { double d = wall_ns() - irq_t0; irq_sum += d; irq_n++; if (d > irq_max) irq_max = d; }
+}
 static uint32_t blk;
 static void block_step(void)
 {
     fm1_ms = 10u + (uint32_t)((uint64_t)(++blk) * CTL * 1000u / FS);
     events_block(CTL);
     if ((blk % ((uint32_t)FS / CTL / 60u + 1u)) == 0) {
+        host_irq_hook = irq_hook;
         frame();
+        host_irq_hook = 0;
         while (wave_service())
             ;
         budget_poll();                                  /* (main.c's loop, every frame: the NOTES) */
@@ -148,7 +159,7 @@ static void load(uint32_t slot)
     usb.config = 1;
 }
 static uint32_t voices_on(uint32_t p) { uint32_t n = 0; for (uint32_t i = 0; i < NVOICE; i++) n += trk[p].v[i].active != 0; return n; }
-static uint32_t voices_rel(uint32_t p) { uint32_t n = 0; for (uint32_t i = 0; i < NVOICE; i++) n += trk[p].v[i].active && trk[p].v[i].stage == 4u; return n; }
+static uint32_t voices_rel(uint32_t p) { uint32_t n = 0; for (uint32_t i = 0; i < NVOICE; i++) n += trk[p].v[i].active && !trk[p].v[i].gate; return n; }
 static int cmpf(const void *a, const void *b) { float x = *(const float *)a, y = *(const float *)b; return x < y ? -1 : x > y; }
 
 typedef struct {                                        /* a trip (arrival to arrival) */
@@ -156,7 +167,8 @@ typedef struct {                                        /* a trip (arrival to ar
     char nm[2][24];
     uint32_t nblk, over72[2], over90[2], vmax[2], capmin[2], capmax[2], above[2], fmx[2];
     float mmax[2], hp99[2], hmax[2], hmed[2], xmed[2], xp99[2], rmed[2], mx[2];
-    uint32_t nx[2], rxt[2], nr[2];
+    uint32_t nx[2], rxt[2], nr[2], vd[2], mo[2], nd[2], ep0, ep1, in;
+    double isum, imax, vsum[2], rsum[2];
     double mbr[2], mbx[2];
 } trip_t;
 #define MAXTRIP 16u
@@ -195,6 +207,8 @@ static float run_trips(uint32_t slot, uint32_t mode, uint32_t tidx, uint32_t ntr
                 q->capmin[p] = 99;
             }
             n = 0;
+            ease_probe[0] = ease_probe[1] = 0;
+            irq_sum = irq_max = 0; irq_n = 0;
             nxr[0][0] = nxr[0][1] = nxr[1][0] = nxr[1][1] = 0;
         }
         for (uint32_t p = 0; p < 2u; p++) {
@@ -206,10 +220,13 @@ static float run_trips(uint32_t slot, uint32_t mode, uint32_t tidx, uint32_t ntr
             q->over72[p] += m[p] > (float)BUDGET_LIMIT;
             q->over90[p] += m[p] > 90.0f;
             if (nv > q->vmax[p]) q->vmax[p] = nv;
+            q->vsum[p] += nv;
+            q->rsum[p] += voices_rel(p);
             if (cap < q->capmin[p]) q->capmin[p] = cap;
             if (cap > q->capmax[p]) q->capmax[p] = cap;
             q->above[p] += nv > cap;
             q->fmx[p] += fm6_xt[p].on != 0;
+            q->vd[p] += mxs[p].d != 0; q->mo[p] += mxs[p].motion != 0; q->nd[p] += mxs[p].need != 0;
             if (n < 200000u) hb[p][n] = h[p];
             if (h[p] > q->hmax[p]) q->hmax[p] = h[p];
             {
@@ -223,6 +240,8 @@ static float run_trips(uint32_t slot, uint32_t mode, uint32_t tidx, uint32_t ntr
         n++;
         q->nblk++;
         if (gl.to != lastto || !gl.on) {                /* an arrival: the trip is over */
+            q->ep0 = ease_probe[0], q->ep1 = ease_probe[1];
+            q->isum = irq_sum * kk, q->imax = irq_max * kk, q->in = irq_n;
             for (uint32_t p = 0; p < 2u; p++) {
                 uint32_t c = n < 200000u ? n : 200000u;
                 qsort(hb[p], c, sizeof(float), cmpf);
@@ -287,8 +306,30 @@ static void eng_cost(const char *nm)
         printf("travelcpu: %s %-22s voice: host %6.1f  model %5u  (x%.2f)\n", nm, lb, (best[1] - best[0]) / 4.0 * kk, part_cost(&trk[0]), (best[1] - best[0]) / 4.0 * kk / (double)(part_cost(&trk[0]) ? part_cost(&trk[0]) : 1u));
     }
 }
+static int sound_diff(void)
+{
+    uint32_t e, k, ref = 0xFFFFu, i;
+    char lb[24];
+    for (e = 0; e < NENGINES && strcmp(ENGINES[e]->name, "FM6"); e++) ;
+    for (k = 0; k < ds_count(e); k++) { ds_label(e, k, lb); if (strstr(lb, "HOUSE PIANO")) ref = k; }
+    for (k = 0; k < ds_count(e); k++) {
+        ds_label(e, k, lb);
+        printf("%2u %-20s", k, lb);
+        for (i = 0; i < P_COUNT; i++) {
+            int32_t a = ds_value(ds_get(e, ref), i, i < P_E0 ? TP[i].def : ENGINES[e]->edit[i - P_E0].def), b = ds_value(ds_get(e, k), i, i < P_E0 ? TP[i].def : ENGINES[e]->edit[i - P_E0].def);
+            if (a != b) printf(" %s(%u)=%d/%d", i < P_E0 ? TP[i].label : ENGINES[e]->edit[i - P_E0].label, i, b, a);
+        }
+        printf("   ENV %d %d %d %d\n", ds_value(ds_get(e, k), P_ATK, TP[P_ATK].def), ds_value(ds_get(e, k), P_DEC, TP[P_DEC].def), ds_value(ds_get(e, k), P_SUS, TP[P_SUS].def), ds_value(ds_get(e, k), P_REL, TP[P_REL].def));
+    }
+    load(6u);
+    printf("M07 part 1: preset %u ENV %d %d %d %d  base %d %d %d %d\n", trk[0].preset, trk[0].p[P_ATK], trk[0].p[P_DEC], trk[0].p[P_SUS], trk[0].p[P_REL], mph[0].base[P_ATK], mph[0].base[P_DEC], mph[0].base[P_SUS], mph[0].base[P_REL]);
+    printf("M07 part 2: preset %u ENV %d %d %d %d\n", trk[1].preset, trk[1].p[P_ATK], trk[1].p[P_DEC], trk[1].p[P_SUS], trk[1].p[P_REL]);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
+    if (getenv("TRAVELCPU_DIFF")) return sound_diff();
     uint32_t only = argc > 1 ? (uint32_t)atoi(argv[1]) : 7u, mode = argc > 2 ? (uint32_t)atoi(argv[2]) : GM_JOURNEY, tidx = argc > 3 ? (uint32_t)atoi(argv[3]) : 5u;
     uint32_t ntrip = argc > 4 ? (uint32_t)atoi(argv[4]) : 6u, bpm = argc > 5 ? (uint32_t)atoi(argv[5]) : 0u, slot;
     static trip_t tr[MAXTRIP];
@@ -304,12 +345,17 @@ int main(int argc, char **argv)
         float w;
         if (only && only != slot + 1u) continue;
         w = run_trips(slot, mode, tidx, ntrip, bpm, tr, &nt);
-        printf("travelcpu: M%02u %-16s BPM %3d  %s %s / %s %s  worst model %5.1f %%\n", slot + 1u, mu_names[slot], song.g[G_BPM], ENGINES[eng_idx(trk[0].eng_req)]->name, "", ENGINES[eng_idx(trk[1].eng_req)]->name, "", w);
+        {
+            double vs[2] = {0, 0}, nb = 0, o72[2] = {0, 0}, rs = 0;
+            for (uint32_t j = 0; j < nt; j++) { vs[0] += tr[j].vsum[0]; vs[1] += tr[j].vsum[1]; rs += tr[j].rsum[0]; nb += tr[j].nblk; o72[0] += tr[j].over72[0]; o72[1] += tr[j].over72[1]; }
+            printf("travelcpu: M%02u %-16s BPM %3d  %s / %s  worst model %5.1f %%  voices mean %.2f / %.2f  blocks over the limit %.2f / %.2f %%  p1 releasing %.2f\n", slot + 1u, mu_names[slot], song.g[G_BPM],
+                   ENGINES[eng_idx(trk[0].eng_req)]->name, ENGINES[eng_idx(trk[1].eng_req)]->name, w, nb ? vs[0] / nb : 0, nb ? vs[1] / nb : 0, nb ? 100 * o72[0] / nb : 0, nb ? 100 * o72[1] / nb : 0, nb ? rs / nb : 0);
+        }
         for (uint32_t j = 0; j < nt; j++) {
             const trip_t *q = &tr[j];
             for (uint32_t p = 0; p < 2u; p++)
-                printf("travelcpu:   trip %u p%u -> %-20s model max %5.1f over72 %5u over90 %5u | voices max %u cap %u..%u above %5u | fm6x %5u | host rest med %5.1f | cross %5u blk med %5.1f p99 %5.1f model %5.1f | rest: xt %5u of %5u, morph_begin %4.1f, cross %4.1f\n",
-                       j + 1u, p + 1u, q->nm[p], q->mmax[p], q->over72[p], q->over90[p], q->vmax[p], q->capmin[p], q->capmax[p], q->above[p], q->fmx[p], q->rmed[p], q->nx[p], q->xmed[p], q->xp99[p], q->mx[p], q->rxt[p], q->nr[p], q->nr[p] ? q->mbr[p] / q->nr[p] : 0.0, q->nx[p] ? q->mbx[p] / q->nx[p] : 0.0);
+                printf("travelcpu:   trip %u p%u -> %-20s model max %5.1f over72 %5u over90 %5u | voices max %u cap %u..%u above %5u | fm6x %5u | host rest med %5.1f | cross %5u blk med %5.1f p99 %5.1f model %5.1f | rest: xt %5u of %5u, morph_begin %4.1f, cross %4.1f | valley %5u motion %5u need %5u | blends %6u fm6 retunes %6u | irq off: %6u windows, %8.0f instr/s, longest %7.0f instr\n",
+                       j + 1u, p + 1u, q->nm[p], q->mmax[p], q->over72[p], q->over90[p], q->vmax[p], q->capmin[p], q->capmax[p], q->above[p], q->fmx[p], q->rmed[p], q->nx[p], q->xmed[p], q->xp99[p], q->mx[p], q->rxt[p], q->nr[p], q->nr[p] ? q->mbr[p] / q->nr[p] : 0.0, q->nx[p] ? q->mbx[p] / q->nx[p] : 0.0, q->vd[p], q->mo[p], q->nd[p], q->ep0, q->ep1, q->in, q->isum / ((double)q->nblk * CTL / FS), q->imax);
         }
     }
     return 0;

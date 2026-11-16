@@ -62,8 +62,11 @@
 #define BD_F24 123u             /* .. 24 dB (cal: 115 .. 123) */
 /* DUELL 1.1 item 116: COST-CAL (bench_runs/cost_merged/cost_fit/report.txt, 625 + 124 runs on the unit's own counter, 2026-10-26): per engine the DEARER of the one-core row and the two-core
  * critical-path row, rounded up (the model charges one row on both paths; only WAVE differs by more than 3 %: 93 one core, 119 on the critical path) */
+#ifndef BD_FM6_COST
+#define BD_FM6_COST 152u   /* (b14: a measuring build's experiment only) */
+#endif
 static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) */
-    {&ENG_ANALOG, 115}, {&ENG_FM6, 152}, {&ENG_PHASE, 99}, {&ENG_LOFI, 53}, {&ENG_FORMANT, 173},   /* (FORMANT is the engine VOICE) */
+    {&ENG_ANALOG, 115}, {&ENG_FM6, BD_FM6_COST}, {&ENG_PHASE, 99}, {&ENG_LOFI, 53}, {&ENG_FORMANT, 173},   /* (FORMANT is the engine VOICE) */
     {&ENG_TRIO, 105}, {&ENG_WHEEL, 154}, {&ENG_PHYS, 406}, {&ENG_NOISE, 87}, {&ENG_WAVE, 119},
 };
 /* PHYS is charged 406 for EVERY model (the unit's COST-CAL row, MODAL's dearest sound; audit Q14). On the host the other models cost less: STRING about 0.48 x, MEMB 0.72 x, SYMP 0.86 x (the dearest factory sound of

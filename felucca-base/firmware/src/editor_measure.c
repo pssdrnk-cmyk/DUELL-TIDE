@@ -19,6 +19,25 @@ static int ed_measure_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         ed_b(0);
         for (p = 0; p < 20u; p++)
             ed_b(w[p / 5u] >> (7u * (p % 5u)) & 127u);
+#if DUELL_PROBE_STAGES
+        {                                               /* then the stage probe's longest blocks since the last READ (fx.c prb_stage_pk: morph_begin, part 1, part 2 wait, fm6_xblock, part 1 voices,
+                                                         * the deadline's budget figures), us, 14 bit each, low 7 first; cleared */
+            extern volatile uint32_t prb_stage_pk[6];
+            for (p = 0; p < 6u; p++) {
+                uint32_t v = prb_stage_pk[p] / 24u;
+                prb_stage_pk[p] = 0;
+                ed_b(v & 127u);
+                ed_b(v >> 7 & 127u);
+            }
+        }
+#endif
+        for (p = 0; p < 2u; p++) {                      /* then a byte each: the voices sounding now and the NOTES (bnotes) of part 1, then of part 2 */
+            uint32_t i, nv = 0;
+            for (i = 0; i < NVOICE; i++)
+                nv += trk[p].v[i].active != 0;
+            ed_b(nv);
+            ed_b(bnotes[p]);
+        }
         return 1;
     }
     if (n == 3u && a[0] == 1u && a[1] < GLIDE_TIMES && a[2] <= GM_JOURNEY) {

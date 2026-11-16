@@ -912,7 +912,7 @@ static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effecti
 #define GD_COUNT(c) ((void)0)          /* tests/guards_test.c counts the calls and the runs of the two guarded functions (define GD_COUNT(c) (c##_n++) there) */
 #endif
 /* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
-#if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
+#if (DUELL_TEST_MODE || DUELL_MEASURE) && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)   /* (b14: a measuring build reads them over the editor, editor_measure.c) */
 #define DUELL_PROBE_STAGES 1
 #else
 #define DUELL_PROBE_STAGES 0

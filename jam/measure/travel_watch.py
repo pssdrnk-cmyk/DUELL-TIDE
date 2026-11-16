@@ -20,13 +20,16 @@ def read(t):
     if len(a) < 21 or a[0] != 0:
         raise SystemExit(f"travel_watch: MEASURE READ gave {a!r}: not a measuring build (DUELL_MEASURE=1)?")
     w = [sum(a[1 + 5 * k + i] << (7 * i) for i in range(5)) for k in range(4)]
-    return {"el_us": w[0], "miss": w[1], "shed": w[2], "playing": w[3] & 1, "glide": (w[3] >> 1) & 1, "to": (w[3] >> 2) & 1, "ease": w[3] >> 3}
+    st = [a[21 + 2 * k] | a[22 + 2 * k] << 7 for k in range(6)] if len(a) >= 33 else []
+    nv = [a[33], a[34], a[35], a[36]] if len(a) >= 37 else []
+    return {"st": st, "nv": nv, "el_us": w[0], "miss": w[1], "shed": w[2], "playing": w[3] & 1, "glide": (w[3] >> 1) & 1, "to": (w[3] >> 2) & 1, "ease": w[3] >> 3}
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", default="DUELL"); ap.add_argument("--multi", type=int, default=7); ap.add_argument("--mode", type=int, default=4)
     ap.add_argument("--time", type=int, default=5); ap.add_argument("--secs", type=float, default=240); ap.add_argument("--out", default="")
+    ap.add_argument("--preset", default="", help="ENGINE,INDEX: a factory sound loaded on part 1 after the multi (the editor's PRESET), e.g. 8,10 = FM6 SALOON KEYS")
     a = ap.parse_args()
     c = jd.open_midi(a.port)
     t = c.t
@@ -36,6 +39,9 @@ def main():
         if r[:2] != [0, a.multi - 1]:
             raise SystemExit(f"travel_watch: the load of M{a.multi:02d} gave {r!r}")
         time.sleep(2.0)
+        if a.preset:
+            e, k = (int(x) for x in a.preset.split(","))
+            print("preset:", t.request(8, [e, k], 3.0)); time.sleep(1.0)
         s0 = read(t)
         r = t.request(ED_MEASURE, [1, a.time, a.mode], 1.0)
         if r != [1, 1]:
@@ -49,7 +55,7 @@ def main():
             rows.append(s)
             if out:
                 out.write(json.dumps(s) + "\n"); out.flush()
-            print(f"t {s['t']:6.1f}  el {s['el_pct']:5.1f} %  missed {s['miss_d']:4d}  shed {s['shed_d']:4d}  ease {s['ease']}  to {s['to']}  glide {s['glide']}", flush=True)
+            print(f"t {s['t']:6.1f}  el {s['el_pct']:5.1f} %  missed {s['miss_d']:4d}  shed {s['shed_d']:4d}  ease {s['ease']}  to {s['to']}  glide {s['glide']}" + (f"  stages morph {s['st'][0]} p1 {s['st'][1]} p2wait {s['st'][2]} xblk {s['st'][3]} v1 {s['st'][4]} bud {s['st'][5]} us" if s['st'] else ""), flush=True)
         t.request(ED_MEASURE, [2], 1.0)
         t.out.send(t._mido.Message("stop"))
         el = sorted(x["el_pct"] for x in rows)
