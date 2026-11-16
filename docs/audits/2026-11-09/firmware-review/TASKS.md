@@ -36,7 +36,7 @@ Briefs for the findings in [`REPORT.md`](REPORT.md), in the recommended order. E
 <a id="fr2"></a>
 ## FR2. The keys' MIDI out always sends its note-offs (A1, A2, A5; set aside)
 
-**Set aside (owner, 9 November):** the FM-1 is played DAWless and nothing follows its MIDI out, so these can't be met. Not scheduled; build only if the FM-1 is ever used to play other gear.
+**Set aside (owner, 9 November):** the FM-1 is played DAWless and nothing follows its MIDI out, so these can't be met. Not scheduled; build only if the FM-1 is ever used to play other gear. **Built and parked (B14, 16 November):** branch `fork/b14/midi-fr2`, steps 1-4 as below with a per-key flush (`kb_mo_flush`, from `mode_apply` and the channel change in `events_block`) in place of 27 B of RAM; the three checks fail on jam11 `5a6d223c` and pass there. Measured **+192 B** of flash (the brief's estimate was 70 B), more than the room left, so it waits for USB 48 kHz OFF.
 
 **Why:** three ordinary cases leave a DAW or second synth with hanging notes while the FM-1 itself is silent. Trace: [lanes/A.md](lanes/A.md) A1, A2, A5.
 - **A1:** `key_tone` (`seq.c:1057-1073`) returns early when another key already holds the note, before it sets the key's `kb_mo` bit. The first key's release skips the note (the second holds it); the second key's release has no `kb_mo` bit, so no note-off goes out.
