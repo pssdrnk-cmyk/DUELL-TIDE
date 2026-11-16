@@ -375,7 +375,7 @@ static int key_ok(const step_t *st, uint32_t part)
 }
 static void take_swell(void)
 {
-    uint32_t a0, a1, s2, h0, on0, n, c, i, ok, pr = 0, bt = 0, mk = 0, w0, w1;
+    uint32_t a0, a1, s2, h0, on0, n, c, i, ok, pr = 0, w0, w1;
     step_t keep[64];
     static morph_part_t sv;
     boot(); setup(1, 0, V_POLY);
@@ -391,13 +391,13 @@ static void take_swell(void)
     memcpy(&sv, &mph[1], sizeof sv);
     sw_press(1, 0);
     CHECK("SWELL on the answer: it waits for the loop start, the header says so", tk_sw_k == 1u && said("SWELL  NEXT LOOP") && psig(1) == a0);
-    CHECK("... and the tide line shows it (state 7, accent dots) until it lands", take_line(&pr) == 3u && tide_line_state(&pr, &bt, &mk) == 7);
+    CHECK("... and AUTO TIDE's state says so (7) until it lands", take_line(&pr) == 3u && tide_state() == 7);
     at_step(&trk[1], 20); run(16);
     CHECK("... not at once, not at the bar line: the answer is still the old one halfway through the loop", psig(1) == a0 && tk_sw_k == 1u);
     to_loop_end(1);
     a1 = psig(1);
     CHECK("... at the loop start it lands: a new answer in the mode ANSWER shows now (DOUBLE), a history step", a1 != a0 && tk_m.mode == TA_DOUBLE && !tk_sw_k && tk_cnt == 2 && said("SWELL  DOUBLE"));
-    CHECK("... the tide line is back to nothing", take_line(&pr) == 0u && tide_line_state(&pr, &bt, &mk) == 0);
+    CHECK("... the state is back to nothing", take_line(&pr) == 0u && tide_state() == 0);
     CHECK("... the take is untouched, the sound's End B too", psig(0) == h0 && !memcmp(&mph[1], &sv, sizeof sv));
     CHECK("OCT- + PRESETS (the panel gesture): SWELL goes back one step (the first answer), then the take", gesture(-1) == 1u && said("UNDO SWELL") && psig(1) == a0 && gesture(-1) == 1u && said("UNDO TAKE 1") && psig(1) == s2);
     CHECK("... redo twice brings them back", gesture(1) == 1u && gesture(1) == 1u && said("REDO SWELL") && psig(1) == a1);
@@ -651,35 +651,34 @@ static void take_reply(void)
 }
 static void take_line_test(void)
 {
-    uint32_t pr = 0, beat = 0, mask = 3u;
+    uint32_t pr = 0;
     char l[48];
     boot(); empty_part(0); trk[0].p[P_SLEN] = 64; setup(1, 0, V_POLY);
-    CHECK("no take: the tide line and knob 1 are as they were", take_line(&pr) == 0u && !take_text(l) && tide_line_state(&pr, &beat, &mask) == 0);
+    CHECK("no take: the state and knob 1 are as they were", take_line(&pr) == 0u && !take_text(l) && tide_state() == 0);
     start(); song.rec = 1; run(100);
     at_step(&trk[0], 20);
-    CHECK("a take records: take_line says recording, the tide line is REC red (state 6), the fill is 20 of LEN 64", take_line(&pr) == 2u && tide_line_state(&pr, &beat, &mask) == 6 && pr / 1024u == 20u);
+    CHECK("a take records: take_line says recording (state 6), the fill is 20 of LEN 64", take_line(&pr) == 2u && tide_state() == 6 && pr / 1024u == 20u);
     CHECK("... knob 1's line says TAKE  BAR 2/4", take_text(l) == 1u && !strcmp(l, "TAKE  BAR 2/4"));
     cin_left = 2;
-    CHECK("the count-in of a take: dashes (state 5)", tide_line_state(&pr, &beat, &mask) == 5);
+    CHECK("the count-in of a take: state 5", tide_state() == 5);
     cin_left = 0;
     rec_off();
-    CHECK("closed: the line is as before", take_line(&pr) == 0u && tide_line_state(&pr, &beat, &mask) == 0);
+    CHECK("closed: the state is as before", take_line(&pr) == 0u && tide_state() == 0);
 }
 /* REC from stop arms and waits; the first key starts PLAY at step 1 with its note on step 1 */
 static void take_first_key(void)
 {
-    uint32_t pr = 0, beat = 0, mask = 3u;
     boot(); empty_part(0); setup(1, 0, V_POLY); tide_answer = TA_BASS; tide_answer_on = 0; cin_bars = 0;
     song.sel = 0;
     rec_tap(1u); run(100);
     CHECK("REC from stop arms and waits: no PLAY", (song.rec & 1u) && !song.playing);
-    CHECK("... the tide line shows REC armed (dashes, state 5)", tide_line_state(&pr, &beat, &mask) == 5);
+    CHECK("... the state says REC armed (5)", tide_state() == 5);
     run(500);
     CHECK("... still waiting half a second later", !song.playing);
     input_on(&trk[0], 64, 100); run(40); input_off(&trk[0], 64); run(40);
     CHECK("the first key starts PLAY", song.playing);
     CHECK("... its note is on step 1", trk[0].step[0].n == 1 && trk[0].step[0].note[0] == 64);
-    CHECK("... the tide line turns REC red (state 6)", tide_line_state(&pr, &beat, &mask) == 6);
+    CHECK("... the state turns to recording (6)", tide_state() == 6);
     rec_tap(1u); run(48); land();
     CHECK("REC off: the take and its answer", tk_cnt == 1 && tk_m.ans == 2u);
     stop();

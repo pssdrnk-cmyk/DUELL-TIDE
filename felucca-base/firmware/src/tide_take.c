@@ -904,12 +904,12 @@ static const char *tide_tl_swell(track_t *t, uint32_t ripple)
     return "";
 }
 
-/* ---- the tide line and knob 1's line while a take records (b10 round 9, on the identity's tide line) ---- */
+/* ---- AUTO TIDE's water and knob 1's line while a take records (b10 round 9) ---- */
 static uint32_t take_line(uint32_t *prog)                  /* 0 no take, 1 the count-in, 2 recording (prog: how far through the loop, Q16) */
 {
     uint32_t p, len, idx;
     if (!(song.rec & 3u))
-        return tk_sw_k ? 3u : 0u;                        /* (b11: 3, a SWELL / RIPPLE waits for the loop start: the line's accent dashes) */
+        return tk_sw_k ? 3u : 0u;                        /* (b11: 3, a SWELL / RIPPLE waits for the loop start) */
     if (cin_left)
         return 1;
     if (!song.playing)
