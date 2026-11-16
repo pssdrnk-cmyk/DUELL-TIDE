@@ -595,6 +595,25 @@ static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint
     cv_text_in(x, UT_CAP_BASE - AF_S_CAP_Y - AF_S_CAP_H + 1 - Y_HEAD, w, &AF_S, s, ink, fill);
 }
 #endif
+/* b14 (owner 2026-11-16, option E of work/b14/loopcount): AUTO TIDE's loop dots: while PLAY runs, a 5 px dot a bar of each part's loop beside its capsule (part 1's
+ * from 4 px right of its capsule, part 2's ending 4 px left of its own, on the capsules' middle row), the bar playing in the part's colour, the others dim (take_text's maths:
+ * the part's grid, its loop's length); none for a loop shorter than a bar or longer than 8. draw_head draws the header again each beat while they show */
+static uint32_t tk_spb(const track_t *t);
+static void head_dots(void)
+{
+    uint32_t k, i, n, len, spb, b;
+    for (k = 0; k < 2u; k++) {
+        len = TIDE_PLAY_LEN(&trk[k]);
+        spb = tk_spb(&trk[k]);
+        n = len / spb;
+        if (!n || n > 8u)
+            continue;
+        b = TIDE_PLAY_IDX(&trk[k]) % len / spb;
+        for (i = 0; i < n; i++)
+            cv_rrect((k ? 240 - CAP_X - CAP_W - 2 - (int32_t)n * 7 : CAP_X + CAP_W + 4) + (int32_t)i * 7, CAP_Y + CAP_H / 2 - 3, 5, 5, 2,
+                     i == b ? T_PTHEME(k) : ux_mix(T_BG, T_PTHEME(k), 30), T_BG);
+    }
+}
 static void draw_head(void)
 {
     char tb[40];
@@ -614,10 +633,17 @@ static void draw_head(void)
         cpk = cpu_head(cps, cms, &cpc);
     sig += cpk * 6397u;
 #endif
+    uint32_t dots = !glob && !msg && song.playing && cur_page()->graph == GR_TIDE;
+#if DUELL_TEST_MODE
+    dots &= !cpk;                                      /* (the test build's K2 pills have that place) */
+#endif
+    sig += dots * (beat_n + 1u);                       /* (b14: the loop dots: the header again each beat) */
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
     cv_begin(240, H_HEAD, T_BG);
+    if (dots)
+        head_dots();
     if (!glob) {                                       /* a part page: the capsules */
         uint32_t lit = badge_lit();
         /* both parts' capsules in every mode (owner, test3): the selected part lit, the other dim */
