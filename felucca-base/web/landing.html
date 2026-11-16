@@ -108,7 +108,6 @@
         <div class="panel" id="card-stable">
           <h3>Stable <span class="chip ok">Recommended</span></h3>
           <p>Tested and validated on the fork owner's FM-1. Install this one unless you want to help test.</p>
-          <p class="small">It is an earlier TIDE: its TIDE SETTINGS page is still called MORPH SETTINGS, with no STYLE and no live assist. The pictures and steps on this page are the beta's.</p>
           <p class="small" id="meta-stable">Release data not loaded.</p>
           <p><a class="btn" href="install/#stable">Install Stable</a></p>
         </div>
@@ -121,7 +120,7 @@
             <ul class="plain" id="beta-issues-list"></ul>
             <p class="small"><a href="https://github.com/pssdrnk-cmyk/DUELL-TIDE/blob/jam11/docs/KNOWN_ISSUES.md">All known issues</a></p>
           </div>
-          <p><a class="btn beta" href="install/#beta">Install Beta</a></p>
+          <p><a class="btn beta" id="card-go-beta" href="install/#beta">Install Beta</a></p>
         </div>
       </div>
       <p class="small">The installer backs up your unit's sounds and settings first, checks the package's SHA-256 in your browser before it writes, and keeps a way back to the official firmware. A beta needs one more confirmation.</p>
@@ -171,7 +170,8 @@ try {
       $("meta-" + c).textContent = `Build ${line(e)}, ${e.date || "date unknown"}.`;
     } else {
       $("go-" + c + "-sub").textContent = "not released yet";
-      $("meta-" + c).textContent = c === "stable" ? "No stable build is published yet." : "No beta is published right now.";
+      $("meta-" + c).textContent = c === "stable" ? "No stable build is published yet." : "No beta is published right now: nothing newer than the stable is under test.";
+      if (c === "beta") { $("go-beta").hidden = true; $("card-go-beta").hidden = true; }
     }
   }
   if (m.beta && m.beta.issues.length) {
