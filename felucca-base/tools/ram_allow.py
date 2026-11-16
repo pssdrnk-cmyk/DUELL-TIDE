@@ -156,6 +156,7 @@ ALLOW = {
     "mod_pit": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~96 B); reached from mod_voice",
     "mod_shp_inert": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~86 B); reached from mod_dst_why",
     "mod_space_off": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~44 B); reached from fm1_alnk0_irq",
+    "kb_mo_flush": "event rate (a MODE change or a part's MIDI channel change under a held key), not per sample; review FR2 (B14 MIDI lane, parked: +192 B)",
     "mode_apply": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~222 B); reached from events_block",
     "mono_pick": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~68 B); reached from trk_note_off_1",
     "mono_play": "event rate (a note, a MIDI message, a sequencer step, a lock or a clear), not per sample; in flash at the K6 baseline (~1694 B); reached from trk_note_off_1",

@@ -187,6 +187,38 @@ int main(void)
     bad += check("  and the next try ends the note", mo_w - mo_r == 1u && !((mo_bits[0][62 >> 5] >> (62 & 31u)) & 1u));
     clr();
 
+    /* 10. FR2 (review 2026-11-09, A1 A2 A5): the KEYS' MIDI out sends a note-off for every note-on, on the note-on's channel */
+    {
+        int ok, j;
+        /* A1: SNAP + C major, keys C4 then C#4 (both sound C4), released C then C# */
+        reset();
+        scale_g = 1; root_g = 0; offscale_g = OS_SNAP;
+        fm1_in.notes = 1u << 7; keyboard_block(); events_block(CTL);
+        fm1_in.notes = 3u << 7; keyboard_block(); events_block(CTL);
+        fm1_in.notes = 1u << 8; keyboard_block(); events_block(CTL);
+        fm1_in.notes = 0; keyboard_block(); events_block(CTL); drain();
+        bad += check("FR2 A1: SNAP, C then C# (both C4), released in order: every note-on gets its note-off", ev_n >= 1 && balanced());
+        scale_g = 0;
+        /* A2: a key held across a PLAY MODE change */
+        reset();
+        fm1_in.notes = 1u << 7; keyboard_block(); events_block(CTL);
+        duell_mode_req = DM_STEREO; events_block(CTL);
+        fm1_in.notes = 0; keyboard_block(); events_block(CTL); drain();
+        duell_mode_force(DM_SPLIT);
+        bad += check("FR2 A2: a key held across a MODE change: its note-off goes out", ev_n >= 1 && balanced());
+        /* A5: a key held while part 1's MIDI channel changes: the note-off on the note-on's channel */
+        reset();
+        fm1_in.notes = 1u << 7; keyboard_block(); events_block(CTL);
+        midi_pch[0] = 4;                                 /* (the unit's page sets it from the main loop; the audio side sees it at its next block) */
+        fm1_in.notes = 0; events_block(CTL); drain();
+        ok = ev_n >= 2;
+        for (j = 1; j < ev_n; j++)
+            if (ST(j) == 0x80u && NOTE(j) == NOTE(0) && CHN(j) != CHN(0))
+                ok = 0;
+        bad += check("FR2 A5: channel changed under a held key: the note-off uses the note-on's channel", ok && balanced());
+        midi_pch[0] = 0;
+    }
+
     {   /* the width of the LAYER note on GLO > MIDI (ui_graph.c graph_midi, AF_S at x = 12, the screen is 240 wide) */
         int32_t w = text_w(&AF_S, "LAYER: PART 1 CHANNEL COUNTS");
         printf("  LAYER note width %d px (x 12 .. %d of 240)\n", (int)w, (int)(12 + w));

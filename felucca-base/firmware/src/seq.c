@@ -1060,8 +1060,12 @@ static void input_off(track_t *t, uint32_t note)
  * sounds once; nor sent to MIDI OUT twice); kb_chn[k] counts it as started either way (its release ends exactly the started ones) */
 static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
 {
-    uint32_t x = kb_chord[k][i], mc = trk_midi_ch(trk_index(t));
-    if (midi_local_held(t, x) || TIDE_MIDI_NOTE_HELD(t, x))   /* TIDE hook (H20; review FR8 A4): a MIDI note holds it too (as midi_play): not counted twice by the arp */
+    uint32_t x = kb_chord[k][i], mc = trk_midi_ch(trk_index(t)), out = !(arp_mode(t) && !atgt_bits(t)) || TIDE_REC_ARP_KEYS(t);
+    if (midi_local_held(t, x)) {                    /* (review FR2 A1: another key sent the note-on; this key may be the last to let go, so its release sends the note-off) */
+        kb_mo |= out << k;
+        return;
+    }
+    if (TIDE_MIDI_NOTE_HELD(t, x))                  /* TIDE hook (H20; review FR8 A4): a MIDI note holds it too (as midi_play): not counted twice by the arp */
         return;
     rec_ctone = (uint8_t)i;
     if (duell_mode == DM_LAYER && t == trk)
@@ -1069,7 +1073,7 @@ static void key_tone(uint32_t k, track_t *t, uint32_t i, uint32_t vel)
     else
         input_on(t, x, vel);
     rec_ctone = 0;
-    if (!(arp_mode(t) && !atgt_bits(t)) || TIDE_REC_ARP_KEYS(t)) {   /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on; TIDE hook (H20): but an armed ARP SEQ part's key went to the voices by input_on, so it goes out here, and kb_mo ends it) */
+    if (out) {   /* (ARP on: the arp's notes are what sounds and goes out: arp_note_on; TIDE hook (H20): but an armed ARP SEQ part's key went to the voices by input_on, so it goes out here, and kb_mo ends it) */
         midi_out_event(0x09u | (0x90u | mc) << 8 | x << 16 | vel << 24);
         kb_mo |= 1u << k;
     }
@@ -1147,6 +1151,18 @@ static void key_off(uint32_t k, track_t *t)
             if (!midi_local_held(&trk[1], kb_chord2[k][i]))
                 input_off(&trk[1], kb_chord2[k][i]);
     }
+}
+/* review FR2 (A2, A5): the keys' MIDI out notes end now, on the channels they started on (pch: part 1's | part 2's << 4): before the MODE change lets go
+ * of every held key (mode_apply: their key-ups send nothing), and when a part's channel changed under a held key (events_block). The keys stay held;
+ * their releases send nothing more. Two keys holding one note may send its note-off twice (harmless) */
+static __attribute__((noinline)) void kb_mo_flush(uint32_t pch)
+{
+    uint32_t k, i;
+    for (k = 0; k < 27u; k++)
+        if ((kb_mo >> k) & 1u)
+            for (i = 0; i < kb_chn[k]; i++)
+                midi_out_event(0x08u | (0x80u | (pch >> ((kb_trk[k] & 1u) * 4u) & 15u)) << 8 | (uint32_t)kb_chord[k][i] << 16);
+    kb_mo = 0;
 }
 
 #ifdef FM1_INPUT_LAT
@@ -1674,6 +1690,7 @@ static __attribute__((noinline)) void mode_apply(void)
     m = m < DM_N ? m : DM_SPLIT;
     if (m == duell_mode)
         return;
+    kb_mo_flush(midi_pch[0] | (uint32_t)midi_pch[1] << 4);   /* (review FR2 A2: the held keys' MIDI out notes end: their key-ups below send nothing) */
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         midi_forget_track(i);
@@ -1941,6 +1958,8 @@ static void events_block(uint32_t n)
         transport_req = 0;
     }
     if (midi_route != (uint16_t)midi_route_key()) {   /* ROUT or a part's channel changed: the parts' channels let go of the others */
+        if ((midi_route ^ midi_route_key()) >> 1)
+            kb_mo_flush((uint32_t)midi_route >> 1);   /* (review FR2 A5: a part's channel changed under a held key: its MIDI out notes end on the old channel) */
         midi_route = (uint16_t)midi_route_key();
         if (!(midi_route & 1u))
             midi_route_block();
