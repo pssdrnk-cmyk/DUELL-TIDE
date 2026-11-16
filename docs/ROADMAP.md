@@ -1,23 +1,25 @@
 # TIDE roadmap
 
-Updated 15 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
+Updated 16 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
-## Now: 1.0.0-b13 (jam11)
+## Now: 1.0.0, the first stable (B14)
 
-jam11 is past 1.0.0-b13: the beta `tide-1.0.0-b13` was published on 15 November (a GitHub pre-release, package built from jam11 `a7f4a05b`); the install page offers it as the beta. The owner had Shrub on the FM-1 for part of 15 November and installed 1.0.0-b13 from the site that night, so the unit runs the published beta; its louder output, the 303 voices, the 11 replaced sounds and the five new multis are new on the unit (tested on the computer before). The last TIDE backup in the workspace is `TIDE-backup-2026-11-14-1205` (rc19-test).
+The unit runs **TIDE 1.0.0** since 16 November (flashed 06:50, jam11 `5a6d223c`). The owner played it and called it stable: it is published as `tide-1.0.0` (the Latest release), the `stable` branch points at it, and the install page offers it as the stable. No beta is newer, so the site's beta slot is empty. The last TIDE backup in the workspace is `TIDE-backup-2026-11-16-0650` (taken before the 1.0.0 flash; the owner chose a fresh start, no restore).
+
+Nothing is required for B14. New features need flash room: 1.0.0 leaves 196 B free. Switching USB 48 kHz audio off would give about 4.4 KB back; the owner doesn't use USB audio but keeps it until a concrete feature needs the room.
 
 On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
 
 | What | State |
 |---|---|
-| Item 156: the VOICE 2/2 cell overlaps the text beside it at GLIDE "54 ms" | Planned: a drawing fix, found in b13 |
+| Keep the current patterns when a MULTI loads (owner idea, b13) | Idea: needs flash room (see above) |
 | Reverb on the second core, to free CPU (K4) | Built on the branch `fix/b6-k4` (head `98c8a38`, which holds `e5e0815` plus a console compile fix) only: it is not in jam11 and not on the unit. It costs +1,712 B of flash by its own commit message, so it makes room worse; it needs its own FM-1 sweep with K4 on and off |
 
 ## B13: done (13 to 15 November)
 
-Housekeeping and bug hunting, plus the owner's CHORDS idea, a sound review against his own sample libraries, and the acid. State: Merged into jam11 (PRs 104 to 119); the unit last ran rc19-test, so everything after PR 113 waits for the next flash (Now).
+Housekeeping and bug hunting, plus the owner's CHORDS idea, a sound review against his own sample libraries, and the acid. State: Released in 1.0.0-b13 (PRs 104 to 119); on the unit since 15 November, and in the stable 1.0.0 with the fixes of PRs 129 to 137 (multis on one step grid, no screen blink, MORPH TO keeps its ducking, VOICE 2/2's "54ms", the ACID filter pictures).
 
 - **CHORDS answer** (PR 105): live assist's ANSWER gets a fifth choice, the other part holds each bar's chord of your take as a pad; ROLL or SWELL plays them as short genre stabs.
 - **Footer REC dot** (PR 104, the owner's pick): while recording, the REC mark is the red dot only, so the patch name fits and stops scrolling.
@@ -30,7 +32,7 @@ Housekeeping and bug hunting, plus the owner's CHORDS idea, a sound review again
 - **Five genre multis** (PR 119): M05 HSE CHICAGO, M06 ELEC CRISP (IDM), M20 DUB ROOTS, M22 ELEC OUTRUN (synthwave), M26 AMB JUNGLE (atmospheric DnB).
 - **Housekeeping and docs:** this page and the known issues refreshed (PRs 103, 106); worktrees and merged branches cleaned with backup refs.
 
-Open from b13: the rows under Planned (the ACID filter drawings), and the item 156 VOICE 2/2 cell that overlaps text at GLIDE "54 ms" (row below).
+Open from b13: nothing. The ACID filter drawings and the item 156 VOICE 2/2 cell ("54 ms") were fixed in 1.0.0.
 
 ## B12: done (13 November)
 
@@ -61,7 +63,7 @@ The owner's two tracks from the roadmap review of 12 November (room on the unit,
 
 ## On the unit
 
-The unit last ran TIDE rc19-test (see Now). Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
+The unit runs TIDE 1.0.0 (see Now). Everything built since b7 (b7, b8, b9, b10 rc2 to rc6.8) is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md); the old per-beta tables of this page, every row word for word, are kept in [history/ROADMAP_built_b7-b10.md](history/ROADMAP_built_b7-b10.md). What was only partly done, open, or left to the ear stays here:
 
 | What | State |
 |---|---|
@@ -123,6 +125,7 @@ Numbers are kept as they were (code comments, the CHANGELOG and the audits cite 
 
 | Version | Date | What you got |
 |---|---|---|
+| **1.0.0 (stable)** | 16 November | The first stable TIDE: 1.0.0-b13 plus the fixes found while playing it. Every factory multi steps on one grid so changes roll in without menu diving, no screen blink on quick menus, buttons, dialogs or the count-in, MORPH TO keeps its ducking after a save, small screen fixes ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0)) |
 | 1.0.0-b13 | 15 November | 8 dB louder at the jacks, three 303 voices with a filter that squelches and screams, 23 sounds from human-made patches (the factory drums are gone), live assist's CHORDS answer, five new genre multis (classic house, IDM, dub roots, synthwave, atmospheric drum and bass), the REC dot; it carries b10 to b12, which were never released on their own ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b13)) |
 | 1.0.0-b9 | 11 November | All 18 factory multis re-voiced, genre knobs on HOME page 1 (KNOBS row), AUTO TIDE with EVOLVE and TRAVEL, USB audio off by default, a smaller USB resampler; it carries b7 and b8 ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b9)) |
 | 1.0.0-b6 | 9 November | b5's MORPH wave picture and PART 1 / PART 2 / BOTH, then the WAVE LAB stack with depth at an even pace, two drone scenes with sequences (M17, M18), AMOUNT kept on factory loads, JOURNEY close in level, notes in your register, FM6 End B levels, a 20 MHz screen link, 4.8 KB of flash back ([release](https://github.com/pssdrnk-cmyk/DUELL-TIDE/releases/tag/tide-1.0.0-b6)) |
@@ -133,7 +136,7 @@ Numbers are kept as they were (code comments, the CHANGELOG and the audits cite 
 
 1.0.0-b5 was not released separately: its changes are in 1.0.0-b6. On the unit before the b6 tag (9 November, test-mode build, MORPH on screen): no missed audio blocks and no voices cut over the 16 multis, busiest block 85 % (b5: 83 %); the drones 87 % and 67 %.
 
-Stable: `stable-2026-11-03` (`187e9d0`), the last build you validated. The first numbered stable will be `1.0.0`.
+Stable: `1.0.0` (tag `tide-1.0.0`, branch `stable`, jam11 `5a6d223c`), validated on the owner's unit on 16 November. It replaces `stable-2026-11-03` (that tag keeps the old build).
 
 **Quick reference:** [TIDE settings at a glance](TIDE_QUICK_TABLE.md).
 
@@ -233,7 +236,7 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 - Gate the release channels by CI too (a Stable / Beta release is offered only from a green commit), from the 4 November decisions.
 - ~~Retire the plain build~~ Done (b10 tools lane): `DUELL_TIDE=0`, `jam/check_off.sh`, `jam/off.sha256`, the `tideoff` and `multiv8` groups (and the 1.0 -> 1.1 record converter) are gone, and the `#if DUELL_TIDE` sides are folded; the TIDE image is byte for byte the one before.
 - Test quality notes left from finding 38: ~~split the FM6 budget check by crossing state~~ and ~~one generated multi-name table~~ built in b10 (tools-b); the `F_NONE` hang exemption if it flakes.
-- Workspace clean-up: ~~retire merged worktrees (owner's OK)~~. Done 12 November (b11): 47 merged, clean worktrees removed, 255 stale logs, run outputs and old emulator copies (about 2 GB) moved aside, and 53 merged branches deleted from GitHub (each with a backup ref). Kept: the unmerged and dirty worktrees (`b10-design`, `b10-docs`, `b10-mgr`, `b10-perf`, `b10-rc64`, `b10-splash`, `b10-sweep`, `emu-latest`) and the open lanes'. Left open: 13 remote branches that are not fully merged (`b10-perf*`, `b10-order`, `b10-tide-line`, `b10-wave-idle*`, `b10-docs`, `b10-assist2`), to decide one by one.
+- Workspace clean-up: ~~retire merged worktrees (owner's OK)~~. Done 12 November (b11): 47 merged, clean worktrees removed, 255 stale logs, run outputs and old emulator copies (about 2 GB) moved aside, and 53 merged branches deleted from GitHub (each with a backup ref). Kept: the unmerged and dirty worktrees (`b10-design`, `b10-docs`, `b10-mgr`, `b10-perf`, `b10-rc64`, `b10-splash`, `b10-sweep`, `emu-latest`) and the open lanes'. Left open: 13 remote branches that are not fully merged (`b10-perf*`, `b10-order`, `b10-tide-line`, `b10-wave-idle*`, `b10-docs`, `b10-assist2`), to decide one by one. Again 16 November (B14 start): the merged b13 worktrees and the old b10 / b11 ones (`b10-rc64` WIP-committed first) removed, and 15 merged or superseded branches deleted from GitHub, each with a backup ref.
 - ~~Redraw the pictures that still say DUELL~~ (b12: the cover, the editor header image and the unused DUELL logo files are gone or redrawn in TIDE's look). Still DUELL's artwork: `docs/duell-deck.png` (DUELL 1.1 reference page) and `docs/duell-card.jpg` (`fmhub.json`'s listing image). The USB product name `DUELL` (usb.c) is the host's port and audio-device name; renaming it is a separate decision (saved DAW routings and the bench tools use it).
 - Remove `docs/duell-tide-cover.jpg` and the matching "cover picture" line in `NOTICE.md` (OSCILL/R's artwork, no longer used by the README or the site since b11-web). Set `docs/tide-social.png` as the repository's social preview in the GitHub settings (owner / manager click, 1280x640).
 
@@ -248,7 +251,7 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 | Performance capture | 32 KB pool | Check when it must stay live. |
 | Bus B effect code (a second full copy of the reverbs, delays, SHIM and SPRING) | ~9 KB flash | One copy taking a bus pointer. It touches the effect loops in the audio interrupt: needs the bit-exact pins and a DUEL CPU sweep on the FM-1. 10.6 KB of `_b` symbols by the b4 sizes; re-measure ([review F2](audits/2026-11-09/firmware-review/REPORT.md)). |
 | `midi_play`'s chord-keeping code, written twice | ~150 B flash | One helper called twice; unmeasured (review A7). |
-- **ACID's filter drawing** (b13-acid): the filter-curve pictures (ui_graph.c, twin_graph.c, ui_live.c) still draw RES with the ordinary law, so on WAVE ACID / ACSQ the drawn peak is lower than the one heard. Drawing only; the sound is right. (Doing it for the three drawings estimated at ~70 B, over the 40 B allowed.)
+- ~~**ACID's filter drawing**~~ (b13-acid): done in 1.0.0, the filter pictures on WAVE ACID / ACSQ draw the resonance peak you hear.
 - **Ex-drum slots** (owner, 14 November: the factory drums removed; the sources and their licences in NOTICE.md). Done (b13): all 12 hold tonal sounds at their places (no number moves): #95 NIGHT REESE, #96 PHASE ORGAN, #97 FAT MONO, #98 KALIMBA, #99 NIGHT WIND, #100 RETRO ZAP, #101 STEEL NOISE, #119 HOUSE PIANO (an imported FM piano, YM2612-Dexed-Presets, MIT), #122 PIXEL ARP, #123 AAH CHOIR, #125 PWM STRINGS, #126 MARIMBA (SOUND_RECIPES.md 6.5, 4.15). They are still listed in the PERC / OTHER groups of TYPE (the list group keeps the numbers). Open: two more imported FM6 sounds (an ORGAN stab, FM STRINGS: screened, audit-clean) wait for a place: a sound after #171 is a 176th patch slot, and `UP_SLOTS` 175 is fixed in the store and the editor (a change of its own), or an FM6 sound gives way.
 
 ## Waiting on you
@@ -256,6 +259,7 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 | Question | Default if you don't mind |
 |---|---|
 | Try on the unit: keys recording into an ARP SEQ part, and REC ADD / REPLACE (Released in b3, not yet tried on the unit). | Nothing to decide; say if the nearest-step rule feels wrong. |
+| The grey OCT- / GLO key chips (SAVE confirm, MIXER): teal with an outline on muted mixer cards, or keep them grey. A look choice. | Keep them grey. |
 | D46: the levels of the multis, by ear on the unit. | The musical review's trims are in (PAD SPLIT and WHISPER TIDE 5 to 6 dB down, FINAL REEL and the drones adjusted). Listen to the set with a chord held and without keys; say which multi still sits too loud or too quiet. |
 
 **By ear or eye on the unit** (no homework: noted when the owner meets them in use): the drones and their beds; the six electronic-genre multis; M16 FINAL REEL's switch bar on a TRAVEL; the hand-and-return of the MORPH fader; call and answer; the U2 multi sequences; the MULTIS / PATTERNS preview's readability; polymeter (12 / 16, 15 / 16) against a steady 4 / 4; the chord part's rhythm cells.
