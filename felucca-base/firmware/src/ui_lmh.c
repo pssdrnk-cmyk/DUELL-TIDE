@@ -137,7 +137,7 @@ static void lmh_draw(void)
     for (k = 0; k < NSHOWN; k++) {
         uint16_t c[4];
         const int32_t cx = UT_T4_X0 + UT_T4_DX * (int32_t)k, by = UT_T4_MUTE_Y + LMH_Y0 - LMH_BH / 2;
-        if (lmh_ink(k, c) != lmh.lc[k]) {                /* the part's state changed (muted, sounding, the theme): its labels and bands whole, one strip over the card */
+        if ((uint8_t)lmh_ink(k, c) != lmh.lc[k]) {                /* the part's state changed (muted, sounding, the theme): its labels and bands whole, one strip over the card */
             cv_begin(LMH_X + LMH_W - 2, 2 * LMH_DY + 12, c[0]);
             lmh_card(k, -2, 6 - LMH_Y0);
             cv_blit((uint32_t)(cx + 2), (uint32_t)(UT_T4_MUTE_Y + LMH_Y0 - 6));

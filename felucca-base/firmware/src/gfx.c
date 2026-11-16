@@ -132,9 +132,10 @@ static void gut_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 #define lcd_fill(x, y, w, h, c) gut_fill((x), (y), (w), (h), (c))
 static void gut_arm(uint16_t bg)
 {
-    uint32_t *p = &gut_cov[0][0];
-    while (p < &gut_cov[GUT_H][0])
-        *p++ = 0;
+    uint32_t r, i;
+    for (r = 0; r < GUT_H; r++)   /* (by row: a flat pointer to &gut_cov[GUT_H][0] indexed the row past the end, UB that every UBSan host test stopped on) */
+        for (i = 0; i < 8u; i++)
+            gut_cov[r][i] = 0;
     gut_bg = bg;
     gut_on = 1;
 }
