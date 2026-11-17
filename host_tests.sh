@@ -91,6 +91,8 @@
 #   hashes of the commit before the work. Self-check (name partindep_mut, in the same run): the test is built against a copy of the firmware with ONE shared write put back (the parts' block scratch, morph window, matrix window made one) and must FAIL
 # duckpart: tests/duckpart_test.c (job 3, one-sided ducking): DUCK SRC PART on one part only; the ducked part reads the other part's key of the block before. Renders the old path (shared key read live) and the new one and reports the largest sample
 #   difference and the RMS of the difference in dB: a ducked part 2 differs slightly (a block older key), a ducked part 1 is bit for bit equal
+# travelsound (report only, not in the default list): tests/travel_sound_test.c (B15): M07 and M19 on AUTO TIDE TRAVEL 32 as the owner plays them, rendered by mix_block; the parts' MORPH state at every arrival and the output, hashed (the
+#   same file built in another tree shows whether TRAVEL's destinations sound the same; B15: this tree equals tide-1.0.0 bit for bit, work/b15/cpu/cores/DESIGN.md section 7)
 # audioring: tests/audio_ring_test.c (B15, work/b15/cpu/cores/DESIGN.md): audio.c with AUDIO_RING (the device default since B15): the DMA's free half gets the half rendered at the entry before, bit for bit; the ack at the entry; the debt of a late entry,
 #   a miss only for an entry a whole half late; a 130 % half is no miss; 95 % halves with no debt never step the ease ladder up; a debt that stays does; drift and jitter add up to nothing; the flash duck waits for three silent halves
 # twocore: tests/twocore_sim.c (job 3, rewritten in job 5 to the unit's protocol): core 1 is a pthread running the real tc_c1_step loop (separate 32-bit words, a sequence number, core 1 decides who plays a job) with the computer hal, its job the real
@@ -626,6 +628,7 @@ for t in $want; do case $t in
   midictl) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/midi_control_test tests/midi_control_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run midictl $OUT/midi_control_test ;;
   ease)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ease_test tests/ease_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run ease $OUT/ease_test ;;
   audio)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/audio_test tests/audio_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run audio $OUT/audio_test ;;
+  travelsound) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/travel_sound_test tests/travel_sound_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run travelsound sh -c "$OUT/travel_sound_test 7 4 && $OUT/travel_sound_test 19 4" ;;
   audioring) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/audio_ring_test tests/audio_ring_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run audioring $OUT/audio_ring_test ;;
   benchupdl) $CC -O1 -o $OUT/bench_updl_test tests/bench_updl_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run benchupdl $OUT/bench_updl_test ;;
   otareuse) $CC -O1 -o $OUT/ota_reuse_test tests/ota_reuse_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run otareuse $OUT/ota_reuse_test &&
