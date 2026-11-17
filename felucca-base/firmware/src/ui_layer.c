@@ -801,7 +801,7 @@ static void glo_meters(void)
 /* DUELL 1.1 MIXER, TEMPLATE 4 (item 117; FINAL_V1_09_mixer, ui_tokens.h UT_T4_*): two MUTE cards (round, 116 x 60: the word MUTE n, the hint "Hold GLO" / "and press OCT -" ("OCT +") with its keycaps standing on the text's
  * baselines, the part's small level meter at the right), the four cards under them (grid_on 7, ui_draw.c card_t4_paint). A muted part's card is filled in its colour (ink text) as before */
 static void lmh_card(uint32_t k, int32_t x, int32_t y);   /* (ui_lmh.c) */
-/* a key chip on a MUTE card or cell (fill: the card's); muted, the card is its part's colour, so the chip (the selected part's) gets a 1 px INK ring and still reads (b14, owner's pick) */
+/* a key chip on a MUTE card or cell (fill: the card's); muted, the card is its part's colour (part 1's is the chip's teal), so the chip gets a 1 px INK ring and still reads (b14, owner's pick) */
 static int32_t mute_key(int32_t x, int32_t y, uint32_t id, uint16_t fill, uint32_t mu)
 {
     if (mu) {

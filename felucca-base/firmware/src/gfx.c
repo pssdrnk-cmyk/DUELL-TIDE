@@ -190,7 +190,7 @@ static struct {
 #define T_INK ux.ink             /* text on T_SEL / T_THEME */
 #define T_REC ux.rec             /* REC: fixed red (GREY, MONO: the accent) */
 #define T_RAISE ux.raise         /* a raised area on a surface: stubs, guides, slots, chips, button wells */
-#define T_KEY ux.key             /* a keycap's fill: THEME (b14; MONO: white), its label T_KINK; unavailable: a T_DIM fill, T_BG label */
+#define T_KEY ux.key             /* a keycap's fill: part 1's A colour, teal (b14; MONO: white), its label T_KINK; unavailable: a T_DIM fill, T_BG label */
 #define T_PFILL(k) ux.pfill[(k) & 1u]   /* part k's brief colour at its MORPH fader (the MORPH bar) */
 #define T_PACC(k) ux.pacc[(k) & 1u]
 #define T_PEND(k, b) ux.pend[(k) & 1u][(b) & 1u]   /* part k's colour at its A (0) or B (1) end, whatever the fader */
@@ -317,8 +317,8 @@ static void part_theme(uint32_t part)
         ux.lane = ux.plane[part];
     }
     if (ux.bw) { ux.tint = p->bg[0]; ux.ink = ux.bg; }
-    ux.key = ux.bw ? p->text : ux.pth[part];     /* b14 (owner, 16 November: "teal I guess"): a key chip in the selected part's colour (part 1: teal; also on a GLOBAL page,
-                                                  * whose blend of both reads khaki), its label the better contrast of BG and TEXT on it (MONO: white, label black); was a grey (UI_KEY_PCT) */
+    ux.key = ux.bw ? p->text : ux_stroke(p->r[0], ux.bg, ux.base, p->text);   /* b14 (owner, 17 November: "Always teal"): a key chip is part 1's A colour (TIDE: teal) whatever
+                                                  * part is selected, on GLOBAL pages too; its label the better contrast of BG and TEXT on it (MONO: white, label black); was a grey (UI_KEY_PCT) */
     ux.kink = ux_cr(ux.bg, ux.key) >= ux_cr(p->text, ux.key) ? ux.bg : p->text;
     ux.gen++;                                    /* the text ramps change with the coverage curve and the background */
 }
