@@ -158,6 +158,9 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
                                       P_EQLG, P_EQLF, P_EQMG, P_EQMF, P_EQMQ, P_EQHG, P_EQHF};
         for (j = 0; TIDE_KEEP_ENV && j < sizeof MIX; j++)
             end[MIX[j]] = mp->base[MIX[j]];
+        for (j = X_SUBLVL; TIDE_KEEP_ENV && j <= X_CYPIT; j++)   /* (b14 skips2: and its layers, the SUB and the CYCLE envelope with CYCLE's depth cards: the destinations switched them on under every voice) */
+            if (j <= X_CYSYNC || j >= X_CYCUT2)
+                end[XW_BASE + j] = mp->base[XW_BASE + j];
 #ifdef TRAVELCPU_KEEPVAR                                 /* (tests/travel_cpu_probe.c only: which groups of the destination's values the Original keeps, a bisection of the cost) */
         for (j = 0; j < EXT_P_LEN; j++) {
             uint32_t g = j >= XW_BASE ? ((j - XW_BASE >= X_SUBLVL && j - XW_BASE <= X_CYSYNC) || (j - XW_BASE >= X_CYCUT2 && j - XW_BASE <= X_CYPIT) ? 3u : j - XW_BASE <= X_LFO2 ? 1u : 2u)
