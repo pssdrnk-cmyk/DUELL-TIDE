@@ -5,6 +5,6 @@
  * Mac bench (BD_* rows), a cloud job writes ratio estimates marked est. Included by budget.c after bd_part_t */
 #ifndef DUELL_BUDGET_FEAT_H
 #define DUELL_BUDGET_FEAT_H
-typedef struct { uint32_t ty, drive, par, mod; } bd_tw_t;   /* the TWIN's items: the dearest TYPE's cost, and whether DRIVE, PARALLEL, the modulation run in any of the states (budget_feat.c) */
+typedef struct { uint32_t ty, drive, par, mod, sub, cy, mx, lf, kt; } bd_tw_t;   /* the TWIN's items: the dearest TYPE's cost, and whether DRIVE, PARALLEL, the modulation run in any of the states; b14: the SUB's dearest cost, CYCLE read, the most active matrix slots, the LFOs they read, KEY TRK, in any state (budget_feat.c) */
 static void bd_feat(const track_t *t, bd_part_t *r, const bd_tw_t *wm);   /* wm: the TWIN of the part's MORPH ends as they sound (DUELL 1.1 item 142: bd_part blends each end once) */
 #endif

@@ -2890,14 +2890,33 @@ static __attribute__((noinline)) int part_voice(mixpart_t *m, track_t *t, uint32
     pacc_on[m->pp] = 0;                                 /* (the part has not written its accumulators: part_mix / mix_spread do, a silent part not) */
     m->pan_st = t->p[P_PAN];                             /* (0.2.24: the STORED pan before the matrix writes the block's; pan_follow) */
     m->dist_st = t->p[P_DIST];                           /* (0.2.25: the STORED SAT likewise; dist_follow) */
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    extern volatile uint32_t prb_sum[14];
+    uint32_t pv0 = fm1_ticks(), pv1, pv2;
+#endif
     mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    pv1 = fm1_ticks();
+#endif
     m->spread = pscr[m->pp].spread_on = t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON) && !bs->dm_split;   /* (SPREAD,
                                                          * mix_spread; SPLIT: none, the part is mono on its side) */
     uint32_t sounding = track_render(t, b, n);
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    pv2 = fm1_ticks();
+#endif
     if (m->pp < NSHOWN) {                               /* (the valley and the wash keep the shown parts' state: mxs[NSHOWN]; the host rig's NPART=4 has more) */
         if (sounding) morph_valley(m->pp, b, m->spread ? pscr[m->pp].sbuf : 0, n);
         else morph_vrest(m->pp);
     }
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    if (t == &trk[0]) {
+        uint32_t vi, vc = 0;
+        prb_sum[8] += pv1 - pv0, prb_sum[9] += pv2 - pv1, prb_sum[10] += fm1_ticks() - pv2;
+        for (vi = 0; vi < NVOICE; vi++)
+            vc += t->v[vi].active != 0;
+        prb_sum[12] += 24u * vc;                        /* (part 1's voices active after the render, x 24: reads back as voices x 10 a block) */
+    }
+#endif
     if (sounding)
         t->tail = t->p[P_ITYPE] ? 64 : 16;              /* blocks of DIST / INSERT state to run out after the last
                                                          * voice (the INSERT's: 46 ms, a flanger's feedback) */
@@ -3145,7 +3164,10 @@ static inline __attribute__((always_inline)) void part_end(const mixpart_t *m)  
 /* one synth part into the dry mix and the sends: its stages in order (a part with no voice sounding costs the LFO tick and a cleared buffer only).
  * The callers' morph_begin / morph_end bracket it (mix_block); this function is the one place that fixes the order of a part's stages */
 #if DUELL_PROBE_STAGES
-volatile uint32_t prb_stage_pk[6];                  /* (probe) the longest block's morph_begin, part 1, part 2 wait, fm6_xblock, part 1 voices; [5]: the deadline's budget figures at a half's block 0 (twocore_run.c tcr_deadline: part_dl x2 + global_cost_dl; TIMER4 ticks) */
+volatile uint32_t prb_stage_pk[10];
+#if DUELL_MEASURE
+volatile uint32_t prb_sum[14], prb_nblk;           /* (b14 measuring builds: the stages' totals since the last READ, ticks: 0 before the parts (events, note-ons), 1 morph_begin, 2 part 1, 3 part 2 wait, 4 gather + sends, 5 master, 6 the whole block, 7 part 1's fm6_block, part 1's 8 mod_begin, 9 track_render, 10 morph_valley, 11 part_fx + part_mix + part_end; 12 part 1's FM6 voice renders x 24, 13 their bridge stand-ins x 24) */
+#endif                  /* (probe) the longest block's morph_begin, part 1, part 2 wait, fm6_xblock, part 1 voices; [5]: the deadline's budget figures at a half's block 0 (twocore_run.c tcr_deadline: part_dl x2 + global_cost_dl; TIMER4 ticks) */
 #endif
 static void mix_part(track_t *t, uint32_t n, const blockstate_t *bs)
 {
@@ -3160,9 +3182,16 @@ static void mix_part(track_t *t, uint32_t n, const blockstate_t *bs)
 #if DUELL_PROBE_STAGES
     if (t == &trk[0] && fm1_ticks() - v0 > prb_stage_pk[4]) prb_stage_pk[4] = fm1_ticks() - v0;
 #endif
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    uint32_t pf0 = fm1_ticks();
+#endif
     part_fx(&m);
     part_mix(&m);
     part_end(&m);
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    if (t == &trk[0])
+        prb_sum[11] += fm1_ticks() - pf0;
+#endif
 }
 
 #if DUELL_TWOCORE
@@ -3587,6 +3616,9 @@ static __attribute__((noinline)) void blk_snap(blockstate_t *bs, uint32_t sp)
  * clears and adds into its own accumulators (pacc), mix_gather sums them into mix_l / mix_r / send_*, the sends read them, the master reads the sum. The block's frame setup (SPACE's tap, PERFORM's begin) stays here: a few tests and the PERFORM calls */
 static void mix_block(int32_t *out, uint32_t n)
 {
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    uint32_t mb0 = fm1_ticks();
+#endif
 #if !DUELL_TWOCORE
     uint32_t i;
 #endif
@@ -3611,6 +3643,9 @@ static void mix_block(int32_t *out, uint32_t n)
 #if DUELL_PROBE_STAGES
         uint32_t s0 = fm1_ticks(), s1, s2;              /* (probe: console `cpu` prints each stage's longest block, ticks; cleared there) */
 #endif
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+        prb_sum[0] += s0 - mb0;
+#endif
         int mo = morph_begin(&trk[0], 1);
 #if DUELL_PROBE_STAGES
         s1 = fm1_ticks();
@@ -3625,6 +3660,9 @@ static void mix_block(int32_t *out, uint32_t n)
             uint32_t s3 = fm1_ticks(), d[3] = {s1 - s0, s2 - s1, s3 - s2}, k;
             for (k = 0; k < 3u; k++)
                 if (d[k] > prb_stage_pk[k]) prb_stage_pk[k] = d[k];
+#if DUELL_MEASURE
+            prb_sum[1] += d[0], prb_sum[2] += d[1], prb_sum[3] += d[2];
+#endif
         }
 #endif
     }
@@ -3639,8 +3677,16 @@ static void mix_block(int32_t *out, uint32_t n)
             morph_end(&trk[i]);                         /* .. and the stored ones back */
     }
 #endif
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    uint32_t sg0 = fm1_ticks();                         /* (b14 measuring builds: [6] the gather + the send buses, [7] the master) */
+#endif
     mix_gather(n, &bs);                                 /* the parts' accumulators into mix_l / mix_r / send_* (SPLIT: part 1's sends to bus A) */
     mix_sends(n);
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    uint32_t sg1 = fm1_ticks();
+    if (sg1 - sg0 > prb_stage_pk[6]) prb_stage_pk[6] = sg1 - sg0;
+    prb_sum[4] += sg1 - sg0;
+#endif
     if (meter_on) {
         meter_on--;
         if (dm_split)
@@ -3651,4 +3697,8 @@ static void mix_block(int32_t *out, uint32_t n)
         scope_take_mix(n);
 #endif
     mix_master(out, n, perf, mg);
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    if (fm1_ticks() - sg1 > prb_stage_pk[7]) prb_stage_pk[7] = fm1_ticks() - sg1;
+    prb_sum[5] += fm1_ticks() - sg1, prb_sum[6] += fm1_ticks() - mb0, prb_nblk++;
+#endif
 }

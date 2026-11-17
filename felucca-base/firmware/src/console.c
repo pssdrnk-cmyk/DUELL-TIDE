@@ -399,7 +399,7 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
     }
 #if DUELL_PROBE_STAGES
     {
-        extern volatile uint32_t prb_stage_pk[6];
+        extern volatile uint32_t prb_stage_pk[10];
         uint32_t st[6], k;
         fm1_irq_off();
         for (k = 0; k < 6u; k++) st[k] = prb_stage_pk[k], prb_stage_pk[k] = 0;

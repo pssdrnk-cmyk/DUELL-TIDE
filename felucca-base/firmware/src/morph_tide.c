@@ -149,6 +149,30 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
         if (!((g.flags | h.flags) & (MF_NEVER | MF_ARP | MF_GONE)) && (!((g.flags | h.flags) & MF_PIT) || (morph.cfg & MC_PIT)))
             end[id] = tv;                                /* (a switch, a route, TRIM too: morph_build flips what does not blend at the middle) */
     }
+    {                                                    /* b14 (owner 2026-11-16, "the cpu is skipping hard", M07 TRAVEL 32): the destination brings its instrument (the engine's values, FM6's patch,
+                                                          * the filters, the modulation), the part keeps the multi's mix: its AMP ENV, SAT, the sends, SPREAD, INSERT and EQ, as it keeps its level
+                                                          * and colour. The timbre travels, the phrasing and the production stay. The factory sounds' own (FM6: ATK 10 REL 60 on every one, an
+                                                          * INSERT, more chorus) let M07's short piano stabs ring on and added effects the multi had off: part 1 held 2.9 voices on average against
+                                                          * 0.9, and the unit missed ~30 blocks a minute (work/b14/skips) */
+        static const uint8_t MIX[] = {P_ATK, P_DEC, P_SUS, P_REL, P_DIST, P_CHOR, P_DLY, P_REV, P_SPRD, P_ITYPE, P_IA, P_IB, P_IC, P_IMIX,
+                                      P_EQLG, P_EQLF, P_EQMG, P_EQMF, P_EQMQ, P_EQHG, P_EQHF};
+        for (j = 0; TIDE_KEEP_ENV && j < sizeof MIX; j++)
+            end[MIX[j]] = mp->base[MIX[j]];
+        for (j = X_SUBLVL; TIDE_KEEP_ENV && j <= X_CYPIT; j++)   /* (b14 skips2: and its layers, the SUB and the CYCLE envelope with CYCLE's depth cards: the destinations switched them on under every voice) */
+            if (j <= X_CYSYNC || j >= X_CYCUT2)
+                end[XW_BASE + j] = mp->base[XW_BASE + j];
+#ifdef TRAVELCPU_KEEPVAR                                 /* (tests/travel_cpu_probe.c only: which groups of the destination's values the Original keeps, a bisection of the cost) */
+        for (j = 0; j < EXT_P_LEN; j++) {
+            uint32_t g = j >= XW_BASE ? ((j - XW_BASE >= X_SUBLVL && j - XW_BASE <= X_CYSYNC) || (j - XW_BASE >= X_CYCUT2 && j - XW_BASE <= X_CYPIT) ? 3u : j - XW_BASE <= X_LFO2 ? 1u : 2u)
+                       : j >= P_E0 && j < P_E0 + 7u ? 0u
+                       : (j >= P_FREEA && j <= P_FREED) || j == P_RES2 || j == P_DRV2 || j == P_KTRK || j == P_TWTYPE || j == P_CUT2 || j == P_BLEND ? 1u
+                       : (j >= P_M1SRC && j <= P_L2FADE) || (j >= P_ED_FLT && j <= P_ED_SHP) || (j >= P_LRATE && j <= P_LD_AMP) || (j >= P_L2SYNC && j <= P_L2POL) || (j >= P_LSYNC && j <= P_LPOL) ? 2u
+                       : j == P_E0 + 7u ? 9u : 4u;
+            if (g < 9u && ((tc_keep >> g) & 1u))
+                end[j] = mp->base[j];
+        }
+#endif
+    }
     {                                                    /* the destination's loudness. b10 Later 26: a part as a factory multi loaded it (tide_mu) plays the destination at the
                                                           * part's measured level, both in the Original's class pattern (jrny_mu.h, jrny_ctx.h; 2 TRIM steps a dB): the part's TRIM
                                                           * says nothing alone, it lifts or lowers a sound the multi re-voiced (M06's darker EP +5 dB, M19's sparse bass +12 dB:
@@ -172,6 +196,16 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
         for (id = 0; id < NFM; id++) {
             uint32_t pitem = (id >= 54u && id < 61u) || id == 63u;
             fend[id] = pitem && !(morph.cfg & MC_PIT) ? mp->fb[id] : (uint8_t)clamp(fv[fm_byte(id)], 0, 99);
+        }
+        if (TIDE_KEEP_ENV) {                             /* b14: .. and on FM6 no carrier releases slower than the loudest, whose envelope the part's AMP ENV sets (eng_fm6.c fm6_env_derive): a voice ends
+                                                          * only when every carrier is silent, and SALOON KEYS' quieter carriers (R4 50, 60) kept M07's stabs ringing after the loudest (67) had gone */
+            uint32_t car = fm6_carriers(fv[FP_ALG] & 31u), top = 0, r = 0;
+            for (id = 0; id < 6u; id++)
+                if ((car >> id) & 1u && fv[id * FP_OP + FP_OL] >= top)
+                    top = fv[id * FP_OP + FP_OL], r = fend[id * 9u + 3u];
+            for (id = 0; id < 6u; id++)
+                if ((car >> id) & 1u && fend[id * 9u + 3u] < r)
+                    fend[id * 9u + 3u] = (uint8_t)r;
         }
     }
     MORPH_LOCK();

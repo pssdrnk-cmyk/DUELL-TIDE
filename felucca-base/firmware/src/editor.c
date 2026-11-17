@@ -429,6 +429,9 @@ static int ed_flash_stop(void)
 #include "editor_map.c"                      /* DUELL: the MIDI MAP (cmds 85..88; INFO 4B 01 1) */
 #include "editor_bypass.c"                   /* DUELL 1.1: BYPASS (cmd 89; INFO 5B 01 1) */
 #include "editor_erase.c"                    /* DUELL 0.2.2: ERASE_ALL (cmd 80) */
+#if DUELL_MEASURE
+#include "editor_measure.c"                  /* b14: MEASURE (cmd 91), measuring builds only (DUELL_MEASURE=1) */
+#endif
 
 /* MOTION's reply: the records of track k as (step, id, v14), a lock's id without its MOTION_LOCK bit (a 7-bit SysEx
  * byte); kinds (1.1: the ops 5..7): then one byte per record, in the same order, 0 automation, 1 lock. The query and
@@ -538,6 +541,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         return;
     }
     if (ed_erase_handle(cmd, a, na)) { ed_send(); return; }
+#if DUELL_MEASURE
+    if (ed_measure_handle(cmd, a, na)) { ed_send(); return; }
+#endif
     switch (cmd) {
     case ED_MOTION: {
         track_t *t = &trk[a[0]]; uint32_t rc = 0;
