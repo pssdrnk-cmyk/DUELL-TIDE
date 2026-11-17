@@ -60,8 +60,8 @@ Build options (environment, `0` or `1`; defaults in `firmware/src/felucca.c`, `c
 | `FELUCCA_OTA` | 1 | update entry (needs `FELUCCA_FLASH`) |
 | `FELUCCA_CDC` | 1 in `DUELL_BENCH` / `DUELL_TEST_MODE` builds, else 0 | USB serial console (developer builds only since memory trim 1: the product has no console, no CDC function in the USB descriptors, no MENU > USB SERIAL row) |
 | `FELUCCA_CDC_DEFAULT` | 1 | `0`: the console is built in but left out of USB from boot (as MENU > USB SERIAL OFF) |
-| `FELUCCA_UAC` | 1 | USB audio input (the master output, stereo, 44.1 or 48 kHz) |
-| `FELUCCA_UAC_48K` | 1 | `0`: the USB audio input at 44.1 kHz only, as up to 1.0.5.2 (`firmware/src/usb.c`) |
+| `FELUCCA_UAC` | 1 | USB audio input (the master output, stereo, 44.1 kHz; 48 kHz too with `FELUCCA_UAC_48K=1`) |
+| `FELUCCA_UAC_48K` | 0 (TIDE B14; `firmware/src/usb.c` alone: 1) | `1`: the USB audio input offers 48 kHz too (the host picks; about 4.4 KB of flash). `tools/build.py` sets 0 since TIDE B14: 44.1 kHz only, as up to 1.0.5.2 |
 | `FELUCCA_UART` | 1 | TRS MIDI IN |
 | `FELUCCA_ICONS` | 1 | parameter icons on the knob cards |
 

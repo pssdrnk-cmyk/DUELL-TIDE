@@ -100,7 +100,7 @@ Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you fi
   the notes the sequencer and MIDI IN play, and on SEQ > STEP (stopped) the notes of the step under the cursor;
   the drum grid marks the beats (steps 1, 5, 9, 13); with a scale other than CHROMATIC the keys show it by themselves (MENU > SCALE LEDS: AUTO or OFF);
   a soft light sweeps over the keys at power-on, and with MENU > ANIM IDLE drifts over them while the FM-1 waits
-- **USB:** class-compliant MIDI in and out, and a stereo audio input ("Felucca") at 44.1 or 48 kHz
+- **USB:** class-compliant MIDI in and out, and a stereo audio input ("Felucca") at 44.1 kHz (TIDE B14; a `FELUCCA_UAC_48K=1` build offers 48 kHz too)
   (the computer picks) that records the master output on the computer, no driver needed (always at a fixed level, that of the default MASTER position: MASTER sets only the speaker and headphones;
   on macOS 13–15, set MENU > USB SERIAL to OFF so the audio input appears)
 - **MIDI:** USB and TRS MIDI in; MENU > MIDI > MIDI IN: CH1-4 (channels 1–4 play tracks 1–4), CH5-8, CH9-12 or
