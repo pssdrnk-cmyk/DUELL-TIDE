@@ -274,6 +274,7 @@ Done in b11 (parts of 3 and 5): the emulator, landing page, installer, cheat she
 
 ## Decided against, or kept as is
 
+- The OCT- / GLO key chips (SAVE confirm, MIXER) stay grey. Teal was built and tried (PR 146) and closed unmerged (owner, 17 November: "keep this").
 - WAVE table quality stays (flash). SHIM's PITCH DOWN and MOD stay; cut only if a TIDE feature cannot fit, and then the owner is asked.
 - No real chord steps in ARP SEQ; no cross-engine JRNY; no automatic harmonic rewriting, loudness normalisation or harshness classification.
 - TRAVEL may choose its next sound by level and brightness; the sounds themselves stay unchanged. This doesn't conflict with 'no loudness normalisation' (owner, 9 November).
