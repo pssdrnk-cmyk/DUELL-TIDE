@@ -318,6 +318,7 @@ static void hang(void)                                  /* hung: until core 0 st
 /* ------------------------------------------------------------ the fault plan: which job gets what --- */
 static __thread uint32_t c1_job, c1_seen, torn_left, prev_arg, prev_chk;   /* core 1's: the job it is looking at, the torn reads left */
 static __thread uint32_t c1_rev, c1_rord;              /* .. TIDE K4: it is a reverb job; reverb jobs seen */
+static __thread uint32_t c1_mst;                       /* .. B15 MPJ: it is a master job (no fault is aimed at one) */
 static uint32_t c0_rord, c0_rarg;                       /* core 0's: reverb jobs posted; the last arg it stored was a reverb job's */
 static uint32_t trim_job, ahead_left;
 static volatile uint32_t c0_wait;                       /* the ownership audit's gate: the job core 0 is waiting for (set when it loads the done word) */
@@ -352,6 +353,9 @@ static uint32_t ld_hook(const uint32_t *p, uint32_t v)
         if (p == &tc_mb.job && v != c1_seen) {          /* core 1 looks at a new job: what happens first (delays before it looks, a hang, torn reads, a misread snapshot) */
             c1_seen = c1_job = v;
             c1_rev = __atomic_load_n(&tc_mb.arg, __ATOMIC_ACQUIRE) == (CTL | TCJ_REV);   /* (TIDE K4: a reverb job; its own count picks the k4_* faults) */
+            c1_mst = __atomic_load_n(&tc_mb.arg, __ATOMIC_ACQUIRE) == (CTL | TCJ_MST);   /* (B15 MPJ: a master job: run as it comes) */
+            if (c1_mst)
+                return v;
             if (c1_rev) {
                 c1_rord++;
                 if (fault == F_K4_LATE_PRE && c1_rord % 37u == 5u)
@@ -517,6 +521,10 @@ static void sim_job(uint32_t arg)
 {
     uint32_t j = c1_job;
     uint64_t s0, s1;
+    if (c1_mst) {                                       /* B15 MPJ: the master of the block before */
+        tc_job_run(arg);
+        return;
+    }
     if (c1_rev) {                                       /* TIDE K4: a reverb job */
         if (fault == F_K4_LATE_POST && c1_rord % 41u == 7u)
             wait_clock(tcb.dl + 1000u);                 /* slow after its claim: core 0 takes it back, then waits for done (before the wait limit) */
@@ -632,9 +640,10 @@ static uint64_t blk_hash(const int32_t *o, uint32_t n)
         h = (h ^ (uint32_t)o[i]) * 0x100000001B3ull;
     return h;
 }
+static int sim_defer;                                  /* B15 MPJ, the pipelined run: blocks 0 .. 2's masters stay open past sim_block (the half's slices are read at its end) */
 static void record(const int32_t *out, uint32_t skip)
 {
-    if (nblk < MAXB) {
+    if (nblk < MAXB && !sim_defer) {
         uint32_t i;
         R->bh[nblk] = blk_hash(out, 2u * CTL);
         R->skip[nblk] = (uint8_t)skip;
@@ -765,6 +774,8 @@ static void sim_block(int32_t *out, uint32_t n)
     }
     __atomic_store_n(&sim_blk, b % TCR_BLOCKS, __ATOMIC_RELEASE);
     mix_block(out, n);
+    if (!sim_defer)
+        MPJ_SYNC();                                     /* (B15 MPJ: the scenes read out after every block and change settings between any two blocks, which the unit does only between halves: the master job is closed here; the pipelined run is mpipe_child) */
     if (tcr.job) {
         int32_t lo = (int32_t)(raw_ticks() - tcr.lim), eo = (int32_t)(raw_ticks() - (tcr.t0 + TCR_HALF_TICKS));   /* where core 0 is when it leaves the block's wait: never later than the limit, so never later than the half's end */
         R->lim_blocks++;
@@ -832,6 +843,7 @@ static void child_run(uint32_t id, int kind)
     }
     fault = kind;
     tcb.off = (uint8_t)!k4_run(kind);                   /* (TIDE K4: the runs aimed at part 2's job numbers keep the reverb on core 0) */
+    mpj.off = tcb.off;                                  /* (B15 MPJ: the same for the master: a master job would move the job numbers they aim at) */
 #if TC_MEAS
     if (kind == F_VRUN || kind == F_VWIN)
         tcm_cfg.vrun = 4u, tcm_cfg.vwin_k = 8u;         /* (BENCHT3's two rules switched on, as `bench vrun 4` and `bench vwin 8` do; the BENCHT4 defaults have them off) */
@@ -874,6 +886,63 @@ static void run(uint32_t id, int kind, res_t *out)
     *out = *R;
 }
 
+/* ------------------------------------------------------------ B15 MPJ: the master pipelined --- */
+/* 1.5 s of both parts playing (chords, the three buses sent, WIDTH, BASS MONO and COMP on so every master stage runs), rendered as the unit does it: four blocks back to back into
+ * a half's four slices, read at the half's end. on: blocks 0 .. 2's masters on core 1 (twocore_run.c MPJ); off: on core 0. The two outputs must be equal bit for bit. Reports through
+ * R: hash, the masters posted (c1_jobs), waited (busb_c1), faults (nblk), core 1 up (up) */
+static int mpipe_child(int on)
+{
+    const uint32_t halves = (uint32_t)(1.5 * FS) / HALF_FRAMES;
+    static int32_t hb[TCR_BLOCKS][2 * CTL];
+    uint32_t h, b, i;
+    uint64_t hs = 0xCBF29CE484222325ull;
+    host_tracks_init();
+    xfade_sine(&trk[0]);
+    xfade_sine(&trk[1]);
+    for (i = 0; i < 2u; i++) {
+        trk[i].p[P_CHOR] = 40; trk[i].p[P_DLY] = 50; trk[i].p[P_REV] = 70;
+    }
+    wd_sel = 140; bm_sel = 2; cmp_cfg = 20u | 4u << 8 | 10u << 16 | 20u << 24;
+    fault = F_NONE;
+    tcb.off = 0;
+    mpj.off = (uint8_t)!on;
+    tc_host_ld_hook = ld_hook;
+    tc_host_st_hook = st_hook;
+    time_adj(0);
+    __atomic_store_n(&tc_host_ticks, BASE_TICKS, __ATOMIC_RELAXED);
+    tc_host_c1_started = start_core1;
+    tc_arm();
+    tc_boot(1u, 0, 0);
+    while (thr_on && !__atomic_load_n(&c1_ready, __ATOMIC_ACQUIRE))
+        cpu_relax();
+    sim_defer = 1;
+    for (h = 0; h < halves; h++) {
+        if (h == 2u)
+            for (i = 0; i < 4u; i++)
+                trk_note_on(&trk[0], 48u + 7u * i, 110), trk_note_on(&trk[1], 36u + 5u * i, 100);
+        if (h == halves / 2u)
+            for (i = 0; i < 4u; i++)
+                trk_note_off(&trk[0], 48u + 7u * i), trk_note_off(&trk[1], 36u + 5u * i);
+        for (b = 0; b < TCR_BLOCKS; b++)
+            sim_block(hb[b], CTL);
+        for (b = 0; b < TCR_BLOCKS; b++)                /* (the half's end: block 3's master was core 0's, so blocks 0 .. 2's are closed: mix_gather waited for each) */
+            for (i = 0; i < 2u * CTL; i++)
+                hs = (hs ^ (uint32_t)hb[b][i]) * 0x100000001B3ull;
+    }
+    sim_defer = 0;
+    __atomic_store_n(&quit, 1u, __ATOMIC_RELEASE);
+    if (thr_on)
+        pthread_join(thr, 0);
+    R->hash = hs;
+    R->c1_jobs = mpjs.posted;
+    R->busb_c1 = mpjs.waited;
+    R->nblk = mpjs.faults;
+    R->up = tc.up;
+    R->strike = tc.strike;
+    R->s = tcs;
+    return 1;
+}
+
 /* ------------------------------------------------------------ the fallback fade (item 11) --- */
 /* part 2 holds 8 notes, its number drops to 3 (the budget), then the jobs pause (a very late block) or core 1 stops (a wrong check value): the notes above the number fade
  * out at once, in the next block, the oldest first, with no step in the output over 1.5 x the calm before it (budget_test.c (d)'s rule). Reports through R */
@@ -889,6 +958,7 @@ static int trim_child(int how)
     bnotes[0] = bnotes[1] = bnotes1[0] = bnotes1[1] = 0;
     fault = how == 1 ? F_TRIMSTOP : F_NONE;
     tcb.off = 1;                                        /* (the trim names its job by number: the stage-1 sequence) */
+    mpj.off = 1;
     tc_host_ld_hook = ld_hook;
     tc_host_st_hook = st_hook;
     time_adj(0);
@@ -1389,6 +1459,31 @@ int main(int argc, char **argv)
         expect("K4: the late path of the reverb job was taken (k4_late_pre)", k4tot[F_K4_LATE_PRE].late > 0);
         expect("K4: a very late reverb job was waited for (k4_late_post)", k4tot[F_K4_LATE_POST].vlate > 0);
         expect("K4: a reverb job past its wait limit went silent (k4_vlong)", k4tot[F_K4_VLONG].silent > 0);
+    }
+    if (!tsan && !audit) {
+        /* B15 MPJ: the master pipelined against the master on core 0 */
+        static res_t m[2];                              /* (static: a res_t holds a whole run's blocks, too big for the stack) */
+        int on;
+        for (on = 0; on < 2; on++) {
+            pid_t pid;
+            int st = 0;
+            memset(R, 0, sizeof *R);
+            fflush(stdout);
+            pid = fork();
+            if (pid == 0)
+                _exit(mpipe_child(on) ? 0 : 1);
+            waitpid(pid, &st, 0);
+            m[on] = *R;
+            if (!(WIFEXITED(st) && WEXITSTATUS(st) == 0))
+                m[on].hash = 0;
+        }
+        {
+            char what[300];
+            snprintf(what, sizeof what, "B15 MPJ: the master of blocks 0 .. 2 on core 1 during the next block (posted %u, waited %u, faults %u) gives the same output bit for bit as the master on core 0 (posted %u); core 1 up, no strike, no pause",
+                     m[1].c1_jobs, m[1].busb_c1, m[1].nblk, m[0].c1_jobs);
+            if (expect(what, m[1].hash && m[1].hash == m[0].hash && m[1].c1_jobs > 100u && m[0].c1_jobs == 0u && m[1].nblk == 0u && m[1].up && !m[1].strike && !m[1].s.pauses && !m[1].s.refused))
+                printf("twocore: ok %s\n", what);
+        }
     }
     if (!tsan && !audit) {
         /* the fallback fade (item 11) */

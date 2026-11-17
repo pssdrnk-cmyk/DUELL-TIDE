@@ -93,8 +93,10 @@ static void start_core1(void)
 
 /* a block as audio.c gives it: at a half's start the main loop's pass (tc_watch, tc_trim_poll) and the half's clock */
 static uint32_t nb;
-static void blk(int32_t *o)
+static int32_t hb[TCR_BLOCKS][2 * CTL];                /* (B15 MPJ: a half's four slices, as the DMA has them: blocks 0 .. 2's masters may run on core 1 during the next block, so a half is read at its end) */
+static void blk(void)
 {
+    int32_t *o = hb[nb % TCR_BLOCKS];
     if (nb % TCR_BLOCKS == 0u) {
         __atomic_store_n(&tc_host_ticks, 24000u + nb / TCR_BLOCKS * TCR_HALF_TICKS, __ATOMIC_RELAXED);
         tc_watch(__atomic_load_n(&tc_host_ticks, __ATOMIC_RELAXED) / (TC_TICKS_PER_US * 1000u));
@@ -107,7 +109,7 @@ static void blk(int32_t *o)
         ;
 }
 
-typedef struct { uint64_t h; uint32_t mode, up, failed, posted, in_time, late, vlate, silent, refused, nofit, p2_in, p2_blocks, c1_jobs; } res_t;
+typedef struct { uint64_t h; uint32_t mode, up, failed, posted, in_time, late, vlate, silent, refused, nofit, p2_in, p2_blocks, c1_jobs, mst, mst_faults; } res_t;
 static const uint8_t N8[4] = {48, 52, 55, 59};
 /* rtype >= 0 (B14): the reverb scenes on M01: REVERB TYPE rtype from the load, then within the hashed blocks the next type (rev_switch's change-over), the REVERB
  * BYPASS on (rev_byp's fade and clear) and off again, and back to rtype: the change-overs run on whichever core holds the reverb, and must be the same samples */
@@ -115,8 +117,7 @@ static int rtype = -1;
 static void child(uint32_t i, int two, res_t *r)
 {
     uint64_t h = 1469598103934665603ull;
-    int32_t o[2 * CTL];
-    uint32_t b, p, k;
+    uint32_t b, p, k, q;
     __atomic_store_n(&tc_host_tick_div, 0u, __ATOMIC_RELAXED);   /* (the clock stands still but for the half starts) */
     __atomic_store_n(&tc_host_ticks, 24000u, __ATOMIC_RELAXED);
     load_multi(rtype >= 0 ? 0u : i);                                      /* (the load before the start: power() clears the session, not the core) */
@@ -129,7 +130,7 @@ static void child(uint32_t i, int two, res_t *r)
         sched_yield();                                  /* (core 1 in its loop before the first job: it reads the job word as its start) */
     song.master_q12 = 2048;
     for (b = 0; b < 40u * HALF_FRAMES / CTL; b++)
-        blk(o);
+        blk();
     SEL_BOTH = 1;                                       /* (as budget_test.c today: both parts, the fader in the middle) */
     morph_set_fader(64);
     bnotes[0] = bnotes[1] = 0;
@@ -150,10 +151,11 @@ static void child(uint32_t i, int two, res_t *r)
             if (b == 140u * q)
                 song.g[G_RTYPE] = (int16_t)rtype;
         }
-        blk(o);
-        if (b >= 80u * HALF_FRAMES / CTL)
-            for (k = 0; k < 2u * CTL; k++)
-                h = (h ^ (uint32_t)o[k]) * 1099511628211ull;
+        blk();
+        if (b >= 80u * HALF_FRAMES / CTL && b % TCR_BLOCKS == TCR_BLOCKS - 1u)   /* (the half's end: its last block's master was core 0's, so all four slices are final) */
+            for (q = 0; q < TCR_BLOCKS; q++)
+                for (k = 0; k < 2u * CTL; k++)
+                    h = (h ^ (uint32_t)hb[q][k]) * 1099511628211ull;
     }
     __atomic_store_n(&quit, 1u, __ATOMIC_RELEASE);
     if (thr_on)
@@ -161,6 +163,7 @@ static void child(uint32_t i, int two, res_t *r)
     r->h = h, r->mode = dm_split ? DM_SPLIT : duell_mode_req, r->up = tc.up, r->failed = tc.failed;
     r->posted = tcbs.posted, r->in_time = tcbs.in_time, r->late = tcbs.late, r->vlate = tcbs.vlate, r->silent = tcbs.silent, r->refused = tcbs.refused, r->nofit = tcbs.nofit;
     r->p2_in = tcs.in_time, r->p2_blocks = tcs.blocks, r->c1_jobs = tc.job;
+    r->mst = mpjs.posted, r->mst_faults = mpjs.faults;
 }
 static int run(uint32_t i, int two, res_t *r)
 {
@@ -207,6 +210,8 @@ int main(void)
             k4 += b.posted > 0;
             snprintf(what, sizeof what, "multi %2u: the reverb went to core 1 and every job came back in time (posted %u, in time %u), part 2 too (%u of %u blocks)", i + 1u, b.posted, b.in_time, b.p2_in, b.p2_blocks);
             kchk(what, b.posted > 0 && b.in_time == b.posted && !b.late && !b.vlate && !b.silent && !b.refused && b.p2_in > b.p2_blocks / 2u);
+            snprintf(what, sizeof what, "multi %2u: B15 MPJ: blocks 0 .. 2's masters ran on core 1 during the next block (%u), no fault (%u), the render bit for bit as above", i + 1u, b.mst, b.mst_faults);
+            kchk(what, b.mst > 0 && !b.mst_faults && !a.mst);
         }
     }
     printf("k4multis: %u of %u renders bit for bit (26 multis, STRESS TEST, 6 reverb scenes); %u with the reverb on core 1, %u DUEL\n", eq, MU_SLOTS + 7u, k4, duel);

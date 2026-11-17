@@ -120,9 +120,8 @@ static __attribute__((noinline)) void master_dac(int32_t *out, uint32_t n)   /* 
     mdac_g = g;
 }
 
-static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 -> 24 bit */
+static void audio_post(int32_t *out, uint32_t n)        /* after the block's master: USB, the DAC's level, the click */
 {
-    mix_block(out, n);
 #if FELUCCA_UAC
     uac_tap(out, n);                                    /* the USB audio input: the same master output, at the fixed level */
 #endif
@@ -133,6 +132,44 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
             scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)(out[2u * i] >> OUT_SHIFT);
 #endif
     click_render(out, n, OUT_SHIFT);                    /* the metronome (click.c): the DAC only, not USB */
+}
+#if MPJ_ON
+/* B15 MPJ (twocore_run.c): a block whose master went to core 1 gets its DAC steps after the next block's mix (its master is closed by then: mix_gather waited for it), in block
+ * order; the click's request is the one the block had at its own end (the next block's events may have set a new one, which waits) */
+static struct { int32_t *out; uint8_t creq, on; } mpj_q;
+static void mpj_fin(void)
+{
+    uint8_t r;
+    if (!mpj_q.on)
+        return;
+    MPJ_SYNC();
+    r = click_req;
+    click_req = mpj_q.creq;
+    audio_post(mpj_q.out, CTL);
+    click_req = r;
+    mpj_q.on = 0;
+}
+#endif
+static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 -> 24 bit */
+{
+#if MPJ_ON
+#if FELUCCA_UAC
+    mpj.io_busy = uac.feed != 0;                        /* (USB audio reads the block's output at once: its master stays on core 0) */
+#endif
+    mix_block(out, n);
+    mpj_fin();                                          /* (the block before's, if its master was on core 1) */
+    if (mpj.posted_now) {
+        mpj_q.out = out;
+        mpj_q.creq = click_req;
+        click_req = 0;
+        mpj_q.on = 1;
+        return;
+    }
+    audio_post(out, n);
+#else
+    mix_block(out, n);
+    audio_post(out, n);
+#endif
 }
 
 /* DUELL 0.2.11, the flash duck (SPEC 6.3): a flash erase keeps the interrupts off for its whole time (~40 ms; the device's own
@@ -428,6 +465,9 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             audio_block(o + 2u * b, CTL);
             guard_block(t0, tb, b / CTL);               /* b11: the in-buffer guard (above) */
         }
+#if MPJ_ON
+        mpj_fin();                                      /* (none waits here: the half's last block keeps its master on core 0; a safety net) */
+#endif
         if (duck_on || duck_g < 32768u)                 /* (the flash duck: only around a flash write) */
             duck_half(o);
 #if !AUDIO_RING
