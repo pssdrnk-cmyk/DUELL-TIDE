@@ -433,6 +433,9 @@ static volatile uint8_t mix_xf, mix_split;
 /* TIDE_PLAYSEL (1.0.0-b7, an experiment, docs/design/PLAY_MODE_SELECT.md): ALGORITHM on the BOTH pages picks PART 1, LAYER, STEREO, DUEL, PART 2 (the selection and the
  * output MODE in one; ui_input.c algo_input) and SPLIT plays in STEREO / DUEL with BOTH (seq.c keyboard_block). 0: b6's PART 1 / BOTH / PART 2, SPLIT LAYER's only.
  * (kept as a name: the PLAY-mode selector rows are always in) */
+#ifndef DUELL_MEASURE
+#define DUELL_MEASURE 0          /* b14: 1 = a measuring build: the editor's MEASURE command (editor_measure.c, cmd 91) reads the CPU line and launches AUTO TIDE over USB; tools/build.py env DUELL_MEASURE=1. 0 in every other build */
+#endif
 #ifndef TIDE_PLAYSEL
 #define TIDE_PLAYSEL 1
 #endif
@@ -909,7 +912,7 @@ static uint8_t tide_lvc2[NLIVE];  /* TIDE live graphs: the latest note's effecti
 #define GD_COUNT(c) ((void)0)          /* tests/guards_test.c counts the calls and the runs of the two guarded functions (define GD_COUNT(c) (c##_n++) there) */
 #endif
 /* the per-stage timing of the console probe `cpu` (fx.c, eng_fm6.c, console.c): the unit's test-mode build only (the host tests have no TIMER4); defined with or without TIDE (b10 round 5, finding 35: it sat inside #if DUELL_TIDE, undefined elsewhere) */
-#if DUELL_TEST_MODE && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)
+#if (DUELL_TEST_MODE || DUELL_MEASURE) && !defined(__x86_64__) && !defined(__i386__) && !defined(__aarch64__)   /* (b14: a measuring build reads them over the editor, editor_measure.c) */
 #define DUELL_PROBE_STAGES 1
 #else
 #define DUELL_PROBE_STAGES 0

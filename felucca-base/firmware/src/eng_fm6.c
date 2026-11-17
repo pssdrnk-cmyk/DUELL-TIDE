@@ -467,6 +467,12 @@ static void fm6_sync(const track_t *t)
         if (k == 7u && fm6_eff[tr].env[0] == ek[0] && fm6_eff[tr].env[1] == ek[1] && fm6_eff[tr].env[2] == ek[2] && fm6_eff[tr].env[3] == ek[3])
             return;
     }
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    {                                                   /* (b14 measuring builds: [8] counts part 1's full syncs a READ, 24 a sync: it reads back as the count) */
+        extern volatile uint32_t prb_stage_pk[10];
+        if (!tr) prb_stage_pk[8] += 24u;
+    }
+#endif
     fm6_eff[tr].gen = fm6_pgen[tr];
     memcpy(fm6_eff[tr].p, fm6_patch[tr], FP_SIZE);
     fm6_eff[tr].mk = mk;
@@ -516,10 +522,15 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
     uint32_t tr = (uint32_t)(t - trk);
     if (tr >= NTRK)
         return;
+#if DUELL_PROBE_STAGES
+    extern volatile uint32_t prb_stage_pk[10];
+#endif
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    uint32_t fb0 = fm1_ticks();
+#endif
     fm6_sync(t);
     if (tr < NLIVE && (fm6_xt[tr].on || fm6_xt[tr].dirty || fm6_xt[tr].drain)) {   /* (drain: a drain that waited for a crossing to end still runs after it, even with no stand-in mapped) */
 #if DUELL_PROBE_STAGES
-        extern volatile uint32_t prb_stage_pk[6];
         uint32_t x0 = fm1_ticks();
         fm6_xblock(t, tr);
         if (!tr && fm1_ticks() - x0 > prb_stage_pk[3]) prb_stage_pk[3] = fm1_ticks() - x0;
@@ -533,6 +544,20 @@ static void fm6_block(track_t *t)       /* once a block and part: the macros, th
     }
     fm6_unison_sync(t);
     fm6_lfo_terms(&fm6_lfot[tr], fm6_eff[tr].p, fm6_lfo_sample(&fm6_lfo[tr]), fm6_lfo_delay(&fm6_lfo[tr]));
+#if DUELL_PROBE_STAGES && DUELL_MEASURE
+    if (!tr && fm1_ticks() - fb0 > prb_stage_pk[9]) prb_stage_pk[9] = fm1_ticks() - fb0;
+    {
+        extern volatile uint32_t prb_sum[14];
+        if (!tr) {
+            uint32_t i;
+            prb_sum[7] += fm1_ticks() - fb0;
+            for (i = 0; i < FM6_POLY; i++) {            /* (13: part 1's live FM6 notes x 24) */
+                const fm6_note_t *q = (const fm6_note_t *)ENG_MEM(0) + i;
+                prb_sum[13] += q->live ? 24u : 0u;
+            }
+        }
+    }
+#endif
 }
 
 /* the SUB LAYER's follow (chain_sub.c; FM6 owns its amplitude, the operators' envelopes are inside its signal): voice v's level as the block just rendered left it, 0..1 as Q15. It is the loudest

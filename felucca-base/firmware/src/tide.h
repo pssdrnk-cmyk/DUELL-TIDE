@@ -67,6 +67,9 @@ static uint32_t tide_arp_out(const track_t *t, uint8_t *out, uint32_t m, uint32_
 #define TIDE_ARP_OUT(t, out, m, vel) tide_arp_out((t), (out), (m), (vel))   /* (seq.c arp_seq_notes: TIDE's dynamics on an ARP SEQ step, D1; a thinned chord's two voices, MR4) */
 /* H20 (seq.c): live recording into an ARP SEQ part (audit liverec L2, R2) and the MIDI hooks of review FR8. TIDE_LIVEREC: the sections of seq.c only TIDE has (rec_put, arp_dur, rec_arp_note ..); a hook that returns, returns from the function it stands in */
 #define TIDE_LIVEREC 1
+#ifndef TIDE_KEEP_ENV
+#define TIDE_KEEP_ENV 1   /* b14: TRAVEL keeps the part's mix (AMP ENV, SAT, sends, SPREAD, INSERT, EQ) (morph_tide.c morph_to_sound); 0 only in tests/travel_cpu_probe.c's before/after */
+#endif
 /* b10 round 8 (tide_take.c, work/b10/specs/PERF_PHASE1.md): TAKE + ANSWER. tk_fresh_v: the newest edit is a take or a roll (ui.c clears it when a load or a lock edit takes the undo copy); tk_said: a roll
  * wrote its own header message (ui_input.c morph_act then leaves "ROLLED A" out) */
 static uint8_t tk_fresh_v __attribute__((section(".pool"))), tk_reset_v __attribute__((section(".pool"))), tk_roll_mask __attribute__((section(".pool")));   /* (the pool: zero at power-on, and the RAM rule's .bss line has no room)

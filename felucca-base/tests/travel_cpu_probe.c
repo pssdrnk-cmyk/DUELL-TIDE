@@ -1,0 +1,422 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* b14 (owner 2026-11-16: "the cpu is skipping hard on the house chord tide. m07 -> travel 32 bars"): AUTO TIDE TRAVEL (GM_JOURNEY) or EVOLVE (GM_WANDER) on a factory multi, as
+ * the owner plays it: the multi loaded as MODE RECALL loads it, MODE and TIME set, K1 launched (glide_launch to B, both parts), the multi's own BPM, sequences and arps. Each audio
+ * block is rendered by a copy of fx.c mix_block (the one-core path) with a timer around each part, so the two-core picture can be built: core 0 = the globals + part 1, core 1 =
+ * the globals + part 2 (budget.c budget_solve2's two-core rule charges the globals on both). Per block: the model's charge per core for the voices sounding (global_cost +
+ * part_fixed + voices x part_cost, as tests/glide_cpu_test.c model_now), the voices against the part's number (bnotes), the host cost (ticks x the SAT / EQ scale = host
+ * instructions, % of a half: 3281.25 = 100). Per trip (arrival to arrival): the sounds each part travels to, and the worst of each.
+ *   build/host/travel_cpu_probe [SLOT1 [MODE [TIME [TRIPS [BPM]]]]]   SLOT1 1..26 the list number (0: all), MODE 4 TRAVEL / 3 EVOLVE, TIME the GLIDE_BARS index (5 = 32 bars),
+ *   TRIPS arrivals to run (6), BPM 0 = the multi's own.  TRAVELCPU_V=1 per-trip voice detail.
+ * Report only (host_tests.sh travelcpu, not in the default list: it times code). -O1 -fno-builtin, like the load bench. */
+#define UI_TEST_NO_MAIN 1
+#define FELUCCA_FLASH 1
+#define HOST_IRQ_HOOK 1
+#ifndef HOST_MIX_FOLLOWS_MASTER
+#define HOST_MIX_FOLLOWS_MASTER 1
+#endif
+#define TRAVELCPU_KEEPVAR 1
+#include <stdint.h>
+static uint32_t tc_keep;                                 /* (b14 skips2: TRAVELCPU_KEEP bits: 0 FM6 knobs, 1 filters + twin, 2 modulation (matrix, LFOs, ENV 2), 3 SUB + CYCLE, 4 the rest) */
+static double tc_p1sum; static unsigned long tc_p1n;
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+static void fm1_irq_off(void);
+static void fm1_irq_on(void);
+static unsigned ease_probe[2];
+#define EASE_PROBE(k) (ease_probe[k]++)
+#include "ui_test.c"
+
+static uint8_t nor[0x100000];
+static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
+static int st_erase(uint32_t off) { memset(nor + off, 0xFF, 4096); return 0; }
+static int st_prog(uint32_t off, const void *src, uint32_t n) { const uint8_t *s = src; uint32_t i; for (i = 0; i < n; i++) nor[off + i] &= s[i]; return 0; }
+static uint32_t irq_save(void) { return 0; }
+static void irq_restore(uint32_t f) { (void)f; }
+static uint32_t fl_jedec_ram(void) { return 0x856014u; }
+static void fl_plain_window_init(void) {}
+
+#if defined(__x86_64__) || defined(__i386__)
+static double wall_ns(void) { uint32_t lo, hi; __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi)); return (double)(((uint64_t)hi << 32) | lo); }
+#else
+static double wall_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (double)ts.tv_sec * 1e9 + (double)ts.tv_nsec; }
+#endif
+static int32_t ob[2 * CTL];
+#define FULL 3281.25
+
+/* ---------------------------------------------------------------- the host scale (as tests/glide_cpu_test.c host_k) */
+static track_t *calscene(unsigned notes)
+{
+    track_t *t;
+    ui_power_on(); frame();
+    song.playing = song.rec = 0; transport_req = 0; gl.on = gl.armed = 0; morph_musical = 0;
+    host_preset(&trk[0], 0, 0);
+    t = &trk[0];
+    t->p[P_VOICE] = V_POLY; t->p[P_AMODE] = AM_OFF; t->p[P_SUS] = 127; t->p[P_CHRD] = 0;
+    t->p[P_DIST] = t->p[P_DLY] = t->p[P_REV] = t->p[P_CHOR] = 0; t->p[P_ITYPE] = 0;
+    t->p[P_EQLG] = t->p[P_EQMG] = t->p[P_EQHG] = 0;
+    trk[1].p[P_MUTE] = 1;
+    memset(mxs, 0, sizeof mxs); memset(mxv, 0, sizeof mxv); memset(fm6_xt, 0, sizeof fm6_xt);
+    for (unsigned i = 0; i < notes; i++) trk_note_on(t, 48 + 4 * i, 100);
+    return t;
+}
+static double calns(void)
+{
+    double best = 1e30;
+    for (unsigned k = 0; k < 20; k++) { mix_block(ob, CTL); while (wave_service()) ; }
+    for (unsigned r = 0; r < 15; r++) {
+        double a = wall_ns();
+        for (unsigned i = 0; i < 200; i++) mix_block(ob, CTL);
+        a = (wall_ns() - a) / (200.0 * CTL);
+        if (a < best) best = a;
+    }
+    return best;
+}
+static double host_k(void)
+{
+    double n1, sat, eq;
+    track_t *t;
+    t = calscene(1); n1 = calns();
+    t = calscene(1); t->p[P_DIST] = 64; sat = calns() - n1;
+    t = calscene(1); t->p[P_EQLG] = 40; t->p[P_EQMG] = 40; t->p[P_EQHG] = 40; eq = calns() - n1;
+    return ((double)BD_SAT / sat + (double)(BD_EQ_BASE + 3u * BD_EQ_BAND) / eq) / 2.0;
+}
+
+/* ---------------------------------------------------------------- fx.c mix_block, the one-core path, with a timer around each part: t[0] the globals, t[1] part 1, t[2] part 2 (ticks) */
+static void probe_mix_block(int32_t *out, uint32_t n, double *t)
+{
+    int perf;
+    blockstate_t bs;
+    int32_t mg = MIX_MG();
+    double a = wall_ns(), b, c, d;
+    mix_events(n);
+    sp_tap = snd_st != SND_OFF && (perf_space + mod_space_off() > 0 || sv.spc > 0);
+    if (perf_idle()) { perf_tick(n); perf = 0; } else perf = perf_begin(n);
+    blk_snap(&bs, sp_tap);
+    wv_blk++;
+    bs.wv_blk = wv_blk;
+    bs.wv_on = (uint32_t)((int32_t)(wv_want - wv_blk) > 0);
+    b = wall_ns();
+    for (uint32_t i = 0; i < NLIVE; i++) {
+        double m0 = wall_ns();
+        int mo = morph_begin(&trk[i], 1);
+        t[3 + i] = wall_ns() - m0;
+        mix_part(&trk[i], n, &bs);
+        if (mo) morph_end(&trk[i]);
+        if (!i) c = wall_ns();
+    }
+    d = wall_ns();
+    mix_gather(n, &bs);
+    mix_sends(n);
+    if (meter_on) { meter_on--; if (dm_split) meter_scan(n); }
+    mix_master(out, n, perf, mg);
+    t[0] = (b - a) + (wall_ns() - d);
+    t[1] = c - b;
+    t[2] = d - c;
+}
+
+/* ---------------------------------------------------------------- a run */
+static double irq_t0, irq_sum, irq_max;                 /* the main loop's interrupts-off windows (MORPH_LOCK ...), ticks: this trip's sum and longest */
+static uint32_t irq_dep, irq_n;
+static void irq_hook(int on)
+{
+    if (!on) { if (!irq_dep++) irq_t0 = wall_ns(); return; }
+    if (irq_dep && !--irq_dep) { double d = wall_ns() - irq_t0; irq_sum += d; irq_n++; if (d > irq_max) irq_max = d; }
+}
+static uint32_t blk;
+static void block_step(void)
+{
+    fm1_ms = 10u + (uint32_t)((uint64_t)(++blk) * CTL * 1000u / FS);
+    events_block(CTL);
+    if ((blk % ((uint32_t)FS / CTL / 60u + 1u)) == 0) {
+        host_irq_hook = irq_hook;
+        frame();
+        host_irq_hook = 0;
+        while (wave_service())
+            ;
+        budget_poll();                                  /* (main.c's loop, every frame: the NOTES) */
+        {                                               /* .. the unit runs the two-core rule (budget_poll: bd_two_now), the host has no core 1 */
+            bd_t b;
+            uint32_t n2[2];
+            bd_build(&b);
+            budget_solve2(&b, n2, 1);
+            bnotes[0] = (uint8_t)n2[0], bnotes[1] = (uint8_t)n2[1];
+        }
+    }
+}
+static void load(uint32_t slot)
+{
+    memset(nor, 0xFF, sizeof nor);
+    ui_power_on();
+    flash_ok = 1;
+    multi_boot();
+    frame();
+    ui_prefs2 |= PREF_MODE_RECALL >> 16;
+    project_load(slot);
+    blk = 0;
+    gl.on = gl.armed = 0;
+    transport_req = 0;
+    song.playing = song.rec = 0;
+    mods_off = 0;
+    usb.config = 1;
+}
+static uint32_t voices_on(uint32_t p) { uint32_t n = 0; for (uint32_t i = 0; i < NVOICE; i++) n += trk[p].v[i].active != 0; return n; }
+static uint32_t voices_rel(uint32_t p) { uint32_t n = 0; for (uint32_t i = 0; i < NVOICE; i++) n += trk[p].v[i].active && !trk[p].v[i].gate; return n; }
+static int cmpf(const void *a, const void *b) { float x = *(const float *)a, y = *(const float *)b; return x < y ? -1 : x > y; }
+
+typedef struct {                                        /* a trip (arrival to arrival) */
+    int32_t to[2];                                      /* the sound each part travels to (morph_to_of at the end gone to; -1 the Original / a roll) */
+    char nm[2][24];
+    uint32_t nblk, over72[2], over90[2], vmax[2], capmin[2], capmax[2], above[2], fmx[2];
+    float mmax[2], hp99[2], hmax[2], hmed[2], xmed[2], xp99[2], rmed[2], mx[2];
+    uint32_t nx[2], rxt[2], nr[2], vd[2], mo[2], nd[2], ep0, ep1, in;
+    double isum, imax, vsum[2], rsum[2];
+    double mbr[2], mbx[2];
+} trip_t;
+#define MAXTRIP 16u
+static float hb[2][200000], hx[2][200000], hr[2][200000];
+static uint32_t nxr[2][2];
+static double kk;
+static uint32_t verbose;
+
+/* the worst model charge per core over the whole run, for the summary */
+static float run_trips(uint32_t slot, uint32_t mode, uint32_t tidx, uint32_t ntrip, uint32_t bpm, trip_t *tr, uint32_t *nt)
+{
+    uint32_t i, k = 0, lastto, n = 0, lim;
+    float worst = 0;
+    load(slot);
+    gl.mode = (uint8_t)mode;
+    gl.time = (uint8_t)tidx;
+    if (bpm) song.g[G_BPM] = (int16_t)bpm;
+    for (i = 0; i < 24u; i++) block_step();
+    glide_launch(1u, 3u, 0u);
+    for (i = 0; i < 300u; i++) { block_step(); mix_block(ob, CTL); while (wave_service()) ; }
+    lastto = gl.to;
+    memset(tr, 0, sizeof *tr * MAXTRIP);
+    lim = (uint32_t)((uint64_t)GLIDE_BARS[tidx % GLIDE_TIMES] * 4u * 60u * FS / CTL / (uint32_t)(song.g[G_BPM] ? song.g[G_BPM] : 120)) * (ntrip + 1u) + 20000u;
+    for (i = 0; i < lim && k < ntrip; i++) {
+        double t[5];
+        float h[2], m[2];
+        trip_t *q = &tr[k];
+        block_step();
+        probe_mix_block(ob, CTL, t);
+        while (wave_service())
+            ;
+        if (!q->nblk) {
+            for (uint32_t p = 0; p < 2u; p++) {
+                q->to[p] = mph[p].n[0] && !morph_stale(&trk[p], &mph[p]) ? morph_to_of(p, gl.to & 1u) : -1;
+                tide_end_name(p, gl.to & 1u, q->nm[p]);
+                q->capmin[p] = 99;
+            }
+            n = 0;
+            ease_probe[0] = ease_probe[1] = 0;
+            irq_sum = irq_max = 0; irq_n = 0;
+            nxr[0][0] = nxr[0][1] = nxr[1][0] = nxr[1][1] = 0;
+        }
+        for (uint32_t p = 0; p < 2u; p++) {
+            uint32_t g = global_cost(), nv = voices_on(p), cap = bnotes[p];
+            m[p] = trk[p].p[P_MUTE] ? 0 : (float)(g + part_fixed(&trk[p]) + nv * part_cost(&trk[p])) / 100.0f;
+            h[p] = (float)((t[0] + t[1 + p]) / CTL * kk / FULL * 100.0);
+            if (!p) tc_p1sum += t[1], tc_p1n++;
+            if (m[p] > q->mmax[p]) q->mmax[p] = m[p];
+            if (m[p] > worst) worst = m[p];
+            q->over72[p] += m[p] > (float)BUDGET_LIMIT;
+            q->over90[p] += m[p] > 90.0f;
+            if (nv > q->vmax[p]) q->vmax[p] = nv;
+            q->vsum[p] += nv;
+            q->rsum[p] += voices_rel(p);
+            if (cap < q->capmin[p]) q->capmin[p] = cap;
+            if (cap > q->capmax[p]) q->capmax[p] = cap;
+            q->above[p] += nv > cap;
+            q->fmx[p] += fm6_xt[p].on != 0;
+            q->vd[p] += mxs[p].d != 0; q->mo[p] += mxs[p].motion != 0; q->nd[p] += mxs[p].need != 0;
+            if (n < 200000u) hb[p][n] = h[p];
+            if (h[p] > q->hmax[p]) q->hmax[p] = h[p];
+            {
+                uint32_t f = morph_fader_of(p), x = f > 4u && f < 123u;   /* (the crossing: the fader inside its ends) */
+                if (x && m[p] > q->mx[p]) q->mx[p] = m[p];
+                if (nxr[p][x] < 200000u) (x ? hx : hr)[p][nxr[p][x]++] = h[p];
+                if (!x) { q->nr[p]++; q->rxt[p] += fm6_xt[p].on || fm6_xt[p].dirty || fm6_xt[p].drain; q->mbr[p] += t[3 + p] / CTL * kk / FULL * 100.0; }
+                else q->mbx[p] += t[3 + p] / CTL * kk / FULL * 100.0;
+            }
+        }
+        n++;
+        q->nblk++;
+        if (verbose >= 2u && (n % 2000u) == 1u) {           /* (b14 skips2: the sends as they sound, and the global part of the budget) */
+            uint32_t gi, gf;
+            bd_global(&gi, &gf);
+            printf("travelcpu:     blk %6u fader %3u/%3u  sends p1 CHO %3d DLY %3d REV %3d  p2 CHO %3d DLY %3d REV %3d  global idle %u fx %u cost %u\n", n, morph_fader_of(0), morph_fader_of(1),
+                   trk[0].p[P_CHOR], trk[0].p[P_DLY], trk[0].p[P_REV], trk[1].p[P_CHOR], trk[1].p[P_DLY], trk[1].p[P_REV], gi, gf, global_cost());
+            for (uint32_t p = 0; p < 2u; p++)
+                for (uint32_t x = 0; x < 2u; x++) {
+                    const int8_t *c = morph_cur(&mph[p], x);
+                    printf("travelcpu:       p%u end %c  CHO %3d DLY %3d REV %3d ITYPE %2d SAT %3d VOICE %d DETUNE %3d SLOPE %d", p + 1u, 'A' + (int)x, c[P_CHOR], c[P_DLY], c[P_REV], c[P_ITYPE], c[P_DIST], c[P_VOICE], c[P_DETUNE], c[P_FREED]);
+                    for (uint32_t s = 0; s < NMSLOT; s++) {
+                        const int8_t *q = &c[MSLOT_ID(s)];
+                        if (q[0] && q[1] && q[2])
+                            printf("  [%d>%d %d%s]", q[0], q[1], q[2], q[1] >= MD_BUS && q[1] <= MD_RDAMP ? " BUS" : q[1] == MD_SPACE ? " SPACE" : q[1] >= MD_CHO && q[1] <= MD_REV ? " SEND" : "");
+                    }
+                    printf("\n");
+                }
+        }
+        if (verbose >= 3u && n == 1u) {                 /* (b14 skips2: what the far end changes from the Original, part 1) */
+            const morph_part_t *mp = &mph[0];
+            const int8_t *c = morph_cur(mp, (gl.to & 1u)), *cx = morph_curx(mp, (gl.to & 1u));
+            const engine_t *en = ENGINES[eng_idx(mp->eng)];
+            printf("travelcpu:     p1 end %c differs:", 'A' + (int)(gl.to & 1u));
+            for (uint32_t id = 0; id < P_COUNT; id++)
+                if (c[id] != mp->base[id])
+                    printf(" %s %d>%d", id < P_E0 ? TP[id].label : en->edit[id - P_E0].label, mp->base[id], c[id]);
+            for (uint32_t id = 0; id < NX; id++)
+                if (cx[id] != mp->base[XW_BASE + id])
+                    printf(" %s %d>%d", XTP[id].label, mp->base[XW_BASE + id], cx[id]);
+            printf("\n");
+        }
+        if (gl.to != lastto || !gl.on) {                /* an arrival: the trip is over */
+            q->ep0 = ease_probe[0], q->ep1 = ease_probe[1];
+            q->isum = irq_sum * kk, q->imax = irq_max * kk, q->in = irq_n;
+            for (uint32_t p = 0; p < 2u; p++) {
+                uint32_t c = n < 200000u ? n : 200000u;
+                qsort(hb[p], c, sizeof(float), cmpf);
+                q->hp99[p] = hb[p][(c - 1u) * 99u / 100u];
+                q->hmed[p] = hb[p][(c - 1u) / 2u];
+                q->nx[p] = nxr[p][1];
+                if (nxr[p][1]) { qsort(hx[p], nxr[p][1], sizeof(float), cmpf); q->xmed[p] = hx[p][(nxr[p][1] - 1u) / 2u]; q->xp99[p] = hx[p][(nxr[p][1] - 1u) * 99u / 100u]; }
+                if (nxr[p][0]) { qsort(hr[p], nxr[p][0], sizeof(float), cmpf); q->rmed[p] = hr[p][(nxr[p][0] - 1u) / 2u]; }
+            }
+            lastto = gl.to;
+            k++;
+            if (!gl.on) break;
+        }
+    }
+    *nt = k;
+    return worst;
+}
+
+
+/* TRAVELCPU_ENG=name: every factory sound of that engine on part 1 alone (the selected part's PATCHES load: select_engine, apply_preset), its effects off, 1 then 5 held notes
+ * at velocity 100, the cost from 0.1 s to 1.1 s after the note-on as the sound plays it (its own envelopes: FM6 skips an operator that has gone quiet): host instructions a voice
+ * a sample, the model's figure beside it (part_cost) */
+static double held_ns(uint32_t nb)
+{
+    double s = 0;
+    for (uint32_t i = 0; i < nb; i++) {
+        double a = wall_ns();
+        mix_block(ob, CTL);
+        s += wall_ns() - a;
+        while (wave_service()) ;
+    }
+    return s / ((double)nb * CTL);
+}
+static void eng_cost(const char *nm)
+{
+    uint32_t e, k, b0 = (uint32_t)(0.1 * FS / CTL), nb = (uint32_t)(1.0 * FS / CTL);
+    static const uint8_t NOTES[5] = {48, 52, 55, 59, 62};
+    for (e = 0; e < NENGINES && strcmp(ENGINES[e]->name, nm); e++) ;
+    if (e >= NENGINES) { printf("travelcpu: no engine %s\n", nm); return; }
+    for (k = 0; k < ds_count(e); k++) {
+        double c[2], best[2] = {1e30, 1e30};
+        char lb[24];
+        for (uint32_t r = 0; r < 3u; r++)
+            for (uint32_t w = 0; w < 2u; w++) {
+                track_t *t = &trk[0];
+                ui_power_on(); frame();
+                song.playing = song.rec = 0; transport_req = 0; gl.on = gl.armed = 0;
+                song.sel = 0;
+                select_engine(e);
+                apply_preset(k);
+                frame();
+                t->p[P_VOICE] = V_POLY; t->p[P_AMODE] = AM_OFF; t->p[P_CHRD] = 0;
+                t->p[P_DLY] = t->p[P_REV] = t->p[P_CHOR] = 0;
+                trk[1].p[P_MUTE] = 1;
+                for (uint32_t i = 0; i < 20u; i++) { mix_block(ob, CTL); while (wave_service()) ; }
+                for (uint32_t i = 0; i < (w ? 5u : 1u); i++) trk_note_on(t, NOTES[i], 100);
+                for (uint32_t i = 0; i < b0; i++) { mix_block(ob, CTL); while (wave_service()) ; }
+                c[w] = held_ns(nb);
+                if (c[w] < best[w]) best[w] = c[w];
+            }
+        ds_label(e, k, lb);
+        printf("travelcpu: %s %-22s voice: host %6.1f  model %5u  (x%.2f)\n", nm, lb, (best[1] - best[0]) / 4.0 * kk, part_cost(&trk[0]), (best[1] - best[0]) / 4.0 * kk / (double)(part_cost(&trk[0]) ? part_cost(&trk[0]) : 1u));
+    }
+}
+static int sound_diff(void)
+{
+    uint32_t e, k, ref = 0xFFFFu, i;
+    char lb[24];
+    for (e = 0; e < NENGINES && strcmp(ENGINES[e]->name, "FM6"); e++) ;
+    for (k = 0; k < ds_count(e); k++) { ds_label(e, k, lb); if (strstr(lb, "HOUSE PIANO")) ref = k; }
+    for (k = 0; k < ds_count(e); k++) {
+        ds_label(e, k, lb);
+        printf("%2u %-20s", k, lb);
+        for (i = 0; i < P_COUNT; i++) {
+            int32_t a = ds_value(ds_get(e, ref), i, i < P_E0 ? TP[i].def : ENGINES[e]->edit[i - P_E0].def), b = ds_value(ds_get(e, k), i, i < P_E0 ? TP[i].def : ENGINES[e]->edit[i - P_E0].def);
+            if (a != b) printf(" %s(%u)=%d/%d", i < P_E0 ? TP[i].label : ENGINES[e]->edit[i - P_E0].label, i, b, a);
+        }
+        printf("   ENV %d %d %d %d\n", ds_value(ds_get(e, k), P_ATK, TP[P_ATK].def), ds_value(ds_get(e, k), P_DEC, TP[P_DEC].def), ds_value(ds_get(e, k), P_SUS, TP[P_SUS].def), ds_value(ds_get(e, k), P_REL, TP[P_REL].def));
+    }
+    load(6u);
+    printf("M07 part 1: preset %u ENV %d %d %d %d  base %d %d %d %d\n", trk[0].preset, trk[0].p[P_ATK], trk[0].p[P_DEC], trk[0].p[P_SUS], trk[0].p[P_REL], mph[0].base[P_ATK], mph[0].base[P_DEC], mph[0].base[P_SUS], mph[0].base[P_REL]);
+    printf("M07 part 2: preset %u ENV %d %d %d %d\n", trk[1].preset, trk[1].p[P_ATK], trk[1].p[P_DEC], trk[1].p[P_SUS], trk[1].p[P_REL]);
+    return 0;
+}
+
+static int fm6_ops(void)
+{
+    uint32_t e, k, o;
+    uint8_t fv[FP_SIZE + 1u];
+    char lb[24];
+    for (e = 0; e < NENGINES && strcmp(ENGINES[e]->name, "FM6"); e++) ;
+    for (k = 0; k < ds_count(e); k++) {
+        int32_t sl = ds_value(ds_get(e, k), P_E7, ENGINES[e]->edit[7].def);
+        uint32_t car;
+        ds_label(e, k, lb);
+        if (fm6_slot_patch((uint32_t)clamp(sl, 0, 255), fv)) { printf("%-20s no patch\n", lb); continue; }
+        car = fm6_carriers(fv[FP_ALG] & 31u);
+        printf("%2u %-18s alg %2u fb %u |", k, lb, fv[FP_ALG] & 31u, fv[FP_FB]);
+        for (o = 0; o < 6u; o++) {
+            const uint8_t *op = fv + o * FP_OP;
+            printf(" %c OL%2u L%2u/%2u/%2u/%2u R%2u/%2u/%2u/%2u |", (car >> o) & 1u ? 'C' : 'm', op[FP_OL], op[FP_L1], op[FP_L1 + 1], op[FP_L1 + 2], op[FP_L1 + 3], op[FP_R1], op[FP_R1 + 1], op[FP_R1 + 2], op[FP_R1 + 3]);
+        }
+        printf("\n");
+    }
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    if (getenv("TRAVELCPU_OPS")) return fm6_ops();
+    if (getenv("TRAVELCPU_DIFF")) return sound_diff();
+    uint32_t only = argc > 1 ? (uint32_t)atoi(argv[1]) : 7u, mode = argc > 2 ? (uint32_t)atoi(argv[2]) : GM_JOURNEY, tidx = argc > 3 ? (uint32_t)atoi(argv[3]) : 5u;
+    uint32_t ntrip = argc > 4 ? (uint32_t)atoi(argv[4]) : 6u, bpm = argc > 5 ? (uint32_t)atoi(argv[5]) : 0u, slot;
+    static trip_t tr[MAXTRIP];
+    setvbuf(stdout, 0, _IONBF, 0);
+    verbose = getenv("TRAVELCPU_V") ? (uint32_t)atoi(getenv("TRAVELCPU_V")) : 0u;
+    tc_keep = getenv("TRAVELCPU_KEEP") ? (uint32_t)strtoul(getenv("TRAVELCPU_KEEP"), 0, 0) : 0u;
+    if (ntrip > MAXTRIP) ntrip = MAXTRIP;
+    memset(nor, 0xFF, sizeof nor);
+    kk = host_k();
+    if (getenv("TRAVELCPU_ENG")) { printf("travelcpu: host scale %.2f\n", kk); eng_cost(getenv("TRAVELCPU_ENG")); return 0; }
+    printf("travelcpu: host scale %.2f; MODE %s, TIME %u bars, %u trips, BPM %s; limit %u %%\n", kk, mode == GM_JOURNEY ? "TRAVEL" : "EVOLVE", GLIDE_BARS[tidx % GLIDE_TIMES], ntrip, bpm ? "set" : "the multi's", BUDGET_LIMIT);
+    for (slot = 0; slot < MU_SLOTS && slot < 26u; slot++) {
+        uint32_t nt = 0;
+        float w;
+        if (only && only != slot + 1u) continue;
+        w = run_trips(slot, mode, tidx, ntrip, bpm, tr, &nt);
+        {
+            double vs[2] = {0, 0}, nb = 0, o72[2] = {0, 0}, rs = 0;
+            for (uint32_t j = 0; j < nt; j++) { vs[0] += tr[j].vsum[0]; vs[1] += tr[j].vsum[1]; rs += tr[j].rsum[0]; nb += tr[j].nblk; o72[0] += tr[j].over72[0]; o72[1] += tr[j].over72[1]; }
+            printf("travelcpu: M%02u %-16s BPM %3d  %s / %s  worst model %5.1f %%  voices mean %.2f / %.2f  blocks over the limit %.2f / %.2f %%  p1 releasing %.2f\n", slot + 1u, mu_names[slot], song.g[G_BPM],
+                   ENGINES[eng_idx(trk[0].eng_req)]->name, ENGINES[eng_idx(trk[1].eng_req)]->name, w, nb ? vs[0] / nb : 0, nb ? vs[1] / nb : 0, nb ? 100 * o72[0] / nb : 0, nb ? 100 * o72[1] / nb : 0, nb ? rs / nb : 0);
+        }
+        for (uint32_t j = 0; j < nt; j++) {
+            const trip_t *q = &tr[j];
+            for (uint32_t p = 0; p < 2u; p++)
+                printf("travelcpu:   trip %u p%u -> %-20s model max %5.1f over72 %5u over90 %5u | voices max %u cap %u..%u above %5u | fm6x %5u | host rest med %5.1f | cross %5u blk med %5.1f p99 %5.1f model %5.1f | rest: xt %5u of %5u, morph_begin %4.1f, cross %4.1f | valley %5u motion %5u need %5u | blends %6u fm6 retunes %6u | irq off: %6u windows, %8.0f instr/s, longest %7.0f instr\n",
+                       j + 1u, p + 1u, q->nm[p], q->mmax[p], q->over72[p], q->over90[p], q->vmax[p], q->capmin[p], q->capmax[p], q->above[p], q->fmx[p], q->rmed[p], q->nx[p], q->xmed[p], q->xp99[p], q->mx[p], q->rxt[p], q->nr[p], q->nr[p] ? q->mbr[p] / q->nr[p] : 0.0, q->nx[p] ? q->mbx[p] / q->nx[p] : 0.0, q->vd[p], q->mo[p], q->nd[p], q->ep0, q->ep1, q->in, q->isum / ((double)q->nblk * CTL / FS), q->imax);
+        }
+    }
+    printf("travelcpu: keep 0x%x  part 1 host time a block, the whole run: %.0f (%lu blocks)\n", tc_keep, tc_p1n ? tc_p1sum / tc_p1n : 0.0, tc_p1n);
+    return 0;
+}
