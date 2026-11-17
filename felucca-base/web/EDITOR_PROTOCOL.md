@@ -638,7 +638,8 @@ Owner (2026-10-28): "The editor should be updated as well. We should be seeing t
   port with other SysEx (the `F0 22 24 35 …` keys, `00 59 …` frames); never send those
   from the editor. Since 1.0 the same USB device also has an audio input ("Felucca",
   44.1 kHz stereo; bcdDevice 3.11; since 1.1 44.1 or 48 kHz, the host's choice, bcdDevice 3.21
-  (3.20 with MENU > USB SERIAL OFF)); the MIDI port and this protocol are unchanged, and both
+  (3.20 with MENU > USB SERIAL OFF); TIDE B14 builds offer 44.1 kHz only again, FELUCCA_UAC_48K=0,
+  bcdDevice 3.11 / 3.10); the MIDI port and this protocol are unchanged, and both
   work while the computer records.
 - **Global ids.** `G_ROUTE` (id 14, label "ROUT"; on the device MENU > MIDI > MIDI IN since 1.2, up to 1.1.5
   GLO > SYSTEM ROUT) was a placeholder ("--", range 0..0);
