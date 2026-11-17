@@ -11,6 +11,22 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
 
+## 1.1.0-b1
+
+The first beta after 1.0.0. In short: AUTO TIDE TRAVEL no longer skips. The FM-1 stopped using its second core for 10 seconds whenever it was late once; now it keeps it, works one buffer ahead (+2.9 ms) and runs the master on the second core. On the unit: M07 and M19 on TRAVEL 32 and M07 on EVOLVE, 0 skips in 3 minutes each (M07 had 191). TRAVEL sounds as in 1.0.0. Also: AUTO TIDE loop dots, the tide line under the page title is gone, the reverb runs on the second core.
+- **Faster (more room for notes):** the reverb runs on the FM-1's second core while the first one plays the chorus and the delay (STEREO and LAYER; DUEL as before). It sounds exactly the same and comes no later. On the unit the effects stage takes 25 to 34 % less time on the first core, about 3.5 % of its whole budget. If the second core is ever late, the first one plays the reverb itself, or fades it out for that moment and back in, so nothing clicks or stops.
+- **Changed (USB audio at 44.1 kHz only):** the USB audio input no longer offers 48 kHz (owner, 16 November: USB audio is not used). It gives 4.4 KB of flash for new features. A computer that asked for 48 kHz now records at 44.1 kHz.
+- **New (owner 16 November, option E of the loop-counter mock-ups):** AUTO TIDE shows where each part's loop is while PLAY runs: a small dot a bar beside each part's
+ capsule in the header (part 1's right of its capsule, part 2's left of its own), the bar playing in the part's colour, the others dim. A 1-bar loop shows one dot; a loop over
+ 8 bars shows none. The footer's beat dot still gives the beat. Costs 252 B of flash (972 B free after it).
+- **Removed (owner 16 November: "it doesn't do much anyways"):** the tide line, the thin wave under the page title on MORPH, TIDE SETTINGS, the other part pages and the quick layers. AUTO TIDE's own page (its water), MORPH's knob-1 line (TO B 7/16), the footer's REC mark and beat dot still show what it showed. Frees 1,028 B of flash (1,224 B free now) and 48 B of RAM; the MORPH page sends about 5 % fewer pixels a picture.
+- **Fix (owner 16 November, "the cpu is skipping hard" on M07 HSE CHICAGO, AUTO TIDE TRAVEL 32):** the note budget now charges SUB, CYCLE, the matrix slots, their LFOs and KEY TRK from what the morph's ends play, not only from the part's own values, so
+ TRAVEL thins its notes where the destinations really cost more. (B14 also had TRAVEL keep each part's own envelope and effects; B15 rolled that back, sound first: TRAVEL's destinations sound as in 1.0.0, and the two-core changes of B15 carry their cost.)
+- **Fixed (skips on AUTO TIDE TRAVEL):** when the second core was late just once, the FM-1 stopped using it for 10 seconds, played everything on the first core and cut each part to one note. Those stretches held most of the skips (all of M19's, two thirds of M07's). Now a late moment costs that one moment only (part 2 or the reverb pauses for 0.7 ms, as before), and the second core keeps playing right after. A second core that is really stuck is still caught.
+- **Changed (one more buffer of audio, +2.9 ms):** the FM-1 now works one buffer ahead of what you hear (owner, 17 November). A busy moment that runs over its time no longer skips: it borrows from the next one, and the next lighter moment pays it back. The ease steps (lighter effects, fading tails) now react only when that borrowed time really builds up, not to a single busy moment, so fewer notes are faded. Saving to memory waits one buffer longer before the flash write (still silent, no click).
+- **Faster (the second core takes the master):** the master stage of each moment (width, bass mono, compressor, limiter) now runs on the second core while the first one starts the next moment's notes. Same math, so it sounds exactly the same; about a tenth of the first core's time is freed in the busiest moments.
+- **Changed back (TRAVEL's sounds as in 1.0.0):** AUTO TIDE TRAVEL's destinations bring their own envelope, saturation, sends, spread, insert and EQ again, as in 1.0.0 (B14 had kept each part's own while the CPU was short). The FM-1 renders M07 and M19 on TRAVEL exactly as 1.0.0 did.
+
 ## 1.0.0
 
 The first stable TIDE: 1.0.0-b13 plus the fixes and polish found while playing it. In short:
