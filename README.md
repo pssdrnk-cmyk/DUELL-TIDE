@@ -27,7 +27,7 @@ A fresh unit comes up ready: multi **M02 DUB CHORD**, AUTO TIDE on EVOLVE, both 
 
 ## How it works
 
-Each block says what a function does for you and which control to use. The pictures are the unit's own screen on `1.0.0-b13`, shot from the web emulator with music playing. The details of every row are in the [TIDE guide](docs/TIDE_GUIDE.md).
+Each block says what a function does for you and which control to use. The pictures are the unit's own screen on `1.1.0`, shot from the web emulator with music playing. The details of every row are in the [TIDE guide](docs/TIDE_GUIDE.md).
 
 ### AUTO TIDE: the glide
 
