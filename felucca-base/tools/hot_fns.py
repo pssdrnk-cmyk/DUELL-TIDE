@@ -68,7 +68,7 @@ import sys
 GROUPS = {
     1: ["uf_run", "uf_voice", "fm6_op_run", "fm6_op_fb", "wave_render", "wv_lvl", "wv_warp"],
     2: ["eq_run", "ins_swept", "track_dist", "duck_run", "mix_spread", "track_insert",
-        "rev_room", "rev_shim", "dly_mod", "fx_buses_mod"],
+        "rev_shim", "dly_mod", "fx_buses_mod"],   # (B15 fx lane: rev_room, block-wise and 110 B larger, moved to range Z, tools/ram_fns_z.py "B15 FX")
     3: ["fm6_note_compute", "fm6_render", "fm6_carriers", "fm6_note_of", "wv_line", "sine_i", "osc_sine",
         "uf_coef", "spread_clear", "mod_voice", "mod_voice_add", "morph_end", "perf_flanger", "perf_drive",
         "fm6_xblock", "fm6_xtune", "fm6_osc_base4"],   # TIDE: the FM6 bridge of a GLIDE (fm6_xfer.c), per note x operator while a crossing runs (unit 2026-11-06: from the flash it spiked the half to 102 %); absent without TIDE

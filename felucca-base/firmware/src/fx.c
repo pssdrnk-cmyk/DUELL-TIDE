@@ -288,6 +288,8 @@ static __attribute__((noinline)) int32_t master_knee(int32_t x)
     }
     return x < 0 ? -a : a;
 }
+/* B15 (fx lane): the knee's linear part (|x| <= MK_K: master_knee gives x itself) without the call, two a sample */
+#define KNEE(x) ((uint32_t)((x) + MK_K) <= 2u * MK_K ? (x) : master_knee(x))
 /* the limiter's gain g (Q15, < 32768) on x, which may be far above Q15, in two halves: every bit of x is kept (the old (x >> 4) * g >> 11 rounded to 16 LSB while it limited) */
 static inline int32_t lim_mul(int32_t x, int32_t g) { return (x >> 15) * g + (((x & 32767) * g) >> 15); }
 static int32_t lim_env = LIM_T;
@@ -371,8 +373,8 @@ static inline void master_out(int32_t *l, int32_t *r)
         *l = lim_mul(*l, g);
         *r = lim_mul(*r, g);
     }
-    *l = master_knee(*l);
-    *r = master_knee(*r);
+    *l = KNEE(*l);
+    *r = KNEE(*r);
 }
 
 /* SPLIT (DUELL step 5): master_out with each channel its own limiter (a linked one would duck part 2 on part 1's peaks: part 1's

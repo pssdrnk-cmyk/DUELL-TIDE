@@ -42,6 +42,13 @@ GROUPS["MORPH"].append("morph_apply_at")
 GROUPS["EASE"] = ["ease_step"]
 # TIDE 1.0.0-b5 (CPU audit K5): the silent delay and master checks, every block (fx.c sil_dly, sil_mst)
 GROUPS["SILENT BUS"] = ["sil_dly", "sil_mst"]
+# B15 (fx lane, work/b15/cpu/fx/REPORT.md): the send buses' and the master's every-block code of STEREO / LAYER (bus A) out of the flash's cache: the chorus and
+# delay loop, the reverb's entry, low cut, ROOM (from the hot block, which it no longer fits) and HALL, the master and its knee (about 5 KB). Bus B (SPLIT) stays in the flash
+GROUPS["B15 FX"] = ["fx_buses_m", "dly_wr", "dly_col", "cho_zrun", "rev_side_mix", "dly_side_mix",
+                    "rev_tail", "rev_run", "rev_locut", "rev_room", "rev_hall", "rev_front", "mix_master", "master_knee"]
+# .. and PERFORM's master stage with its K3 FILTER (its per-sample filter, about 2.3 KB): TIDE's ARC drives that filter (PF_FILT, perform.c tarc_flt) through most of a TRAVEL or EVOLVE
+# trip, +50 us a block on the unit while it runs (work/b15/cpu/root/ROOT_CAUSE.md); b10's "no factory multi uses it" (tools/ram_allow.py) predates ARC
+GROUPS["B15 FX"] += ["perf_master", "perf_filter", "pf_chan", "pf_stage_coefs"]   # (range Z keeps its 8 KB pool headroom: mix_sends, perf_block and pf_fade, branches once a block, stay in the flash)
 NAMES = [f for fs in GROUPS.values() for f in fs]
 # DUELL_TWOCORE=1 (two-core stage 1, the merge of cloud/job5 with this line): what core 1 runs beyond the list above. The real call graph of the job (tc_job_run,
 # fm1_c1_main: the relocations of the compiled object, tools/ram_reach.py, docs/TWOCORE_REACH_REAL.md) reaches 153 functions; 109 are placed already (hot 22, X 39, Z 48), 44 are not:
