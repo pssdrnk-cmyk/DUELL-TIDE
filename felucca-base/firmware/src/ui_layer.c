@@ -801,6 +801,15 @@ static void glo_meters(void)
 /* DUELL 1.1 MIXER, TEMPLATE 4 (item 117; FINAL_V1_09_mixer, ui_tokens.h UT_T4_*): two MUTE cards (round, 116 x 60: the word MUTE n, the hint "Hold GLO" / "and press OCT -" ("OCT +") with its keycaps standing on the text's
  * baselines, the part's small level meter at the right), the four cards under them (grid_on 7, ui_draw.c card_t4_paint). A muted part's card is filled in its colour (ink text) as before */
 static void lmh_card(uint32_t k, int32_t x, int32_t y);   /* (ui_lmh.c) */
+/* a key chip on a MUTE card or cell (fill: the card's); muted, the card is its part's colour (part 1's is the chip's teal), so the chip gets a 1 px INK ring and still reads (b14, owner's pick) */
+static int32_t mute_key(int32_t x, int32_t y, uint32_t id, uint16_t fill, uint32_t mu)
+{
+    if (mu) {
+        cv_rrect(x - 1, y - 1, kc_w(id) + 2, KC_H + 2, (KC_H + 2) / 2, T_INK, fill);
+        fill = T_INK;
+    }
+    return cv_keycap(x, y, id, T_KEY, T_KINK, fill);
+}
 static void glo_mute_cards(void)
 {
     uint32_t e;
@@ -813,8 +822,8 @@ static void glo_mute_cards(void)
         { CV_HL(x, y, UT_T4_W, UT_T4_MUTE_H); cv_rrect(x, y, UT_T4_W, UT_T4_MUTE_H, UT_T4_R, fill, T_BG); }
         (void)ink;
         kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill) + 6;   /* b11 (design review 2.3): MUTE n and the keys that flip it, chips on one row */
-        kx = cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, KC_GLO, T_KEY, T_KINK, fill) + UT_T4_KEY_GAP;
-        cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
+        kx = mute_key(kx, y + UT_T4_LBL_BASE - KC_H + 2, KC_GLO, fill, mu) + UT_T4_KEY_GAP;
+        mute_key(kx, y + UT_T4_LBL_BASE - KC_H + 2, kc, fill, mu);
         lmh_card(e, x, y);                              /* b13: the LOW / MID / HIGH bands in this picture (ui_lmh.c), not sent after it over the card */
     }
 }
@@ -833,13 +842,13 @@ static void layer_glo(void)
         /* the keys that flip it, at the cell's foot: hold GLO (the layer) and OCT- for part 1, OCT+ for part 2; on the MIXER page GLO's keycap says it is held */
         if (ui.layer == LAYER_GLO) {
             GFX_HOOK_ALIGN(x, 0, x + GC_W, 0, AL_H, "glo cell key centred across");
-            cv_keycap(x + HALF_UP(GC_W - kc_w(kc)), y, kc, T_KEY, T_KINK, fill);
+            mute_key(x + HALF_UP(GC_W - kc_w(kc)), y, kc, fill, mu);
         } else {
             int32_t w = kc_w(KC_GLO) + 4 + text_w(&AF_S, "+") + 4 + kc_w(kc), kx = x + HALF_UP(GC_W - w);
-            kx = cv_keycap(kx, y, KC_GLO, T_KEY, T_KINK, fill) + 4;
+            kx = mute_key(kx, y, KC_GLO, fill, mu) + 4;
             GFX_HOOK_ALIGN(0, y, 0, y + KC_H, AL_V | AL_PASS, "glo cell + on its keycaps' line");
             kx = cv_text_on(kx, y - 1, &AF_S, "+", mu ? T_INK : T_MID, fill) + 4;
-            cv_keycap(kx, y, kc, T_KEY, T_KINK, fill);
+            mute_key(kx, y, kc, fill, mu);
         }
     }
 }
