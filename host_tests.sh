@@ -628,6 +628,7 @@ for t in $want; do case $t in
   midictl) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/midi_control_test tests/midi_control_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run midictl $OUT/midi_control_test ;;
   ease)    $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/ease_test tests/ease_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run ease $OUT/ease_test ;;
   audio)   $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/audio_test tests/audio_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run audio $OUT/audio_test ;;
+  # not default: travelsound - report only, it hashes M07 / M19 on TRAVEL for a comparison with another tree (B15: equal to tide-1.0.0)
   travelsound) $CC -O1 -fno-builtin -D_FORTIFY_SOURCE=0 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/travel_sound_test tests/travel_sound_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run travelsound sh -c "$OUT/travel_sound_test 7 4 && $OUT/travel_sound_test 19 4" ;;
   audioring) $CC -O1 "-DFELUCCA_VERSION=\"$FV\"" -o $OUT/audio_ring_test tests/audio_ring_test.c -lm || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run audioring $OUT/audio_ring_test ;;
   benchupdl) $CC -O1 -o $OUT/bench_updl_test tests/bench_updl_test.c || { echo "== compile"; echo "   FAIL (does not compile)"; fail=1; false; } && run benchupdl $OUT/bench_updl_test ;;
