@@ -9,33 +9,48 @@
 static __attribute__((noinline)) void BUS_FN(rev_room)(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     uint32_t i, k;
-    int32_t size = 25000 + SV_RSIZE * 50, damp = 32767 - song.g[G_RDAMP] * 200;   /* (SV_RSIZE: song.g's, or PERFORM's SPACE: fx.c sv) */
+    int32_t size = 25000 + SV_RSIZE * 50, kd = song.g[G_RDAMP] * 200;   /* (SV_RSIZE: song.g's, or PERFORM's SPACE: fx.c sv; kd: 32767 - the damping, the low-pass's step) */
+    int32_t x[CTL], a[CTL];                             /* (n <= CTL: the block) */
+    int16_t *c = BUS_COMB;
     if (size > 32300)
         size = 32300;                                   /* (SPACE's largest: 0.986, the combs' loop below 1) */
     for (i = 0; i < n; i++) {
-        int32_t a = 0;
-        int16_t *c = BUS_COMB;
-        int32_t in = mulq15(rev_in[i], 2580);           /* 1/8 at -4 dB: level as before the allpass fix */
-        for (k = 0; k < 4u; k++) {
-            int32_t o = c[BUS_FX.comb_i[k]];
-            BUS_FX.comb_lp[k] = o + mulq15d(BUS_FX.comb_lp[k] - o, 32767 - damp);   /* (audit R08: mulq15d, the nearest but never stuck 1 LSB short of o. DUELL 1.1 REVERB_FIX: rounded to the nearest, no constant offset; the write below and the all-pass towards zero: a tail only gets smaller, and ends in exact silence) */
-            c[BUS_FX.comb_i[k]] = (int16_t)clamp(in + sh_tz(BUS_FX.comb_lp[k] * size, 15), -32768, 32767);
-            if (++BUS_FX.comb_i[k] >= REV_COMB[k])
-                BUS_FX.comb_i[k] = 0;
-            a += o;
-            c += REV_COMB[k];
+        x[i] = mulq15(rev_in[i], 2580);                 /* 1/8 at -4 dB: level as before the allpass fix */
+        a[i] = 0;
+    }
+    /* B15 (fx lane): a comb at a time over the whole block, its read / write point and low-pass in registers (the combs share no state, so this is
+     * the old sample-by-sample order's arithmetic, bit for bit; the old loop reloaded every comb's index, low-pass and length each sample) */
+    for (k = 0; k < 4u; k++) {
+        int16_t *p = c + BUS_FX.comb_i[k], *pe = c + REV_COMB[k];
+        int32_t lp = BUS_FX.comb_lp[k];
+        for (i = 0; i < n; i++) {
+            int32_t o = *p;
+            lp = o + mulq15d(lp - o, kd);               /* (audit R08: mulq15d, the nearest but never stuck 1 LSB short of o. DUELL 1.1 REVERB_FIX: rounded to the nearest, no constant offset; the write below and the all-pass towards zero: a tail only gets smaller, and ends in exact silence) */
+            *p = (int16_t)clamp(x[i] + sh_tz(lp * size, 15), -32768, 32767);
+            a[i] += o;
+            if (++p == pe)
+                p = c;
         }
-        c = BUS_U.ap;
-        for (k = 0; k < 2u; k++) {
-            int32_t o = c[BUS_FX.ap_i[k]];
-            int32_t v = a + sh_tz(o, 1);
-            c[BUS_FX.ap_i[k]] = (int16_t)clamp(v, -32768, 32767);
-            a = o - a;                                  /* Freeverb: out = buf - in (o - v is a notch comb) */
-            if (++BUS_FX.ap_i[k] >= REV_AP[k])
-                BUS_FX.ap_i[k] = 0;
-            c += REV_AP[k];
+        BUS_FX.comb_lp[k] = lp;
+        BUS_FX.comb_i[k] = (uint16_t)(p - c);
+        c = pe;
+    }
+    {                                                   /* the two allpasses in series, a sample at a time (their points in registers), into out */
+        int16_t *c0 = BUS_U.ap, *c1 = c0 + REV_AP[0], *e1 = c1 + REV_AP[1], *p0 = c0 + BUS_FX.ap_i[0], *p1 = c1 + BUS_FX.ap_i[1];
+        for (i = 0; i < n; i++) {
+            int32_t v = a[i], o = *p0, w = v + sh_tz(o, 1);
+            *p0 = (int16_t)clamp(w, -32768, 32767);
+            v = o - v;                                  /* Freeverb: out = buf - in (o - v is a notch comb) */
+            if (++p0 == c1)
+                p0 = c0;
+            o = *p1, w = v + sh_tz(o, 1);
+            *p1 = (int16_t)clamp(w, -32768, 32767);
+            v = o - v;
+            if (++p1 == e1)
+                p1 = c1;
+            out[i] += v;
         }
-        out[i] += a;
+        BUS_FX.ap_i[0] = (uint16_t)(p0 - c0), BUS_FX.ap_i[1] = (uint16_t)(p1 - c1);
     }
 }
 
@@ -897,52 +912,59 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
 #endif
     }
 #endif
-    if (!sk)                                            /* (the loop, as ever) */
-    for (i = 0; i < n; i++) {
-        int32_t y = 0, x, x2, r;
-        /* chorus: modulated short delay, 9 .. 26 ms (400 + 0 .. 762 samples; above CRT 40 less, fx_swing) (cz: the line and this block's input are 0, the chorus gives 0: see cho_zrun) */
-        if (!cz) {
+    /* B15 (fx lane): the chorus over the block, then the delay over it (they share no state: the chorus line and the dry mix's side, the delay line and its
+     * fields), each with its state in registers; the one loop of both kept a dozen values on the stack and reloaded the delay's fields after every dly_wr.
+     * wet = the chorus's mid + the delay's return, the same sums as the one loop's y: bit for bit */
+    if (!sk && !cz) {                                   /* chorus: modulated short delay, 9 .. 26 ms (400 + 0 .. 762 samples; above CRT 40 less, fx_swing) (cz: the line and this block's input are 0, the chorus gives 0: see cho_zrun) */
+        for (i = 0; i < n; i++) {
             BUS_CHO[cw & (CHO_LEN - 1u)] = (int16_t)clamp(cho_in[i] >> 1, -32768, 32767);
             cph += cinc;
             cdq += cst;
             if (st) {
                 int32_t cl = BUS_FN(cho_tap)(cph, cdq, cw), cr = BUS_FN(cho_tap)(cph + CHO_OFF, cdq, cw), cs = (cl - cr) >> 1;
-                y += (cl + cr) >> 1;
+                wet[i] = (cl + cr) >> 1;
                 mix_l[i] += cs;
                 mix_r[i] -= cs;
             } else {
-                y += BUS_FN(cho_tap)(cph, cdq, cw);
+                wet[i] = BUS_FN(cho_tap)(cph, cdq, cw);
             }
             cw++;
         }
-        /* delay with a low-passed feedback */
-        if (g != tg) {                                  /* (gliding: the line read between two samples) */
-            g = dly_slide(BUS_DLY, dmask, BUS_FX.dly_w, g, tg, pp, gx);
-            x = gx[0];
-            x2 = pp ? gx[1] : 0;
-        } else {
-            x = BUS_DLY[(BUS_FX.dly_w - dl) & dmask];
-            x2 = pp ? BUS_DLY[(BUS_FX.dly_w - 2u * dl) & dmask] : 0;
+    } else if (!sk) {
+        memset(wet, 0, n * sizeof wet[0]);
+    }
+    if (!sk) {                                          /* delay with a low-passed feedback */
+        uint32_t w = BUS_FX.dly_w;
+        int32_t lp = BUS_FX.dly_lp, *h = BUS_FX.dly_h;
+        for (i = 0; i < n; i++) {
+            int32_t x, x2, r;
+            if (g != tg) {                              /* (gliding: the line read between two samples) */
+                g = dly_slide(BUS_DLY, dmask, w, g, tg, pp, gx);
+                x = gx[0];
+                x2 = pp ? gx[1] : 0;
+            } else {
+                x = BUS_DLY[(w - dl) & dmask];
+                x2 = pp ? BUS_DLY[(w - 2u * dl) & dmask] : 0;
+            }
+            if (pp) {
+                int32_t yl, yr;
+                lp += mulq15u(x2 - lp, col);
+                r = mulq15t(lp, fb);                    /* the right return: the loop's end, once round */
+                BUS_DLY[w & dmask] = (int16_t)dly_wr(h, dly_in[i] >> 1, mulq15t(r, fb));
+                w++;
+                yl = mulq15(x * 2, dmix);
+                yr = mulq15(r * 2, dmix);
+                wet[i] += (yl + yr) >> 1;
+                dsd[i] = (yl - yr) >> 1;
+            } else {
+                lp += mulq15u(x - lp, col);
+                BUS_DLY[w & dmask] = (int16_t)dly_wr(h, dly_in[i] >> 1, mulq15t(lp, fb));
+                w++;
+                wet[i] += mulq15(lp * 2, dmix);         /* (b9 G1: after the loop's low-pass, as every repeat) */
+            }
         }
-        if (pp) {
-            int32_t yl, yr;
-            BUS_FX.dly_lp += mulq15u(x2 - BUS_FX.dly_lp, col);
-            r = mulq15t(BUS_FX.dly_lp, fb);              /* the right return: the loop's end, once round */
-            BUS_DLY[BUS_FX.dly_w & dmask] =
-                (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(r, fb));
-            BUS_FX.dly_w++;
-            yl = mulq15(x * 2, dmix);
-            yr = mulq15(r * 2, dmix);
-            y += (yl + yr) >> 1;
-            dsd[i] = (yl - yr) >> 1;
-        } else {
-            BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
-            BUS_DLY[BUS_FX.dly_w & dmask] =
-                (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
-            BUS_FX.dly_w++;
-            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1: after the loop's low-pass, as every repeat) */
-        }
-        wet[i] = y;
+        BUS_FX.dly_w = w;
+        BUS_FX.dly_lp = lp;
     }
     if (cz) {                                           /* (the loop left the chorus out: its write index and LFO run on as they would have, a sample each) */
         cw += n;
