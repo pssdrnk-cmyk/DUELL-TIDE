@@ -597,18 +597,27 @@ static void k2_pill(int32_t x, const char *s, uint16_t edge, uint16_t fill, uint
 #endif
 /* b14 (owner 2026-11-16, option E of work/b14/loopcount): AUTO TIDE's loop dots: while PLAY runs, a 5 px dot a bar of each part's loop beside its capsule (part 1's
  * from 4 px right of its capsule, part 2's ending 4 px left of its own, on the capsules' middle row), the bar playing in the part's colour, the others dim (take_text's maths:
- * the part's grid, its loop's length); none for a loop shorter than a bar or longer than 8. draw_head draws the header again each beat while they show */
+ * the part's grid, its loop's length); none for a loop shorter than a bar or longer than 8. draw_head draws the header again each beat while they show.
+ * b15 (owner 2026-11-17, option B of work/b15/ui-dots): on every part page, playing or stopped. Stopped: the loop's full length (a stretch ends at PLAY: tide_poly_start),
+ * the bar PLAY starts from (the first) lit, the others dim */
 static uint32_t tk_spb(const track_t *t);
+static uint32_t head_dot_len(uint32_t k)               /* the loop's length the dots show: the one playing, or stopped the whole loop */
+{
+    return song.playing ? TIDE_PLAY_LEN(&trk[k]) : (uint32_t)clamp(trk[k].p[P_SLEN], 1, NSTEP);
+}
+static uint32_t head_dot_n(uint32_t k)                 /* the part's dots: a bar each, none under a bar or over 8 */
+{
+    uint32_t n = head_dot_len(k) / tk_spb(&trk[k]);
+    return n > 8u ? 0u : n;
+}
 static void head_dots(void)
 {
-    uint32_t k, i, n, len, spb, b;
+    uint32_t k, i, n, b;
     for (k = 0; k < 2u; k++) {
-        len = TIDE_PLAY_LEN(&trk[k]);
-        spb = tk_spb(&trk[k]);
-        n = len / spb;
-        if (!n || n > 8u)
+        n = head_dot_n(k);
+        if (!n)
             continue;
-        b = TIDE_PLAY_IDX(&trk[k]) % len / spb;
+        b = song.playing ? TIDE_PLAY_IDX(&trk[k]) % head_dot_len(k) / tk_spb(&trk[k]) : 0u;   /* (stopped: PLAY starts every part at step 0, seq_start) */
         for (i = 0; i < n; i++)
             cv_rrect((k ? 240 - CAP_X - CAP_W - 2 - (int32_t)n * 7 : CAP_X + CAP_W + 4) + (int32_t)i * 7, CAP_Y + CAP_H / 2 - 3, 5, 5, 2,
                      i == b ? T_PTHEME(k) : ux_mix(T_BG, T_PTHEME(k), 30), T_BG);
@@ -633,11 +642,12 @@ static void draw_head(void)
         cpk = cpu_head(cps, cms, &cpc);
     sig += cpk * 6397u;
 #endif
-    uint32_t dots = !glob && !msg && song.playing && cur_page()->graph == GR_TIDE;
+    uint32_t dots = !glob && !msg;                     /* (b15: every part page, playing or stopped) */
 #if DUELL_TEST_MODE
     dots &= !cpk;                                      /* (the test build's K2 pills have that place) */
 #endif
-    sig += dots * (beat_n + 1u);                       /* (b14: the loop dots: the header again each beat) */
+    if (dots)                                          /* (b14: the header again each beat while playing; b15: and when a loop's length changes) */
+        sig += (song.playing ? beat_n + 1u : 0u) * 0x9E37u + head_dot_n(0) * 52361u + head_dot_n(1) * 7703u + song.playing * 0x51EDu;
     if (!ui.force && sig == ui.head_sig)
         return;
     ui.head_sig = sig;
