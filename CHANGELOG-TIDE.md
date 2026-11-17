@@ -11,6 +11,10 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
 
+## 1.1.0
+
+The second stable TIDE: 1.1.0-b3 as the fork owner played it on 17 November 2026, with no further changes. Against 1.0.0: AUTO TIDE TRAVEL no longer skips or fades notes (the second core is no longer switched off for 10 seconds when it is late once; one buffer ahead, +2.9 ms; the master on the second core; faster effects, bit for bit), TRAVEL sounds as in 1.0.0, loop dots on every part page, the tide line is gone, USB audio is 44.1 kHz only.
+
 ## 1.1.0-b3
 
 1.1.0-b2 plus the loop dots on every part page, also when stopped (the bar PLAY starts from lit).
