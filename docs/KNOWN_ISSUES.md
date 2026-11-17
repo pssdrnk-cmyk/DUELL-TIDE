@@ -1,12 +1,11 @@
-# Known issues: TIDE 1.1.0-b1
+# Known issues: TIDE 1.1.0-b2
 
-What is still open on the beta 1.1.0-b1. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists the design limits. Report anything else on this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose).
+What is still open on the beta 1.1.0-b2. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists the design limits. Report anything else on this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose).
 
 Fixed in earlier builds: see [CHANGELOG-TIDE](../CHANGELOG-TIDE.md) (every beta's fixes) and [the builds page](BUILDS.md) (which build is which).
 
 ## Open in TIDE
 
-- **M07 HSE CHICAGO on TRAVEL 32 still fades a few notes** at its busiest moments (12 in 3 minutes, 113 before; no skips). M19 and EVOLVE fade none. Being worked on.
 - **Whether the analog output stays clean at the louder level (+8 dB at the jacks)** is not checked yet.
 - **Delay TIME changes sweep slowly** with the delay's wobble on: a big TIME change glides for about a second (up to five for a bar's worth). Small steps settle in about a tenth of a second.
 - **Live recording on an ARP SEQ part:** a key sets one note per step (no chords), a 1- or 2-step pattern in REPLACE can split a chord across steps, and at a POLY stretch change a key can land one step off.

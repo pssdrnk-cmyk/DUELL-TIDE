@@ -11,6 +11,11 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
 
+## 1.1.0-b2
+
+1.1.0-b1 plus faster effects: M07 HSE CHICAGO on TRAVEL 32 no longer fades notes at its busiest moments (0 in 3 minutes on the unit, 12 in b1), with no skips. Same sound, bit for bit.
+- **Faster (the effects and the master):** the chorus, the delay, the ROOM and HALL reverbs, the master and PERFORM's filter now run from the FM-1's fast memory, and ROOM, the chorus / delay loop and the master's knee do the same math in fewer steps. They sound exactly the same, bit for bit. On M07's busiest moments the first core's effects and master take about a third of the time they did, which leaves room for the notes that TRAVEL faded before.
+
 ## 1.1.0-b1
 
 The first beta after 1.0.0. In short: AUTO TIDE TRAVEL no longer skips. The FM-1 stopped using its second core for 10 seconds whenever it was late once; now it keeps it, works one buffer ahead (+2.9 ms) and runs the master on the second core. On the unit: M07 and M19 on TRAVEL 32 and M07 on EVOLVE, 0 skips in 3 minutes each (M07 had 191). TRAVEL sounds as in 1.0.0. Also: AUTO TIDE loop dots, the tide line under the page title is gone, the reverb runs on the second core.
