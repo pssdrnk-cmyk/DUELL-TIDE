@@ -14,6 +14,10 @@
 #ifndef HOST_MIX_FOLLOWS_MASTER
 #define HOST_MIX_FOLLOWS_MASTER 1
 #endif
+#define TRAVELCPU_KEEPVAR 1
+#include <stdint.h>
+static uint32_t tc_keep;                                 /* (b14 skips2: TRAVELCPU_KEEP bits: 0 FM6 knobs, 1 filters + twin, 2 modulation (matrix, LFOs, ENV 2), 3 SUB + CYCLE, 4 the rest) */
+static double tc_p1sum; static unsigned long tc_p1n;
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -215,6 +219,7 @@ static float run_trips(uint32_t slot, uint32_t mode, uint32_t tidx, uint32_t ntr
             uint32_t g = global_cost(), nv = voices_on(p), cap = bnotes[p];
             m[p] = trk[p].p[P_MUTE] ? 0 : (float)(g + part_fixed(&trk[p]) + nv * part_cost(&trk[p])) / 100.0f;
             h[p] = (float)((t[0] + t[1 + p]) / CTL * kk / FULL * 100.0);
+            if (!p) tc_p1sum += t[1], tc_p1n++;
             if (m[p] > q->mmax[p]) q->mmax[p] = m[p];
             if (m[p] > worst) worst = m[p];
             q->over72[p] += m[p] > (float)BUDGET_LIMIT;
@@ -239,6 +244,36 @@ static float run_trips(uint32_t slot, uint32_t mode, uint32_t tidx, uint32_t ntr
         }
         n++;
         q->nblk++;
+        if (verbose >= 2u && (n % 2000u) == 1u) {           /* (b14 skips2: the sends as they sound, and the global part of the budget) */
+            uint32_t gi, gf;
+            bd_global(&gi, &gf);
+            printf("travelcpu:     blk %6u fader %3u/%3u  sends p1 CHO %3d DLY %3d REV %3d  p2 CHO %3d DLY %3d REV %3d  global idle %u fx %u cost %u\n", n, morph_fader_of(0), morph_fader_of(1),
+                   trk[0].p[P_CHOR], trk[0].p[P_DLY], trk[0].p[P_REV], trk[1].p[P_CHOR], trk[1].p[P_DLY], trk[1].p[P_REV], gi, gf, global_cost());
+            for (uint32_t p = 0; p < 2u; p++)
+                for (uint32_t x = 0; x < 2u; x++) {
+                    const int8_t *c = morph_cur(&mph[p], x);
+                    printf("travelcpu:       p%u end %c  CHO %3d DLY %3d REV %3d ITYPE %2d SAT %3d VOICE %d DETUNE %3d SLOPE %d", p + 1u, 'A' + (int)x, c[P_CHOR], c[P_DLY], c[P_REV], c[P_ITYPE], c[P_DIST], c[P_VOICE], c[P_DETUNE], c[P_FREED]);
+                    for (uint32_t s = 0; s < NMSLOT; s++) {
+                        const int8_t *q = &c[MSLOT_ID(s)];
+                        if (q[0] && q[1] && q[2])
+                            printf("  [%d>%d %d%s]", q[0], q[1], q[2], q[1] >= MD_BUS && q[1] <= MD_RDAMP ? " BUS" : q[1] == MD_SPACE ? " SPACE" : q[1] >= MD_CHO && q[1] <= MD_REV ? " SEND" : "");
+                    }
+                    printf("\n");
+                }
+        }
+        if (verbose >= 3u && n == 1u) {                 /* (b14 skips2: what the far end changes from the Original, part 1) */
+            const morph_part_t *mp = &mph[0];
+            const int8_t *c = morph_cur(mp, (gl.to & 1u)), *cx = morph_curx(mp, (gl.to & 1u));
+            const engine_t *en = ENGINES[eng_idx(mp->eng)];
+            printf("travelcpu:     p1 end %c differs:", 'A' + (int)(gl.to & 1u));
+            for (uint32_t id = 0; id < P_COUNT; id++)
+                if (c[id] != mp->base[id])
+                    printf(" %s %d>%d", id < P_E0 ? TP[id].label : en->edit[id - P_E0].label, mp->base[id], c[id]);
+            for (uint32_t id = 0; id < NX; id++)
+                if (cx[id] != mp->base[XW_BASE + id])
+                    printf(" %s %d>%d", XTP[id].label, mp->base[XW_BASE + id], cx[id]);
+            printf("\n");
+        }
         if (gl.to != lastto || !gl.on) {                /* an arrival: the trip is over */
             q->ep0 = ease_probe[0], q->ep1 = ease_probe[1];
             q->isum = irq_sum * kk, q->imax = irq_max * kk, q->in = irq_n;
@@ -358,6 +393,7 @@ int main(int argc, char **argv)
     static trip_t tr[MAXTRIP];
     setvbuf(stdout, 0, _IONBF, 0);
     verbose = getenv("TRAVELCPU_V") ? (uint32_t)atoi(getenv("TRAVELCPU_V")) : 0u;
+    tc_keep = getenv("TRAVELCPU_KEEP") ? (uint32_t)strtoul(getenv("TRAVELCPU_KEEP"), 0, 0) : 0u;
     if (ntrip > MAXTRIP) ntrip = MAXTRIP;
     memset(nor, 0xFF, sizeof nor);
     kk = host_k();
@@ -381,5 +417,6 @@ int main(int argc, char **argv)
                        j + 1u, p + 1u, q->nm[p], q->mmax[p], q->over72[p], q->over90[p], q->vmax[p], q->capmin[p], q->capmax[p], q->above[p], q->fmx[p], q->rmed[p], q->nx[p], q->xmed[p], q->xp99[p], q->mx[p], q->rxt[p], q->nr[p], q->nr[p] ? q->mbr[p] / q->nr[p] : 0.0, q->nx[p] ? q->mbx[p] / q->nx[p] : 0.0, q->vd[p], q->mo[p], q->nd[p], q->ep0, q->ep1, q->in, q->isum / ((double)q->nblk * CTL / FS), q->imax);
         }
     }
+    printf("travelcpu: keep 0x%x  part 1 host time a block, the whole run: %.0f (%lu blocks)\n", tc_keep, tc_p1n ? tc_p1sum / tc_p1n : 0.0, tc_p1n);
     return 0;
 }

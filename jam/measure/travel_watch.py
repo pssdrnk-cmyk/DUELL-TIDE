@@ -20,9 +20,12 @@ def read(t):
     if len(a) < 21 or a[0] != 0:
         raise SystemExit(f"travel_watch: MEASURE READ gave {a!r}: not a measuring build (DUELL_MEASURE=1)?")
     w = [sum(a[1 + 5 * k + i] << (7 * i) for i in range(5)) for k in range(4)]
-    st = [a[21 + 2 * k] | a[22 + 2 * k] << 7 for k in range(6)] if len(a) >= 33 else []
-    nv = [a[33], a[34], a[35], a[36]] if len(a) >= 37 else []
-    return {"st": st, "nv": nv, "el_us": w[0], "miss": w[1], "shed": w[2], "playing": w[3] & 1, "glide": (w[3] >> 1) & 1, "to": (w[3] >> 2) & 1, "ease": w[3] >> 3}
+    ns = 10 if len(a) >= 45 else 8 if len(a) >= 41 else 6                       # (b14 skips2: 8 stages, + the gather / send buses and the master)
+    st = [a[21 + 2 * k] | a[22 + 2 * k] << 7 for k in range(ns)] if len(a) >= 21 + 2 * ns else []
+    o = 21 + 2 * ns
+    nv = [a[o], a[o + 1], a[o + 2], a[o + 3]] if len(a) >= o + 4 else []
+    mean = [round((a[o + 4 + 2 * k] | a[o + 5 + 2 * k] << 7) / 10.0, 1) for k in range(14 if len(a) >= o + 32 else 12 if len(a) >= o + 28 else 8)] if len(a) >= o + 20 else []   # (us a block: pre, morph, p1, p2wait, sends, master, whole, p1 fm6_block)
+    return {"st": st, "nv": nv, "mean": mean, "el_us": w[0], "miss": w[1], "shed": w[2], "playing": w[3] & 1, "glide": (w[3] >> 1) & 1, "to": (w[3] >> 2) & 1, "ease": w[3] >> 3}
 
 
 def main():
@@ -50,13 +53,19 @@ def main():
         t0 = time.time(); rows = []
         while time.time() - t0 < a.secs:
             time.sleep(1.0)
-            s = read(t)
+            try:
+                s = read(t)
+            except jd.TransportTimeout:                  # (an overloaded unit can answer late: skip that second, keep the run)
+                late = locals().get("late", 0) + 1
+                if late > 10:
+                    raise
+                continue
             s["t"] = round(time.time() - t0, 1); s["el_pct"] = round(100.0 * s["el_us"] / BUDGET_US, 1)
             s["miss_d"] = s["miss"] - s0["miss"]; s["shed_d"] = s["shed"] - s0["shed"]
             rows.append(s)
             if out:
                 out.write(json.dumps(s) + "\n"); out.flush()
-            print(f"t {s['t']:6.1f}  el {s['el_pct']:5.1f} %  missed {s['miss_d']:4d}  shed {s['shed_d']:4d}  ease {s['ease']}  to {s['to']}  glide {s['glide']}" + (f"  stages morph {s['st'][0]} p1 {s['st'][1]} p2wait {s['st'][2]} xblk {s['st'][3]} v1 {s['st'][4]} bud {s['st'][5]} us" if s['st'] else ""), flush=True)
+            print(f"t {s['t']:6.1f}  el {s['el_pct']:5.1f} %  missed {s['miss_d']:4d}  shed {s['shed_d']:4d}  ease {s['ease']}  to {s['to']}  glide {s['glide']}" + (f"  stages morph {s['st'][0]} p1 {s['st'][1]} p2wait {s['st'][2]} xblk {s['st'][3]} v1 {s['st'][4]} bud {s['st'][5]}" + (f" sends {s['st'][6]} master {s['st'][7]}" if len(s['st']) > 6 else "") + (f" fm6sync {s['st'][8]} fm6blk {s['st'][9]}" if len(s['st']) > 8 else "") + " us" if s['st'] else ""), flush=True)
         t.request(ED_MEASURE, [2], 1.0)
         t.out.send(t._mido.Message("stop"))
         el = sorted(x["el_pct"] for x in rows)

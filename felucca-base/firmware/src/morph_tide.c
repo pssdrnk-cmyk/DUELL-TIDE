@@ -158,6 +158,17 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
                                       P_EQLG, P_EQLF, P_EQMG, P_EQMF, P_EQMQ, P_EQHG, P_EQHF};
         for (j = 0; TIDE_KEEP_ENV && j < sizeof MIX; j++)
             end[MIX[j]] = mp->base[MIX[j]];
+#ifdef TRAVELCPU_KEEPVAR                                 /* (tests/travel_cpu_probe.c only: which groups of the destination's values the Original keeps, a bisection of the cost) */
+        for (j = 0; j < EXT_P_LEN; j++) {
+            uint32_t g = j >= XW_BASE ? ((j - XW_BASE >= X_SUBLVL && j - XW_BASE <= X_CYSYNC) || (j - XW_BASE >= X_CYCUT2 && j - XW_BASE <= X_CYPIT) ? 3u : j - XW_BASE <= X_LFO2 ? 1u : 2u)
+                       : j >= P_E0 && j < P_E0 + 7u ? 0u
+                       : (j >= P_FREEA && j <= P_FREED) || j == P_RES2 || j == P_DRV2 || j == P_KTRK || j == P_TWTYPE || j == P_CUT2 || j == P_BLEND ? 1u
+                       : (j >= P_M1SRC && j <= P_L2FADE) || (j >= P_ED_FLT && j <= P_ED_SHP) || (j >= P_LRATE && j <= P_LD_AMP) || (j >= P_L2SYNC && j <= P_L2POL) || (j >= P_LSYNC && j <= P_LPOL) ? 2u
+                       : j == P_E0 + 7u ? 9u : 4u;
+            if (g < 9u && ((tc_keep >> g) & 1u))
+                end[j] = mp->base[j];
+        }
+#endif
     }
     {                                                    /* the destination's loudness. b10 Later 26: a part as a factory multi loaded it (tide_mu) plays the destination at the
                                                           * part's measured level, both in the Original's class pattern (jrny_mu.h, jrny_ctx.h; 2 TRIM steps a dB): the part's TRIM

@@ -175,10 +175,10 @@ static void bd_part(const track_t *t, bd_part_t *r)
 {
     const engine_t *e = ENGINES[eng_idx(t->eng_req)];   /* (the sound's engine: a switch fades first, eng_req leads) */
     const int16_t *p = t->p;
-    uint32_t i, sl, bands, pi = (uint32_t)(t - trk), lf = 0, by = pi < 2u ? byp_m[pi] : 0u;   /* by: the BYPASS switches of the part (item 116: SAT, INSERT and EQ bypassed measured as not running) */
+    uint32_t i, sl, bands, pi = (uint32_t)(t - trk), by = pi < 2u ? byp_m[pi] : 0u;   /* by: the BYPASS switches of the part (item 116: SAT, INSERT and EQ bypassed measured as not running) */
     uint32_t tide = 0, tide_v = 0;                      /* TIDE's DSP items of the part (BD_TIDE_*) */
     uint32_t sat = p[P_DIST] != 0;                      /* SAT on in the live values or at either morph end as it sounds (item 147) */
-    bd_tw_t w = {0, 0, 0, 0};                           /* item 142: the TWIN FILTER of the morph's two ends as they sound (budget_feat.c adds the live one) */
+    bd_tw_t w = {0, 0, 0, 0, 0, 0, 0, 0, 0};            /* item 142: the TWIN FILTER of the morph's two ends as they sound (budget_feat.c adds the live one) */
     memset(r, 0, sizeof *r);
     r->cap = vc_eng_cap(e);
     r->cap = r->cap < NOTES_MAX ? r->cap : NOTES_MAX;
@@ -237,20 +237,11 @@ static void bd_part(const track_t *t, bd_part_t *r)
     bands = (p[P_EQLG] != 0) + (p[P_EQMG] != 0) + (p[P_EQHG] != 0);
     r->eq = bands && !(by & BY_EQ) ? BD_EQ_BASE + bands * BD_EQ_BAND : 0;
     r->misc = p[P_DKDEP] > 0 && !(mods_off & MODS_PFX) ? BD_DUCK : 0;
-    r->misc += sl && p[P_KTRK] ? BD_KTRK : 0;
-    for (i = 0; i < NMSLOT; i++) {
-        const int16_t *q = &p[MSLOT_ID(i)];
-        if (q[0] && q[1] && q[2]) {
-            r->misc += BD_MX_SLOT;
-            lf |= (q[0] == MS_LFO ? 1u : 0u) | (q[0] == MS_LFO2 ? 2u : 0u);
-        }
-    }
-    r->misc += ((lf & 1u) + (lf >> 1)) * BD_LFO;
     r->misc += arp_mode(t) ? BD_ARP : 0;                /* (item 125: the arp as it plays now: MODULES' ARP OFF costs nothing; was p[P_AMODE]) */
     r->base = BD_PART_ON;
     r->misc += tide;
     r->tide = tide, r->tide_v = tide_v;
-    bd_feat(t, r, &w);                                  /* TWIN FILTER (live, and the morph ends' from above), SUB, CYCLE (budget_feat.c) */
+    bd_feat(t, r, &w);                                  /* TWIN FILTER, SUB, CYCLE, the matrix slots, LFOs, KEY TRK: live, and the morph ends' from above (budget_feat.c) */
 }
 
 static uint32_t part_cost(const track_t *t)

@@ -39,13 +39,28 @@ static void bd_tw_add(bd_tw_t *w, const engine_t *e, int ty, int drv, const int1
     w->mod |= x[X_KTRK2] != 0 || x[X_ENV2] != 0 || x[X_LFO1] != 0 || x[X_LFO2] != 0 || mat;
 }
 /* the TWIN of one set of values q (EXT_P_LEN: the live values, or a MORPH end as it sounds, budget.c bd_end): its TYPE, DRIVE, extension values and its own matrix slots to CUTOFF 2 */
+/* one state's items (the live values, or a MORPH end's as it sounds): the TWIN, and (b14, owner 2026-11-16 "the cpu is skipping hard" on M07 TRAVEL 32) the SUB, CYCLE, the matrix slots, their
+ * LFOs and KEY TRK. Before b14 those were charged from the live values alone, but TRAVEL's destinations switch them on at End B while the live values stay the Original's: the unit
+ * rendered part 1 at 196 us a block mid-trip against 45 on EVOLVE while the model read TRAVEL 66 % against EVOLVE 69 % (work/b14/skips2). The dearest state is charged, as the filters are */
 static void bd_tw_of(bd_tw_t *w, const engine_t *e, const int16_t *q)
 {
-    uint32_t i;
+    uint32_t i, n = 0, sw;
     int mat = 0;
     for (i = 0; i < NMSLOT; i++) {
         const int16_t *s = &q[MSLOT_ID(i)];
         mat |= s[0] && s[1] == MD_CUT2 && s[2];
+        if (s[0] && s[1] && s[2]) {
+            n++;
+            w->lf |= (s[0] == MS_LFO ? 1u : 0u) | (s[0] == MS_LFO2 ? 2u : 0u);
+            w->cy |= s[0] == MS_CYCLE;
+        }
+    }
+    w->mx = n > w->mx ? n : w->mx;
+    w->kt |= q[P_KTRK] != 0;
+    if (q[XW_BASE + X_SUBLVL] > 0) {
+        sw = (uint32_t)q[XW_BASE + X_SUBWAVE] & 3u;
+        sw = (sw == 0u ? BD_SUB_SINE : sw == 1u ? BD_SUB_TRI : BD_SUB_PLS) + BD_SUB_BLK;
+        w->sub = sw > w->sub ? sw : w->sub;
     }
     bd_tw_add(w, e, q[P_TWTYPE], q[P_DRV2], &q[XW_BASE], mat);
 }
@@ -63,24 +78,19 @@ static void bd_feat(const track_t *t, bd_part_t *r, const bd_tw_t *wm)
         r->ext += (r->filt ? BD_TW_CHAIN : BD_TW_CHAIN_BYP) + w.ty + (w.drive ? BD_TW_DRIVE : 0) + (w.par ? BD_TW_PAR : 0) + (w.mod ? BD_TW_MOD : 0);
     /* (CHAIN_ALL's chain path for a note whose filter 1 runs: measured inside BD_F12 since item 90) */
 
-    /* SUB (job F): the SUB LAYER by WAVE and HARMONICS, a voice; UNISON plays one sub a key (voice 0 only): the part's fixed cost */
-    if (XV(t, X_SUBLVL) > 0) {
-        uint32_t sw = (uint32_t)XV(t, X_SUBWAVE) & 3u, c = sw == 0u ? BD_SUB_SINE : sw == 1u ? BD_SUB_TRI : BD_SUB_PLS;
-        c += BD_SUB_BLK;
+    /* SUB (job F): the SUB LAYER by WAVE and HARMONICS, a voice; UNISON plays one sub a key (voice 0 only): the part's fixed cost. b14: the dearest state's (bd_tw_of) */
+    if (w.sub) {
         if (p[P_VOICE] == V_UNISON)
-            r->misc += c;
+            r->misc += w.sub;
         else
-            r->ext += c;
+            r->ext += w.sub;
     }
 
-    /* CYCLE (job F): the CYCLE envelope while an active slot reads it (t->cy) */
-    for (i = 0; i < NMSLOT; i++) {
-        const int16_t *s = &p[MSLOT_ID(i)];
-        if (s[0] == MS_CYCLE && s[1] && s[2]) {
-            r->ext += BD_CYCLE;
-            break;
-        }
-    }
+    /* CYCLE (job F): the CYCLE envelope while an active slot reads it (t->cy), in any state (b14) */
+    r->ext += w.cy ? BD_CYCLE : 0u;
+
+    /* the matrix slots, the LFOs they read and KEY TRK (with a filter running): the part's fixed cost, the dearest state's (b14; budget.c bd_part charged the live values before) */
+    r->misc += w.mx * BD_MX_SLOT + ((w.lf & 1u) + (w.lf >> 1)) * BD_LFO + (r->filt && w.kt ? BD_KTRK : 0u);
 
     /* WAVE STEPS (job F): the rounding of the scan place, a voice, on WAVE with STEPS above OFF */
     if (ENGINES[eng_idx(t->eng_req)] == &ENG_WAVE && p[P_E6] > 0)

@@ -21,9 +21,9 @@ static int ed_measure_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
             ed_b(w[p / 5u] >> (7u * (p % 5u)) & 127u);
 #if DUELL_PROBE_STAGES
         {                                               /* then the stage probe's longest blocks since the last READ (fx.c prb_stage_pk: morph_begin, part 1, part 2 wait, fm6_xblock, part 1 voices,
-                                                         * the deadline's budget figures), us, 14 bit each, low 7 first; cleared */
-            extern volatile uint32_t prb_stage_pk[6];
-            for (p = 0; p < 6u; p++) {
+                                                         * the deadline's budget figures, the gather + send buses, the master, part 1's fm6_sync and its whole fm6_block), us, 14 bit each, low 7 first; cleared */
+            extern volatile uint32_t prb_stage_pk[10];
+            for (p = 0; p < 10u; p++) {
                 uint32_t v = prb_stage_pk[p] / 24u;
                 prb_stage_pk[p] = 0;
                 ed_b(v & 127u);
@@ -38,6 +38,20 @@ static int ed_measure_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
             ed_b(nv);
             ed_b(bnotes[p]);
         }
+#if DUELL_PROBE_STAGES
+        {                                               /* then the stages' MEANS a block since the last READ (fx.c prb_sum), 0.1 us, 14 bit each, low 7 first; cleared */
+            extern volatile uint32_t prb_sum[14], prb_nblk;
+            uint32_t nb = prb_nblk ? prb_nblk : 1u;
+            for (p = 0; p < 14u; p++) {
+                uint32_t v = (uint32_t)((uint64_t)prb_sum[p] * 10u / 24u / nb);
+                prb_sum[p] = 0;
+                v = v > 16383u ? 16383u : v;
+                ed_b(v & 127u);
+                ed_b(v >> 7 & 127u);
+            }
+            prb_nblk = 0;
+        }
+#endif
         return 1;
     }
     if ((n == 3u || n == 4u) && a[0] == 1u && a[1] < GLIDE_TIMES && a[2] <= GM_JOURNEY) {
