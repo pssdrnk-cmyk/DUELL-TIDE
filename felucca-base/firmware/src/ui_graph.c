@@ -2370,7 +2370,7 @@ static void graph_events(void)
 static void lr_chip(int32_t r, int32_t y, uint32_t md, uint32_t k, uint16_t bg)
 {
     uint32_t id = md == 2u ? KC_SEQ : md ? KC_ARP : KC_OFF;
-    cv_keycap(r - kc_w(id), y, id, !md ? T_DIM : ux.bw ? T_KEY : T_PTINT(k), !md ? T_BG : ux.bw ? T_KINK : T_PTHEME(k), bg);
+    cv_keycap(r - kc_w(id), y, id, !md ? T_DIM : ux.bw ? T_KEY : T_PTINT(k), !md || ux.bw ? T_KINK : T_PTHEME(k), bg);
 }
 static void list_row1(int32_t top, int sel, const char *tag, const char *name, uint16_t nc, const char *ra, uint16_t rac, const char *rb, uint16_t rbc, int star, int boxed)
 {
