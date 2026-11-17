@@ -68,7 +68,7 @@ if TWOCORE:
     NAMES = NAMES + [f for fs in TWOCORE_GROUPS.values() for f in fs]
     NAMES = [f for f in NAMES if f not in ("mod_tsrc", "mod_part_put")]   # hunt3: these two are in range X in TWOCORE builds (ram_fns_x.py X_FROM_Z)
     if os.environ.get("DUELL_TIDE") != "0" and os.environ.get("DUELL_K4") != "0":
-        NAMES = NAMES + ["tcb_c1_rev"]   # TIDE K4 (twocore_run.c): core 1's reverb job, a tail call from core 1's loop in range X to rev_tail in the flash, which X cannot reach by a direct call; Z can
+        NAMES = NAMES + ["tcb_c1_rev", "mpj_c1"]   # TIDE K4 (twocore_run.c): core 1's reverb job, a tail call from core 1's loop in range X to rev_tail in the flash, which X cannot reach by a direct call; Z can. B15 MPJ: mpj_c1, core 1's tail call to mix_master in the flash, the same way
 # TIDE 1.0.0-b5 (RAM room for the one-part change): cold code back to the flash, about 1 KB of range Z. The EQ's coefficient design (fx.c eq_design and
 # its helpers eq_q28, eq_taylor, eq_hz_q8, and __divdi3, which only they call from RAM) runs when a band's integer key changes (a knob step, a morph
 # step, a band turned on or off), not every block: track_eq, the per-block filter, stays in range Z (tools/ram_allow.py has the reason). morph_apply

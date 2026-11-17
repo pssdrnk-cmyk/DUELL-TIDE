@@ -3223,6 +3223,12 @@ static void mix_part(track_t *t, uint32_t n, const blockstate_t *bs)
 #if DUELL_TWOCORE
 #include "twocore_run.c"                             /* DUELL TWO-CORE stage 1: the job core 1 plays (part 2) and the runner (docs/TWOCORE_STAGE1.md) */
 #endif
+#ifndef MPJ_ON
+#define MPJ_ON 0                                     /* (B15 MPJ, the master on core 1: twocore_run.c; none without the second core) */
+#endif
+#ifndef MPJ_SYNC
+#define MPJ_SYNC() ((void)0)
+#endif
 
 /* GATHER stage, after the last part and before mix_sends: the parts' accumulators that were written this block (pacc_on; in the order pacc[0], pacc[1] ..) summed
  * into the globals the send stage and the master read: mix_l, mix_r, send_*, and with sp_tap SPACE's floors sp_f*. A silent part wrote nothing and costs nothing
@@ -3306,6 +3312,7 @@ static __attribute__((noinline)) void mix_gather(uint32_t n, const blockstate_t 
 {
     const part_acc_t *a = 0, *b = 0, *fl0 = 0, *fl1 = 0;   /* the first two parts that wrote l / r, and the floors */
     uint32_t p, i, nl = 0, nf = 0, am = 15u, om = 0, st = bs->dm_split && bs->snd_st != SND_OFF, sp = bs->sp_tap;
+    MPJ_SYNC();                                         /* (B15 MPJ: the block before's master on core 1 reads mix_l / mix_r / wet: closed before they are rewritten) */
     for (p = 0; p < NLIVE; p++) {
         uint32_t on = pacc_on[p];
 #if DUELL_TWOCORE
@@ -3465,10 +3472,14 @@ static __attribute__((noinline)) void mix_events(uint32_t n)
 {
     duck_src_norm();                                    /* DUCK SRC PART on one part only (params.c): a pair that breaks the rule (a multi, a project) is mended here */
     events_block(n);
-    if (dm_cur != duell_mode || dm_g != DM_ONE || dm_clr)
+    if (dm_cur != duell_mode || dm_g != DM_ONE || dm_clr) {
+        MPJ_SYNC();                                     /* (B15 MPJ: dm_* and the master's states are the master's inputs) */
         dm_step();                                      /* DUELL step 5: the MODE changing (the dip) */
-    if (snd_st != SND_ON || (mods_off & MODS_SENDS) || snd_panic)
+    }
+    if (snd_st != SND_ON || (mods_off & MODS_SENDS) || snd_panic) {
+        MPJ_SYNC();
         snd_step();                                     /* DUELL 0.2.14 MODULES SENDS: OFF, fading, clearing its lines */
+    }
 }
 
 /* the buffer x times a gain that goes in a line from g0 to g1 (Q15) over the block (BYPASS of the chorus and the delay) */
@@ -3728,7 +3739,15 @@ static void mix_block(int32_t *out, uint32_t n)
     if (scope_mix)
         scope_take_mix(n);
 #endif
+#if MPJ_ON
+    if (!mpj_post(out, perf, mg)) {                     /* B15 MPJ: blocks 0 .. 2's plain master to core 1 (twocore_run.c), else here */
+        MPJ_SYNC();
+        mix_master(out, n, perf, mg);
+    }
+    mpj.k++;
+#else
     mix_master(out, n, perf, mg);
+#endif
 #if DUELL_PROBE_STAGES && DUELL_MEASURE
     if (fm1_ticks() - sg1 > prb_stage_pk[7]) prb_stage_pk[7] = fm1_ticks() - sg1;
     prb_sum[5] += fm1_ticks() - sg1, prb_sum[6] += fm1_ticks() - mb0, prb_nblk++;

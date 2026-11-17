@@ -12,6 +12,29 @@
 
 static int32_t abuf[2u * HALF_WORDS] __attribute__((aligned(4)));
 
+/* B15 THE RING (AUDIO_RING; owner 17 Nov: +2.9 ms latency approved; work/b15/cpu/cores/DESIGN.md). The interrupt renders one half AHEAD: at its entry it copies the half it
+ * rendered last time (rbuf) into the DMA's free half and acknowledges at once, then renders the next half into rbuf. A half is then late only when its interrupt ENTERS a
+ * whole half after it came due (the copy is the deadline, not the render's end), so a render over 100 % borrows from the next half and a lighter one pays it back (Deluge's
+ * output ring, research #1). The "debt" is how late an entry is: ring_due is when this interrupt came due (the entry of an on-time one, else the last due + a half: the DMA and
+ * TIMER4 run from the same 24 MHz clock, 544 ticks a frame). The ease ladder and the in-buffer guard read the debt the half leaves (ring_eff, guard_block), not the half's own
+ * length: a spike the ring absorbs eases and sheds nothing (owner: no note cutting). The flash duck needs three silent halves (rbuf and both DMA halves). Off (0): the old
+ * ping-pong, bit for bit (the host tests' default) */
+#ifndef AUDIO_RING
+#define AUDIO_RING 0
+#endif
+#if AUDIO_RING
+#define RING_HALF_TICKS (HALF_FRAMES * DAC_TICKS * FM1_TICKS_PER_US / 24u)   /* the DMA's period in fm1_ticks: 69,632 on the unit (DAC_TICKS is 24 MHz ticks a frame) */
+#define RING_JIT_TICKS (4u * FM1_TICKS_PER_US)         /* an entry this close to its expected time is on time: ring_due follows it (the entry's own jitter, and any drift, never adds up) */
+#define RING_COPY_TICKS (8u * FM1_TICKS_PER_US)        /* the copy at the entry and the interrupt's own start: a debt within this of a half is already a miss */
+static int32_t rbuf[HALF_WORDS] __attribute__((aligned(4)));   /* the half rendered ahead (zero at power-on: the first copy is silence) */
+static uint32_t ring_due;                              /* when the interrupt now running came due (fm1_ticks) */
+static uint8_t ring_run;                               /* ring_due is valid (an interrupt ran before) */
+static uint32_t ring_debt, ring_debt_pk;               /* this entry's lateness (ticks; 0 .. a half), and the largest since the console last read it */
+#define DUCK_SILENT_HALVES 3u                          /* rbuf and both halves of abuf */
+#else
+#define DUCK_SILENT_HALVES 2u                          /* both halves of abuf */
+#endif
+
 /* diagnostics, kept across resets and UBOOT entry: read with `fm1t memr` */
 #define DBG_MAGIC 0x44424731u                       /* "DBG1" */
 struct felucca_dbg {
@@ -97,9 +120,8 @@ static __attribute__((noinline)) void master_dac(int32_t *out, uint32_t n)   /* 
     mdac_g = g;
 }
 
-static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 -> 24 bit */
+static void audio_post(int32_t *out, uint32_t n)        /* after the block's master: USB, the DAC's level, the click */
 {
-    mix_block(out, n);
 #if FELUCCA_UAC
     uac_tap(out, n);                                    /* the USB audio input: the same master output, at the fixed level */
 #endif
@@ -110,6 +132,44 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
             scope_buf[scope_w++ & (SCOPE_N - 1u)] = (int16_t)(out[2u * i] >> OUT_SHIFT);
 #endif
     click_render(out, n, OUT_SHIFT);                    /* the metronome (click.c): the DAC only, not USB */
+}
+#if MPJ_ON
+/* B15 MPJ (twocore_run.c): a block whose master went to core 1 gets its DAC steps after the next block's mix (its master is closed by then: mix_gather waited for it), in block
+ * order; the click's request is the one the block had at its own end (the next block's events may have set a new one, which waits) */
+static struct { int32_t *out; uint8_t creq, on; } mpj_q;
+static void mpj_fin(void)
+{
+    uint8_t r;
+    if (!mpj_q.on)
+        return;
+    MPJ_SYNC();
+    r = click_req;
+    click_req = mpj_q.creq;
+    audio_post(mpj_q.out, CTL);
+    click_req = r;
+    mpj_q.on = 0;
+}
+#endif
+static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 -> 24 bit */
+{
+#if MPJ_ON
+#if FELUCCA_UAC
+    mpj.io_busy = uac.feed != 0;                        /* (USB audio reads the block's output at once: its master stays on core 0) */
+#endif
+    mix_block(out, n);
+    mpj_fin();                                          /* (the block before's, if its master was on core 1) */
+    if (mpj.posted_now) {
+        mpj_q.out = out;
+        mpj_q.creq = click_req;
+        click_req = 0;
+        mpj_q.on = 1;
+        return;
+    }
+    audio_post(out, n);
+#else
+    mix_block(out, n);
+    audio_post(out, n);
+#endif
 }
 
 /* DUELL 0.2.11, the flash duck (SPEC 6.3): a flash erase keeps the interrupts off for its whole time (~40 ms; the device's own
@@ -135,7 +195,7 @@ static __attribute__((noinline)) void duck_half(int32_t *o)   /* the half just r
     }
     if (!duck_on)
         duck_zero = 0;
-    else if (!g0 && duck_zero < 2u)
+    else if (!g0 && duck_zero < DUCK_SILENT_HALVES)
         duck_zero++;
 }
 #ifndef AUDIO_DUCK_IDLE
@@ -146,7 +206,7 @@ static void audio_duck(void)                           /* main loop: fade out, w
 {
     uint32_t t0 = fm1_ticks();
     duck_on = 1;
-    while (duck_zero < 2u && audio_halves && fm1_ticks() - t0 < DUCK_WAIT_TICKS)
+    while (duck_zero < DUCK_SILENT_HALVES && audio_halves && fm1_ticks() - t0 < DUCK_WAIT_TICKS)
         AUDIO_DUCK_IDLE();
 }
 static void audio_unduck(void) { duck_on = 0; }       /* the next half fades back in */
@@ -266,14 +326,32 @@ static uint32_t shed_released(uint32_t n)             /* the n oldest released v
 #endif
 static uint32_t guard_q;                                /* the running mean of a later block (blocks 1 .. 3 of a half), ticks x 8 */
 static uint32_t guard_count;                            /* checks that faded tails */
+#if AUDIO_RING
+static uint32_t guard_lim = GUARD_TICKS;                /* B15 ring: the half may end up to half a half past its time (the debt it leaves is then at most half the ring), less the debt it came in with */
+#define GUARD_LIM guard_lim
+#else
+#define GUARD_LIM GUARD_TICKS
+#endif
 static inline void guard_block(uint32_t t0, uint32_t tb, uint32_t k)
 {
     const uint32_t te = AUDIO_BLK_TICKS(), left = HALF_FRAMES / CTL - 1u - k;
     if (k)
         guard_q += (te - tb) - (guard_q >> 3);
-    if (left && (te - t0) + left * (guard_q >> 3) > GUARD_TICKS && shed_released(GUARD_N))
+    if (left && (te - t0) + left * (guard_q >> 3) > GUARD_LIM && shed_released(GUARD_N))
         guard_count++;
 }
+#if AUDIO_RING
+/* B15 ring: what the ease ladder reads for a half of length `all` that came in `debt` late. With no debt left after it: its length, capped at EASE_UP_TICKS (never "over":
+ * a spike the ring absorbed eases nothing; under the cap the ladder's way down works as before). With a debt left: just over EASE_UP_TICKS for a small one, rising to the
+ * whole half (a "miss" to the ladder: EASE_TAILS) when the debt left reaches half the ring. A real miss is counted at the next entry (a debt of a whole half) */
+static uint32_t ring_eff(uint32_t all, uint32_t debt)
+{
+    uint32_t nd = debt + all > RING_HALF_TICKS ? debt + all - RING_HALF_TICKS : 0u;
+    if (!nd)
+        return all < EASE_UP_TICKS ? all : EASE_UP_TICKS;
+    return EASE_UP_TICKS + 1u + (uint32_t)((uint64_t)nd * (SHED_FULL_TICKS - EASE_UP_TICKS) / (RING_HALF_TICKS / 2u));
+}
+#endif
 
 /* the level a released voice is ranked by: its envelope, or on an engine with its own envelopes (FM6: v->env is forced to full) the loudest carrier as the block left it */
 static int32_t shed_level(track_t *t, voice_t *v)
@@ -333,7 +411,36 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
     fm1_audio_ack_aux(p);
     if (p & FM1_AUDIO_HALF) {
         uint32_t half = fm1_audio_free_half(), b, us, late, all, el, mp;
+#if AUDIO_RING
+        int32_t *o = rbuf;                              /* B15: this half is rendered ahead, into rbuf; the one rendered last time goes to the DMA now */
+        uint32_t ring_miss = 0;
+        fm1_audio_ack_half();                           /* (at once: a half that comes due while this one renders keeps its pending flag, and the next entry follows this one) */
+        {
+            uint32_t exp = ring_due + RING_HALF_TICKS, i;
+            int32_t *d = &abuf[half * HALF_WORDS];
+            if (!ring_run || (int32_t)(t0 - exp) < (int32_t)RING_JIT_TICKS) {
+                ring_due = t0;                          /* on time (or the first entry): the due time follows the entry */
+                ring_debt = 0;
+            } else {
+                ring_due = exp;
+                ring_debt = t0 - exp;
+                if (ring_debt + RING_COPY_TICKS >= RING_HALF_TICKS) {   /* a whole half late: the DMA played a stale half (one per half of lateness); start again from this entry */
+                    if (!(duck_on && duck_zero >= DUCK_SILENT_HALVES))   /* (not after a flash erase: the interrupts were off on purpose and the DMA looped silence, as the old code counted none) */
+                        ring_miss = (ring_debt + RING_COPY_TICKS) / RING_HALF_TICKS;
+                    ring_due = t0;
+                    ring_debt = 0;
+                }
+            }
+            ring_run = 1;
+            if (ring_debt > ring_debt_pk)
+                ring_debt_pk = ring_debt;
+            for (i = 0; i < HALF_WORDS; i++)
+                d[i] = rbuf[i];
+            guard_lim = GUARD_TICKS + RING_HALF_TICKS / 2u > ring_debt ? GUARD_TICKS + RING_HALF_TICKS / 2u - ring_debt : 0u;
+        }
+#else
         int32_t *o = &abuf[half * HALF_WORDS];
+#endif
         if (shed_req) {
             uint32_t r = shed_req;
             shed_req = 0;
@@ -349,17 +456,31 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         for (b = 0; b < HALF_FRAMES; b += CTL) {
             const uint32_t tb = AUDIO_BLK_TICKS();
 #ifdef FM1_INPUT_LAT
+#if AUDIO_RING
+            kb_out_tick = ring_due + (2u * HALF_FRAMES + b) * DAC_TICKS;   /* when this block plays (seq.c kb_lat): one half later with the ring */
+#else
             kb_out_tick = t0 + (HALF_FRAMES + b) * DAC_TICKS;   /* when this block plays (seq.c kb_lat) */
+#endif
 #endif
             audio_block(o + 2u * b, CTL);
             guard_block(t0, tb, b / CTL);               /* b11: the in-buffer guard (above) */
         }
+#if MPJ_ON
+        mpj_fin();                                      /* (none waits here: the half's last block keeps its master on core 0; a safety net) */
+#endif
         if (duck_on || duck_g < 32768u)                 /* (the flash duck: only around a flash write) */
             duck_half(o);
+#if !AUDIO_RING
         fm1_audio_ack_half();
+#endif
         audio_halves++;
         all = fm1_ticks() - t0;
+#if AUDIO_RING
+        (void)ease_step(ring_eff(all, ring_debt));      /* (B15: the ladder reads the debt this half leaves) */
+        us = (all - t5_nested_ticks) / FM1_TICKS_PER_US;
+#else
         us = ease_step(all);
+#endif
         el = all / FM1_TICKS_PER_US;                    /* (K2: what the deadline saw, TIMER5 nested in it included) */
 #if DUELL_BENCH
         cpu_el_last = el;                               /* (the bench's timeline window) */
@@ -382,9 +503,15 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             song.cpu_q8 = load / CPU_AVG;
             audio_cpu_rem = load % CPU_AVG;
         }
+#if AUDIO_RING
+        late = ring_miss != 0;                          /* (B15: a miss is an entry a whole half late: the DMA replayed a half; a long render alone is not one) */
+        mp = 0;
+        cpu_miss += ring_miss;
+#else
         late = fm1_audio_free_half() != half;
         mp = (el > CPU_BUDGET_US) + (el > 2u * CPU_BUDGET_US) + (el > 3u * CPU_BUDGET_US);   /* (K2: DMA periods missed: the half's elapsed time over 1, 2, 3 periods; the chip has no period counter, only the half selector) */
         cpu_miss += mp ? mp : late;                     /* (or one period: the DMA moved on while a half no longer than its time was rendered: a late entry) */
+#endif
         if (late)
             felucca_dbg.late++;                         /* the DMA moved on while we rendered */
         felucca_dbg.halves++;

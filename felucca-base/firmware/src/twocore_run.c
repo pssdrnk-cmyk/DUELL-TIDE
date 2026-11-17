@@ -19,8 +19,9 @@
  *     done   fine                                                              "very late"  (BENCHT4: never a pause by itself, however many in a row or in a window; counted as
  *                                                                               "very late without a pause", tcs.vlate_ok. The BENCHT3 run / window rules are off by default and
  *                                                                               can be switched on for a diagnosis: bench vrun N, bench vwin K [MS])
- *     not    part 2 silent this block (core 0 touches nothing of part 2: tcr.skip2, mix_gather skips it); the jobs pause (a fault); part 2 stays silent
- *            until the open job is done, then core 0 plays it (the late job's sums are thrown away). This is also the answer to a job that would make core 0 miss its half
+ *     not    part 2 silent this block (core 0 touches nothing of part 2: tcr.skip2, mix_gather skips it); part 2 stays silent until the open job is done, then
+ *            the jobs go on (the late job's sums are thrown away). This is also the answer to a job that would make core 0 miss its half. B15: no pause here unless the
+ *            take had no answer (a late core 1 that answers is alive; the old 10 s pause put both parts on core 0 and trimmed the notes: work/b15/cpu/root/ROOT_CAUSE.md)
  *   refused  a strike (BADJOB), core 0 plays part 2
  *   nothing  (no answer within TCR_ANSWER_US) part 2 silent, the jobs pause; tc_watch stops core 1 after TC_HANG_MS without a beat
  * A real fault (refused job, a word ahead, a refused snapshot): tc_fail, a strike, core 0 plays part 2 from then on; if core 1 never claimed the open job
@@ -258,13 +259,14 @@ static void tcm_clear(void)
  * reverb's fields of fx. Core 0 does not touch them until the job is closed.
  * The take-back rules are part 2's (tcr_part2): done by the deadline -> added; not done -> take; yld -> core 0 runs rev_tail itself (the same samples, "late");
  * claimed and done by the wait limit -> added ("very late", no pause); not done by the limit -> the reverb is SILENT this block: its last sample fades to 0 over the
- * block (no step), the job stays open (no job is posted while it is: core 0 plays part 2 itself), the jobs pause; the reverb comes back with a one-block fade-in.
+ * block (no step), the job stays open (no job is posted while it is: core 0 plays part 2 itself), the jobs pause only if the take had no answer (B15); the reverb comes back with a one-block fade-in.
  * A refused job or a word ahead: tc_fail (a strike); core 0 runs the reverb (cleared first and faded in if core 1 had claimed it: it may be half written).
  * The fit: core 1's own run time (tc_mb.brt, written before done) is kept as the largest of two buckets of TCR_FLOOR_BLOCKS blocks; a bucket with no measured job
  * keeps the one before (no fading to "free" without a measurement). A job is posted only when now + that time is before the take-over deadline. */
 #define TCJ_REV 0x8000u                 /* the job kind in arg's low half: n | TCJ_REV (part 2's job: n | hash << 16) */
 typedef struct {
     uint32_t posted, in_time, late, vlate, silent, refused, nofit, off;   /* reverb jobs posted, and how they ended; blocks it did not fit (core 0 ran it), blocks with the switch off */
+    uint32_t noans;                     /* B15: takes of a reverb job that got no answer within TCR_ANSWER_US (the one reason its silent block may pause the jobs) */
     uint32_t nm, rt_max, wt_max, c0_max, c0_n;   /* jobs measured; core 1's longest reverb run, core 0's longest wait for it, core 0's longest bus stage (fx_buses), blocks of that */
     uint64_t rt_sum, wt_sum, c0_sum;    /* (ticks) */
 } tcb_stat_t;
@@ -293,6 +295,50 @@ static void tcb_settle(void);
 #define TCB_OR_OPEN || tcb.open
 #else
 #define TCB_OR_OPEN
+#endif
+
+/* ---------------------------------------------------------------- B15 MPJ: the master of block k on core 1 during block k+1's events ---
+ * (work/b15/cpu/cores/DESIGN.md section 3; TIDE builds with K4: MPJ_ON = TCB_ON.) At the end of blocks 0 .. 2 of a half, when the master is the plain one (no PERFORM stage, no MODE dip,
+ * not DUEL) and core 1 is free, core 0 posts "the master of this block" (arg CTL | TCJ_MST) instead of running mix_master, and goes on with the next block's events; core 1 runs
+ * mix_master into the block's own slice of the output. The half's last block keeps its master on core 0 (its BYPASS writes wd_sel / bm_sel / cmp_cfg for the block, which the
+ * main loop must never see), so no master job is open when the interrupt returns.
+ * The master reads mix_l / mix_r / wet, the settings (the UI's, unchanged inside the interrupt), sv.spc / sw_* (SPACE's width: written by mix_sends only), dm_* (written by
+ * dm_step / dm_switch / dm_ramp only) and byp_sh, and writes those buffers, its stages' states (sw_*, wdn, bm, cmp, the limiters, the DC blockers) and out. Core 0 waits for the job
+ * to close (mpj_sync) before anything of its own that touches them: mix_gather (the next block's mix), dm_step and snd_step (mix_events), a master it runs itself, the
+ * deadline's cost read (budget.c reads the master settings); everything else the next block's events and part 1 write is not read by the master (fx.c mix_events' contract).
+ * One job at a time on core 1: tcr_begin posts part 2 behind it only once core 1 has CLAIMED the master (else core 0 would overwrite the words before core 1 read them); a
+ * master core 1 has not claimed in time is taken back and core 0 runs it, with block k's buffers still untouched: the same samples. A claimed master is never taken back.
+ * audio.c runs the block's USB tap, DAC level and click after the next block (mpj_fin), with the click's request latched at the block's own end. Same samples, one block of the
+ * DAC's output later in the interrupt (inside the ring's half: no latency) */
+#ifndef MPJ_ON
+#define MPJ_ON TCB_ON
+#endif
+#if MPJ_ON
+#define TCJ_MST 0x4000u                 /* the job kind in arg's low half (the reverb is 0x8000) */
+#define MPJ_LIM_TICKS (TCR_HALF_TICKS / 2u)   /* a claimed master not done by this after core 0 starts waiting: core 1 is stuck (it takes ~150 us) */
+typedef struct {
+    uint32_t posted, waited, wait_max, own, taken, faults;   /* masters posted; syncs that had to wait, the longest wait (ticks); blocks it did not fit (core 0 ran it); taken back; stuck / refused */
+} mpj_stat_t;
+static mpj_stat_t mpjs TC_BSS;
+static struct {
+    uint32_t job;                       /* the open master job (0: none) */
+    int32_t *out;                       /* its block's output slice */
+    int32_t mg;                         /* its master level (MIX_MG) */
+    uint8_t k;                          /* the block in the half (tc_half_begin: 0) */
+    uint8_t off;                        /* 1: the master stays on core 0 (console / the sim's runs aimed at job numbers) */
+    uint8_t io_busy;                    /* audio.c: something reads the block's output before the next block (the USB audio feed): the master stays on core 0 */
+    uint8_t posted_now;                 /* this block's master went to core 1 (audio.c defers the block's DAC steps) */
+} mpj TC_BSS;
+static void mix_master(int32_t *out, uint32_t n, int perf, int32_t mg);   /* (fx.c, after this file) */
+/* core 1 (range Z, tools/ram_fns_z.py: core 1's loop in range X cannot call the flash directly): the master of the posted block */
+static __attribute__((noinline)) void mpj_c1(void)
+{
+    mix_master(mpj.out, CTL, 0, mpj.mg);
+}
+#define MPJ_SYNC() mpj_sync()
+static void mpj_sync(void);
+#else
+#define MPJ_SYNC() ((void)0)
 #endif
 
 /* ---------------------------------------------------------------- the job (core 1) --- */
@@ -327,6 +373,12 @@ static void tc_job_run(uint32_t arg)
     uint32_t n = arg & 0xFFFFu;
     mixpart_t m;
     int mo;
+#if MPJ_ON
+    if (arg == (CTL | TCJ_MST)) {                       /* B15 MPJ: the master of the block core 0 just finished (mpj_post) */
+        mpj_c1();
+        return;
+    }
+#endif
 #if TCB_ON
     if (arg == (CTL | TCJ_REV)) {                       /* TIDE K4: the reverb of the block (its inputs: the globals core 0 made final before the post) */
         uint32_t t0 = TC_TICKS();
@@ -352,6 +404,119 @@ static void tc_job_run(uint32_t arg)
     /* STAGE 2: bus B */
 }
 
+#if MPJ_ON
+/* ---------------------------------------------------------------- B15 MPJ, core 0's side --- */
+enum { MPJ_OPEN, MPJ_RUNNING, MPJ_CLOSED, MPJ_YIELDED, MPJ_REFUSED };
+/* the open master job's state from core 1's words. Core 1 answers jobs in order, so a later job's claim, done or yld means the master is done. Only the master can be yielded
+ * while it is the newest job (tcr_begin posts nothing behind an unclaimed master) */
+static uint32_t mpj_state(uint32_t j)
+{
+    uint32_t d, y, c, b;
+    TC_SYNC();
+    d = TC_LD(&tc_mb.done);
+    y = TC_LD(&tc_mb.yld);
+    c = TC_LD(&tc_mb.claim);
+    b = TC_LD(&tc_mb.bad_job);
+    if (y == j)
+        return MPJ_YIELDED;
+    if (b == j)
+        return MPJ_REFUSED;
+    if (d == j || (int32_t)(d - j) > 0 || (int32_t)(c - j) > 0 || (int32_t)(y - j) > 0)
+        return MPJ_CLOSED;
+    return c == j ? MPJ_RUNNING : MPJ_OPEN;
+}
+/* core 0 runs the open master itself (core 1 never touched it: yielded, refused, or never claimed before it stopped): block k's buffers are untouched until mpj_sync returns */
+static void mpj_own(void)
+{
+    mpj.job = 0;
+    mix_master(mpj.out, CTL, 0, mpj.mg);
+}
+/* wait for core 1 to CLAIM the open master (tcr_begin, before it posts part 2 behind it), or take it back: on return, the master is claimed, closed, or done by core 0 */
+static void mpj_claimed(void)
+{
+    uint32_t j = mpj.job, t1, s;
+    if (!j)
+        return;
+    t1 = TC_TICKS() + TCR_ANSWER_TICKS;
+    while ((s = mpj_state(j)) == MPJ_OPEN && tc.up && (int32_t)(TC_TICKS() - t1) < 0)
+        ;
+    if (s != MPJ_OPEN || !tc.up)
+        return;                                         /* (claimed, closed, yielded, refused or core 1 stopped: mpj_sync settles the last three) */
+    tc_take(j);                                         /* not claimed in time: ask for it back */
+    t1 = TC_TICKS() + TCR_ANSWER_TICKS;
+    while ((s = mpj_state(j)) == MPJ_OPEN && (int32_t)(TC_TICKS() - t1) < 0)
+        ;
+    mpjs.taken++;
+    if (s == MPJ_OPEN) {                                /* no answer: core 1 is stuck (a strike), the master is core 0's */
+        mpjs.faults++;
+        tc_fail(TCR_NOANSWER);
+        mpj_own();
+    }
+}
+/* the open master job closed: wait for core 1, or run it on core 0 when core 1 gave it back, refused it or stopped before claiming it. A claimed master that does not finish in
+ * MPJ_LIM_TICKS (core 1 stuck in it): core 1 is stopped (a strike) and the block's output slice is silence (its master states may be half updated; a fault path only) */
+static void mpj_sync(void)
+{
+    uint32_t j = mpj.job, t0, s, i;
+    if (!j)
+        return;
+    mpj_claimed();
+    if (!mpj.job)
+        return;
+    t0 = TC_TICKS();
+    while ((s = mpj_state(j)) == MPJ_RUNNING || s == MPJ_OPEN) {
+        if (!tc.up) {                                   /* (core 1 stopped meanwhile: tc_watch, or another fault) */
+            if (s == MPJ_OPEN) {
+                mpj_own();
+                return;
+            }
+            break;
+        }
+        if ((int32_t)(TC_TICKS() - t0 - MPJ_LIM_TICKS) >= 0) {
+            mpjs.faults++;
+            tc_fail(TCR_HANG);
+            break;
+        }
+    }
+    if (s == MPJ_YIELDED || s == MPJ_REFUSED) {
+        if (s == MPJ_REFUSED) {
+            mpjs.faults++;
+            tc_fail(TCR_BADJOB);
+        }
+        mpj_own();
+        return;
+    }
+    if (s != MPJ_CLOSED) {                              /* stuck in the claimed master: silence for the block */
+        for (i = 0; i < 2u * CTL; i++)
+            mpj.out[i] = 0;
+    }
+    {
+        uint32_t w = TC_TICKS() - t0;
+        if (w > 2u * TC_TICKS_PER_US)
+            mpjs.waited++;
+        if (w > mpjs.wait_max)
+            mpjs.wait_max = w;
+    }
+    mpj.job = 0;
+}
+/* mix_block, instead of mix_master: post the block's master to core 1 when it may go there; returns 1 if posted */
+static int mpj_post(int32_t *out, int perf, int32_t mg)
+{
+    mpj.posted_now = 0;
+    if (mpj.off || mpj.io_busy || mpj.k >= TCR_BLOCKS - 1u || perf || dm_split || dm_g != DM_ONE || dm_dir || !tc.up || tc.park || tcr.paused || tcr.open TCB_OR_OPEN ||
+        mpj.job || !tc_closed() TCR_OR_NOCORE1) {
+        mpjs.own += mpj.k < TCR_BLOCKS - 1u;
+        return 0;
+    }
+    mpj.out = out;
+    mpj.mg = mg;
+    mpj.job = tc_post(CTL | TCJ_MST);                   /* (tc_post syncs the words above before the job word) */
+    mpjs.posted++;
+    mpj.posted_now = 1;
+    return 1;
+}
+#endif
+
 /* ---------------------------------------------------------------- the deadline (core 0) --- */
 static uint32_t tcr_active(const track_t *t)
 {
@@ -375,6 +540,7 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
 {
     uint32_t k = tcr.blk, c1, c2, need, dl, cap, a1, a2;
     if (k == 0 || !tcr.cost_ok) {
+        MPJ_SYNC();                                     /* (B15 MPJ: budget.c reads wd_sel / bm_sel / cmp_cfg, which a running master's BYPASS writes for its block) */
 #if DUELL_PROBE_STAGES
         uint32_t pb0 = fm1_ticks();                     /* (probe, test-mode builds: st_budget_us of the console `cpu`; ROADMAP Later 22, finding 6) */
 #endif
@@ -500,6 +666,10 @@ static void tc_half_begin(uint32_t t0)
     tcr.t0 = t0;
     tcr.t0_ok = 1;
     tcr.blk = 0;
+#if MPJ_ON
+    MPJ_SYNC();                                         /* (none is open here: the half's last block keeps its master on core 0; a safety net) */
+    mpj.k = 0;
+#endif
 #if TC_MEAS
     tcm_half();
 #endif
@@ -670,6 +840,11 @@ static void tcr_begin(const blockstate_t *bs, uint32_t n)
 #endif
         return;                                         /* the half is too far gone to wait for core 1 (or core 1's measured run time does not fit before the latest deadline: not a fault) */
     }
+#if MPJ_ON
+    mpj_claimed();                                      /* (B15: part 2 goes behind the master only once core 1 has claimed it) */
+    if (!tc.up)
+        return;                                         /* (core 1 stopped by it: core 0 plays part 2, tcr_part2's "no job") */
+#endif
     tc_ctx.bs = *bs;
     tcr.dl = dl;
 #if TC_MEAS
@@ -725,12 +900,12 @@ static void tcr_part2(const blockstate_t *bs, uint32_t n)
             t1 = lim;                                   /* (the wait for the answer is inside the limit too) */
         while ((a = tc_answer(j)) == TCA_NONE && (int32_t)(TC_TICKS() - t1) < 0)
             ;
-        if (a == TCA_YIELD && tcr.nott) {               /* item 90: it had not started and core 0 has no time left for part 2: silent this block (core 1 never touched it), a pause */
+        if (a == TCA_YIELD && tcr.nott) {               /* item 90: it had not started and core 0 has no time left for part 2: silent this block (core 1 never touched it). B15: no pause:
+                                                         * core 1 answered (it is alive, only late); a pause would put both parts on core 0 for TCR_CALM_MS and trim the notes (b15 root cause) */
             tcs.late++;
             tcs.silent++;
-            tcr.open = 0;
+            tcr.open = 0; /* [nott yld b15] */
             tcr.skip2 = 1;
-            tcr_pause(TC_TICKS(), TCR_PW_FAULT);
             return;
         }
         if (a == TCA_YIELD) {                           /* it had not started: core 0 plays part 2, no click */
@@ -761,7 +936,11 @@ static void tcr_part2(const blockstate_t *bs, uint32_t n)
                 return;
             }
             if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: part 2 silent for this block, core 0 touches nothing of it */
-                tcr_pause(TC_TICKS(), TCR_PW_FAULT); /* [silent] */
+                /* B15: a pause only for a core 1 that gave no answer to the take (a real fault). A late but answering core 1 is not paused: the job stays open, part 2 stays
+                 * silent until it is done (tcr_settle closes it at a block's start), then the jobs go on at once; a hung core 1 stops beating and tc_watch stops it after
+                 * TC_HANG_MS. Was: always a TCR_CALM_MS pause = both parts on core 0, notes trimmed (work/b15/cpu/root/ROOT_CAUSE.md) */
+                if (noans) /* [silent b15] */
+                    tcr_pause(TC_TICKS(), TCR_PW_FAULT);
                 tcs.silent++;
                 tcr.skip2 = 1;
                 return;
@@ -933,12 +1112,14 @@ static void tcb_rev(const int32_t *rev_in, int32_t *wet, uint32_t n)
             ;
         if (a == TCA_CLAIMED || a == TCA_NONE) {        /* it is on it (or stuck): wait for done, not past the wait limit */
             noans = a == TCA_NONE;
+            tcbs.noans += (uint32_t)noans;
             while ((a = tc_answer(j)) == TCA_CLAIMED || a == TCA_NONE)
                 if ((int32_t)(TC_TICKS() - tcb.lim) >= 0)
                     break;
-            if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: silent this block, the job stays open, a fault pause */
+            if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: silent this block, the job stays open (B15: a pause only if the take had no answer, as tcr_part2) */
                 tcbs.silent++;
-                tcr_pause(TC_TICKS(), TCR_PW_FAULT);
+                if (noans) /* [k4 silent b15] */
+                    tcr_pause(TC_TICKS(), TCR_PW_FAULT);
                 tcb_silent(wet, n);
                 return;
             }

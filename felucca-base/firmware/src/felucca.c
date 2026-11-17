@@ -29,6 +29,9 @@
 #ifndef FELUCCA_UAC_TONE
 #define FELUCCA_UAC_TONE 0       /* bench: the USB input sends test triangles instead of the music */
 #endif
+#ifndef AUDIO_RING
+#define AUDIO_RING 0             /* B15: render one half ahead of the DMA (audio.c; on in every build.py build except DUELL_BENCH=1, env AUDIO_RING=0 turns it off; the host tests keep the old ping-pong unless they set it) */
+#endif
 #ifndef FELUCCA_UART
 #define FELUCCA_UART 1           /* TRS MIDI IN on UART1 / PH8 */
 #endif
