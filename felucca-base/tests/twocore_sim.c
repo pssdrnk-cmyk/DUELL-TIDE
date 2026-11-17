@@ -706,14 +706,14 @@ static void sim_block(int32_t *out, uint32_t n)
     uint32_t b = nblk;
     if (b % TCR_BLOCKS == 0) {
         uint32_t h = b / TCR_BLOCKS, t = BASE_TICKS + h * TCR_HALF_TICKS + clk_jump;
-        if (fault == F_VLONG && tcs.pauses > jumps && tcr.open) {   /* the late job is let go before the calm period passes (its clock figures stay those of one job) */
+        if (fault == F_VLONG && tcr.open) {             /* the late job is let go at the next half's start (B15: no pause follows it any more; a healthy late core 1 finishes within a fraction of a half, so its clock figures stay those of one job) */
             uint32_t want = tcr.lim + 100u;
             if ((int32_t)(want - raw_ticks()) > 0)
                 __atomic_store_n(&tc_host_ticks, want, __ATOMIC_RELAXED);
             while (c1_live() && !tc_closed())
                 cpu_relax();
         }
-        if (fault == F_K4_VLONG && tcs.pauses > jumps && tcb.open) {   /* (the same for the late reverb job) */
+        if (fault == F_K4_VLONG && tcb.open) {          /* (the same for the late reverb job) */
             uint32_t want = tcb.lim + 100u;
             if ((int32_t)(want - raw_ticks()) > 0)
                 __atomic_store_n(&tc_host_ticks, want, __ATOMIC_RELAXED);
@@ -1112,8 +1112,10 @@ int main(int argc, char **argv)
                 }
                 snprintf(what, sizeof what, "scene %u %s: nothing refused, no strike, core 1 still up, no failure recorded unless the host starved core 1's heartbeat (refused %u strike %u up %u failed %u)", s, FNAME[f], c->refused, r.strike, r.up, r.failed);
                 expect(what, c->refused == 0 && (hang || (!r.strike && r.up && !r.failed)));
-                snprintf(what, sizeof what, "scene %u %s: an unanswered take or a silent job pauses as a fault", s, FNAME[f]);
-                expect(what, !(c->noanswer || c->silent) || (c->pauses > 0 && c->pause_fault > 0));
+                snprintf(what, sizeof what, "scene %u %s: an unanswered take pauses as a fault", s, FNAME[f]);
+                expect(what, !c->noanswer || (c->pauses > 0 && c->pause_fault > 0));
+                snprintf(what, sizeof what, "scene %u %s: B15: a silent block of a core 1 that answered (late, alive) does not pause: every fault pause has an unanswered take (fault pauses %u, no answer %u, silent %u)", s, FNAME[f], c->pause_fault, c->noanswer, c->silent);
+                expect(what, c->pause_fault <= c->noanswer);
             }
             if (k4_run((int)f)) {                       /* TIDE K4: every reverb job posted ended exactly one way */
                 const tcb_stat_t *k = &r.k4;
@@ -1171,9 +1173,12 @@ int main(int argc, char **argv)
                     expect(what, rin <= K4_CLICK && rout <= K4_CLICK);
                 }
                 if (f == F_K4_VLONG) {
-                    snprintf(what, sizeof what, "scene %u k4_vlong: a reverb job not done by its wait limit is a silent block (%u) and a fault pause (%u of %u pauses), the reverb back afterwards (jobs in time %u), never a stuck job (open at the end %u), no strike", s,
+                    snprintf(what, sizeof what, "scene %u k4_vlong: B15: a silent reverb block of a core 1 that answered does not pause: every fault pause has an unanswered take (fault pauses %u, part 2 no answer %u, reverb no answer %u)", s,
+                             c->pause_fault, c->noanswer, r.k4.noans);
+                    expect(what, c->pause_fault <= c->noanswer + r.k4.noans);
+                    snprintf(what, sizeof what, "scene %u k4_vlong: a reverb job not done by its wait limit is a silent block (%u) and, B15, no pause unless a take had no answer (fault %u of %u pauses), the reverb back afterwards (jobs in time %u), never a stuck job (open at the end %u), no strike", s,
                              r.k4.silent, c->pause_fault, c->pauses, r.k4.in_time, r.k4_open, r.strike);
-                    expect_t(what, r.k4.silent > 0 && nsil >= r.k4.silent && c->pause_fault > 0 && r.k4.in_time > r.k4.silent && !r.strike && r.up);
+                    expect_t(what, r.k4.silent > 0 && nsil >= r.k4.silent && c->pause_fault <= c->noanswer && r.k4.in_time > r.k4.silent && !r.strike && r.up);
                 } else {
                     snprintf(what, sizeof what, "scene %u k4_hang: core 1 hung in a reverb job: the reverb silent (%u blocks) until the heartbeat watch stopped core 1 (HANG %u, strike %u, up %u), then core 0's reverb again (last silent block %u of %u), no job open at the end (%u)", s,
                              nsil, r.failed == TCR_HANG, r.strike, r.up, last, r.nblk, r.k4_open);
@@ -1223,8 +1228,8 @@ int main(int argc, char **argv)
                     snprintf(what, sizeof what, "scene %u late_pre: the late path (take, yld) was taken and counted (%u), no strike", s, c->late);
                     expect_t(what, c->late > 0 && !r.strike && r.up && c->refused == 0 && c->vlate == 0);
                 } else {   /* item 90 (tcr_part2, tcr.nott): in a block where core 0 cannot take part 2 back there is no take-over; a job not started at the wait limit is a silent block and a fault pause, a take that gets no answer is a very late fault */
-                    snprintf(what, sizeof what, "scene %u late_pre (blocks with no take-over %u): the late path (take, yld) was taken where core 0 had time (late %u); where it had none a silent block and a fault pause (silent %u, pauses %u of which fault %u), every very late block an unanswered take (%u of %u), no strike", s, r.nott, c->late, c->silent, c->pauses, c->pause_fault, c->noanswer, c->vlate);
-                    expect_t(what, c->late > 0 && c->silent > 0 && c->pauses > 0 && c->pause_fault == c->pauses && c->vlate == c->noanswer && c->vlate_ok == 0 && !r.strike && r.up && c->refused == 0);
+                    snprintf(what, sizeof what, "scene %u late_pre (blocks with no take-over %u): the late path (take, yld) was taken where core 0 had time (late %u); where it had none a silent block and (B15) no pause unless a take had no answer (silent %u, pauses %u of which fault %u), every very late block an unanswered take (%u of %u), no strike", s, r.nott, c->late, c->silent, c->pauses, c->pause_fault, c->noanswer, c->vlate);
+                    expect_t(what, c->late > 0 && c->silent > 0 && c->pauses <= c->noanswer && c->pause_fault == c->pauses && c->vlate == c->noanswer && c->vlate_ok == 0 && !r.strike && r.up && c->refused == 0);
                 }
                 break;
             case F_LATE_POST:
@@ -1232,8 +1237,8 @@ int main(int argc, char **argv)
                     snprintf(what, sizeof what, "scene %u late_post: single very late blocks that finished in their half are counted (%u) and pause nothing (pauses %u, without a pause %u), no silent block, no strike", s, c->vlate, c->pauses, c->vlate_ok);
                     expect_t(what, c->vlate > 0 && c->silent == 0 && c->pauses == 0 && c->vlate_ok == c->vlate && !r.strike && r.up);
                 } else {   /* item 90: with no take-over the wait limit is the job's deadline, so a claimed job that is not done by it is a silent block and a fault pause; the others are single very late blocks that pause nothing */
-                    snprintf(what, sizeof what, "scene %u late_post (blocks with no take-over %u): single very late blocks that finished in their half are counted without a pause (%u of %u), those not done by the limit are a silent block and a fault pause (silent %u, pauses %u, fault %u), no strike", s, r.nott, c->vlate_ok, c->vlate, c->silent, c->pauses, c->pause_fault);
-                    expect_t(what, c->vlate > 0 && c->vlate_ok > 0 && c->silent > 0 && c->pauses > 0 && c->pause_fault == c->pauses && c->vlate_ok + c->pauses >= c->vlate && !r.strike && r.up);
+                    snprintf(what, sizeof what, "scene %u late_post (blocks with no take-over %u): single very late blocks that finished in their half are counted without a pause (%u of %u), those not done by the limit are a silent block and (B15) no pause (silent %u, pauses %u, fault %u), no strike", s, r.nott, c->vlate_ok, c->vlate, c->silent, c->pauses, c->pause_fault);
+                    expect_t(what, c->vlate > 0 && c->vlate_ok > 0 && c->silent > 0 && c->pauses <= c->noanswer && c->pause_fault == c->pauses && c->vlate_ok + c->silent + c->noanswer >= c->vlate && !r.strike && r.up);
                 }
                 break;
             case F_VOFF:
@@ -1241,8 +1246,8 @@ int main(int argc, char **argv)
                     snprintf(what, sizeof what, "scene %u voff: with the BENCHT4 defaults %u very late blocks (4 in a row, 8 within the window among them) paused nothing (pauses %u, without a pause %u), no silent block, no strike", s, c->vlate, c->pauses, c->vlate_ok);
                     expect_t(what, c->vlate >= 24u && c->pauses == 0 && c->vlate_ok == c->vlate && c->silent == 0 && !r.strike && r.up);
                 } else {   /* item 90: the run and window rules stay off (no pause by them, however many very late blocks); a job not done by the limit of a block with no take-over is the one fault pause */
-                    snprintf(what, sizeof what, "scene %u voff (blocks with no take-over %u): with the BENCHT4 defaults %u very late blocks (4 in a row, 8 within the window among them) never paused by a run or the window (run %u, window %u, late %u); only a job not done by its limit paused (fault %u of %u pauses), every other very late block counted without a pause (%u), no strike", s, r.nott, c->vlate, c->pause_run, c->pause_win, c->pause_late, c->pause_fault, c->pauses, c->vlate_ok);
-                    expect_t(what, c->vlate >= 24u && c->pause_run == 0 && c->pause_win == 0 && c->pause_late == 0 && c->pause_fault == c->pauses && c->vlate_ok + c->pauses >= c->vlate && c->vlate_ok > 0 && !r.strike && r.up);
+                    snprintf(what, sizeof what, "scene %u voff (blocks with no take-over %u): with the BENCHT4 defaults %u very late blocks (4 in a row, 8 within the window among them) never paused by a run or the window (run %u, window %u, late %u); (B15) a job not done by its limit pauses nothing either (fault %u of %u pauses), every other very late block counted without a pause (%u), no strike", s, r.nott, c->vlate, c->pause_run, c->pause_win, c->pause_late, c->pause_fault, c->pauses, c->vlate_ok);
+                    expect_t(what, c->vlate >= 24u && c->pause_run == 0 && c->pause_win == 0 && c->pause_late == 0 && c->pause_fault == c->pauses && c->pauses <= c->noanswer && c->vlate_ok + c->silent + c->noanswer >= c->vlate && c->vlate_ok > 0 && !r.strike && r.up);
                 }
                 break;
             case F_NOANS:
@@ -1255,8 +1260,8 @@ int main(int argc, char **argv)
                 }
                 break;
             case F_VLONG:
-                snprintf(what, sizeof what, "scene %u vlong: a job that is not done by the wait limit makes part 2 silent for the block (silent %u) and pauses the jobs as a fault (%u of %u pauses); core 0 left every wait at the limit (largest overrun %u ticks, %u of %u blocks over), none past the half's end (%u); no strike", s, c->silent, c->pause_fault, c->pauses, r.lim_max_over, r.lim_over, r.lim_blocks, r.end_over);
-                expect_t(what, c->silent > 0 && c->pauses > 0 && c->pause_fault == c->pauses && c->vlate_ok == 0 && r.lim_over == 0 && r.end_over == 0 && !r.strike);
+                snprintf(what, sizeof what, "scene %u vlong: a job that is not done by the wait limit makes part 2 silent for the block (silent %u) and, B15, pauses nothing (fault %u of %u pauses); core 0 left every wait at the limit (largest overrun %u ticks, %u of %u blocks over), none past the half's end (%u); no strike", s, c->silent, c->pause_fault, c->pauses, r.lim_max_over, r.lim_over, r.lim_blocks, r.end_over);
+                expect_t(what, c->silent > 0 && c->pauses <= c->noanswer && c->pause_fault == c->pauses && c->vlate_ok == 0 && r.lim_over == 0 && r.end_over == 0 && !r.strike);
                 break;
             case F_VRUN:
                 snprintf(what, sizeof what, "scene %u vrun: 4 very late blocks in a row paused the jobs twice (run %u of %u pauses), 3 in a row did not; resumed (%u); the other very late blocks (%u of %u) paused nothing; no silent block, no strike", s, c->pause_run, c->pauses, c->resumes, c->vlate_ok, c->vlate);
@@ -1342,8 +1347,8 @@ int main(int argc, char **argv)
                 expect(what, r.parks == 1u && c->own >= 3u && r.up && !r.strike);
                 break;
             case F_SILENT_LATE:
-                snprintf(what, sizeof what, "scene %u silent_late: part 2 silent in %u blocks, the jobs paused (%u) and resumed (%u), no strike", s, c->silent, c->pauses, c->resumes);
-                expect_t(what, c->vlate > 0 && c->silent > 0 && c->pauses > 0 && c->pause_fault == c->pauses && !r.strike);
+                snprintf(what, sizeof what, "scene %u silent_late: part 2 silent in %u blocks while the late job ran, B15: no pause for a core 1 that answered (pauses %u, no answer %u), no strike", s, c->silent, c->pauses, c->noanswer);
+                expect_t(what, c->vlate > 0 && c->silent > 0 && c->pauses <= c->noanswer && !r.strike);
                 break;
             case F_UNARMED:
                 snprintf(what, sizeof what, "scene %u unarmed: one core, every block on core 0 (own %u), the record says none (%u)", s, c->own, r.nv_last);

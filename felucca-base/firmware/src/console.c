@@ -426,6 +426,10 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
     con_kv("cpu_miss", (int32_t)cpu_snap.miss);
     con_kv("cpu_sum_us", (int32_t)cpu_snap.sum);
     con_kv("cpu_n", (int32_t)cpu_snap.n);
+#if AUDIO_RING
+    con_kv("ring_debt_pk_us", (int32_t)(ring_debt_pk / FM1_TICKS_PER_US));   /* (B15: the latest an interrupt entered since the last `cpu`: the ring's slack used; a whole half is a miss) */
+    ring_debt_pk = 0;
+#endif
     {                                                  /* (K3: the ease ladder's level now, and how often each level was entered since power-on: ease_n1 .. ease_n5; audio.c ease_step) */
         char k[] = "ease_n1";
         uint32_t l;

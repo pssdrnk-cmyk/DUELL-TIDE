@@ -59,6 +59,7 @@ if os.environ.get("DUELL_BENCH") != "1":        # DUELL 1.0: a release (or any n
     os.environ.setdefault("DUELL_RAMPLACE", "1") # tools imported below read the environment at import (tools/ram_place.py, hot_fns.py)
     os.environ.setdefault("DUELL_HOTRAM", "3")
     os.environ.setdefault("FELUCCA_UAC_48K", "0")   # TIDE B14 (owner 16 Nov, ROADMAP Later 37): the USB audio input at 44.1 kHz only, +4,404 B of flash; FELUCCA_UAC_48K=1 gives 48 kHz back
+    os.environ.setdefault("AUDIO_RING", "1")        # B15 (owner 17 Nov: +2.9 ms latency approved): render one half ahead (audio.c AUDIO_RING); AUDIO_RING=0 gives the old ping-pong
 
 SRC = Path(__file__).resolve().parents[1]
 FW = SRC / "firmware"
@@ -359,7 +360,7 @@ def build_app():
     for flag in ("FELUCCA_FLASH", "FELUCCA_OTA", "FELUCCA_OTA_DRYRUN", "FELUCCA_OTA_RAMONLY", "FELUCCA_CDC",
                  "FELUCCA_UART", "FELUCCA_UAC", "FELUCCA_UAC_TONE", "FELUCCA_UAC_48K", "FELUCCA_ICONS",
                  "FELUCCA_CDC_DEFAULT", "DUELL_TEST_MODE", "DUELL_BENCH", "DUELL_CORE1_PROBE", "DUELL_TWOCORE", "DUELL_RAMPLACE", "DUELL_MEASURE",
-                 "DUELL_TIDE", "DUELL_K4"):   # (DUELL_TIDE=0: plain DUELL, no JAM code; firmware/src/tide.h. DUELL_K4=0: TIDE without the reverb job on core 1, twocore.h TCB_ON)
+                 "DUELL_TIDE", "DUELL_K4", "AUDIO_RING"):   # (DUELL_TIDE=0: plain DUELL, no JAM code; firmware/src/tide.h. DUELL_K4=0: TIDE without the reverb job on core 1, twocore.h TCB_ON)
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c (DUELL_TEST_MODE: core.h, 0 = release: no TEST screen, no M13..M16)
         if v in ("0", "1"):
             flags.append(f"-D{flag}={v}")
