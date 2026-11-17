@@ -11,6 +11,13 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
 
+## 1.1.0-b3
+
+1.1.0-b2 plus the loop dots on every part page, also when stopped (the bar PLAY starts from lit).
+- **Changed (owner 17 November, option B of the stopped-dots pictures):** the loop dots beside the part capsules show on every part page now (MORPH, the edit pages,
+ AUTO TIDE and the rest), not only on AUTO TIDE, and also when nothing is playing. Stopped, the first dot is lit (the bar PLAY starts from) and the others dim; playing,
+ the bar playing is lit as before. Global pages, messages and layers have no capsules and show none. Costs 132 B of flash (4,156 B free after it).
+
 ## 1.1.0-b2
 
 1.1.0-b1 plus faster effects: M07 HSE CHICAGO on TRAVEL 32 no longer fades notes at its busiest moments (0 in 3 minutes on the unit, 12 in b1), with no skips. Same sound, bit for bit.
