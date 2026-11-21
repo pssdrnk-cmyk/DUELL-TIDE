@@ -45,7 +45,9 @@ static void gl_sound_roll(uint32_t pi, uint32_t mask, uint32_t end)
 {
     (void)pi;
     mm_walk = gl_wander;                                 /* (WANDER: each part's new end walks on from the end it is at) */
+    mbu_auto = 1;                                        /* (TIDE's roll: no undo copy; morph.c morph_bu_take) */
     morph_do(MQ_ROLL, mask, end);
+    mbu_auto = 0;
     mm_walk = 0;
 }
 static void gl_seq_set(uint32_t pi, uint32_t mask, uint32_t v)

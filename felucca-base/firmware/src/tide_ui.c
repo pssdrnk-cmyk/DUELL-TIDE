@@ -55,6 +55,8 @@ static void tide_home(uint32_t mask)
         {
             uint8_t bv[MBV_MAX];
             up_ldv_rec(&trk[k], bv);                     /* (b7, review C2: a USER record's own End B, not a fresh roll) */
+            if (morph_home_ldv(k))                       /* (B16: the End B the multi loaded the part with, while it plays that sound) */
+                morph_ldv = morph_home_ldv(k);
             morph_rebase_part(k);
             morph_ldv = 0;
         }

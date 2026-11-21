@@ -78,7 +78,8 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - Knob 3 is RESONANCE (the filter's).
    - Knob 4 is ECHO (the delay send).
    - Their values sit on the row under the picture.
-   - Hold **OCT+** and click knob 1 for a new random End B (it replaces the old one: there is no UNDO).
+   - Hold **OCT+** and click knob 1 for a new random End B; hold **OCT-** and turn **PRESETS** left to get the one before back (right: the new one again).
+   - **Back to the original:** hold **OCT-** and turn knob 1. The sound and pattern go back to how the multi loaded them and the glide stops (the same on AUTO TIDE). Your knob edits stay: OCT- + knobs 2 to 4 put those knobs back to the loaded values.
    - On this page **ALGORITHM** has three positions, PART 1, the middle and PART 2.
    - The middle selects both parts (every knob moves both, each from its own value, both part numbers light up) and plays the mode of the PLAY MODE row on TIDE SETTINGS; the header names it, LAYER, STEREO or DUEL.
    - PART 1 and PART 2 play that part alone on every key.

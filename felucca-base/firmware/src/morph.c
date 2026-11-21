@@ -1772,6 +1772,8 @@ static const xb_edit_t *morph_ld_e;                      /* .. and the values se
 static uint32_t morph_ld_n;
 static const uint8_t *morph_ldv;                         /* ROLL CHAINED storage: End B as values (an MBV block, morph_bv_load) of the sound being loaded (upreset.c up_load, the project file); wins over morph_ld */
 static void morph_bv_load(uint32_t pi, const uint8_t *b);
+static uint8_t mbu_st __attribute__((section(".pool")));   /* B16: the ROLL's undo: 0 nothing to undo, 1 the roll stands (left undoes it), 2 undone (right puts it back): morph_bu_undo */
+static uint8_t mbl_on __attribute__((section(".pool")));   /* B16: a bit a part: the End B its multi loaded is kept (morph_home_ldv) */
 static uint16_t mb_said;                                 /* the last message of the B edits (kind << 8 | id), once each until the fader leaves 127 / the sound changes */
 static uint8_t morph_blk_sum(const uint8_t *b) { return (uint8_t)(b[0] ^ b[1] ^ b[2] ^ b[3] ^ b[4] ^ b[5] ^ 0x5Au); }
 static int morph_blk_ok(const uint8_t *b)
@@ -1805,6 +1807,7 @@ static void morph_rebase_part(uint32_t pi)               /* ends = the Original,
     }
     memset(mp->pin, 0, sizeof mp->pin);                  /* (EDITABLE B: a new sound has no values set by hand) */
     mb_said = 0;
+    mbu_st = 0;                                          /* (B16: the ROLL's undo belongs to the ends that were: morph_bu_undo) */
     mp->eng = t->eng_req;
     mp->preset = t->preset;
     mp->user = t->user;
@@ -1855,8 +1858,10 @@ static void h1_take(uint32_t pi)
 static void morph_rebase(const track_t *t)               /* a sound was loaded into t (ui.c, project.c) */
 {
     uint32_t pi = (uint32_t)(t - trk);
-    if (pi < NSHOWN)
+    if (pi < NSHOWN) {
         H1_TAKE(pi);
+        mbl_on &= (uint8_t)~(1u << pi);                  /* (B16: a sound load: the multi's End B is not this sound's any more) */
+    }
     if (pi < NSHOWN && mph[pi].n[0])
         morph_rebase_part(pi);
     else if (pi < NSHOWN && (morph_ld || morph_ld_n || morph_ldv))       /* a part whose morph was never used: the first use would find no block (cloud job G, task 0: the saved End B was lost until a ROLL) */
@@ -2409,6 +2414,17 @@ static void morph_bv_load(uint32_t pi, const uint8_t *b)
     MORPH_UNLOCK();
     TIDE_MBV_LOAD(pi, b, len);                           /* TIDE hook (H9) */
 }
+/* B16 (owner note 5): the End B a MULTI or the project file loaded each part with (its values block), kept while the part plays that sound (no sound load since): OCT- + K1
+ * (tide_ui.c tide_home) gives it back, as a USER record's own (upreset.c up_ldv_rec), instead of the factory sound's roll. 0: none kept. The pool, main loop */
+static uint8_t mbl_v[NSHOWN][MBV_MAX] __attribute__((section(".pool")));
+static uint8_t mbl_id[NSHOWN][3] __attribute__((section(".pool")));   /* the sound it belongs to: engine, preset, user */
+static const uint8_t *morph_home_ldv(uint32_t pi)
+{
+    const track_t *t = &trk[pi < NSHOWN ? pi : 0u];
+    if (pi >= NSHOWN || !((mbl_on >> pi) & 1u))
+        return 0;
+    return t->eng_req == mbl_id[pi][0] && t->preset == mbl_id[pi][1] && t->user == mbl_id[pi][2] ? mbl_v[pi] : 0;
+}
 /* a MULTI-less load of End B values (the project file, project.c): part pi's End B from block b, the fader at A (as morph_load_part) */
 static void morph_load_part_v(uint32_t pi, const uint8_t *b)
 {
@@ -2417,8 +2433,12 @@ static void morph_load_part_v(uint32_t pi, const uint8_t *b)
         return;
     mp = &mph[pi];
     mp->apre = 1;
+    H1_TAKE(pi);                                         /* (B16: the MORPH page's OCT- + K2..K4 go back to the values this load gives, not to the sound before it) */
     if (!mp->n[0])
         mp->n[0] = 1;
+    memcpy(mbl_v[pi], b, MBV_MAX);                       /* (B16: kept for OCT- + K1, morph_home_ldv) */
+    mbl_id[pi][0] = trk[pi].eng_req, mbl_id[pi][1] = trk[pi].preset, mbl_id[pi][2] = trk[pi].user;
+    mbl_on |= (uint8_t)(1u << pi);
     morph_ldv = b;
     morph_rebase_part(pi);
     morph_ldv = 0;
@@ -2506,6 +2526,8 @@ static void morph_load_part(uint32_t pi, const uint8_t *blk, uint32_t amount, co
     amount = amount > 100u ? 100u : amount;
     mp->amount = (uint8_t)amount;
     mp->apre = 1;
+    H1_TAKE(pi);                                         /* (B16: as morph_load_part_v) */
+    mbl_on &= (uint8_t)~(1u << pi);                      /* (no values block: OCT- + K1 rolls End B as this load did, from the sound) */
     if (!mp->n[0])
         mp->n[0] = 1;                                    /* (ready: morph_roll_cfg asks for the part, no first-use rebase) */
     morph_ld = morph_blk_ok(blk) ? blk : 0;
@@ -2595,6 +2617,121 @@ static uint32_t morph_seed_of(uint32_t pi, uint32_t e)  /* end e's seed, 0: no r
     return mp->n[0] ? mp->seed[e & 1u][mp->top[e & 1u]] : 0u;
 }
 
+/* ---- the ROLL's undo (B16, owner note 5 of 2026-11-19: "a new End B roll has no undo"). The player's roll (OCT+ held + K1 on MORPH, MIDI ROLL A / B, the console) keeps the end
+ * it replaces, one copy a part; OCT- held + a PRESETS turn left puts it back, right the roll again: the gesture, the one step and the "newest edit" rule of the load undo and the takes
+ * (tide.h TIDE_TAKE_UNDO, from ui_input.c load_undo_gate). The roll is the newest edit until something else is: a take or a SWELL / RIPPLE step (tk_fresh_v moves off mbu_tf), a load,
+ * a lock edit or a SEQ tool (TIDE_TAKE_STALE), a sound load, HOME or KEEP (morph_rebase_part), or anything that changes that end since (TIDE's own rolls, MORPH TO, a hand edit of
+ * End B: mbu_sig). TIDE's glide rolls (mbu_auto) take no copy. An edit of the sound (End A) since stays on both ends (the ends are offsets on the live values). Main loop only; the pool ---- */
+typedef struct {
+    int8_t h[P_COUNT], hx[NX];
+    uint8_t fh[NFM], pin[PIN_BYTES];
+    uint16_t seed;
+    uint8_t rcfg, ramt, rdep, tok;
+} mbu_end_t;
+static mbu_end_t mbu[NSHOWN] __attribute__((section(".pool")));
+static uint32_t mbu_sig[NSHOWN] __attribute__((section(".pool")));   /* the end as the roll (or the undo) left it */
+static uint8_t mbu_mask __attribute__((section(".pool"))), mbu_x __attribute__((section(".pool"))), mbu_tf __attribute__((section(".pool")));
+static uint8_t mbu_auto;                                 /* (morph_glide.c: a roll of TIDE's own) */
+static void ui_say(const char *a, const char *b);        /* (ui.c) */
+static uint32_t mbu_hash(uint32_t h, const void *p, uint32_t n)
+{
+    const uint8_t *b = p;
+    while (n--)
+        h = (h ^ *b++) * 16777619u;
+    return h;
+}
+static uint32_t mbu_now(uint32_t pi)                     /* a signature of part pi's end mbu_x as it is */
+{
+    const morph_part_t *mp = &mph[pi];
+    uint32_t x = mbu_x, t = mp->top[x], h = 2166136261u;
+    h = mbu_hash(h, mp->h[x][t], P_COUNT);
+    h = mbu_hash(h, mp->hx[x][t % XH], NX);
+    h = mbu_hash(h, mp->fh[x][t], NFM);
+    h = mbu_hash(h, &mp->tok[x][t], 1);
+    return x ? mbu_hash(h, mp->pin[t % EDITB_PINH], PIN_BYTES) : h;
+}
+static void mbu_put(mbu_end_t *c, morph_part_t *mp, uint32_t x, int save)   /* save: the end into c; else c into the end */
+{
+    uint32_t t = mp->top[x];
+#define MBU_IO(a, b, n) (save ? memcpy((a), (b), (n)) : memcpy((b), (a), (n)))
+    MBU_IO(c->h, mp->h[x][t], P_COUNT);
+    MBU_IO(c->hx, mp->hx[x][t % XH], NX);
+    MBU_IO(c->fh, mp->fh[x][t], NFM);
+    if (x)
+        MBU_IO(c->pin, mp->pin[t % EDITB_PINH], PIN_BYTES);
+#undef MBU_IO
+    if (save) {
+        c->seed = mp->seed[x][t], c->rcfg = mp->rcfg[x][t], c->ramt = mp->ramt[x][t], c->rdep = mp->rdep[x][t], c->tok = mp->tok[x][t];
+    } else {
+        mp->seed[x][t] = c->seed, mp->rcfg[x][t] = c->rcfg, mp->ramt[x][t] = c->ramt, mp->rdep[x][t] = c->rdep, mp->tok[x][t] = c->tok;
+    }
+}
+/* before the player's roll of end x on the parts of mask: their ends kept (an FM6 end that is a MORPH TO target carries a structure this copy does not: no undo then) */
+static void morph_bu_take(uint32_t mask, uint32_t x)
+{
+    uint32_t pi;
+    if (mbu_auto)
+        return;
+    mbu_st = 0;
+    mbu_x = (uint8_t)(x & 1u);
+    mbu_mask = (uint8_t)(mask & ((1u << NSHOWN) - 1u));
+    for (pi = 0; pi < NSHOWN; pi++)
+        if ((mbu_mask >> pi) & 1u) {
+            morph_part_t *mp = morph_ready(pi);
+            if (morph_isfm(mp) && mp->tok[mbu_x][mp->top[mbu_x]])
+                mbu_mask &= (uint8_t)~(1u << pi);
+            else
+                mbu_put(&mbu[pi], mp, mbu_x, 1);
+        }
+}
+static void morph_bu_seal(void)                          /* .. after it: the roll is the newest edit */
+{
+    uint32_t pi;
+    if (mbu_auto || !mbu_mask)
+        return;
+    for (pi = 0; pi < NSHOWN; pi++)
+        if ((mbu_mask >> pi) & 1u)
+            mbu_sig[pi] = mbu_now(pi);
+    mbu_tf = tk_fresh_v ? 2u : 0u;                       /* (a take standing before the roll stays undoable after it, 2 is still "fresh"; a new take step writes 1: the roll is not the newest any more) */
+    tk_fresh_v = mbu_tf;
+    mbu_st = 1;
+}
+static void morph_bu_stale(void) { mbu_st = 0; }
+/* OCT- held + a PRESETS turn (tide.h TIDE_TAKE_UNDO): dir < 0 the end before the roll back, dir > 0 the roll again; 1 when the gesture was this one's */
+static uint32_t morph_bu_undo(int32_t dir)
+{
+    uint32_t pi;
+    if (mbu_st && tk_fresh_v != mbu_tf)
+        mbu_st = 0;
+    for (pi = 0; pi < NSHOWN && mbu_st; pi++)
+        if (((mbu_mask >> pi) & 1u) && mbu_now(pi) != mbu_sig[pi])
+            mbu_st = 0;
+    if (!mbu_st)
+        return 0;
+    if (dir > 0 && mbu_st == 1u) {                       /* (the roll stands: nothing to put back, and the turn is not the load undo's) */
+        ui_say("NOTHING TO REDO", "");
+        return 1;
+    }
+    if (dir < 0 && mbu_st == 2u)                         /* (undone: the older edits' turn, the takes', then the load undo's) */
+        return 0;
+    for (pi = 0; pi < NSHOWN; pi++)
+        if ((mbu_mask >> pi) & 1u) {
+            morph_part_t *mp = &mph[pi];
+            mbu_end_t now;
+            MORPH_LOCK();
+            morph_ramp(mp, mbu_x);
+            mbu_put(&now, mp, mbu_x, 1);
+            mbu_put(&mbu[pi], mp, mbu_x, 0);
+            memcpy(&mbu[pi], &now, sizeof now);
+            morph_build(mp);
+            MORPH_UNLOCK();
+            mbu_sig[pi] = mbu_now(pi);
+        }
+    mbu_st = (uint8_t)(3u - mbu_st);
+    ui_say(dir < 0 ? "UNDO ROLL " : "REDO ROLL ", mbu_x ? "B" : "A");
+    return 1;
+}
+
 /* an action on the parts of mask, main loop. MQ_ROLL v: the end (0 A, 1 B); returns the seed. MQ_FADER 0..127, MQ_AMOUNT 0..100 % (MQ_TARGET, the part selection from MIDI, is ui_input.c morph_act's: part_select),
  * MQ_SMART / MQ_ARP / MQ_PITCH 0 / 1 */
 static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
@@ -2604,8 +2741,10 @@ static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
         morph_set_cfg(kind == MQ_SMART ? MC_WILD : kind == MQ_ARP ? MC_ARP : MC_PIT, kind == MQ_SMART ? !v : v);
         return 0;
     }
-    if (kind == MQ_ROLL)
+    if (kind == MQ_ROLL) {
         seed = morph_new_seed();
+        morph_bu_take(mask, v);
+    }
     for (pi = 0; pi < NSHOWN; pi++) {
         if (!((mask >> pi) & 1u))
             continue;
@@ -2620,6 +2759,7 @@ static uint32_t morph_do(uint32_t kind, uint32_t mask, uint32_t v)
         }
     }
     if (kind == MQ_ROLL) {
+        morph_bu_seal();
         morph.seed = (uint16_t)seed;
         TIDE_TAKE_ROLL(mask, seed);                      /* TIDE hook (b10 round 8): the part that holds a take's answer writes it again with this seed */
     }
