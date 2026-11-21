@@ -158,6 +158,11 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
   A key held for a whole loop on a part without an arp fills the pattern with that note.
 
   On TIDE the answer to a take is yours to re-roll: hold **SEQ** and press **C4 SWELL** (a whole new wave) or **D4 RIPPLE** (a few notes move); it lands at the start of the next loop (the header says SWELL  NEXT LOOP until then) and **OCT-** + a PRESETS turn takes it back.
+  With ANSWER OFF (or ANSWER ON OFF) they change the part you press them on, at once, and leave the other part as it plays. The header says how many steps changed (RIPPLE  3 STEPS).
+
+  Holding **SEQ** shows the SEQ tools (QUICK SEQ  PART 1 or PART 2: the part they act on). Every tool is one undo: hold **OCT-** and turn **PRESETS**. **G4 KEEP** makes what TIDE plays now the part's own.
+
+  **Clear one step:** on the SEQ > STEP page move the cursor with knob 1 (or PRESETS) and tap **EDIT**. The step and its parameter locks are cleared (STEP 5 CLEARED) and the cursor moves on; hold **OCT-** and turn **PRESETS** to bring it back. To clear the whole sequence, hold SEQ and press **F3 CLEAR**, or hold REC and turn knob 4.
 
   While a part is armed for recording, a red dot shows in the bottom row of every page, next to the page number.
 

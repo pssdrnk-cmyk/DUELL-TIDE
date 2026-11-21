@@ -3678,7 +3678,7 @@ static int test_bughunt_ui(void)
         tap_key(white(5)); frame();
         ok = !memcmp(&s0, &TSEL->step[0], sizeof s0) && ui.cursor == 0u;
         press(B_EDIT);
-        ok &= !memcmp(&s0, &TSEL->step[0], sizeof s0) && !msg_is("STEP CLEARED");
+        ok &= !memcmp(&s0, &TSEL->step[0], sizeof s0) && !(ui.msg_t && strstr(ui.msg, " CLEARED") && !strncmp(ui.msg, "STEP ", 5));   /* (B16: STEP n CLEARED) */
         ui_power_on(); go_auto_add(EV_CHANCE, 0); frame();
         s0 = TSEL->step[0];
         press(B_OCTUP);                                 /* (100 % by default: + ADD CHANCE, 50 %) */

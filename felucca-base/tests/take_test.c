@@ -138,7 +138,14 @@ static void rec_note_at(uint32_t part, uint32_t idx, uint32_t note, uint32_t ms)
     at_step(&trk[part], idx);
     input_on(&trk[part], note, 100); run(ms); input_off(&trk[part], note);
 }
-static int said(const char *w) { return ui.msg_t && !strncmp(ui.msg, w, str_len(w)); }   /* (shown now: the text stays in the buffer after its frames are over) */
+static int said(const char *w) { return ui.msg_t && !strncmp(ui.msg, w, str_len(w)); }
+static int then_says(const char *w) { return !strncmp(ui.msg2, w, str_len(w)); }   /* (B16: the second message, after the held first: a SWELL / RIPPLE's answer words) */
+static int said_steps(const char *tool, uint32_t n)      /* (B16: "RIPPLE  3 STEPS", "SWELL  1 STEP") */
+{
+    char w[32];
+    snprintf(w, sizeof w, "%s  %u STEP%s", tool, (unsigned)n, n == 1u ? "" : "S");
+    return ui.msg_t && !strcmp(ui.msg, w);
+}   /* (shown now: the text stays in the buffer after its frames are over) */
 /* b10 assist2: an answer is written in the other part on the next bar line (tide_take.c tk_land) */
 static void land(void) { uint32_t n = 0; while (tk_pend && n++ < 300u) run(16); run(32); }
 static void rec_off(void) { song.rec = 0; run(48); land(); }
@@ -346,6 +353,7 @@ static uint32_t changed_steps(const step_t *a, uint32_t p, uint32_t *nnotes)
     *nnotes = n;
     return c;
 }
+static uint32_t steps_diff(const step_t *a, uint32_t p) { uint32_t i, c = 0; for (i = 0; i < 64u; i++) c += memcmp(&a[i], &trk[p].step[i], sizeof a[i]) != 0; return c; }   /* (B16: what the header counts: any field of a step) */
 static void sw_press(uint32_t part, uint32_t ripple) { (void)tl_do(&trk[part], ripple ? TL_COOK : TL_RANDOM); }
 static void to_loop_end(uint32_t part) { at_step(&trk[part], (uint32_t)TIDE_PLAY_LEN(&trk[part]) - 1u); run(48); }
 /* OCT- held + a PRESETS turn through the panel (ui_input.c: the take history), not take_undo: 1 when the history moved */
@@ -376,7 +384,7 @@ static int key_ok(const step_t *st, uint32_t part)
 static void take_swell(void)
 {
     uint32_t a0, a1, s2, h0, on0, n, c, i, ok, pr = 0, w0, w1;
-    step_t keep[64];
+    step_t keep[64], keep0[64];
     static morph_part_t sv;
     boot(); setup(1, 0, V_POLY);
     s2 = psig(1);
@@ -389,6 +397,7 @@ static void take_swell(void)
     /* SWELL on the answer's part: the new mode, at the start of the next loop */
     at_step(&trk[1], 6);
     memcpy(&sv, &mph[1], sizeof sv);
+    memcpy(keep0, trk[1].step, sizeof keep0);
     sw_press(1, 0);
     CHECK("SWELL on the answer: it waits for the loop start, the header says so", tk_sw_k == 1u && said("SWELL  NEXT LOOP") && psig(1) == a0);
     CHECK("... and AUTO TIDE's state says so (7) until it lands", take_line(&pr) == 3u && tide_state() == 7);
@@ -396,7 +405,8 @@ static void take_swell(void)
     CHECK("... not at once, not at the bar line: the answer is still the old one halfway through the loop", psig(1) == a0 && tk_sw_k == 1u);
     to_loop_end(1);
     a1 = psig(1);
-    CHECK("... at the loop start it lands: a new answer in the mode ANSWER shows now (DOUBLE), a history step", a1 != a0 && tk_m.mode == TA_DOUBLE && !tk_sw_k && tk_cnt == 2 && said("SWELL  DOUBLE"));
+    c = steps_diff(keep0, 1);
+    CHECK("... at the loop start it lands: a new answer in the mode ANSWER shows now (DOUBLE), a history step; the header says how many steps changed, then the answer's words", a1 != a0 && tk_m.mode == TA_DOUBLE && !tk_sw_k && tk_cnt == 2 && c >= 1u && said_steps("SWELL", c) && then_says("DOUBLE"));
     CHECK("... the state is back to nothing", take_line(&pr) == 0u && tide_state() == 0);
     CHECK("... the take is untouched, the sound's End B too", psig(0) == h0 && !memcmp(&mph[1], &sv, sizeof sv));
     CHECK("OCT- + PRESETS (the panel gesture): SWELL goes back one step (the first answer), then the take", gesture(-1) == 1u && said("UNDO SWELL") && psig(1) == a0 && gesture(-1) == 1u && said("UNDO TAKE 1") && psig(1) == s2);
@@ -408,7 +418,8 @@ static void take_swell(void)
     memcpy(keep, trk[1].step, sizeof keep);
     w0 = osig(keep);
     to_loop_end(1);
-    CHECK("... one step lands, the header says RIPPLE", !tk_sw_k && said("RIPPLE  DOUBLE") && tk_cnt == 2 && (tk_hn[1] & 0x4000u));
+    c = steps_diff(keep, 1);
+    CHECK("... one step lands, the header says RIPPLE and how many steps moved, then the answer's words", !tk_sw_k && said_steps("RIPPLE", c) && then_says("DOUBLE") && tk_cnt == 2 && (tk_hn[1] & 0x4000u));
     /* RIPPLE: a quarter of the notes at most move, the rhythm stays, in the key, no rubs against the take */
     c = changed_steps(keep, 1, &n);
     CHECK("RIPPLE moves at least one note and at most a quarter of them (or one)", c >= 1u && c <= (n * 25u / 100u > 1u ? n * 25u / 100u : 1u));
@@ -492,15 +503,17 @@ static void take_swell(void)
     CHECK("REC arms while a press waits: it is not dropped, it lands at the end of the armed pass: the answer is made again", !tk_sw_k && psig(1) != a0 && !tk_force);
     at_step(&trk[0], 3);
     rec_off();
-    /* ANSWER OFF: SWELL gives the other part its old pattern back */
+    /* ANSWER OFF (B16, owner notes 2026-11-20: it used to give the other part its old pattern back, silently dropping the answer): SWELL changes the pressed part only, at once */
     boot(); setup(1, 0, V_POLY); s2 = psig(1);
     first_take();
     tide_answer = TA_OFF; run(48);
-    CHECK("ANSWER OFF in the menu: the answer stays", psig(1) != s2);
+    a0 = psig(1); h0 = psig(0);
+    CHECK("ANSWER OFF in the menu: the answer stays", a0 != s2);
     at_step(&trk[1], 4);
+    memcpy(keep, trk[1].step, sizeof keep);
     sw_press(1, 0);
-    to_loop_end(1);
-    CHECK("... SWELL then puts the other part's old pattern back", psig(1) == s2 && !tk_m.ans);
+    c = steps_diff(keep, 1);
+    CHECK("... SWELL on the answer's part changes that part at once (no NEXT LOOP), the take's part plays on, one history step, the header says how many steps", !tk_sw_k && psig(1) != a0 && psig(1) != s2 && psig(0) == h0 && tk_cnt == 2 && said_steps("SWELL", c));
     tide_answer = TA_BASS;
     /* no take: the stock tool with TIDE's rules, at once, one history step */
     boot(); setup(1, 0, V_POLY); empty_part(0);
@@ -824,6 +837,7 @@ static void take_hold(void)
     CHECK("... gone after 6 s", !said("BASS LINE"));
     boot_bpm = 120;
 }
+#ifndef TAKE_TEST_NO_MAIN                                /* (tests/seqtools_test.c takes the harness without it) */
 int main(void)
 {
     step1();
@@ -831,3 +845,4 @@ int main(void)
     printf("take: %u checks, %u FAIL\n", checks, failures);
     return failures ? 1 : 0;
 }
+#endif
