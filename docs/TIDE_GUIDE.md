@@ -49,9 +49,9 @@ Knobs 2 to 4 below are the STD set (a single sound, or a multi without a genre t
 
 These are the sound's own settings: they record into the pattern with REC armed, MIDI LEARN picks them, SAVE keeps them, and turning them never holds TIDE's glide (only the MORPH fader does). With ALGORITHM in the middle (both parts) every knob moves each part from its own value by the same amount, so neither part jumps.
 
-**Hold OCT+ and click knob 1** (either way): End B becomes a new random roll; the fader stays where it is and the octave doesn't move. A roll replaces its end; there is no UNDO. How far a roll goes is the AMOUNT row of TIDE SETTINGS.
+**Hold OCT+ and click knob 1** (either way): End B becomes a new random roll; the fader stays where it is and the octave doesn't move. A roll replaces its end; **hold OCT- and turn PRESETS left** to get the End B from before the roll back (right: the roll again; UNDO ROLL B / REDO ROLL B). One step: of two rolls in a row only the last is undone, and the undo is gone as soon as something newer happens (a take, a load, a lock edit, a SEQ tool, an edit of End B by hand, OCT- + K1). How far a roll goes is the AMOUNT row of TIDE SETTINGS.
 
-**Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE); knobs 2 to 4 go back to the value the loaded sound had.
+**Hold OCT- and turn a knob:** knob 1 goes back to your original sound and pattern (the glide stops, as OCT- + K1 on AUTO TIDE): the fader at A, End A your sound, End B the one the multi (or the sound) was loaded with, the variation of the pattern gone. Your own knob edits since stay; knobs 2 to 4 go back to the value the loaded sound had.
 
 - The fader's position (A, 1 to 126, B) sits beside knob 1's label.
 - The slim row under the picture shows knobs 2 to 4, each with its name and value. Which names depends on KNOBS (AUTO by default, from the multi's first word): DUB CHORD shows SND, FDBK and TIME.

@@ -74,8 +74,12 @@ static uint8_t tk_fresh_v __attribute__((section(".pool"))), tk_reset_v __attrib
 static uint16_t tk_roll_seed __attribute__((section(".pool")));   /* (tk_reset_v: a multi / project loaded: the history of takes is of another music: tide_take.c take_poll drops it) */
 static uint32_t project_key(void);                   /* (multi.c) */
 static uint32_t take_undo(int32_t dir);
-#define TIDE_TAKE_STALE() (tk_fresh_v = 0)
-#define TIDE_TAKE_UNDO(s) take_undo((s) < 0 ? -1 : 1)
+/* B16: the player's ROLL has one undo on the same gesture (morph.c morph_bu_undo): back, the roll first, then the takes; forward, the takes first, then the roll. While a roll is the
+ * newest edit tk_fresh_v may read 2 (a take that stood before it, still undoable); a new take step writes 1, which ends the roll's turn */
+static void morph_bu_stale(void);
+static uint32_t morph_bu_undo(int32_t dir);
+#define TIDE_TAKE_STALE() (tk_fresh_v = 0, morph_bu_stale())
+#define TIDE_TAKE_UNDO(s) ((s) < 0 ? (morph_bu_undo(-1) || take_undo(-1)) : (take_undo(1) || morph_bu_undo(1)))
 #define TIDE_TAKE_ROLL(mask, seed) (tk_roll_mask |= (uint8_t)(mask), tk_roll_seed = (uint16_t)(seed))   /* (morph_do, any context: take_poll writes the answer again in the main loop) */
 #define TIDE_REC_VARS static volatile uint8_t tide_rec_replace; static uint32_t rec_key[NSHOWN][4];   /* (tide_rec_replace: TIDE SETTINGS REC, 0 ADD, 1 REPLACE; rec_key: the keys of an armed ARP SEQ part that went straight to the voices) */
 static int arp_rec_fire(track_t *t);
