@@ -14,6 +14,10 @@ HOME's round, one tap of **HOME** each: **MORPH → AUTO TIDE → TIDE SETTINGS*
 
 **Header and footer.** Each HOME page is titled by its name (MORPH, TIDE SETTINGS, AUTO TIDE). A part's capsule shows its number and its letter, `1 A`, with no voices count. The tempo is on the footer's first line, `117 BPM`, right-aligned above the page number and the battery; the second line holds part 2's name, whole.
 
+**Is it running?** Every page has a small sign just before the tempo (before the REC mark when that takes the tempo's place): a grey square while stopped, a white triangle while the music plays (the theme colour with MIDI clock in), and two waves in the part's accent colour while AUTO TIDE moves. REC armed shows the red REC mark, as before.
+
+**The A-B rail.** On MORPH and AUTO TIDE, knob 1's line shows the fader as a rail: `A`, a track, `B`. The track fills in the part's colour from A to where the fader is, one track for each part knob 1 moves (two, part 1 above, when ALGORITHM is in the middle). A letter is white while the fader sits at that end, and in the accent colour while the glide is heading there.
+
 **Genre knobs.** A twist of a genre knob (K2 to K4 on HOME page 1, with KNOBS set) keeps its short name on the row and toasts the full name and value over the title, for example `BLOOM 2.1ms`.
 
 **ALGORITHM and the play mode** (1.0.0-b7). On MORPH, TIDE SETTINGS, AUTO TIDE and in PERFORM it has three positions, a click each: PART 1, the middle, PART 2. The middle selects both parts and plays the mode the **PLAY MODE** row of TIDE SETTINGS is set to, and it is named after it: PART 1, LAYER, PART 2 (or PART 1, STEREO, PART 2; PART 1, DUEL, PART 2).
@@ -42,7 +46,7 @@ Knobs 2 to 4 below are the STD set (a single sound, or a multi without a genre t
 
 | Knob | What it does |
 |---|---|
-| 1 | **MORPH**, the fader from A to B. Two steps a click: a full sweep is half the turning of 1.0.0-b6. Moving it by hand holds that part's glide; TIDE takes it back after 8 untouched bars, at the next phrase (see "Your hand on the MORPH fader", section 3). |
+| 1 | **MORPH**, the fader from A to B, shown as the A-B rail. While a part sounds other than its original, the line's right end says `OCT- + K1: ORIGINAL`. Two steps a click: a full sweep is half the turning of 1.0.0-b6. Moving it by hand holds that part's glide; TIDE takes it back after 8 untouched bars, at the next phrase (see "Your hand on the MORPH fader", section 3). |
 | 2 | **FILTER**: the part's cutoff, the same as knob 1 of QUICK EDIT (hold EDIT). |
 | 3 | **RESONANCE**: the same filter's resonance (RES, the second knob on the FILTER page), on every engine. |
 | 4 | **ECHO**: the part's delay send. Dim when the delay can't be heard (GLO > MODULES SENDS OFF, or the delay's MIX at 0); knob 1's line says which. |
@@ -88,7 +92,7 @@ The glide only moves while the transport plays. **STOP** pauses it; **PLAY** car
 
 | Knob | Name | What it does to the sound | Start |
 |---|---|---|---|
-| 1 | **GLIDE** | Twist right: go to B. Twist left: go to A. While the music plays it starts on the next bar; while stopped it starts PLAY too (not with an external clock or REC armed). **Twist two detents again while it runs and it stops where it is**; the sound stays as it is. | Right |
+| 1 | **GLIDE** | The A-B rail shows where the sound is and lights the end it goes to. Twist right: go to B. Twist left: go to A. While the music plays it starts on the next bar; while stopped it starts PLAY too (not with an external clock or REC armed). **Twist two detents again while it runs and it stops where it is**; the sound stays as it is. | Right |
 | 2 | **MODE** (K2) | What happens at each arrival (below). The MODE row of TIDE SETTINGS is the same setting. | EVOLVE (default, from STYLE DUB) |
 | 3 | **TIME** | How many bars one trip takes: 1, 2, 4, 8, 16, 32 or 64. Longer trips also breathe more: the filter dips and the sends swell more over a long trip (full depth from 16 bars). Default 16. | 16 or 32 |
 | 4 | **WAIT** | Bars to hold at each arrival before the next trip: OFF, 1, 2, 4, 8 or 16. Default 2. | 2 to 8 |
