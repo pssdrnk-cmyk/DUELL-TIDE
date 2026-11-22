@@ -812,7 +812,10 @@ typedef struct {
 static part_scr_t pscr[NLIVE];
 #define MXF(t) ((t)->mxw)        /* part t's MORPH cross-fade (morph.c morph_begin / morph_end; the readers: voice.c lfo_tick, the engines' render functions) */
 #define MODW(t) ((t)->mdw)       /* part t's matrix window (mod.c) */
-#define TSEL (&trk[song.sel])    /* the selected track */
+/* the selected track. One shared call: a use costs 4 B of flash instead of the address sum written out (about 1.3 KB over the UI's ~190 uses).
+ * Code the audio interrupt reaches writes &trk[song.sel] itself: a flash call there would run from slow flash every block (tools/hot_reach.py fails the build) */
+static __attribute__((noinline)) track_t *trk_sel(void) { return &trk[song.sel]; }
+#define TSEL trk_sel()
 
 /* DUELL 0.2.14 GLO > MODULES (SPEC "Modules"): four DEVICE switches, ARP, SEQ, SENDS, PART FX, each ON (the default) or OFF. Kept in the
  * settings byte favorites.factory[15][10] bits 1..4 (a SET bit is OFF, so a new unit, ERASE DATA and every older record

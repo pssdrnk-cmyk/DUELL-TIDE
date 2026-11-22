@@ -1649,7 +1649,7 @@ static track_t *midi_track(uint32_t ch)
 {
     if (duell_mode == DM_LAYER)
         return trk;
-    return midi_in_block(ch) ? &trk[midi_part_of(ch)] : TSEL;
+    return midi_in_block(ch) ? &trk[midi_part_of(ch)] : &trk[song.sel];   /* (the audio path: not TSEL, core.h) */
 }
 
 #include "midi_control.c"

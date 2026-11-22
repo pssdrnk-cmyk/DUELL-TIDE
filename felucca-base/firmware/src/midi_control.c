@@ -274,7 +274,7 @@ static void midi_note_event(uint32_t ch, uint32_t note, uint32_t vel)
         if (id)
             midi_release(ch, note);
         midi_expression(t, c);
-        if (t != TSEL && duell_mode != DM_LAYER)       /* (LAYER: part 1 plays both, whichever is selected) */
+        if (t != &trk[song.sel] && duell_mode != DM_LAYER)       /* (LAYER: part 1 plays both, whichever is selected) */
             midi_hint = (uint8_t)(trk_index(t) + 1u);
         /* review FR8 (A4): LAYER with SPLIT, a note part 2 plays alone is owned by part 2, so its release (midi_release, id 2) leaves part 1 alone; kept
          * at the note-on, so a SPLIT moved while it is held cannot strand it */

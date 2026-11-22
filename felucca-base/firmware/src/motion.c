@@ -359,10 +359,10 @@ static int motion_capture(track_t *t, uint32_t id, int16_t value)
     uint32_t k = trk_index(t), idx, len, period, f;
     int r;
     if (!motion_param(id) || k >= NLIVE) return 0;
-    if (motion_knob_on && t == TSEL && ((song.rec >> k) & 1u) && mod_lock_ok(t, id) &&
+    if (motion_knob_on && t == &trk[song.sel] && ((song.rec >> k) & 1u) && mod_lock_ok(t, id) &&
         (r = motion_knob_lock(t, id, value)) >= 0)
         return r;                                /* (a panel knob: a lock, never an automation event) */
-    if (!rec_on(t) || t != TSEL || motion_knob_on) {   /* (a panel knob that records nothing: a live edit, as with record off) */
+    if (!rec_on(t) || t != &trk[song.sel] || motion_knob_on) {   /* (a panel knob that records nothing: a live edit, as with record off) */
         /* A live edit becomes a new base, even when an earlier motion value is
          * currently sounding. Subsequent recorded events can still override it. */
         f = motion_guard();
