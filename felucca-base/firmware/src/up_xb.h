@@ -4,11 +4,11 @@
  * hand-set B edit list (docs/design/EDITABLE_B_DESIGN.md section 3). Pure data code: bytes in, bytes out; no flash, no globals.
  * Included by core.h after ext.h (NX); upreset.c / multi.c / project.c use it, job G (editable B) packs and unpacks its list with it.
  *
- * Wide id: one byte for every stored value. 0..126 the old parameter ids, 127 RESERVED (the motion escape, core.h MOTION_ESC),
+ * Wide id: one byte for every stored value. 0..126 the parameter ids, 127 RESERVED (the motion escape, core.h MOTION_ESC),
  * 128..255 the extension slots (ext.h XWID(k): slot k = 128 + k; 128 + NX .. 255 are slots a newer firmware may have).
  * Values are stored as value + 64, a byte (-64 .. +127).
  *
- * The block, in a patch record when the flag PTF_XB is set (upreset.c; it replaces the retired 2-byte shadow marker, same place):
+ * The block, in a patch record when the flag PTF_XB is set (upreset.c; it takes the place of the 2-byte shadow marker):
  *   [L: 1 byte, the bytes after it][XV: version, 1][section]...         section: [tag][n: bytes of data][data]
  *   tag 1 (XB_T_EXT)   the extension values: n/2 pairs (wide id 128..255, value + 64), only the ones off their default. An id the
  *                      firmware has no slot for (>= 128 + NX, or below 128) is skipped. A slot the block does not name is its default.
@@ -33,7 +33,7 @@ typedef struct { uint8_t wid; int16_t val; } xb_edit_t;     /* one hand-set B va
 /* the stored default of slot k (value + 64): what a record or multi that does not name the slot means. Job B: keep this equal to the
  * descriptors' defaults of the slots (TWIN LINK is ON and SUB OCTAVE is -1 = stored 1 by EXTENSION_BLOCK_PLAN 2A; CYCLE RISE / FALL are
  * "open" there; job B picked ENV 2's: RISE 10, FALL 70, stored 74 and 134; the store only needs the table to be the same on the way in and out) */
-#define XB_DEFS {64u, 65u, 64u, 64u, 64u, 64u, 64u, 65u, 64u, 64u, 64u, 74u, 134u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 191u, 191u, 64u}   /* (DUELL 1.1: X15..X24 depths 0, X25 / X26 the LFO LEVELs 127 = stored 191, X27 STRUM 0 (OFF) = stored 64, item 144) */
+#define XB_DEFS {64u, 65u, 64u, 64u, 64u, 64u, 64u, 65u, 64u, 64u, 64u, 74u, 134u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 64u, 191u, 191u, 64u}   /* (X15..X24 depths 0, X25 / X26 the LFO LEVELs 127 = stored 191, X27 STRUM 0 (OFF) = stored 64) */
 _Static_assert(NX == 28, "up_xb.h: XB_DEFS lists the 28 slots");
 static uint8_t xb_def(uint32_t k) { static const uint8_t D[NX] = XB_DEFS; return D[k]; }   /* slot k's default, value + 64 */
 static void xb_defaults(uint8_t *xv)                        /* xv: NX bytes, value + 64 */

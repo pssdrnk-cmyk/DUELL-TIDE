@@ -8,7 +8,7 @@
  * SysEx F0 22 24 35 7D F7 (the stock soft key, tools/fm1_softkey.py) asks
  * the main loop to enter UBOOT. VID 0x1209 / PID 0x0001 is the pid.codes
  * TEST id: fine for the bench, must be replaced before any release
- * (DUELL 0.2.14: product string "DUELL", maker "OSCILL/R"; VID / PID kept).
+ * (product string "DUELL", maker "OSCILL/R"; VID / PID kept).
  * FELUCCA_CDC=1 adds a CDC-ACM serial function (IAD composite: EP2 notify,
  * EP3 bulk data) for the console in console.c; FELUCCA_USB_LAYOUT picks how
  * the composite presents itself, usb_cdc_switch / FELUCCA_CDC_DEFAULT=0 leave
@@ -34,7 +34,7 @@
 #define FELUCCA_UAC_48K 1
 #endif
 #ifndef FELUCCA_UAC_AS_FIRST
-#define FELUCCA_UAC_AS_FIRST 1         /* from Felucca 1.5.1 (#67): the audio streaming interface first in the AC collection */
+#define FELUCCA_UAC_AS_FIRST 1         /* the audio streaming interface first in the AC collection (as Felucca) */
 #endif
 #if !FELUCCA_UAC
 #undef FELUCCA_UAC_48K
@@ -81,7 +81,7 @@ static struct {
  * the low point of that saw tooth, and is kept in UA_LO..UA_HI. A frame waits in the ring for that fill
  * plus its place in the render: 80..256 frames, ~3.8 ms on average (256-frame halves and a 96..160
  * band: ~5.8 ms). Measured under load (65 % CPU): a 64..112 band started renders at
- * 48..119 with no glitch; one render was once seen 29 frames under the floor: a packet (46) must
+ * 48..119 with no glitch; one render was seen 29 frames under the floor: a packet (46) must
  * still be in hand then. */
 #define UA_N 512u                /* ring, frames (16-bit L | R << 16); a power of two */
 #define UA_PRIME 104u            /* silence ahead of the first rendered frame */
@@ -145,7 +145,7 @@ static struct {
     const uint8_t *e0_src;
     uint16_t e0_left;
     uint32_t resets, setups, rx_pkts, tx_pkts, sof_seen, timeouts, no_sof;
-    uint16_t suspends, max_gap, retries, frame_stalls;   /* diagnostics (b9: 16 bits, RAM is tight; the console reads them): suspend events, longest run of polls without SOF */
+    uint16_t suspends, max_gap, retries, frame_stalls;   /* diagnostics (16 bits, RAM is tight; the console reads them): suspend events, longest run of polls without SOF */
     uint16_t frame, frame_same;  /* last SOF frame number and how long it has not moved (x 10 ms) */
     uint8_t detached;            /* usb_detach() was called: no retry */
     volatile uint8_t suspended;  /* bus idle > 3 ms (unplugged or host asleep): the UI hides "USB" */
@@ -155,7 +155,7 @@ static struct {
     uint8_t rx_pend;             /* EP1 OUT packet seen, not yet taken (the MIDI ring was too full) */
     volatile uint8_t uboot_req;
     volatile uint8_t ota_req;    /* F0 22 24 35 7F F7: M-UPGRADE upgrade command (FELUCCA_OTA) */
-    uint8_t aud_off;             /* b9 USB AUDIO OFF (FELUCCA_UAC): 1 = presented as MIDI only (0 at power-on; usb_audio_switch) */
+    uint8_t aud_off;             /* USB AUDIO OFF (FELUCCA_UAC): 1 = presented as MIDI only (0 at power-on; usb_audio_switch) */
     uint16_t set_at;             /* menu_items.c: the low 16 bits of fm1_ms | 1 of an editor change of USB SERIAL / USB AUDIO, 0 none (in the struct's padding: RAM is tight) */
 } usb;
 
@@ -214,10 +214,10 @@ static uint32_t midi_out_event(uint32_t pkt)        /* from the audio ISR, never
 /* Two functions: audio + MIDI (0 audio control, 1 MIDI streaming, 2 audio streaming with FELUCCA_UAC)
  * and, with FELUCCA_CDC, the CDC-ACM console (communication + data). The endpoints never move:
  * EP1 MIDI, EP2 CDC notify, EP3 CDC data, EP4 audio.
- * bcdDevice: 3.00 MIDI, +0.10 the audio input (+0.20 since 1.1: 44.1 and 48 kHz, FELUCCA_UAC_48K), +0.08 the
- * audio streaming interface first in the AC collection (DUELL 0.2.14, from Felucca 1.5.1, FELUCCA_UAC_AS_FIRST, #67), +0.01 CDC
+ * bcdDevice: 3.00 MIDI, +0.10 the audio input (+0.20: 44.1 and 48 kHz, FELUCCA_UAC_48K), +0.08 the
+ * audio streaming interface first in the AC collection (FELUCCA_UAC_AS_FIRST), +0.01 CDC
  * (+0.02 per FELUCCA_USB_LAYOUT step, so a host never reuses what it learnt about another layout).
- * FELUCCA_USB_LAYOUT, how the CDC build presents itself (#67: macOS 13-15 attach Apple's CDC composite
+ * FELUCCA_USB_LAYOUT, how the CDC build presents itself (macOS 13-15 attach Apple's CDC composite
  * driver to a misc / IAD device that has a CDC function, and their kernel audio driver then never
  * takes the audio interfaces; macOS 26 / 27 (usbaudiod, matched per interface) and iOS / iPadOS work):
  *   0  1.0: device class EF 02 01 (misc / IAD), audio + MIDI IF 0.., CDC last         (the default)
@@ -251,19 +251,19 @@ static uint32_t midi_out_event(uint32_t pkt)        /* from the audio ISR, never
 #else
 #define FMT_LEN 0
 #endif
-/* b9 USB AUDIO OFF: the device presented without the audio streaming interface, byte for byte the descriptors of a FELUCCA_UAC=0 build:
+/* USB AUDIO OFF: the device presented without the audio streaming interface, byte for byte the descriptors of a FELUCCA_UAC=0 build:
  * AC (the MIDI streaming interface's parent) + MIDI streaming, no isochronous endpoint, bcdDevice 3.00 (a host that learnt the audio
  * device keeps nothing of it). The editor, the update installer and the soft key use MIDI only */
 #define D_AC_NA(a) 9, 4, (a), 0, 0, 1, 1, 0, 0, 9, 0x24, 1, 0x00, 0x01, 9, 0, 1, (a) + 1,
 #if FELUCCA_UAC
-/* DUELL 0.2.14, from Felucca 1.5.1 (#67): the AC header's collection lists the audio streaming interface first, then
- * the MIDI one. The interface NUMBERS do not move (0 AC, 1 MIDI, 2 AS, endpoints as before); only the order of the
+/* The AC header's collection lists the audio streaming interface first, then
+ * the MIDI one. The interface NUMBERS do not move (0 AC, 1 MIDI, 2 AS); only the order of the
  * two baInterfaceNr bytes changes. The kernel AppleUSBAudio of macOS up to 15 (AppleUSBAudio-273.4.1,
  * AUAConfigurationDictionary::parseConfigurationDescriptor) removes a MIDI streaming interface from the collection
  * while it walks it with the count bInCollection: with MIDI listed first the next look-up runs past the shortened
  * list, the parse gives up before the audio streaming interface and no audio input appears (MIDI still works).
  * Listed last, MIDI is dropped at the end of the walk. The class spec gives the order no meaning (Linux and
- * Windows take each listed interface on its own). FELUCCA_UAC_AS_FIRST=0: the order up to 0.2.13 (MIDI first). */
+ * Windows take each listed interface on its own). FELUCCA_UAC_AS_FIRST=0: MIDI first. */
 #if FELUCCA_UAC_AS_FIRST
 #define AC_COLL(a) (a) + 2, (a) + 1
 #else
@@ -379,7 +379,7 @@ static const uint8_t STR1[] = {42, 3, 'H', 0, 0xFC, 0, 'g', 0, 'e', 0, 'l', 0, '
                                'n', 0, 's', 0, 't', 0, 'r', 0, 'u', 0, 'm', 0, 'e', 0, 'n', 0, 't', 0, 's', 0};
 static const uint8_t STR2[] = {30, 3, 'F', 0, 'e', 0, 'l', 0, 'u', 0, 'c', 0, 'c', 0, 'a', 0, ' ', 0, 'U', 0, 'p', 0,
                                'd', 0, 'a', 0, 't', 0, 'e', 0};
-#else                                                   /* DUELL 0.2.14: maker "OSCILL/R", product "DUELL" (VID / PID as ever; the host's port name is the product) */
+#else                                                   /* maker "OSCILL/R", product "DUELL" (VID / PID unchanged; the host's port name is the product) */
 static const uint8_t STR1[] = {18, 3, 'O', 0, 'S', 0, 'C', 0, 'I', 0, 'L', 0, 'L', 0, '/', 0, 'R', 0};
 static const uint8_t STR2[] = {12, 3, 'D', 0, 'U', 0, 'E', 0, 'L', 0, 'L', 0};
 #endif

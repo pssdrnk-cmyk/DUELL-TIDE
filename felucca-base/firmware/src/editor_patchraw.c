@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* DUELL 0.2.19, the editor's PATCH_RAW (EDITOR_PROTOCOL.md "PATCH_RAW (84)"; INFO tag 5A 01 caps, bit 0): a patch slot's STORED RECORD (upreset.c) read and written
+/* The editor's PATCH_RAW (EDITOR_PROTOCOL.md "PATCH_RAW (84)"; INFO tag 5A 01 caps, bit 0): a patch slot's STORED RECORD (upreset.c) read and written
  * whole, bit for bit, so a patch can be exported to a file and imported into any slot without losing anything (UP_PUT drops End B, the arp / keys /
  * sequencer block and an FM6 sound's patch; UP_GET shows only the values). One command, an op byte first; every reply starts op, slot, rc:
  *   0 INFO   slot                              -> 0, slot, rc, saved (0/1), length (2 x 7 bit), CRC-32 (5 x 7 bit) of the record; a slot that holds its factory sound
@@ -14,9 +14,9 @@
  * (BEGIN, DATA and COMMIT stop the sequencer themselves, as the backup's writes do, and answer 3 if it does not stop in 100 ms: nothing is written while it plays),
  * 4 flash write failed (the slot is as it was), 5 stale (no begin, the USB bus was reset, 15 s with no request, or a backup / wavetable transfer used the staging).
  * The record is staged in the backup's staging RAM (ED_BK_RAW), like a wavetable. */
-/* b12 (every factory sound editable; INFO 44 01 bit 2): the patch slots are 175, a data byte holds 127. SLOT_HI (90, one byte, 0 or 1, no reply) says that the
+/* (every factory sound editable; INFO 44 01 bit 2): the patch slots are 175, a data byte holds 127. SLOT_HI (90, one byte, 0 or 1, no reply) says that the
  * NEXT command's slot byte counts from 128: UP_LIST's start, UP_GET, UP_PUT, UP_STORE, UP_LOAD, UP_ERASE, PATCH_RAW and FM6_GET / FM6_PUT's USER index. It
- * applies to that one command only (any command clears it), so an editor that never sends it (absent = 0) works on slots 1..128 exactly as before. The replies
+ * applies to that one command only (any command clears it), so an editor that never sends it (absent = 0) works on slots 1..128. The replies
  * echo the slot byte as sent (its low 7 bits). The backup has its own id for these slots (47, editor_backup.c) */
 enum { ED_SLOT_HI = 90 };
 static uint8_t ed_shi, ed_shi_next;                   /* this command's high slot bit (2: LATE, below); the one SLOT_HI set for the next */

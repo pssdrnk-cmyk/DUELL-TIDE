@@ -74,7 +74,7 @@ struct { uint32_t magic, palette, rsv, zoom; } settings __attribute__((section("
 static void settings_save(void);              /* project.c: flash copy (FELUCCA_FLASH) */
 
 /* HOLD (menu): how long a button is held before its layer opens (ui_input.c). Saved in the settings record's
- * retired bold field as HOLD_TAG | index; any other value there (0 or 1 from older firmware) is the default */
+ * bold field as HOLD_TAG | index; any other value there (0 or 1) is the default */
 #define HOLD_TAG 0x484C4400u
 #define HOLD_DEF 1u
 static const uint16_t HOLD_MS[4] = {300, 400, 500, 600};
@@ -89,9 +89,8 @@ static int hold_stored_ok(uint32_t v) { return v <= 1u || (v & ~3u) == HOLD_TAG;
 /* LEDS (menu): OFF, LOW, MEDIUM, MAX. MEDIUM (the default), the idle buttons and keys are lit 1 frame in 4 (25 %) and the
  * active ones fully (#35); LOW a faint glow (~1/60, hal/fm1_input.h THE LED LEVELS); OFF no glow,
  * the active ones lit (as 1.0); MAX the idle ones lit and the active ones dark, as the stock firmware (ui_input.c
- * ui_leds). Saved in the settings record's retired zoom field as LEDS_TAG | mode, the modes append-only: DIM 0
- * (now MEDIUM) and MAX 1 keep their values, OFF 2 and LOW 3 are new; any other value there (0 or 1 from older
- * firmware) is MEDIUM. LEDS_MENU: the menu's order, darkest first */
+ * ui_leds). Saved in the settings record's zoom field as LEDS_TAG | mode, the modes append-only: DIM 0
+ * (MEDIUM) and MAX 1, OFF 2, LOW 3; any other value there (0 or 1) is MEDIUM. LEDS_MENU: the menu's order, darkest first */
 #define LEDS_TAG 0x4C454400u                    /* "LED" */
 enum { LEDS_DIM, LEDS_INV, LEDS_OFF, LEDS_DIM_LO, LEDS_COUNT };
 static const uint8_t LEDS_MENU[LEDS_COUNT] = {LEDS_OFF, LEDS_DIM_LO, LEDS_DIM, LEDS_INV};
@@ -112,9 +111,9 @@ static void settings_init(void)
     }
     if (settings.magic != SETTINGS_MAGIC || settings.palette >= NPALETTES) {
         settings.magic = SETTINGS_MAGIC;
-        settings.palette = UI_DEFAULT_INDEX;   /* a new unit: the TIDE theme (b10; gen_ui_palettes.py DEFAULT_THEME) */
+        settings.palette = UI_DEFAULT_INDEX;   /* a new unit: the TIDE theme (gen_ui_palettes.py DEFAULT_THEME) */
         settings.rsv = 0;
-        settings.zoom = 0;                     /* (retired: the LEDS setting, settings_persist.c) */
+        settings.zoom = 0;                     /* (the LEDS setting lives in this field, settings_persist.c) */
     }
     palette_set(settings.palette);
 }

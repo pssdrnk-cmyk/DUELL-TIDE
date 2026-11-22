@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Felucca menu (HOME held): its rows in tabs (1.0.5: DISPLAY CONTROL AUDIO SYSTEM; 1.2: MIDI before SYSTEM; SELECT
+/* Felucca menu (HOME held): its rows in tabs (DISPLAY CONTROL AUDIO MIDI SYSTEM; SELECT
  * walks the rows across the tabs, SPEC 1.1a; no scrolling), the rows in menu_items.c (the settings, shared with the editor's
- * MENU_DESC / MENU_SET; 1.2: TUNE and MIDI IN, the project's). No BACK row: HOME closes it (ui_input.c). The two-valued
- * rows are bits of ui_prefs (MENU_FLAGS). In ABOUT KNOB 1 scrolls through all credits and SELECT jumps between its sections (0.2.9;
+ * MENU_DESC / MENU_SET; TUNE and MIDI IN, the project's). No BACK row: HOME closes it (ui_input.c). The two-valued
+ * rows are bits of ui_prefs (MENU_FLAGS). In ABOUT KNOB 1 scrolls through all credits and SELECT jumps between its sections (
  * OCT- back to the tabs).
- * ui.menu: 1 the tabs, 2 ABOUT (information and credits: the firmware, the USB link and the CPU readings, which INFO showed before
- * DUELL 0.2.2), 3 TEST (DUELL 0.2.2: the CPU test screen, MENU > SYSTEM > TEST; it was GLO's TEST page, then the INFO item). */
+ * ui.menu: 1 the tabs, 2 ABOUT (information and credits: the firmware, the USB link and the CPU readings),
+ * 3 TEST (the CPU test screen, MENU > SYSTEM > TEST). */
 /* ------------------------------------------------------------ menu --- */
 /* (the rows, their values and names, usb_serial_apply: menu_items.c) */
 
@@ -36,7 +36,7 @@ static uint32_t cpu_wel[CPU_NW];                       /* each reader's own long
 #if DUELL_TEST_MODE
 static uint32_t cpu_wpk_con;                           /* the console's render peak (its `cpu` prints both) */
 #endif
-/* THE owner (K2): read and clear the ISR's peaks together, fold them into every window. Main loop only and not reentrant: neither this nor cpu_win_take may be called from an interrupt */
+/* THE owner: read and clear the ISR's peaks together, fold them into every window. Main loop only and not reentrant: neither this nor cpu_win_take may be called from an interrupt */
 static void cpu_snap_poll(void)
 {
     uint32_t k, el;
@@ -202,11 +202,11 @@ static uint32_t about_step(void)                       /* the animation's step (
 {
     return ui.menu == 2 && !ui.menu_scroll && !(ui_prefs & PREF_ANIM_OFF) ? (fm1_ms - about_t0) / SPL_STEP_MS : 0u;
 }
-#define MENU_DOC_H 178                                /* the document: screen rows 24..201 (item 119: the legend under it has two rows) */
+#define MENU_DOC_H 178                                /* the document: screen rows 24..201 (the legend under it has two rows) */
 enum { MC_TEXT, MC_TITLE, MC_URL };
 typedef struct { const char *text; uint8_t kind; } menu_credit_t;
 static const menu_credit_t MENU_CREDITS[] = {
-    {"DUELL", MC_TITLE},                           /* b10 TIDE identity: the firmware TIDE is built on */
+    {"DUELL", MC_TITLE},                           /* the firmware TIDE is built on */
     {"OSCILL/R: DUELL 1.1, a modified version of Felucca", MC_TEXT},
     {"GPL-3.0", MC_TEXT},
     {"", MC_TEXT},
@@ -249,13 +249,13 @@ static const menu_credit_t MENU_CREDITS[] = {
     {"Hillenbrand, Getty, Clark and Wheeler (1995)", MC_TEXT},
     {"https://doi.org/10.1121/1.411872", MC_URL},
     {"", MC_TEXT},
-    {"WAVE USER TABLES", MC_TITLE},                /* DUELL 0.2.14: the editor's WAV converter (web/editor/wavetable.js); ideas, no code */
+    {"WAVE USER TABLES", MC_TITLE},                /* the editor's WAV converter (web/editor/wavetable.js); ideas, no code */
     {"Cooley and Tukey (1965): the FFT", MC_TEXT},
     {"https://doi.org/10.1090/S0025-5718-1965-0178586-1", MC_URL},
     {"Xfer Serum: wavetable WAV files", MC_TEXT},
     {"of 2048 sample frames (Vital, Surge)", MC_TEXT},
     {"", MC_TEXT},
-    {"FM VOICE", MC_TITLE},                        /* DUELL 0.2.17: FM BASS 2 (FM6 factory patch F9), a DX7 voice import */
+    {"FM VOICE", MC_TITLE},                        /* FM BASS 2 (FM6 factory patch F9), a DX7 voice import */
     {"One FM voice: aquanodemusic (Aquanode Soundscapes), CC0 1.0 Universal", MC_TEXT},
     {"https://github.com/aquanodemusic/aquanode-soundscapes", MC_URL},
 #if DUELL_VELO
@@ -297,7 +297,7 @@ static int32_t menu_text(const char *s, int32_t y, uint16_t col, int draw)
     return y;
 }
 
-/* ABOUT's USB line (what INFO's USB row showed: the old SYSTEM page's MIDI card; OFF no USB, WAIT no bus yet, BUS frames seen, ENUM being set
+/* ABOUT's USB line (OFF no USB, WAIT no bus yet, BUS frames seen, ENUM being set
  * up, MIDI in use). The CPU line is the meter above */
 static uint32_t info_usb(void)                         /* 0 OFF, 1 WAIT, 2 BUS, 3 ENUM, 4 MIDI */
 {
@@ -309,14 +309,14 @@ static int32_t about_sec[2];                           /* ABOUT's CREDITS and LI
 #ifndef DUELL_BUILD_DATE                               /* ABOUT's build date (build.py DUELL_BUILD_DATE pins it: the tools compare builds across days) */
 #define DUELL_BUILD_DATE __DATE__
 #endif
-#define ABOUT_SH 70                                    /* the lines below shift down: 17 + 28 + 17 + 20 + 20 + 20 + 24 against the old 78 (the attribution line takes three text lines) */
+#define ABOUT_SH 70                                    /* the lines below shift down: 17 + 28 + 17 + 20 + 20 + 20 + 24 (the attribution line takes three text lines) */
 /* the DUELL word of the logo (tools/gen_splash_logo.py SPL_WORD, 80 % of the splash's size), coverage blended onto the canvas in the text colour; (x, y) its top left */
 static void about_word_draw(int32_t x, int32_t y)
 {
-    tide_word(x, y, 28, 6, 5, T_TEXT);                  /* (b10 TIDE identity: the splash's wordmark, ui_draw.c) */
+    tide_word(x, y, 28, 6, 5, T_TEXT);                  /* (the splash's wordmark, ui_draw.c) */
 }
-static const char *about_cores(const char **l2)         /* the CORES line (owner, test3): two cores playing, or one (the second core off: it did not start, a fault, or the jobs paused: the automatic fallback);
-                                                        * item 119: the long form is 234 px, the card holds 220: two lines, "CORES: 1 RUNNING" and "(SECOND CORE OFF)", every word whole */
+static const char *about_cores(const char **l2)         /* the CORES line: two cores playing, or one (the second core off: it did not start, a fault, or the jobs paused: the automatic fallback);
+                                                        * the long form is 234 px, the card holds 220: two lines, "CORES: 1 RUNNING" and "(SECOND CORE OFF)", every word whole */
 {
     *l2 = 0;
 #if DUELL_TWOCORE
@@ -331,13 +331,13 @@ static int32_t menu_document(int32_t y, int draw)
 {
     uint32_t i;
     int32_t y0 = y;
-    y += ABOUT_SH;                                      /* (DUELL 1.1: the logo word and its air push every line below down) */
+    y += ABOUT_SH;                                      /* (the logo word and its air push every line below down) */
     if (draw) {
         char b[16];
-        uint16_t col = vt(T_THEME, T_BG);                /* (owner V7: one accent for every number here, no red) */
+        uint16_t col = vt(T_THEME, T_BG);                /* (one accent for every number here, no red) */
         const char *ver = FELUCCA_VERSION;
         if (ver[0] == 'D' && ver[1] == 'U' && ver[2] == 'E' && ver[3] == 'L' && ver[4] == 'L' && ver[5] == ' ')
-            ver += 6;                                   /* the number only (owner item 69: no second DUELL) */
+            ver += 6;                                   /* the number only (no second DUELL) */
         {   /* a release shows its number alone (1.1.0); a test build keeps its tag (1.1.0-test3) */
             static char vb[16];
             uint32_t vi = 0;
@@ -346,8 +346,8 @@ static int32_t menu_document(int32_t y, int draw)
             vb[vi] = 0;
             ver = vb;
         }
-        about_word_draw(6, y0 + ABOUT_AIR);             /* the logo word, air above and below it (LOGO_SCREENS_V1.png; b10 TIDE: the TIDE wordmark) */
-        {   /* b10 TIDE identity (item 10): TIDE and its version, what it is built on (DUELL by OSCILL/R, Felucca by Huegelton Instruments), GPL-3.0; the line that it is
+        about_word_draw(6, y0 + ABOUT_AIR);             /* the logo word, air above and below it (LOGO_SCREENS_V1.png; TIDE: the TIDE wordmark) */
+        {   /* TIDE and its version, what it is built on (DUELL by OSCILL/R, Felucca by Huegelton Instruments), GPL-3.0; the line that it is
              * not made or endorsed by OSCILL/R or M-VAVE is in LICENSES + SOURCE below */
             char tl[40];                                 /* (drawn at once: on the stack) */
 #if defined(DUELL_TIDE_ID) && !DUELL_TEST_MODE                                  /* the build's id (build.py DUELL_TIDE_ID: the TIDE version, "+" off a release tag) */
@@ -376,9 +376,9 @@ static int32_t menu_document(int32_t y, int draw)
         }
         cv_text(6, y + 112, &AF_S, "USB", T_MID);                /* the link (INFO's USB row): OFF, WAIT, BUS, ENUM or MIDI */
         cv_text(34, y + 112, &AF_S, (const char *const[5]){"OFF", "WAIT", "BUS", "ENUM", "MIDI"}[info_usb()], vt(T_THEME, T_BG));
-        if (ovl_lite)                                   /* 0.2.25: the overload guard is engaged (fx.c ovl_step: RANDOM / OCT UP as the plain delay) */
+        if (ovl_lite)                                   /* the overload guard is engaged (fx.c ovl_step: RANDOM / OCT UP as the plain delay) */
             cv_text_r(222, y + 112, &AF_S, "LIGHT FX", col, T_BG);
-        {   /* DUELL 1.1 (owner, test3): which core is working, in full words (item 119: two lines when it is one core with the second off) */
+        {   /* which core is working, in full words (two lines when it is one core with the second off) */
             const char *l2, *l1 = about_cores(&l2);
             cv_text(6, y + 128, &AF_S, l1, T_TEXT);
             if (l2)
@@ -395,7 +395,7 @@ static int32_t menu_document(int32_t y, int draw)
                 cv_text(78, y + 136, &AF_S, "OK", vt(T_THEME, T_BG));
                 cv_text(104, y + 136, &AF_S, b, T_TEXT);
             } else
-                cv_text(78, y + 136, &AF_S, rp_state == 1u ? "FAIL X" : rp_state == 2u ? "FAIL Z" : "FAIL X Z", T_ACCENT);   /* (owner V7: no red in ABOUT) */
+                cv_text(78, y + 136, &AF_S, rp_state == 1u ? "FAIL X" : rp_state == 2u ? "FAIL Z" : "FAIL X Z", T_ACCENT);   /* (no red in ABOUT) */
             if (rp_boot_copies) {
                 str_cpy(b, "BOOT COPY ", 11);
                 fmt_int(b + str_len(b), rp_boot_copies);
@@ -431,7 +431,7 @@ static int32_t menu_document(int32_t y, int draw)
     }
     about_sec[1] = y + 12 - y0;
     y = menu_text("LICENSES + SOURCE", y + 12, T_THEME, draw);
-    y = menu_text("TIDE by pssdrnk: GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.", y, T_TEXT, draw);   /* (b10 TIDE identity, item 10) */
+    y = menu_text("TIDE by pssdrnk: GPL-3.0. Not made or endorsed by OSCILL/R or M-VAVE.", y, T_TEXT, draw);
     y = menu_text("Fonts and icons: their licences travel with the source and the release files.", y, T_TEXT, draw);
     y = menu_text("NO WARRANTY", y, T_TEXT, draw);
     y = menu_text("Full notices in source:", y + 8, T_TEXT, draw);
@@ -443,7 +443,7 @@ static int32_t menu_scroll_max(void)
     int32_t h = menu_document(0, 0);
     return h > MENU_DOC_H ? h - MENU_DOC_H : 0;
 }
-/* SELECT in ABOUT (0.2.9): the next (s > 0) or the previous section's start: the animation (0), the information (1: the document's top),
+/* SELECT in ABOUT: the next (s > 0) or the previous section's start: the animation (0), the information (1: the document's top),
  * CREDITS, LICENSES + SOURCE (each at most the end of the scroll); stops at the first and the last, no wrap */
 static int32_t about_section(int32_t cur, int32_t s)
 {
@@ -461,7 +461,7 @@ static int32_t about_section(int32_t cur, int32_t s)
     return cur;
 }
 
-/* the menu's header (0..24): the page title, the same function as every page's (ui_draw.c head_title_draw: Bold 15, white, centred, no colour, no line; item 119) */
+/* the menu's header (0..24): the page title, the same function as every page's (ui_draw.c head_title_draw: Bold 15, white, centred, no colour, no line) */
 static void menu_head(void)
 {
     cv_begin(240, H_HEAD, T_BG);
@@ -469,7 +469,7 @@ static void menu_head(void)
     cv_blit(0, Y_HEAD);
 }
 
-/* The page (1.0.5): the tabs across the top, the rows of the one shown below, the key hints at the bottom.
+/* The page: the tabs across the top, the rows of the one shown below, the key hints at the bottom.
  *   header   0..24  the cog and MENU, the REC mark, the tabs as dots at the right (the one shown a THEME
  *                   pill)
  *   tabs    29..53  a 24 px cushion per tab: its icon alone (SURF, MID); the one shown wider, with its name (ACCENT,
@@ -478,7 +478,7 @@ static void menu_head(void)
  *   rows    59..    one SURF panel, a row a label and its value, 1 px rules
  *                   between them; the selected row THEME with INK, as the browser's. A value THEME (M) at the right,
  *                   ON / OFF as a switch, COLOR its palette's five colours, BUTTON MAP, TEST, GUIDE, ABOUT and ERASE DATA a
- *                   chevron (OCT+ opens them); the labels in M too (a list's rows). 0.2.14: rows of one or two units
+ *                   chevron (OCT+ opens them); the labels in M too (a list's rows). rows of one or two units
  *                   (a two-line label), at most MPAGE_UNITS a page; a tab with more has pages ("CONTROL 1/2" in its pill)
  *   keys   224      SELECT ROW and, on a row with a value, KNOB 1 VALUE (SPEC 1.1a: no OCT / HOME keycap; OCT+ still opens
  *                   BUTTON MAP / TEST / ABOUT, OCT- goes back, HOME closes, unadvertised)
@@ -486,14 +486,14 @@ static void menu_head(void)
  * strip (24..58) is drawn again */
 #define MT_Y 29                                        /* the tab bar */
 #define MT_H 24
-#define MT_IW 26                                       /* a cushion with its icon alone (the icon centred in it; 1.2, five
-                                                        * tabs: 26, up to 1.1.5 32) */
+#define MT_IW 26                                       /* a cushion with its icon alone (the icon centred in it; five
+                                                        * tabs: 26) */
 #define MT_NX 24                                       /* the name's pen in the one shown; 10 px after it */
 #define MT_X0 4                                        /* the tab bar: the panel's own width (x 4 .. 235) */
 #define MT_X1 236
 #define MT_PAD 4                                       /* a tab's air each side of its name (S 15: the four names are 196 px, with 8 px of air each 228 of the 232) */
-#define MT_GAP 5                                       /* between two tabs, always (the bar centred in MT_X0..MT_X1; 1.2, five
-                                                        * tabs: 5, up to 1.1.5 8) */
+#define MT_GAP 5                                       /* between two tabs, always (the bar centred in MT_X0..MT_X1; five
+                                                        * tabs: 5) */
 #define MT_ONE 64                                      /* mt.pos per tab */
 #define MP_Y 59                                        /* the rows' panel */
 #define MP_PAD 3
@@ -503,8 +503,8 @@ static void menu_head(void)
 #define MR_VR 224                                      /* its value's right edge */
 #define MK_Y 224                                       /* the key hints: the footer's row 2 band (its keycaps centred on its names) */
 static uint32_t menu_tab(void) { return MI_TAB[ui.menu_sel % MI_COUNT]; }
-/* DUELL 0.2.14: the rows in units (menu_items.c menu_units, menu_place): a unit is 21 px and a 1 px rule (1.2's 7-row look), a two-line
- * row two units (43 px); MPAGE_UNITS (7) units a page, the panel then ends 4 px lower than a 6-row tab did and 6 px above the key
+/* the rows in units (menu_items.c menu_units, menu_place): a unit is 21 px and a 1 px rule (the 7-row look), a two-line
+ * row two units (43 px); MPAGE_UNITS (7) units a page, the panel then ends 4 px lower than a 6-row tab would and 6 px above the key
  * hints. The page shown is the selected row's (SELECT walks every row, so it turns the pages too) */
 #define MU_H 21                                        /* a unit's height */
 #define MU_P 22                                        /* .. and its pitch (the rule between two rows is the gap row) */
@@ -528,7 +528,7 @@ static void mt_follow(void)
     mt.frame = ui.frame;
 }
 #define M_SEL ux_mix(T_BASE, T_TEXT, 22)                /* the picked row / tab: a neutral lift of the card */
-/* DUELL 1.1 (PAGES_V2_menu.png): four text tabs, no icons, the shown one lifted; x, width of each (a[k]: always whole) */
+/* PAGES_V2_menu.png: four text tabs, no icons, the shown one lifted; x, width of each (a[k]: always whole) */
 static void mt_layout(int32_t *a, int32_t *x, int32_t *w)
 {
     uint32_t k;
@@ -582,7 +582,7 @@ static void menu_row(uint32_t row)
     uint32_t u;
     int32_t y, h, vy;
     int sel = row == ui.menu_sel;
-    uint16_t bg = sel ? M_SEL : T_BG, fg = T_TEXT, val = T_TEXT;   /* (DUELL 1.1, PAGES_V2_menu.png: the picked row a neutral fill, the values white, no rules) */
+    uint16_t bg = sel ? M_SEL : T_BG, fg = T_TEXT, val = T_TEXT;   /* (PAGES_V2_menu.png: the picked row a neutral fill, the values white, no rules) */
     const char *v = menu_valued(row) ? menu_vname(row, menu_get(row)) : "", *l = menu_label(row);
     char l1[24];
     uint32_t n = 0;
@@ -762,7 +762,7 @@ static void graph_test(void)
 #ifdef FELUCCA_METER_EST
     cv_text_r(230, 89, &AF_S, "EMULATOR ESTIMATE", T_DIM, T_BG);
 #endif
-    x = cv_text_on(10, 101, &AF_S, "ERASE", T_MID, T_BG);   /* DUELL 0.2.11: the longest flash erase since boot (storage_hw.c: the driver's own time) */
+    x = cv_text_on(10, 101, &AF_S, "ERASE", T_MID, T_BG);   /* the longest flash erase since boot (storage_hw.c: the driver's own time) */
     if (felucca_dbg.erase_max_us) {
         fmt_int(v, (int32_t)((felucca_dbg.erase_max_us + 500u) / 1000u));
         str_cpy(v + str_len(v), "MS", 3);
@@ -838,7 +838,7 @@ static void draw_menu(void)
 #endif
     if (ui.menu == 1)
         mt_follow();
-    {   /* DUELL 1.1 general rule: every row's value, whatever variable it lives in */
+    {   /* general rule: every row's value, whatever variable it lives in */
         uint32_t r;
         sig = 2166136261u;
         for (r = 0; r < MI_COUNT; r++)
@@ -848,7 +848,7 @@ static void draw_menu(void)
           settings_leds * 6151u + ui_prefs * 4099u + song.rec * 65537u + song.sel * 13u +
           ui_rec_prefs * 92821u + ui_scr * 131071u +          /* (#157: SCREEN OFF's value redraws its row) */
           ui_prefs2 * 524287u + ui_idle * 1048573u +      /* (1.2: ANIM IDLE's value redraws its row) */
-          SENSE_SIG + (uint32_t)ui_notes_off * 40503u +   /* (DUELL 1.1: KEY VELOCITY and AFTERTOUCH keep their curve here, NOTES LEFT its bit: the card was stale until the page was left, test3) */
+          SENSE_SIG + (uint32_t)ui_notes_off * 40503u +   /* (KEY VELOCITY and AFTERTOUCH keep their curve here, NOTES LEFT its bit: so the card is never stale) */
           (uint32_t)(song.g[G_TUNE] + 64) * 8191u + ui_home_pg * 27449u +   /* (1.2: the project's row; DUELL: HOME OPENS) */
           (ui.menu == 2 ? ui.menu_scroll * 48611u + about_sig() * 40507u + about_step() * 6007u : 0u);
     if (!ui.force && sig == ui.menu_sig) {
@@ -918,7 +918,7 @@ static void draw_menu(void)
                         char pc[8] = "1/2";
                         pc[0] = (char)('0' + menu_page() + 1u);
                         pc[2] = (char)('0' + mtab_pages(menu_tab()));
-                        cv_text_r(232, MK_Y - 3, &AF_S, pc, T_MID, T_BG);   /* item 138: on the hint words' line (gfx.c cv_key_hint: y - 3); MK_Y + 3 put its capitals on rows 231 .. 242, past the screen's last row */
+                        cv_text_r(232, MK_Y - 3, &AF_S, pc, T_MID, T_BG);   /* on the hint words' line (gfx.c cv_key_hint: y - 3); MK_Y + 3 put its capitals on rows 231 .. 242, past the screen's last row */
                     }
                 }
             }
@@ -950,7 +950,7 @@ static void menu_close(void)
  * KNOB 1..4 (any of them) change the selected row's value (menu_items.c menu_step), OCT+ / OCT- step it too (and OCT+
  * opens CALIBRATION / TEST / ABOUT, OCT- nothing there; OCT- in TEST and ABOUT goes back to the tabs) but no hint
  * names them. ALGORITHM and PRESETS do nothing here. HOME closes it, from them too (ui_input.c) */
-static void menu_move(int32_t s)                       /* SELECT: the next / previous row, across the tabs, clamped; a row without a tab (the retired CPU METER) is passed by */
+static void menu_move(int32_t s)                       /* SELECT: the next / previous row, across the tabs, clamped; a row without a tab is passed by */
 {
     int32_t dir = s < 0 ? -1 : 1;
     int32_t r = (int32_t)ui.menu_sel + clamp(s, -(int32_t)MI_COUNT, (int32_t)MI_COUNT);
@@ -996,7 +996,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
         return;
     }
 #endif
-    if (ui.menu == 2) {                                /* ABOUT (0.2.9, the owner): KNOB 1 scrolls (right down, left up; bounded), SELECT
+    if (ui.menu == 2) {                                /* ABOUT: KNOB 1 scrolls (right down, left up; bounded), SELECT
                                                         * jumps to the next / previous section (about_section); OCT- back to the tabs,
                                                         * HOME closes; KNOB 2..4, PRESETS, ALGORITHM nothing */
         if (dn) {
@@ -1015,7 +1015,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
         menu_move(s);
     for (s = 0, k = 0; k < 4u; k++) {                  /* KNOB 1..4, any of them */
         int32_t e = panel_enc(EN_K1 + k);
-        s += ui.menu_sel == MI_TUNE ? accel(EN_K1 + k, e, (int32_t)TUNE_N) : e;   /* (0.2.22: TUNE has 510 steps: with KNOB ACCEL ON a fast turn goes x2 .. x8, ui_input.c accel; the other rows as ever) */
+        s += ui.menu_sel == MI_TUNE ? accel(EN_K1 + k, e, (int32_t)TUNE_N) : e;   /* (TUNE has 510 steps: with KNOB ACCEL ON a fast turn goes x2 .. x8, ui_input.c accel; the other rows as ever) */
     }
     if (menu_valued(ui.menu_sel)) {
         /* a step (OCT+ the next value, OCT- the previous); COLOR previews the palette */
@@ -1023,7 +1023,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
         if (s) {
             uint32_t was = menu_get(ui.menu_sel);
             menu_put(ui.menu_sel, menu_step(ui.menu_sel, s));
-            if (menu_get(ui.menu_sel) != was && !MI_PROJECT(ui.menu_sel)) {   /* DUELL 0.2.2: a changed setting is saved now, not when the */
+            if (menu_get(ui.menu_sel) != was && !MI_PROJECT(ui.menu_sel)) {   /* a changed setting is saved now, not when the */
                 if (menu_n(ui.menu_sel) == 2u)                                /* menu is left: a two-value switch at once, any other once the */
                     settings_save();                                          /* knob has rested ~2 s (the AMOUNT knob's debounce, ui_input.c */
                 else {                                                        /* morph_settings); while playing the write waits (settings_poll) */
@@ -1037,7 +1037,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
             panel_setup();
             scrn.idle = fm1_ms;                         /* (SCREEN OFF: its own loop had the input) */
             ui.force = 1;
-        } else if (ui.menu_sel == MI_ERASE) {           /* DUELL 0.2.2: the dialog over the menu (ui_input.c: OCT+ YES, OCT- NO) */
+        } else if (ui.menu_sel == MI_ERASE) {           /* the dialog over the menu (ui_input.c: OCT+ YES, OCT- NO) */
             ui.confirm = CF_ERASE_ALL;
             ui.confirm_trk = 0;
             ui.force = 1;
@@ -1047,7 +1047,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
             cpu_meter_open();                           /* (the CPU meter's window begins) */
             ui.force = 1;
 #endif
-        } else if (ui.menu_sel == MI_GUIDE) {           /* DUELL 0.2.11: the first-start GUIDE's pages, over the menu (ui_guide.c); the bit untouched */
+        } else if (ui.menu_sel == MI_GUIDE) {           /* the first-start GUIDE's pages, over the menu (ui_guide.c); the bit untouched */
             guide_open(1);
         } else {                                       /* MI_ABOUT */
             ui.menu = 2;

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The update loader's screen in TIDE's look (TIDE 1.0.0-b5; b11, owner: "it's pink": the night sea; included by ldr_screen.c, which keeps the guest rules, ls_check and
+/* The update loader's screen in TIDE's look (the night sea; included by ldr_screen.c, which keeps the guest rules, ls_check and
  * the two entry points): a TIDE page on the ground colour, no boxes, no rule (firmware/src/ui_tokens.h, the TIDE palette).
  *     rows 40 .. 89    the splash's wordmark, where the splash has it (W1: the letters cut by the water line, foam above it, sea glass under it)
  *     row 116          WRITING                       face S, moonlight, centred

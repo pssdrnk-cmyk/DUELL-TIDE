@@ -47,7 +47,7 @@ typedef struct {
 } fm1_crash_t;
 /* Not static: .noinit holds whatever the last run (or power-on) left, and a
  * file-local object would let the compiler assume its zero initial value and
- * fold the magic check away. -flto does exactly that (bench build B, 2026-10-14: the plugin internalised
+ * fold the magic check away. -flto does exactly that (the plugin internalised
  * fm1_crash, bootguard and settings, their magic words became one-byte flags, symbols fm1_crash.0,
  * bootguard.0, settings.0, and garbage after a power-up sent the unit to UBOOT; docs/BENCH_B_BOOT_STUDY.md).
  * tools/build.py fails such a build: tools/elfcheck.py checks after every link that each .noinit object is

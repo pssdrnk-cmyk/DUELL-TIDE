@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* A stored FM6 sound's patch (DUELL). Since the PATCH store (upreset.c) an FM6 sound carries its track's 128-byte patch
+/* A stored FM6 sound's patch (DUELL). With the PATCH store (upreset.c) an FM6 sound carries its track's 128-byte patch
  * (eng_fm6.c fm6_pack, 7-bit bytes packed 8 to 7: UPF_PK = 112 bytes) INSIDE its own record (PTF_FM6): one write stores both,
- * so a record can never meet another record's patch (Felucca kept the patches in a separate object, tagged with a hash of
- * the record; that object, the retired FM6 patch bank of 1.0..1.0.2 and their migration are gone). A record without a patch
- * (the editor's UP_PUT sends none) loads as before 1.0.3: SLOT F n that factory patch, OWN the init voice.
+ * so a record can never meet another record's patch. A record without a patch
+ * (the editor's UP_PUT sends none) loads as: SLOT F n that factory patch, OWN the init voice.
  * The packing helpers (upf_pk_get / upf_pk_put) are in upreset.c, above the store. Included by upreset.c. */
 
 static int upf_fm6(uint32_t k) { return up_used(k) && up_engine_raw(k) == ENGI_FM6; }
@@ -45,7 +44,7 @@ static int upf_put(uint32_t k, const uint8_t *pk)
     return rc;
 }
 
-/* up_load: track t (its values just loaded from slot k) gets the record's patch; without one, as before 1.0.3:
+/* up_load: track t (its values just loaded from slot k) gets the record's patch; without one:
  * SLOT F n that factory patch, OWN the init voice. SLOT then shows F n or OWN (fm6_adopt) */
 static void upf_track_load(track_t *t, uint32_t k)
 {

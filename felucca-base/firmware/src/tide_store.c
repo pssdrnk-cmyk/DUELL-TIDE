@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* TIDE's own settings record (plan §4.5; D11 of the 2026-11-04 audit): the fields of tide_ui.c (TS_*) live in the settings record's reserved tail
+/* TIDE's own settings record (plan §4.5): the fields of tide_ui.c (TS_*) live in the settings record's reserved tail
  * (settings_persist.c: map_tail[32..63], "TIDE", the field count, the fields; 27 fields at most), so every editor backup (object 1) holds them and a restore
- * brings them back. They were TIDE's own storage object, OBJ_TIDE, on the A/B sector pair of patch chunk 21 (object 48, 0xC4000 / 0xC5000): that object is read ONCE,
+ * brings them back. TIDE's earlier own storage object, OBJ_TIDE, sits on the A/B sector pair of patch chunk 21 (object 48, 0xC4000 / 0xC5000): that object is read ONCE,
  * by tide_store_load_min when the settings hold no TIDE record (a unit updated from an earlier TIDE build), copied into the tail and never written again, so a patch
- * record a stock 1.1 unit once kept in chunk 21 (D03; the 21-chunk store of TIDE does not list it) is never overwritten by a TIDE setting. ERASE DATA wipes it with the
+ * record a stock 1.1 unit once kept in chunk 21 (the 21-chunk store of TIDE does not list it) is never overwritten by a TIDE setting. ERASE DATA wipes it with the
  * patch chunks (erase_data.c ORDER: OBJ_PATCHX0 + 15) and the settings. Plain 1.1 zeroes the tail at its next settings save. Fields past the ones this build knows
- * (a newer TIDE build's) are kept as they were read (D09). Included after upreset.c / project.c (felucca.c, TIDE hook). Main loop only. */
+ * (a newer TIDE build's) are kept as they were read. Included after upreset.c / project.c (felucca.c, TIDE hook). Main loop only. */
 #define TIDE_STORE_MAX (TIDE_TAIL_N - 5u)
 static uint8_t tide_store_dirty;
 static uint32_t tide_store_t;

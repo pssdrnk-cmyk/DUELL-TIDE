@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* DUELL 1.1 UI TOKENS (item 111): the numbers of the parts every page shares, measured on the owner's FINAL_V1_*.png pictures (240 x 240, 1 px = 1 px) and checked by
+/* UI TOKENS: the numbers of the parts every page shares, measured on the FINAL_V1_*.png pictures (240 x 240, 1 px = 1 px) and checked by
  * tests/ui_render.c --target + tools/ui_diff.py. Rows and columns are SCREEN coordinates (the header canvas starts at row 0, the footer canvas at Y_FOOT: draw code subtracts it).
  * Included by gfx.c (right after ui_fonts.h, so the face names below hold in every file) and ui_draw.c; the later template work reuses these names instead of writing the numbers again.
- * Faces: the FACE ROLE MAP below (item 113). Colours are palette tokens (gfx.c T_*), never RGB. */
+ * Faces: the FACE ROLE MAP below. Colours are palette tokens (gfx.c T_*), never RGB. */
 #pragma once
 
-/* ---- FACE ROLE MAP (item 113): the CONSOLIDATED face set, tools/gen_aa_font.py preset barlow (all faces PLAIN: no kerning, as the design pictures set text).
- * Floor rule (owner): no text on any page is smaller than the engine name on ENGINE row 1 = Barlow Medium 15 (cap height 11). Roles of the FINAL_V1 design -> face:
- *   S  SemiBold 15, ASCII + u-umlaut + ellipsis   capsule letters and numbers, footer, cell / dot labels (design S 15 and S 16), hints, notes, legends, list rows, button words (was S 12 and F 15)
+/* ---- FACE ROLE MAP: the CONSOLIDATED face set, tools/gen_aa_font.py preset barlow (all faces PLAIN: no kerning, as the design pictures set text).
+ * Floor rule: no text on any page is smaller than the engine name on ENGINE row 1 = Barlow Medium 15 (cap height 11). Roles of the FINAL_V1 design -> face:
+ *   S  SemiBold 15, ASCII + u-umlaut + ellipsis   capsule letters and numbers, footer, cell / dot labels (design S 15 and S 16), hints, notes, legends, list rows, button words
  *   M  Medium 15, ASCII + ellipsis                engine name row, units (design M 15 and M 16), patch numbers, grey means, menu row names, sentence-case lines (the design's M 18 rows are M 15 here)
  *   L  Bold 23, ASCII                             values and big headings (the design's S 20 and S 23 values; the guide's headings H / G; the splash word, the update countdown)
  *   T  Bold 15, capitals                          the header's page title
@@ -15,9 +15,9 @@
  *   N  Bold 31, figures . - + %                   the design's big values (ENGINE page, FINAL_V1_02); not drawn by any page yet (the compiler drops it); text values use L
  *   X  Bold 38, A B and figures                   HOME's big MORPH value
  *   B  Bold 64, + - 0 .. 3                        the OCTAVE page's big figure
- *   P  Bold 20, capitals, figures, + - / space    role AF_NAME (owner, 2026-10-29): the TOOLS page's names and the big names of the PERFORM and QUICK SEQ boxes (capitals rows 6 .. 19 of its line, 14 rows;
+ *   P  Bold 20, capitals, figures, + - / space    role AF_NAME: the TOOLS page's names and the big names of the PERFORM and QUICK SEQ boxes (capitals rows 6 .. 19 of its line, 14 rows;
  *                                                 a lower case letter shows as its capital; a character not in the face shows as a space)
- * Retired: S 12, I 18 (never drawn), H 21 and G 18 (the guide's headings: now L, they are 2 px bigger / 5 px bigger), F 15 (is S now). */
+ * There is no S 12, I 18, H 21, G 18 or F 15: the guide's headings are L, the former F 15 text is S. */
 #define AF_H AF_L
 #define AF_H_CAP_Y AF_L_CAP_Y
 #define AF_H_CAP_H AF_L_CAP_H
@@ -29,16 +29,16 @@
 #define AF_NAME_CAP_Y AF_P_CAP_Y
 #define AF_NAME_CAP_H AF_P_CAP_H
 
-/* ---- NO BOXES (owner, 2026-10-26, items 122, 124): no background box, rectangle, card fill, border or divider behind text or graphics on any page; pages are plain background (T_BG).
- * There is no old-look switch and no code for one. The ONLY filled shapes: the selected row / option, the capsules, the keycap pills, bars and meters, the RECOMMENDED pill, and DATA
+/* ---- NO BOXES: no background box, rectangle, card fill, border or divider behind text or graphics on any page; pages are plain background (T_BG).
+ * The ONLY filled shapes: the selected row / option, the capsules, the keycap pills, bars and meters, the RECOMMENDED pill, and DATA
  * (the picture, roll, envelope fill, curves). The palette's card tone survives only as T_BASE / T_BASE_P1 (gfx.c): the base the derived greys, bar tracks, data fills and roll lanes
  * are mixed from (the colours of the final pictures), never drawn as a fill. tests/ui_render.c box_lint finds a flat fill of 12 x 12 px or more that is neither the background nor
  * allowed (GFX_HOOK_ALLOW) on every screen in every palette and fails on one. */
 
-/* ---- header: the two capsules [part number | morph end letter] (b10, owner 2026-11-12: the voices number is gone) ---- */
+/* ---- header: the two capsules [part number | morph end letter] ---- */
 #define UT_CAP_X 4              /* left capsule's left edge; the right capsule ends at 240 - UT_CAP_X (x 235) */
 #define UT_CAP_Y 4              /* rows 4 .. 19 */
-#define UT_CAP_W 25             /* x 4 .. 28 and 211 .. 235, outline included (b10: two cells, was 37 with the voices) */
+#define UT_CAP_W 25             /* x 4 .. 28 and 211 .. 235, outline included (two cells) */
 #define UT_CAP_H 16
 #define UT_CAP_R 5              /* outer corner radius; the dim half's is one less (1 px outline) */
 #define UT_CAP_CELL 12          /* the number cell (outline included) and the letter's text cell: 12 px each, the text centred in its cell by its advance */
@@ -51,8 +51,8 @@
 #define UT_TITLE_CX 120
 #define UT_TITLE_BASE 16        /* capitals' last row: the capsule text's */
 #define UT_TITLE_GAP 6          /* free room between the title and a capsule */
-#define UT_TITLE_L (UT_CAP_X + UT_CAP_W + UT_TITLE_GAP)           /* 35: the title room with capsules (b10: was 47) */
-#define UT_TITLE_R (240 - UT_CAP_X - UT_CAP_W - UT_TITLE_GAP)     /* 205 (b10: was 193) */
+#define UT_TITLE_L (UT_CAP_X + UT_CAP_W + UT_TITLE_GAP)           /* 35: the title room with capsules */
+#define UT_TITLE_R (240 - UT_CAP_X - UT_CAP_W - UT_TITLE_GAP)     /* 205 */
 #define UT_TITLE_GL 8           /* the title room of a page without capsules (global pages) */
 #define UT_TITLE_GR 232
 
@@ -76,7 +76,7 @@
 #define UT_BAT_FW 9
 #define UT_BAT_FH 5
 
-/* ---- TEMPLATE 1, the four-card part page (item 114; FINAL_V1_01_morph / 05_env / 06_lfo, 240 x 240, 1 px = 1 px; screen rows unless a name says "rel" = inside its card or panel) ----
+/* ---- TEMPLATE 1, the four-card part page (FINAL_V1_01_morph / 05_env / 06_lfo, 240 x 240, 1 px = 1 px; screen rows unless a name says "rel" = inside its card or panel) ----
  * The graph area: ONE card on rows 27 .. 102, x 3 .. 236 (hard corners, no border). The four cards under it: 116 x 54 at x 3 / 121, y 106 / 162 (the same card colour = T_BASE, exact; no border, no line).
  * Per card (rel): the number dot = the label's capital height (11 px), its top on the label's cap top, x 6; the label pen is the dot + 15; label baseline row 20 (the capitals' last row), label face S, colour T_MID;
  * the value's baseline row 42 for every face (L 23 / X 38 / M / S), pen x 6; its unit M, T_MID, 4 px after the value, on the SAME baseline; the bar rows 46 .. 48 (3 px, radius 1), x 6, width card - 12 = 104,
@@ -104,7 +104,7 @@
 #define UT_CARD_BAR_R 1
 #define UT_CARD_BAR_MIN 3       /* the shortest fill */
 #define UT_CARD_BAR_REST_PCT 24 /* the bar's unfilled track: T_BASE -> T_THEME, % */
-#define UT_CARD_BIG_BAR 1      /* 1: HOME's big A / B value gets the thin A-to-B bar under it (the ticket's text); 0: none, as the FINAL_V1_01 picture on disk shows (flag, item 114) */
+#define UT_CARD_BIG_BAR 1      /* 1: HOME's big A / B value gets the thin A-to-B bar under it (the ticket's text); 0: none, as the FINAL_V1_01 picture on disk shows (flag) */
 #define UT_CARD_ENUM_BAR 0      /* 1: a card whose value is a NAME (an enumeration: WAVE SINE, SYNC OFF) also gets its bar; 0: no bar, as FINAL_V1_06_lfo shows (the grid cards of the other templates are not affected) */
 #define UT_CARD_CORNER_A 2      /* the hard corner: row 0 loses this many px at each end, row 1 loses UT_CARD_CORNER_B (the card is NOT anti-aliased) */
 #define UT_CARD_CORNER_B 1
@@ -118,9 +118,9 @@
 /* the envelope / LFO graphs (grid_on 1): the area under the envelope's line, and the guide line (the baseline of the ENV, the zero line of the LFO) */
 #define UT_GR_FILL_PCT 11       /* T_BASE -> T_THEME, % (VIOLET 32,8,41: the picture's 32,8,41) */
 #define UT_GR_GUIDE_PCT 33      /* T_BASE -> T_TEXT, % (VIOLET 90,85,98 in the picture) */
-#define UT_PIC_TINT_PCT 50      /* item 165 (owner): the PHASE picture's second cycle, a lighter tint of the part colour: part colour -> TEXT, % (lighter on the dark palettes, toward the text on the light ones: readable on all) */
+#define UT_PIC_TINT_PCT 50      /* the PHASE picture's second cycle, a lighter tint of the part colour: part colour -> TEXT, % (lighter on the dark palettes, toward the text on the light ones: readable on all) */
 
-/* ---- TEMPLATE 2, the ENGINE page (item 115; FINAL_V1_02_engine, 240 x 240, 1 px = 1 px; screen rows unless "rel" = inside its card; geometry of ui_redesign/_scripts/final_pages.py, last page_engine) ----
+/* ---- TEMPLATE 2, the ENGINE page (FINAL_V1_02_engine, 240 x 240, 1 px = 1 px; screen rows unless "rel" = inside its card; geometry of ui_redesign/_scripts/final_pages.py, last page_engine) ----
  * Row 1: ONE card, rows 27 .. 50 (x 3 .. 236): the numbered dot 1 (11 px, = the name's cap height) at x 9 and the engine's name (M, left aligned, NO highlight pill) at x 28, both on baseline row 43.
  * Under it the engine's picture card (the graph area): rows 54 .. 129, x 3 .. 236. Under that the three cells K2 .. K4: 76 x 83 at x 3 / 82 / 161, rows 133 .. 215: dot + label (S) on baseline rel 19,
  * the value on baseline rel 58 (figures in N 31, text in L), its unit (M) 5 px after it on the same baseline, the thin bar rel 75 .. 77 (x 6, width 64) under an ADJUSTABLE value only (a NAME like SAW has none).
@@ -149,7 +149,7 @@
 #define UT_T2_ENUM_BAR 0        /* 0: a NAME (WAVE SAW) has no bar, as the picture; 1: it gets one */
 #define UT_T2_LIST_Y 7          /* the engine list's first row, from the picture card's top (3 rows of UT_T3_ROW_H + 2 gaps = 61 px in 76) */
 
-/* ---- TEMPLATE 3, the list pages PATCHES / PATTERNS / MULTIS (item 115; FINAL_V1_03_patches) ----
+/* ---- TEMPLATE 3, the list pages PATCHES / PATTERNS / MULTIS (FINAL_V1_03_patches) ----
  * Heads: four cards in ONE row, rows 27 .. 63 (37 px), 2 px apart from x 3; each: the dot (11 px) at x +3 and the label (S, floor face) at x +16 on baseline row 43, the value (L) at x +6 on baseline row 62;
  * a card is as wide as its label needs (dot + label + 3), the last one takes the rest up to x 236 (PATCH 60, TYPE 51, FAV 43, RESTORE 75 in the picture). No bar. An action head (LOAD, ERASE, SAVE, RESTORE) shows its label only.
  * Rows: seven, the first at screen row 67, one every 21 px, each 19 px high over x 3 .. 236 (radius 4); the selected row filled with the part colour, its text white; the row number at x 14, the name at x 66, both on baseline rel 14
@@ -179,14 +179,14 @@
 #define UT_T3_STAR_DY 3
 #define UT_T3_HINT 0            /* 1: the footer's "HOLD SAVE = SAVE PATCH / PATTERN / MULTI" line stays on these pages (the picture has none: it would cover the footer's page counter) */
 
-/* ---- TEMPLATE 4, the MIXER page (GLO's first page and QUICK GLO over any page, the same screen; item 117; FINAL_V1_09_mixer, 240 x 240, 1 px = 1 px; screen rows unless "rel" = inside its card) ----
- * Geometry measured on the picture (its body is the owner's old PAGES_V2_glo-a cells, so the cards are ROUND, radius 4, not template 1's hard corners): two MUTE cards 116 x 60 at x 3 / 121, rows 30 .. 89;
+/* ---- TEMPLATE 4, the MIXER page (GLO's first page and QUICK GLO over any page, the same screen; FINAL_V1_09_mixer, 240 x 240, 1 px = 1 px; screen rows unless "rel" = inside its card) ----
+ * Geometry measured on the picture (its body is the PAGES_V2_glo-a cells, so the cards are ROUND, radius 4, not template 1's hard corners): two MUTE cards 116 x 60 at x 3 / 121, rows 30 .. 89;
  * under them LEVEL 1 | LEVEL 2 (K1, K2) rows 93 .. 151 and PAN 1 | PAN 2 (K3, K4) rows 155 .. 213, cards 116 x 59 at x 3 / 121: part 1 on the left, part 2 on the right, on both rows.
  * MUTE card (rel): the word MUTE 1 / MUTE 2 (S, grey) baseline 15, "Hold" + the GLO keycap baseline 32, "and press" + the OCT- / OCT+ keycap baseline 48 (the keycaps stand on those baselines), text and keycaps from x 3;
  * the small level meter at the right: 6 x 44 at x rel 106, rows rel 8 .. 51, radius 3, track = card -> TEXT 13 % (VIOLET 40,34,48), the level in the part's colour from the bottom.
  * LEVEL / PAN card (rel): the numbered dot (11 px = the label's cap height, white) at x 3, the label (S, grey) pen = dot + 14, baseline 15; the value (L) baseline 37 from x 3, its unit (M, grey) 4 px after it on the same baseline
  * (PAN has none: its own signed number, no % sign); the thin bar rel 51 .. 53, x 3, width 110 (the card - 6), radius 1, track = card -> TEXT 13 %, fill in the part's colour (DIM when the part is muted); PAN's bar fills from
- * the middle and its middle carries a 1 px tick (5 rows, rel 50 .. 54, grey). The value's colour is the part's colour (the picture's two violet / pink tones are the old page's gradient; part 1 violet, part 2 pink here). */
+ * the middle and its middle carries a 1 px tick (5 rows, rel 50 .. 54, grey). The value's colour is the part's colour (part 1 violet, part 2 pink). */
 #define UT_T4_X0 3              /* left column; the right one is UT_T4_DX further */
 #define UT_T4_DX 118
 #define UT_T4_W 116
@@ -209,17 +209,17 @@
 #define UT_T4_TRACK_PCT 13      /* a bar's and the meter's empty track: card -> TEXT, % */
 #define UT_T4_KEY_GAP 3         /* the word -> its keycap */
 
-/* ---- TEMPLATE 5, the SENDS page (the 'fxsum' page, FX's last; item 117; FINAL_V1_04_fx-send): no card, no box, no bar, everything on the background, left aligned; screen rows (the capitals' last row = the baseline) ----
+/* ---- TEMPLATE 5, the SENDS page (the 'fxsum' page, FX's last; FINAL_V1_04_fx-send): no card, no box, no bar, everything on the background, left aligned; screen rows (the capitals' last row = the baseline) ----
  * The state text (M, TEXT-MID colour) at x 9, baseline 48; two info rows, labels (S, grey) at x 9 and 148, values (M, the part's colour; dim when that effect is not fed) at x 66 and 186, baselines 92 (DELAY: mode, TIME)
  * and 124 (REVERB: type, SIZE); a note (S, grey) in two lines, baselines 160 and 177, x 9; at the bottom the three knob labels (S) on baseline 206, each with its white numbered dot (11 px) 5 px before it: dots at x 9 / 88 / 167,
  * label pen = dot + 16. No chorus info line (the chorus has no setting on this page: its send is the FX page's). */
-/* MODULES (item 124): four lines, K1 .. K4, each the numbered dot, the name (S, grey) and the state (M, the part's colour) on ONE baseline; lines 40 px apart (rows 27 .. 216 hold them with air) */
+/* MODULES: four lines, K1 .. K4, each the numbered dot, the name (S, grey) and the state (M, the part's colour) on ONE baseline; lines 40 px apart (rows 27 .. 216 hold them with air) */
 #define UT_MODS_BASE0 62        /* the first line's capitals' last row */
 #define UT_MODS_PITCH 40
 #define UT_MODS_DOT_X 9
 #define UT_MODS_LBL_X 25        /* the name, after the dot */
 #define UT_MODS_VAL_X 108       /* the state: the longest, KEEPS RUNNING, ends before x 236 */
-/* A page of a function that GLO > MODULES has switched OFF (item 125): the body is only this notice, top left on the background, no card, no dot, no box; the title, capsules and footer are the page's own.
+/* A page of a function that GLO > MODULES has switched OFF: the body is only this notice, top left on the background, no card, no dot, no box; the title, capsules and footer are the page's own.
  * The message (M, TEXT-MID as the SENDS page's state line) at x 9, its capitals' last row on UT_OFF_MSG_BASE; under it the note (S, grey as the SENDS note) from UT_OFF_NOTE_GAP rows lower, UT_OFF_NOTE_PITCH apart;
  * every line wider than UT_OFF_W wraps at a space, left aligned. The canvas starts at row UT_OFF_Y0 and is UT_OFF_H high (the 124-row limit of the strips). A twist of any knob of such a page jumps to MODULES. */
 #define UT_OFF_X 9
@@ -252,7 +252,7 @@
 /* the grey of the small labels, units and notes of templates 4 and 5: BG (or the card) -> TEXT, % (VIOLET on the card 139,134,143 / on BG 139,132,139, against the pictures' 138,135,145 / 139,133,148) */
 #define UT_GREY_PCT 53
 
-/* ---- TEMPLATE 6, the option pages: the first-start SETUP questions (FINAL_V1_08_setup, item 118) and the MODE list in the same selection style ----
+/* ---- TEMPLATE 6, the option pages: the first-start SETUP questions (FINAL_V1_08_setup) and the MODE list in the same selection style ----
  * Measured on FINAL_V1_08_setup.png (240 x 240) and final_pages.py page_setup. Title SETUP (no counter: the footer carries 1/5), the question (M, white) at x 9 on baseline 39, three big option blocks, a legend row, the shared footer.
  * Every block has fixed rows whichever option is picked (only the box moves): the box = a hard-cornered card x 3 .. 236 filled with the SELECTED PART'S colour over the background at UT_T6_SEL_PCT % (VIOLET 66,15,75);
  * the name (L) on its baseline, its explanation lines (S, grey; lilac on the picked box) from baseline DESC1, 15 px apart; a pill (RECOMMENDED, DEFAULT) after the name: the part's colour, the name's capital rows high.
@@ -283,7 +283,7 @@
 #define UT_T6_G_TH 26           /* a sentence's last baseline -> the next heading's baseline */
 /* MODE (live page): its list rows keep their place (ui_graph.c graph_mode); the picked row takes the same fill and corners */
 
-/* ---- TEMPLATE 7, the STEP sequencer page (FINAL_V1_07_sequencer, item 118; final_pages.py page_step / roll_draw2) ----
+/* ---- TEMPLATE 7, the STEP sequencer page (FINAL_V1_07_sequencer; final_pages.py page_step / roll_draw2) ----
  * The roll card: x 3 .. 236, rows 27 .. 173 (hard corners). Inside: 17 semitone rows of UT_T7_RH px from row UT_T7_Y0 (the highest on top), the step columns from x UT_T7_X0, 12 px each, the keyboard strip at UT_T7_KX
  * (white keys 8 px, black keys 4 px, one row less than the row's height); the C, E and G rows named at the strip's left (S, T_DIM, ink ending at x UT_T7_NAME_R, capitals' last row = the row's top + RH);
  * a note is 10 px wide (x + 1) and RH - 2 high, an accent the row's whole height in TEXT; the cursor frame 1 px, 2 rows over the first row and 1 under the last; a lock mark 7 x 2 under the step.
@@ -323,7 +323,7 @@
 #define UT_T7_VAL_BASE 35       /* rel: as the list heads (UT_T3_VAL_BASE - UT_T3_HEAD_Y) */
 #define UT_T7_VAL_PAD_R 2
 
-/* ---- TEMPLATE 8, the CELL pages (item 156; owner-approved design_grid_2x2_REVERB.png, design_fill_2_and_3.png, design_choice_bars.png in DUELL/release_drafts) ----
+/* ---- TEMPLATE 8, the CELL pages (design_grid_2x2_REVERB.png, design_fill_2_and_3.png, design_choice_bars.png in DUELL/release_drafts) ----
  * The pages whose picture was only the calm curve (graph GR_NONE) have no picture: the cards that show fill the body, rows 27 .. 215, as big cells with template 2's rows (dot + label S on rel 19,
  * the value on rel 58: figures N, else L, else M, else S, cut by the cell's edge, never ellipsised; unit M 5 px after it; the bar rel 75 .. 77, x 6 .. width - 6). By the number of cards that show:
  * 4: a 2 x 2 grid of 116 x 92 (x 3 / 121, y 27 / 124); 3: one wide cell (234 x 92) on top, two cells under it; 2: two wide rows; 1: one wide cell on top; 0: nothing.
@@ -345,21 +345,21 @@
 #define UT_T8_VAL2_BASE2 UT_T2_VAL2_BASE2
 #define UT_T8_UNIT_GAP UT_T2_UNIT_GAP
 #define UT_T8_BAR_Y UT_T2_BAR_Y
-/* item 165 (owner): the ENGINE page of LOFI and NOISE has no picture (grid_on 15): the K1 row as on every ENGINE page (template 2, rows 27 .. 50), the cards that show as template 8's cells
+/* the ENGINE page of LOFI and NOISE has no picture (grid_on 15): the K1 row as on every ENGINE page (template 2, rows 27 .. 50), the cards that show as template 8's cells
  * (the same x, widths, rows inside a cell, faces and segment bars) in rows 54 .. 215: two rows of 79, 4 rows apart (54 .. 132, 137 .. 215). By the cards that show: 3 = one wide on top and two
  * under it, 2 = two wide rows, 1 = one wide on top. While K1 turns, the engine list (template 2's rows) takes the top cell's place */
 #define UT_T8E_Y0 UT_T2_GR_Y
 #define UT_T8E_H 79
 #define UT_T8E_DY 83
 
-/* ---- TEMPLATE 9, the AREA page (grid_on 16; LAYOUT_IMPLEMENTATION_PLAN.md 2026-10-29 block A; the approved pictures NEW_LAYOUT_SHEET_V2, SCALE_CHORD_NEW_LAYOUT_V3, CHORD_NEW_LAYOUT_V5,
+/* ---- TEMPLATE 9, the AREA page (grid_on 16; LAYOUT_IMPLEMENTATION_PLAN.md block A; the pictures NEW_LAYOUT_SHEET_V2, SCALE_CHORD_NEW_LAYOUT_V3, CHORD_NEW_LAYOUT_V5,
  * PERFORM_NEW_LAYOUT_V4, QUICK_SEQ_NEW_LAYOUT, PATCHES_MULTIS_NEW_LAYOUT_V3, PATTERNS_NEW_LAYOUT; 240 x 240, 1 px = 1 px, rows measured by counting lit pixel rows, about 1 px error; screen rows unless "rel" = inside its card) ----
  * Three parts under the header: the LINE for knob 1 (no card: the numbered dot, the label, the value, its unit and an optional text after it, all on one baseline, left aligned), the big AREA (the page's picture code
- * draws into it: ui_draw.c area_rect), and ONE card row (owner default: the LOWER row of the pictures, label 171, value 197, line 205 .. 207, on every area page and on the ENGINE page) of 1 to 3 cards in
+ * draws into it: ui_draw.c area_rect), and ONE card row (the LOWER row of the pictures, label 171, value 197, line 205 .. 207, on every area page and on the ENGINE page) of 1 to 3 cards in
  * 3 columns of 76 (x 3, 82, 161) or 2 columns (x 3, 118: the dots of the pictures at x 9 and 124, the lines 8 .. 113 and 123 .. 228). The card: the dot + the label (S) on one baseline, the value (figures N,
  * else L, else the Bold T; cut by the card's edge, never ellipsised), the unit: % (and every unit but "/16") in M, white, on the value's baseline with NO space before it; "/16" in the value's face, white,
  * no space. A CHOICE card shows the segment line (1/N of the line at the option's place); an action card (LOAD, SAVE) shows the OCT+ key pill, its last row UT_A_PILL_BASE.
- * Two-line labels (FIRMWARE_CHANGE_LIST_2026-10-28.md section C): on a page where a card label needs two lines, every card of the page starts UT_A_LBL2_PITCH rows higher, the two-line label's first line
+ * Two-line labels: on a page where a card label needs two lines, every card of the page starts UT_A_LBL2_PITCH rows higher, the two-line label's first line
  * (with the dot) sits one line above the shared baseline, one-line labels stay on the baseline; the values and lines do not move; the area ends that much higher */
 #define UT_A_K1_Y 27            /* the knob-1 line's canvas: rows 27 .. 47 (its text rows 33 .. 43) */
 #define UT_A_K1_H 21
@@ -386,7 +386,7 @@
 #define UT_A_VAL_BASE 47        /* rel: row 197 */
 #define UT_A_VAL2_BASE1 32      /* rel: a value of two lines (S): rows 182 and 197 (template 8's 15 rows apart), no line */
 #define UT_A_VAL2_BASE2 47
-#define UT_A_UNIT_GAP 0         /* value -> % (owner rule A.2: no space) and value -> "/16" */
+#define UT_A_UNIT_GAP 0         /* value -> % (rule A.2: no space) and value -> "/16" */
 #define UT_A_UNIT_GAP_W UT_T2_UNIT_GAP   /* value -> any other unit (ms, st, LP, HP, +2): as the ENGINE cells today */
 #define UT_A_BAR_Y 55           /* rel: rows 205 .. 207 */
 #define UT_A_PILL_BASE 44       /* rel: the key pill's last row, row 194 (MULTIS LOAD / SAVE: rows 182 .. 194) */
@@ -417,8 +417,8 @@
 #define UT_L5_NAME_X 52
 #define UT_L5_STAR_X 214
 
-/* ---- developer bench build only (DUELL_BENCH; HANDOFF_V2 item 112): the title face T (9,555 B) is mapped to the existing AF_M (15 px wide cells, same cap rows 4 .. 14); its table is then an
- * unused static and the compiler drops it. (Item 113: the face F is gone, the footer and capsule text are S in every build.) A normal build and a release keep T exactly (this block is not
+/* ---- developer bench build only (DUELL_BENCH): the title face T (9,555 B) is mapped to the existing AF_M (15 px wide cells, same cap rows 4 .. 14); its table is then an
+ * unused static and the compiler drops it. (The footer and capsule text are S in every build.) A normal build and a release keep T exactly (this block is not
  * compiled there). The bench screen's look is not a deliverable; its timing is the same (the draw runs in the main loop, never in the audio interrupt). ---- */
 #if defined(DUELL_BENCH) && DUELL_BENCH
 #define AF_T AF_M

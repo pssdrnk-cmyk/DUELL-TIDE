@@ -28,7 +28,7 @@ typedef struct {
 } aafont_t;
 /* a theme (tools/gen_ui_palettes.py): per-part backgrounds, the layer one, shared surfaces, and per part A, B: c the brief's
  * colours (fills), r the same readable as values, a the accent; hc: no gradients (the morph colour jumps at the middle) */
-typedef struct { const char *name; uint16_t bg[2], bgl, surf[2], text, mid, line[2], raise[2], rec, c[4], r[4], a[4], g, ga; uint8_t hc; } ui_pal_t;   /* (0.2.24: g / ga the GLOBAL colour and its accent) */
+typedef struct { const char *name; uint16_t bg[2], bgl, surf[2], text, mid, line[2], raise[2], rec, c[4], r[4], a[4], g, ga; uint8_t hc; } ui_pal_t;   /* (g / ga: the GLOBAL colour and its accent) */
 typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #include "ui_fonts.h"                   /* the faces S M L T D N X B (tools/gen_aa_font.py preset barlow) */
 #include "ui_tokens.h"                  /* the FACE ROLE MAP (aliases of retired faces) and the shared UI numbers */
@@ -53,7 +53,7 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #define GFX_HOOK_CELL(x0, y0, x1, y1) ((void)0)    /* a cell, card, row or button (cv_rrect): a box touching it lies inside it */
 #endif
 #ifndef GFX_HOOK_ALLOW
-#define GFX_HOOK_ALLOW(x0, y0, x1, y1) ((void)0)   /* item 122: the fill drawn here is an ALLOWED one (a selected row / option, a lit card, a meter, data); the box lint skips it */
+#define GFX_HOOK_ALLOW(x0, y0, x1, y1) ((void)0)   /* the fill drawn here is an ALLOWED one (a selected row / option, a lit card, a meter, data); the box lint skips it */
 #endif
 #define CV_HL(x, y, w, h) GFX_HOOK_ALLOW((x), (y), (x) + (w), (y) + (h))
 #ifndef GFX_HOOK_INK
@@ -83,7 +83,7 @@ typedef struct { uint16_t off; uint8_t w; const char *label; } kc_t;
 #define AL_CELLS 32u                               /* the next cells (cv_rrect), not ink: a row of keys, a fill */
 #define AL_N(n) ((uint32_t)(n) << 8)
 
-#define CV_BAND 68u               /* b10 ui-c: the canvas holds 68 rows (was 124: the graph strip): a taller picture is drawn in bands, the code run once for each (CV_BANDS), every primitive shifted by cv_by.
+#define CV_BAND 68u               /* the canvas holds 68 rows: a taller picture is drawn in bands, the code run once for each (CV_BANDS), every primitive shifted by cv_by.
                                    * 68 = a wave lane (ui_scope.c: two lanes a picture), so the wave page still draws once a lane */
 #define CV_MAX (240u * CV_BAND)
 #ifndef WL_ROWS_DIFF
@@ -94,11 +94,10 @@ static uint32_t cv_w, cv_h;      /* the canvas: width, the rows of this band */
 static uint32_t cv_ph, cv_bpass; /* the picture's whole height (cv_begin's h); the band being drawn starts at row cv_bpass of it (CV_BANDS), 0 outside a band loop */
 static int32_t cv_by;            /* the picture row the canvas's row 0 is: every primitive draws at (y + cv_oy - cv_by) */
 static uint16_t cv_bg;           /* what cv_begin cleared the canvas to */
-/* b13 (owner on 1.0.0-b13: "flickering on the screen when using the quick menus and pressing buttons"): a full redraw (a quick layer opened or closed, a page of
- * another layout) filled the whole body with the BG first (46,320 px, ~37 ms of SPI) and the strips landed on it over the next ~40 ms: one blank body a press (b11 kept
- * that fill for a change of layout; only the gutters waited). Now NO pixel is filled before the pass: every transfer of the pass marks the body pixels it covers
- * (gut_cov, one bit a pixel, rows GUT_Y0 .. GUT_Y0 + GUT_H - 1 = H_HEAD .. 239: the old fill's rows and the footer's) and at the end of the pass (ui_draw.c gut_flush) only
- * the pixels nothing covered get the BG: the same picture as the fill first, and in between every pixel is the old page's or the new one's. 6,912 B, in the pool */
+/* A full redraw (a quick layer opened or closed, a page of another layout) fills NO pixel before the pass (a BG fill first would be 46,320 px, ~37 ms of SPI, one blank body
+ * a press, seen as flicker): every transfer of the pass marks the body pixels it covers
+ * (gut_cov, one bit a pixel, rows GUT_Y0 .. GUT_Y0 + GUT_H - 1 = H_HEAD .. 239: the body's rows and the footer's) and at the end of the pass (ui_draw.c gut_flush) only
+ * the pixels nothing covered get the BG: the same picture as a fill first, and in between every pixel is the old page's or the new one's. 6,912 B, in the pool */
 #define GUT_Y0 24u
 #define GUT_H 216u
 static uint32_t gut_cov[GUT_H][8] __attribute__((section(".pool")));   /* covered since gut_arm: bit x % 32 of word x / 32, a row */
@@ -167,14 +166,14 @@ static struct {
     uint16_t pth[2], psel[2], ptint[2], plane[2];
     uint16_t pend[2][2];         /* both parts' pure A and B colours (the fader-free ends of pth: the header's A / B letter, ui_draw.c head_ab) */
     uint16_t pacc[2], pfill[2];  /* both parts' ACCENT and the brief's A -> B colour at their MORPH fader (pfill: the MORPH bar) */
-    uint16_t gth, gacc;          /* DUELL 0.2.24 (owner): the GLOBAL colour and its accent (the palette's g / ga): a third colour, apart from both parts', for the pages that edit the
+    uint16_t gth, gacc;          /* the GLOBAL colour and its accent (the palette's g / ga): a third colour, apart from both parts', for the pages that edit the
                                   * instrument (params.c page_global: GLO's pages, SCALE); on them theme / accent / sel / tint / lane are these (glob below), the background the LAYER one */
     uint8_t fader[2], layer, pal;   /* what part_theme blends by: the parts' MORPH faders 0..127, MODE LAYER, the palette */
     uint8_t glob;                /* a GLOBAL page is shown (theme_follow): the global colour set */
     uint8_t part, bw;            /* the part the theme follows; MONO (black and white: part 2 is an outline, cv_part) */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
-/* The look is FLAT only (DUELL 0.2.2: the LINE style, black areas divided by 1 px rules, was removed) */
+/* The look is FLAT only */
 #define T_BG ux.bg               /* background */
 #define T_BASE ux.base           /* the palette's card tone: the BASE of every derived colour (bar tracks, greys, data fills, roll lanes); never drawn as a fill (no boxes) */
 #define T_BASE_P1 (UI_PALETTES[ux.pal % NPALETTES].surf[0])   /* part 1's tone whatever the page (the MIXER's greys and tracks) */
@@ -235,8 +234,8 @@ static uint32_t ux_cr(uint16_t a, uint16_t b)
     return (x + 3251u) * 100u / (y + 3251u);
 }
 /* the colour for a text of part colour c on bg: c itself, or the primary text colour where c would be hard to read (< 3:1) */
-static uint16_t vt(uint16_t c, uint16_t bg) { return ux_cr(c, bg) >= 300u ? c : c == ux.dim ? ux.mid : ux.text; }   /* (a dim value stays secondary: the label grey, not the full text colour; audit UI 1) */
-/* the stroke floor (T10): a part colour drawn as a curve, gauge or bar is moved toward the text colour in 10 % steps until it
+static uint16_t vt(uint16_t c, uint16_t bg) { return ux_cr(c, bg) >= 300u ? c : c == ux.dim ? ux.mid : ux.text; }   /* (a dim value stays secondary: the label grey, not the full text colour) */
+/* the stroke floor: a part colour drawn as a curve, gauge or bar is moved toward the text colour in 10 % steps until it
  * reaches 3:1 on the background and on the panel (the text floor of vt(); tools/gen_ui_palettes.py mirrors this) */
 static uint16_t ux_stroke(uint16_t c, uint16_t bg, uint16_t sf, uint16_t tx)
 {
@@ -297,13 +296,13 @@ static void part_theme(uint32_t part)
         ux.ptint[0] = ux.ptint[1] = p->bg[0];
         ux.plane[0] = ux.plane[1] = UI_BW_GREY;
     }
-    /* DUELL 1.1 (owner 2026-10-25, items 65b, 67, 78): a GLOBAL page's colour is the smooth gradient between the palette's two colours (part 1's and part 2's first colour: #DC38FF to #FF1F8E in
+    /* a GLOBAL page's colour is the smooth gradient between the palette's two colours (part 1's and part 2's first colour: #DC38FF to #FF1F8E in
      * the violet palette), no third colour: gth is its middle (what a flat fill takes), gacc that lightened toward the text colour; grad_col(x) is the colour at a screen column */
     ux.gth = ux_stroke(ux_mix(p->r[0], p->r[2], 50), ux.bg, ux.base, p->text);
     ux.gacc = ux_mix(ux.gth, p->text, 45);
     if (ux.bw)
         ux.gth = ux.gacc = p->text;
-    if (ux.glob) {                                      /* a GLOBAL page: the third colour as THEME, SEL, TINT, LANE and its accent (0.2.24) */
+    if (ux.glob) {                                      /* a GLOBAL page: the third colour as THEME, SEL, TINT, LANE and its accent */
         ux.ink = ux_cr(ux.bg, ux.gth) >= ux_cr(p->text, ux.gth) ? ux.bg : p->text;
         ux.theme = ux.gth;
         ux.accent = ux.gacc;
@@ -328,7 +327,7 @@ static uint16_t grad_col(int32_t x)
         return ux.text;
     return ux_mix(ux.pend[0][0], ux.pend[1][0], (x < 0 ? 0 : x > 239 ? 239 : x) * 100 / 239);
 }
-/* the selected part, the parts' MORPH faders, the layer mode and whether a GLOBAL page is shown (0.2.24) into the theme; 1 if anything changed (redraw all) */
+/* the selected part, the parts' MORPH faders, the layer mode and whether a GLOBAL page is shown into the theme; 1 if anything changed (redraw all) */
 static int theme_follow(uint32_t part, uint32_t f0, uint32_t f1, uint32_t layer, uint32_t glob)
 {
     part &= 1u;
@@ -351,7 +350,7 @@ static void palette_set(uint32_t i)
     part_theme(ux.part);
 }
 
-/* settings store a tagged id (UI_PAL_TAG + index). b10 (owner): four themes, TIDE PAPER GREY MONO; the ten of before were stored as UI_PAL_TAG_OLD + their index and are
+/* settings store a tagged id (UI_PAL_TAG + index). four themes, TIDE PAPER GREY MONO; ids stored as UI_PAL_TAG_OLD + index (the ten themes of earlier builds) are
  * read through UI_PAL_OLD_LIST (GREY, MONO and TIDE keep their place, every removed theme is TIDE). Any other id (Felucca's firmware, below 20) is the default theme */
 static uint32_t palette_from_stored(uint32_t v)
 {
@@ -499,7 +498,7 @@ static void cv_rrect(int32_t x, int32_t y, int32_t w, int32_t h, int32_t r, uint
         }
 }
 
-/* the template-1 card (item 114, ui_tokens.h UT_CARD_CORNER_*): a filled rectangle with HARD corners as the design pictures draw them (row 0 loses 2 px at each end, row 1 loses 1, no anti-aliasing);
+/* the template-1 card (ui_tokens.h UT_CARD_CORNER_*): a filled rectangle with HARD corners as the design pictures draw them (row 0 loses 2 px at each end, row 1 loses 1, no anti-aliasing);
  * `under` is what lies behind it. The graph area's card and the four cards of a part page */
 static void cv_card(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t c, uint16_t under)
 {
@@ -767,9 +766,9 @@ static int32_t text_w(const aafont_t *f, const char *s)
 
 static const uint16_t *text_rv;                      /* cv_text_x16: its linear ramp (on its caller's stack) while it draws, else 0: ramp() */
 static uint8_t text_exact;                           /* cv_text_x16: the design pictures' placement: every glyph on the phase nearest its own pen (a tie to the even phase), no memory of the glyph before */
-static int32_t text_trk;                             /* item 158: added to every glyph's advance, 1/16 px (0, or negative: a card label tightened to fit its card, ui_draw.c lbl_trk) */
+static int32_t text_trk;                             /* added to every glyph's advance, 1/16 px (0, or negative: a card label tightened to fit its card, ui_draw.c lbl_trk) */
 static int32_t text_pen0;                            /* the pen the next text_run starts at, 1/16 px (0 .. 15: cv_text_x16's fraction; every other caller: 0) */
-static int32_t text_ink1 __attribute__((section(".pool")));   /* b13 (item 156): the column after the last cv_text_flags text's ink (canvas x): a unit after a value keeps 1 px from it (ui_draw.c card_paint) */
+static int32_t text_ink1 __attribute__((section(".pool")));   /* the column after the last cv_text_flags text's ink (canvas x): a unit after a value keeps 1 px from it (ui_draw.c card_paint) */
 static int32_t text_run(int32_t x, int32_t y, const aafont_t *f, const char *s, const uint16_t *rv, int32_t *bb)
 {
     int32_t pen = text_pen0, err = 0, x0 = 0x7FFF, y0 = 0x7FFF, x1 = -0x7FFF, y1 = -0x7FFF;
@@ -1006,7 +1005,7 @@ static const uint16_t *kc_ramp(uint16_t under, uint16_t fill, uint16_t ink)
     }
     return v;
 }
-#define KC_IS_KNOB(id) ((id) >= KC_K1 && (id) <= KC_K4)       /* DUELL 1.1: the knob legends are the numbered white dot of the pages, not a keycap */
+#define KC_IS_KNOB(id) ((id) >= KC_K1 && (id) <= KC_K4)       /* the knob legends are the numbered white dot of the pages, not a keycap */
 static int32_t kc_w(uint32_t id) { return KC_IS_KNOB(id) ? 12 : id < KC_COUNT ? KC[id].w : 0; }
 /* keycap / badge `id` with its top-left at (x, y), KC_H tall: fill and label tinted with tokens, `under` what lies
  * behind its corners; returns its right edge */
@@ -1030,7 +1029,7 @@ static int32_t cv_keycap(int32_t x, int32_t y, uint32_t id, uint16_t fill, uint1
 }
 
 /* a key hint: the keycap, then what it does (S, TEXT); unavailable: a DIM keycap and a DIM word. The word sits on
- * the keycap's centre line (item 122: S 15's 11 capital rows centred on the pill's 13: the word's line top is 3 rows above the pill's). act may be 0 (the keycap alone); returns the end x */
+ * the keycap's centre line (S 15's 11 capital rows centred on the pill's 13: the word's line top is 3 rows above the pill's). act may be 0 (the keycap alone); returns the end x */
 #define KH_GAP 4                                  /* keycap -> its word */
 static int32_t kh_w(uint32_t id, const char *act) { return kc_w(id) + (act && act[0] ? KH_GAP + text_w(&AF_S, act) : 0); }
 /* .. its ink: the keycap to the word's last inked column (centring a hint by what is seen) */
@@ -1047,7 +1046,7 @@ static int32_t cv_key_hint(int32_t x, int32_t y, uint32_t id, const char *act, i
     x = cv_keycap(x, y, id, on ? T_KEY : T_DIM, T_KINK, under);
     if (act && act[0]) {
         GFX_HOOK_ALIGN(0, y, 0, y + KC_H, AL_V | AL_PASS, "key hint word on its keycap's line");
-        x = cv_text_on(x + KH_GAP, y - 3, &AF_S, act, on ? T_TEXT : T_DIM, under);   /* item 122: the word's capitals are centred on the pill's rows (S 15: 11 capital rows, the pill 13: the word's line top 3 rows above the pill's, was 1) */
+        x = cv_text_on(x + KH_GAP, y - 3, &AF_S, act, on ? T_TEXT : T_DIM, under);   /* the word's capitals are centred on the pill's rows (S 15: 11 capital rows, the pill 13: the word's line top 3 rows above the pill's) */
     }
     return x;
 }
@@ -1098,7 +1097,7 @@ static int32_t kc_tag(const char *s, uint32_t *len)
     }
     return -1;
 }
-/* free text (S) with ONE keycap tag anywhere in it: "[SAVE] HOLD TO UNDO", "HOLD [GLO] QUICK", "HOLD A NOTE + [OCT+], TURN A KNOB" (item 124: any words before it): the words before, the keycap
+/* free text (S) with ONE keycap tag anywhere in it: "[SAVE] HOLD TO UNDO", "HOLD [GLO] QUICK", "HOLD A NOTE + [OCT+], TURN A KNOB": the words before, the keycap
  * (its centre on the capitals' centre, y + 3), a mark right after it ("," ".") with no gap, then the rest, cut to maxw. A keycap that does not fit leaves the text as it is, plain */
 static int32_t cv_free_hint(int32_t x, int32_t y, const char *s, uint16_t fg, uint16_t bg, int32_t maxw)
 {

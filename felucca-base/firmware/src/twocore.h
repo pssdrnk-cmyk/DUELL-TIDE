@@ -57,7 +57,7 @@
 #endif
 #endif
 
-/* TIDE K4 (1.0.0-b6; docs/TWOCORE_STAGE1.md section 9): a second job kind, "the reverb of this block", that core 1 runs while core 0 runs the chorus and the delay
+/* TIDE K4 (docs/TWOCORE_STAGE1.md section 9): a second job kind, "the reverb of this block", that core 1 runs while core 0 runs the chorus and the delay
  * (twocore_run.c tcb_*). TIDE builds only (DUELL_TIDE, which core.h sets to 1 when it is not given; this file is read before core.h, hence the test of "not defined"),
  * and not with DUELL_K4=0 (tools/build.py: env DUELL_K4=0). Without it every line below is the plain DUELL one (jam/check_off.sh) */
 #ifndef TCB_ON
@@ -74,7 +74,7 @@
 #define TC_HANG_MS 100u             /* no beat for this long: a hang (a strike) */
 #define TC_PARK_US 20000u           /* a flash access: core 1 must be idle within this, else it is stopped (a strike) */
 #define TC_REREAD 2u                /* a job whose words do not fit is read again this many times before it is refused */
-#define TC_PAT_N 64u                /* the pattern block core 1 re-reads (16 words a job; a power of 2). Memory trim 1: 64 words = 256 B (was 256 words = 1,024 B): still four different
+#define TC_PAT_N 64u                /* the pattern block core 1 re-reads (16 words a job; a power of 2). 64 words = 256 B: still four different
                                       * blocks of 16 words, so a job reads a different quarter each time and every word is read again about every fourth job */
 #define TC_PAT(i) ((uint32_t)(i) * 0x9E3779B1u ^ 0x5A17C3E1u)
 
@@ -222,7 +222,7 @@ typedef struct {
     uint8_t boot_last;          /* TCR_*: the last session's outcome as found at this power-on (TCR_SKIPBOOT when the boot guard skipped the start) */
 } tc_t;
 
-/* ---------------------------------------------------------------- core 1's stack mark (after Felucca 1.6.1's; core 0 fills it before the start) --- */
+/* ---------------------------------------------------------------- core 1's stack mark (as in Felucca; core 0 fills it before the start) --- */
 #define TC_STK_FILL 0xC1C1C1C1u
 static inline void tc_stack_fill(uint32_t *lo, uint32_t words)
 {

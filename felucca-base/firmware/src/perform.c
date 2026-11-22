@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* DUELL 0.2.5 PERFORM mode (SPEC "PERFORM mode"): the master effects of the 16 white keys, ported from Felucca's FX hold layer
- * (perform.c up to DUELL 0.2.1, removed in 0.2.2) and grown by DUELL. PERFORM is a mode with its own page (ui_perform.c): a long
+/* PERFORM mode (SPEC "PERFORM mode"): the master effects of the 16 white keys, ported from Felucca's FX hold layer
+ * and grown by DUELL. PERFORM is a mode with its own page (ui_perform.c): a long
  * press of FX (0.7 s, the SAVE hold's timing) or a key pressed while FX is held turns it on; a tap of FX, HOME or any other page
  * button turns it off. While it is on, the white keys F3 .. G5 belong to it (seq.c keyboard_block): they play no note, send no
  * MIDI and record nothing; each holds its effect while it is held (ROLL A / B act once on the press). MIDI-in notes, the arps and
@@ -61,13 +61,13 @@ enum { PF_R8, PF_R16, PF_R32, PF_REV, PF_TAPE, PF_FRZ, PF_OUP, PF_ODN, PF_FLG, P
 #define PH_FB 13107                           /* PHASER: the feedback, Q15: 0.4 (PH_ST, PH_A: fx.c, the INSERT shares them) */
 #define DV_CLIP0 24000                        /* DRIVE: the hard clip after the fold at DEPTH 0 .. */
 #define DV_CLIP1 9000                         /* .. and at 100 (the fold reaches +-24576) */
-/* DRIVE's model, chosen when the firmware is built (0.2.7: the owner picks by ear; only the chosen one is in the image):
- *   0 FOLD  the INSERT's fold into a hard clip (0.2.5, the default)
+/* DRIVE's model, chosen when the firmware is built (only the chosen one is in the image):
+ *   0 FOLD  the INSERT's fold into a hard clip
  *   1 TUBE  a biased tanh soft clip (even harmonics), a gentle high cut
  *   2 FUZZ  a high gain into a lopsided diode-style clip, a tone filter
  *   3 CRUSH a soft saturation, then the bits and the rate reduced (digital destruction) */
 #ifndef PERF_DRIVE_MODEL
-#define PERF_DRIVE_MODEL 2                     /* 2 = FUZZ (the owner chose it); 0 FOLD, 1 TUBE, 3 CRUSH are kept for comparison */
+#define PERF_DRIVE_MODEL 2                     /* 2 = FUZZ; 0 FOLD, 1 TUBE, 3 CRUSH are kept for comparison */
 #endif
 #define PU_TOP 622                            /* PUMP: DEPTH (0 .. 100) -> the duck, Q16: 0 .. 0.95 (-26 dB) */
 #define PU_ATK 88u                            /* .. its attack, samples (2 ms) */
@@ -78,8 +78,8 @@ static volatile uint32_t perf_fxb;    /* main: FX's button bit while a key press
 static volatile uint8_t perf_fx_hit;  /* ISR: a white key was taken while FX was held (main: PERFORM opens) */
 static volatile uint32_t kb_perf;     /* ISR: the keys held that are PERFORM's, a bit per key */
 static volatile uint32_t perf_held;   /* ISR: the effects held (PF_*) */
-/* DUELL 1.1 POINTS BUDGET (owner decision; weights = the effect's measured cost alone, rounded, DUELL/release_drafts/PERFORM_CPU_V1.md,
- * option B16). THE ONE PLACE for both numbers: PF_BUDGET and PF_W. The effects held together may weigh PF_BUDGET points at most;
+/* POINTS BUDGET (weights = the effect's measured cost alone, rounded, DUELL/release_drafts/PERFORM_CPU_V1.md).
+ * THE ONE PLACE for both numbers: PF_BUDGET and PF_W. The effects held together may weigh PF_BUDGET points at most;
  * a press that would pass it releases the OLDEST costly effect held (press order) until it fits (perf_press). The buffer group (REPEAT,
  * REVERSE, TAPE STOP, FREEZE, OCT UP / DN) shares one capture buffer, only the last pressed runs: it counts once, as the one that runs.
  * Stages still ramping out (the 2.9 ms fade) count too: a press whose stage would push the running total over waits those few ms
@@ -103,7 +103,7 @@ static volatile uint8_t perf_beat;    /* ISR: the beats of the tempo, counted (s
 /* the knobs (ui_perform.c perf_knob; transient, never saved): K2 SPACE and K3 FILTER -100 .. 100, 0 = neutral (back to 0 when
  * PERFORM is left); K4 DEPTH 0 .. 100 % (kept until power-off) */
 static volatile int8_t perf_space, perf_filt;
-#define PF_FILT (perf_filt ? perf_filt : tarc_flt)    /* K3 FILTER as it plays: the player's knob, or at its rest ARC's (b10 round 6: tide.h tarc_flt) */
+#define PF_FILT (perf_filt ? perf_filt : tarc_flt)    /* K3 FILTER as it plays: the player's knob, or at its rest ARC's (tide.h tarc_flt) */
 static volatile int8_t perf_depth = 100;
 
 static struct {
@@ -144,7 +144,7 @@ static struct {
 
 static int16_t fl_buf[FL_LEN][2];      /* FLANGER's line: L R, at half the level (headroom) */
 
-/* K3 FILTER's cutoff table (DUELL 0.2.14): g = tan(pi f / FS), Q27, a point every 1/8 octave from 20 Hz (u = 0 .. 80: f = 20 Hz * 2^(u / 8),
+/* K3 FILTER's cutoff table: g = tan(pi f / FS), Q27, a point every 1/8 octave from 20 Hz (u = 0 .. 80: f = 20 Hz * 2^(u / 8),
  * up to 20.5 kHz), FS 44100 */
 static const int32_t PF_G[81] = {
     191228, 208536, 227410, 247992, 270437, 294914, 321606, 350714, 382457, 417072, 454821, 495986, 540877, 589831, 643216, 701433, 764920, 834153,
@@ -155,7 +155,7 @@ static const int32_t PF_G[81] = {
     280864772, 374692284, 565754023, 1195040938,
 };
 
-/* the capture buffer (DUELL 0.2.5: the old FX layer's sl_buf, 32 KB in the pool): one stereo loop of PB_FRAMES at 22.05 kHz, L R */
+/* the capture buffer (32 KB in the pool): one stereo loop of PB_FRAMES at 22.05 kHz, L R */
 static int16_t pb_buf[PB_FRAMES][2] __attribute__((section(".pool")));
 
 /* the loop length of a REPEAT / REVERSE (1/8 .. 1/32) at the tempo, 44.1 kHz samples; 0 = not one */
@@ -635,11 +635,11 @@ static inline void perf_buf(int32_t *pl, int32_t *pr)
 
 static __attribute__((noinline)) void perf_switch(uint32_t a) { perf_buf_select(perf_pick(a)); }
 
-/* K3 FILTER (DUELL 0.2.14; SPEC 5e): a 24 dB/oct stereo filter, low-pass left of the middle, high-pass right of it, the middle exactly off.
+/* K3 FILTER (SPEC 5e): a 24 dB/oct stereo filter, low-pass left of the middle, high-pass right of it, the middle exactly off.
  * Each channel two 12 dB stages of the trapezoidal state-variable filter (voice.c uf_run's, dsp.c tsvf: stable at any cutoff), a 4-pole
  * Butterworth (dampings 1.848 and 0.765: flat, no resonance bump). The numbers: the coefficients Q30, the states the signal x 256, the products
- * 32 x 32 -> 64 bits (0.2.9's Q14 table and states at a quarter of the signal's resolution stalled below ~200 Hz: the output stuck at a
- * DC offset that moved in steps, the crackle; the high-pass near its open end left that offset in). The cutoff glides (a one-pole in the
+ * 32 x 32 -> 64 bits (Q14 coefficients and states at a quarter of the signal's resolution stall below ~200 Hz: the output sticks at a
+ * DC offset that moves in steps, a crackle; the high-pass near its open end leaves that offset in). The cutoff glides (a one-pole in the
  * log domain, ~12 ms: knob detents become a smooth sweep) a block at a time and the coefficients move in straight lines between blocks,
  * a step every sample (no zipper). Turned from the middle the filter fades in over 2.9 ms at its open end (the low-pass 18.7 kHz at the
  * first detent, the high-pass 21 Hz); back in the middle (or across it) it sweeps open first, then fades out, then rests (states cleared;
@@ -921,7 +921,7 @@ static __attribute__((noinline)) void perf_pump(int32_t *bl, int32_t *br, uint32
  *   CRUSH the drive 1x .. 2x into tanh, then the bits (16 .. 4: the step 1 .. 4096) and the rate (44.1 kHz .. 1.8 kHz: a sample
  *         held, the same instants on both channels) reduced
  * The level (DV_OG, Q15, at DEPTH 0 25 50 75 100, straight lines between) keeps the DEPTH 0 sound at the dry level and the loudness
- * close to the dry mix's (measured on EERIE SIGNAL, M03 since 0.2.13, LADDER BASS, PWM PAD at MASTER's default position). */
+ * close to the dry mix's (measured on EERIE SIGNAL, M03, LADDER BASS, PWM PAD at MASTER's default position). */
 #if PERF_DRIVE_MODEL == 1
 #define DV_K 66                               /* TUBE: the drive's curve, 4096 + DEPTH^2 x DV_K / 16 (Q12): 1x .. 11x */
 #define DV_BIAS 9830                          /* .. the bias, 0.3 (Q15) */

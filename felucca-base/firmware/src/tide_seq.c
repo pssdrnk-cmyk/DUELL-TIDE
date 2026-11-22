@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* TIDE's sequencer side (tide.h H1-H3), included at the end of seq.c: SEQ MORPH (seq_morph.c) with the phrase lifecycle
  * (seq_rhythm.c, seq_phrase.c), the scale-degree walk (seq_evolve.c), voice leading (seq_voicelead.c) and the peer
- * prediction (seq_dialogue.c), from the JAM fork (branch jam, 71654ba). 1.1 has no held-note continuations (the fork's
+ * prediction (seq_dialogue.c), from the JAM fork. DUELL 1.1 has no held-note continuations (the fork's
  * step_t.cont): a hold is a tie here, so no step is a continuation of the one before.
  * Contexts: tide_play_step in the audio path; everything else in the main loop. */
-static uint32_t step_cont(const step_t *s) { (void)s; return 0u; }   /* (no per-note continuations in 1.1: ties instead) */
+static uint32_t step_cont(const step_t *s) { (void)s; return 0u; }   /* (no per-note continuations in DUELL 1.1: ties instead) */
 static const step_t *seq_play_step(const track_t *t, uint32_t idx, step_t *buf);   /* (seq_dialogue.c reads it before seq_morph.c has it) */
 /* The chance rolls the TIDE page shows: a bit a step of the last roll's miss (a step's CHANCE in seq_play, or, on an ARP SEQ part, the arp's PROB
  * in arp_fire), set or cleared where the sequencer rolls, cleared at PLAY. A step has rolled in the pass when it is at or behind the playhead:
@@ -38,19 +38,19 @@ static const step_t *tide_play_step(const track_t *t, uint32_t idx, step_t *buf)
     return seq_play_step(t, idx, buf);
 }
 
-/* ARP SEQ on PLAY with no key held (owner, 2026-11-01: it was silent; the steps are offsets on held keys): the arp plays from a
- * stand-in, the part's last chord held on the SEQ arp, else C4 as the part's CHRD builds it (audit G08: always one note), the steps as written.
+/* ARP SEQ on PLAY with no key held (the steps are offsets on held keys, so it would be silent): the arp plays from a
+ * stand-in, the part's last chord held on the SEQ arp, else C4 as the part's CHRD builds it (always one note), the steps as written.
  * Also while recording (an ARP SEQ part's arp never records: seq.c rec_arp_on), not stopped. A key held plays as ever */
 static uint8_t tide_chord[NSHOWN][4], tide_chord_n[NSHOWN];
-/* b7 (MR2 part B), one byte of state: bit p the ghost chord sounds on part p; bit 2 + p part p was played by hand since PLAY; bit 4 tide_ghost_poll's own
+/* One byte of state: bit p the ghost chord sounds on part p; bit 2 + p part p was played by hand since PLAY; bit 4 tide_ghost_poll's own
  * input_on is running; bit 5 AUTO TIDE plays (once a frame: glide_tide_on() with the transport running) */
 static uint8_t tide_gh;
 #define TIDE_GH_ON(p) ((tide_gh >> (p)) & 1u)
 #define TIDE_GH_HAND(p) ((tide_gh >> (2u + (p))) & 1u)
 #define TIDE_GH_IN 0x10u
 #define TIDE_GH_AUTO 0x20u
-/* b7 (musical review MR2 part B): while AUTO TIDE plays, a classic arp with nothing held gets the ghost chord too, and (tide_ghost_poll) a HOLD ALL part without steps
- * latches it: the owner's pad and arp multis then play with no key down. ARP SEQ parts get it on every PLAY, as before */
+/* while AUTO TIDE plays, a classic arp with nothing held gets the ghost chord too, and (tide_ghost_poll) a HOLD ALL part without steps
+ * latches it: pad and arp multis then play with no key down. ARP SEQ parts get it on every PLAY */
 static int tide_seq_ghost(const track_t *t)
 {
     uint32_t m = (uint32_t)arp_mode(t);
@@ -90,15 +90,15 @@ static uint32_t tide_seq_chord(const track_t *t, uint32_t *list, uint32_t n)
 static void tide_seq_ghost_start(void)
 {
     uint32_t k;
-    tide_gh &= ~0x0Cu;                                  /* (b7: a part played by hand is the ghost chord's again at PLAY) */
+    tide_gh &= ~0x0Cu;                                  /* (a part played by hand is the ghost chord's again at PLAY) */
     for (k = 0; k < NSHOWN; k++)
-        if (!trk[k].arp_phys && (arp_mode(&trk[k]) == AM_SEQ_ID || (arp_mode(&trk[k]) && !trk[k].nheld))) {   /* (b7: a classic arp with nothing latched too: AUTO TIDE's ghost chord) */
+        if (!trk[k].arp_phys && (arp_mode(&trk[k]) == AM_SEQ_ID || (arp_mode(&trk[k]) && !trk[k].nheld))) {   /* (a classic arp with nothing latched too: AUTO TIDE's ghost chord) */
             trk[k].arp_pos = 0xFFFFFFF;
             trk[k].arp_idx = 0xFFFFFFFFu;
         }
 }
 
-/* b7 (MR2 part B, main loop: tide_poll): while AUTO TIDE plays, a part that would wait for keys (no arp, no steps: a HOLD ALL pad or a plain key part) with no note
+/* Main loop (tide_poll): while AUTO TIDE plays, a part that would wait for keys (no arp, no steps: a HOLD ALL pad or a plain key part) with no note
  * sounding on it plays TIDE's ghost chord (the part's CHRD from C4, as the ARP SEQ stand-in is built): the notes are started as keys would start them (input_on), and on a
  * HOLD ALL part latched like a chord let go. A real key or MIDI note ends the ghost chord first (tide_ghost_real, from input_on: the old notes end before the new one starts,
  * so nothing doubles) and the part is the player's until the next PLAY; STOP, the end of AUTO TIDE, and a load or STOP ALL that took the voices end it here.

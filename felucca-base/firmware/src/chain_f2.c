@@ -23,7 +23,7 @@ typedef struct {                                        /* one voice's filter 2 
     int32_t cl, cf, dly;                                /* the cutoff of the last block (Q8 dial steps), where a LINK switch's glide starts, the comb's delay of the last block (Q8 samples) */
     uint8_t ty, oty, fade, par, dv, lk, lg, dk;         /* TYPE run last block, the outgoing; fade blocks left; ROUTE weight 0..8; DRIVE; LINK; its glide's blocks left; what dry holds */
     int8_t bv;                                          /* BLEND of the last block */
-    uint8_t byp;                                        /* DUELL 1.1 BYPASS: the TWIN FILTER was bypassed last block */
+    uint8_t byp;                                        /* BYPASS: the TWIN FILTER was bypassed last block */
     uint16_t dcp;                                       /* DRIVE's level factor for dv (F2_COMP's law), 0 = not worked out */
 } f2s_t;
 static f2s_t f2s[NLIVE][NVOICE];   /* 72 B a voice, 1,152 B: ordinary RAM (.bss), not the pool (pool-tail rule: wave 5; it was in the pool in waves 3 and 4) */
@@ -40,7 +40,7 @@ static inline uint32_t f2_ty(const track_t *t)
         return TT_LP;
     return ty;
 }
-/* filter 2 runs for voice v this block: TYPE not OFF. OFF is the old path, bit for bit: chain_on is 0 (unless the SUB LAYER runs) and the voice never enters the chain. A voice that is in the chain
+/* filter 2 runs for voice v this block: TYPE not OFF. OFF is the plain path, bit for bit: chain_on is 0 (unless the SUB LAYER runs) and the voice never enters the chain. A voice that is in the chain
  * when TYPE goes to OFF stays in it until filter 2 has faded out, then leaves it by the one-block cross-fade of voice_chain.c chain_block (the engine and the amp are then the same signal) */
 __attribute__((noinline)) int chain_f2_on(track_t *t, voice_t *v)
 {
@@ -216,7 +216,7 @@ static void f2_start(const track_t *t, const voice_t *v, f2s_t *s, f2k_t *k, uin
 
 /* ----------------------------------------------------------------------------------------- DRIVE --- */
 /* DRIVE d 0..127 (TWIN_FILTER_DESIGN 2.5): 0 is not run. SOFT, the curve of ANALOG's DRV and SAT and TAPE's SAT (fx.c ins_tape_sat): tanh of the signal times the gain g (Q12, 1x .. 8.9x, 4096 + 2 d^2),
- * the level kept by g^-0.75 (c, Q12: fx.c ins_tape_comp's law); 1 .. 11 blend the dry and the driven signal as SAT does since 0.2.14 (dry + (wet - dry) x d / 12; w, Q12). g, c and w glide
+ * the level kept by g^-0.75 (c, Q12: fx.c ins_tape_comp's law); 1 .. 11 blend the dry and the driven signal as SAT does (dry + (wet - dry) x d / 12; w, Q12). g, c and w glide
  * in a line from last block's d0 to this block's d1: no zipper, and 0 -> 1 starts from the dry signal */
 static int32_t f2_comp(uint32_t d)                      /* 4096 x gain^-0.75 of g = 4096 + 2 d^2 (fx.c ins_tape_comp's law): two integer roots, worked out when d changes (the state keeps the last) */
 {
@@ -361,7 +361,7 @@ static __attribute__((noinline)) void f2_cut(track_t *t, voice_t *v, const vmod_
         ms += mod_f2_voice(t, v);
     q->tune = clamp((clamp(p[P_CUT2], -24, 24) * 16) + ((ms * 2711) >> 15), -768, 768);
     ac = accent_dir(accent_lift(ACCENT_VEL(v), m->envq15), accent_dir_type(q->ty));   /* the accent's lift, the way filter 2's TYPE opens (LP up, HP down, BP / NOTCH / COMB none); uc is filter 1's cutoff WITHOUT its own lift (voice_chain.c passes m->ucn) */
-    c = link ? uc + TW_OFF_Q8(clamp(p[P_CUT2], -TW_OFF_MAX, TW_OFF_MAX)) + ac : clamp(p[P_CUT2], 0, UF_STEPS) * 256 + (ACCENT_BOTH(ENGINES[t->engine]) ? ac : 0);   /* LINK off: the lift only on ANALOG, TRIO, NOISE, as before */
+    c = link ? uc + TW_OFF_Q8(clamp(p[P_CUT2], -TW_OFF_MAX, TW_OFF_MAX)) + ac : clamp(p[P_CUT2], 0, UF_STEPS) * 256 + (ACCENT_BOTH(ENGINES[t->engine]) ? ac : 0);   /* LINK off: the lift only on ANALOG, TRIO, NOISE */
     if (XV(t, X_KTRK2))
         c += UF_KT(XV(t, X_KTRK2), v->pitch_cur);
     c = clamp(c + ms, 0, UF_TOP);
@@ -404,7 +404,7 @@ static void f2_go(const track_t *t, const voice_t *v, const vmod_t *m, f2s_t *s,
             out[i] = in[i];
     }
 }
-/* DUELL 1.1 BYPASS of the TWIN FILTER (in the flash: it runs only while the switch is on or just changed). f2_bypsave keeps the stage's input where the filter writes in place; f2_bypmix swaps the filter's output for it: by now fully, on the block where the switch changes in a line (wby: it was bypassed last block) */
+/* BYPASS of the TWIN FILTER (in the flash: it runs only while the switch is on or just changed). f2_bypsave keeps the stage's input where the filter writes in place; f2_bypmix swaps the filter's output for it: by now fully, on the block where the switch changes in a line (wby: it was bypassed last block) */
 static __attribute__((noinline)) const int32_t *f2_bypsave(int32_t *a, const int32_t *tmp, uint32_t n)
 {
     uint32_t i;
@@ -483,7 +483,7 @@ __attribute__((noinline)) void chain_f2(track_t *t, voice_t *v, int32_t *tmp, in
     }
     if (s->ty != q.ty && q.ty)
         f2_start(t, v, s, &s->k, q.ty, in[0], q.res);
-    if (by | wby)                                       /* DUELL 1.1 BYPASS: the filter keeps running (in step when it comes back), its output is swapped for its input (after DRIVE and BLEND) over this block */
+    if (by | wby)                                       /* BYPASS: the filter keeps running (in step when it comes back), its output is swapped for its input (after DRIVE and BLEND) over this block */
         dc = plain ? f2_bypsave(a, tmp, n) : in;
     f2_go(t, v, m, s, &s->k, q.ty, &q, in, plain ? tmp : b, n);
     if (s->fade) {                                      /* the outgoing type, on the same input, mixed out */

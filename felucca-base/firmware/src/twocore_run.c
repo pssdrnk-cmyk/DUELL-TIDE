@@ -20,8 +20,8 @@
  *                                                                               "very late without a pause", tcs.vlate_ok. The BENCHT3 run / window rules are off by default and
  *                                                                               can be switched on for a diagnosis: bench vrun N, bench vwin K [MS])
  *     not    part 2 silent this block (core 0 touches nothing of part 2: tcr.skip2, mix_gather skips it); part 2 stays silent until the open job is done, then
- *            the jobs go on (the late job's sums are thrown away). This is also the answer to a job that would make core 0 miss its half. B15: no pause here unless the
- *            take had no answer (a late core 1 that answers is alive; the old 10 s pause put both parts on core 0 and trimmed the notes: work/b15/cpu/root/ROOT_CAUSE.md)
+ *            the jobs go on (the late job's sums are thrown away). This is also the answer to a job that would make core 0 miss its half. No pause here unless the
+ *            take had no answer (a late core 1 that answers is alive; a pause would put both parts on core 0 and trim the notes)
  *   refused  a strike (BADJOB), core 0 plays part 2
  *   nothing  (no answer within TCR_ANSWER_US) part 2 silent, the jobs pause; tc_watch stops core 1 after TC_HANG_MS without a beat
  * A real fault (refused job, a word ahead, a refused snapshot): tc_fail, a strike, core 0 plays part 2 from then on; if core 1 never claimed the open job
@@ -68,8 +68,8 @@ static tcm_cfg_t tcm_cfg = { TCR_SLACK_TICKS, TCR_CALM_TICKS, TCR_LATE_RUN, TCR_
 #define TCR_VWINK_NOW tcm_cfg.vwin_k
 #define TCR_VWINT_NOW tcm_cfg.vwin_ticks
 #define TCR_FLOOR_NOW tcm_cfg.floor
-#define TCR_NOCORE1_NOW tcm_cfg.nocore1                 /* HANDOFF_V2 item 112 (bench word `core1 off`): 1 = core 1 is treated as down, with no power-cycle: core 0 plays part 2, the budget has the one-core numbers */
-#define TCR_OR_NOCORE1 || tcm_cfg.nocore1               /* (the extra term of the conditions, written as tokens so that outside the bench the source text is exactly the old one) */
+#define TCR_NOCORE1_NOW tcm_cfg.nocore1                 /* (bench word `core1 off`): 1 = core 1 is treated as down, with no power-cycle: core 0 plays part 2, the budget has the one-core numbers */
+#define TCR_OR_NOCORE1 || tcm_cfg.nocore1               /* (the extra term of the conditions, written as tokens so that outside the bench the source text has no such term) */
 #define TCR_AND_NOT_NOCORE1 && !tcm_cfg.nocore1
 #else
 #define TCR_SLACK_NOW TCR_SLACK_TICKS
@@ -79,7 +79,7 @@ static tcm_cfg_t tcm_cfg = { TCR_SLACK_TICKS, TCR_CALM_TICKS, TCR_LATE_RUN, TCR_
 #define TCR_VWINK_NOW TCR_VWIN_K
 #define TCR_VWINT_NOW TCR_VWIN_TICKS
 #define TCR_FLOOR_NOW 0u
-#define TCR_OR_NOCORE1                                  /* (no such switch outside the developer bench: these expand to nothing, the normal build is byte for byte the old one) */
+#define TCR_OR_NOCORE1                                  /* (no such switch outside the developer bench: these expand to nothing) */
 #define TCR_AND_NOT_NOCORE1
 #endif
 _Static_assert(TCR_VWIN_K <= TCR_VWIN_MAX && (TCR_VWIN_MAX & (TCR_VWIN_MAX - 1u)) == 0, "twocore_run.c: the window's ring");
@@ -118,7 +118,7 @@ typedef struct {
     uint32_t open;              /* the last job posted that is not known to be closed (core 1 may still write part 2) */
     uint32_t pause_t;           /* when the jobs paused */
     uint32_t c1f, c1v, c2f, c2v, g;   /* the cost table's items (1/100 %): fixed and a voice, part 1 and part 2, the globals; read at a half's first block */
-    uint32_t t1f, t1v, t2f, t2v, tg;  /* DUELL 1.1 item 142: the same items at their true cost (ceil(x * 100 / BUDGET_DL_MARGIN), as tcr_deadline_true), for the wait limit */
+    uint32_t t1f, t1v, t2f, t2v, tg;  /* the same items at their true cost (ceil(x * 100 / BUDGET_DL_MARGIN), as tcr_deadline_true), for the wait limit */
     uint8_t blk;                /* the block in the half */
     uint8_t t0_ok, cost_ok;
     uint8_t skip2;              /* part 2 is silent this block and core 1 may still write it: mix_gather must not read it */
@@ -129,8 +129,8 @@ typedef struct {
     uint8_t fade2;              /* part 2 may be half written (core 1 stopped in a claimed job): fade its voices out before core 0 plays it */
     uint8_t trim;               /* bit per part: notes above the part's number to fade at once (tc_trim_poll asks, the next block does it) */
     uint8_t trim_on;            /* the poll saw the condition (so it asks once) */
-    uint8_t two;                /* DUELL 1.1 item 90: the two-core NOTES rule is in force (read at a half's first block with the costs): the later blocks count core 0's own share only */
-    uint8_t nott;               /* item 90: this block's job may not be taken back (the take-over no longer fits the half): core 1 finishes it, or part 2 is silent */
+    uint8_t two;                /* the two-core NOTES rule is in force (read at a half's first block with the costs): the later blocks count core 0's own share only */
+    uint8_t nott;               /* this block's job may not be taken back (the take-over no longer fits the half): core 1 finishes it, or part 2 is silent */
 #if TC_MEAS
     uint8_t own_why;            /* why this block has no job: TCM_OWN_* (the own counter's split) */
     uint16_t fl_n;              /* BENCHT3, the deadline's floor: blocks in the current bucket */
@@ -251,7 +251,7 @@ static void tcm_clear(void)
 #endif
 
 #if TCB_ON
-/* ---------------------------------------------------------------- TIDE K4: the reverb job (docs/TWOCORE_STAGE1.md section 9) ---
+/* ---------------------------------------------------------------- the reverb job (docs/TWOCORE_STAGE1.md section 9) ---
  * Bus A only (STEREO, LAYER; DUEL's two buses stay on core 0). fx_buses posts "the reverb of this block" (tcb_post) after the sends are final (SPACE, the bypass ramps,
  * the matrix's bus values in song.g) and runs the chorus and the delay itself; at the point where the one-core path calls rev_tail, tcb_rev waits for the job and adds
  * core 1's block into wet. Bit for bit: every reverb model only adds into its output, and the chorus / delay loop and the reverb share no state (their own fields of fx,
@@ -259,14 +259,14 @@ static void tcm_clear(void)
  * reverb's fields of fx. Core 0 does not touch them until the job is closed.
  * The take-back rules are part 2's (tcr_part2): done by the deadline -> added; not done -> take; yld -> core 0 runs rev_tail itself (the same samples, "late");
  * claimed and done by the wait limit -> added ("very late", no pause); not done by the limit -> the reverb is SILENT this block: its last sample fades to 0 over the
- * block (no step), the job stays open (no job is posted while it is: core 0 plays part 2 itself), the jobs pause only if the take had no answer (B15); the reverb comes back with a one-block fade-in.
+ * block (no step), the job stays open (no job is posted while it is: core 0 plays part 2 itself), the jobs pause only if the take had no answer; the reverb comes back with a one-block fade-in.
  * A refused job or a word ahead: tc_fail (a strike); core 0 runs the reverb (cleared first and faded in if core 1 had claimed it: it may be half written).
  * The fit: core 1's own run time (tc_mb.brt, written before done) is kept as the largest of two buckets of TCR_FLOOR_BLOCKS blocks; a bucket with no measured job
  * keeps the one before (no fading to "free" without a measurement). A job is posted only when now + that time is before the take-over deadline. */
 #define TCJ_REV 0x8000u                 /* the job kind in arg's low half: n | TCJ_REV (part 2's job: n | hash << 16) */
 typedef struct {
     uint32_t posted, in_time, late, vlate, silent, refused, nofit, off;   /* reverb jobs posted, and how they ended; blocks it did not fit (core 0 ran it), blocks with the switch off */
-    uint32_t noans;                     /* B15: takes of a reverb job that got no answer within TCR_ANSWER_US (the one reason its silent block may pause the jobs) */
+    uint32_t noans;                     /* takes of a reverb job that got no answer within TCR_ANSWER_US (the one reason its silent block may pause the jobs) */
     uint32_t nm, rt_max, wt_max, c0_max, c0_n;   /* jobs measured; core 1's longest reverb run, core 0's longest wait for it, core 0's longest bus stage (fx_buses), blocks of that */
     uint64_t rt_sum, wt_sum, c0_sum;    /* (ticks) */
 } tcb_stat_t;
@@ -297,8 +297,8 @@ static void tcb_settle(void);
 #define TCB_OR_OPEN
 #endif
 
-/* ---------------------------------------------------------------- B15 MPJ: the master of block k on core 1 during block k+1's events ---
- * (work/b15/cpu/cores/DESIGN.md section 3; TIDE builds with K4: MPJ_ON = TCB_ON.) At the end of blocks 0 .. 2 of a half, when the master is the plain one (no PERFORM stage, no MODE dip,
+/* ---------------------------------------------------------------- MPJ: the master of block k on core 1 during block k+1's events ---
+ * (work/b15/cpu/cores/DESIGN.md section 3: MPJ_ON = TCB_ON.) At the end of blocks 0 .. 2 of a half, when the master is the plain one (no PERFORM stage, no MODE dip,
  * not DUEL) and core 1 is free, core 0 posts "the master of this block" (arg CTL | TCJ_MST) instead of running mix_master, and goes on with the next block's events; core 1 runs
  * mix_master into the block's own slice of the output. The half's last block keeps its master on core 0 (its BYPASS writes wd_sel / bm_sel / cmp_cfg for the block, which the
  * main loop must never see), so no master job is open when the interrupt returns.
@@ -374,13 +374,13 @@ static void tc_job_run(uint32_t arg)
     mixpart_t m;
     int mo;
 #if MPJ_ON
-    if (arg == (CTL | TCJ_MST)) {                       /* B15 MPJ: the master of the block core 0 just finished (mpj_post) */
+    if (arg == (CTL | TCJ_MST)) {                       /* MPJ: the master of the block core 0 just finished (mpj_post) */
         mpj_c1();
         return;
     }
 #endif
 #if TCB_ON
-    if (arg == (CTL | TCJ_REV)) {                       /* TIDE K4: the reverb of the block (its inputs: the globals core 0 made final before the post) */
+    if (arg == (CTL | TCJ_REV)) {                       /* the reverb of the block (its inputs: the globals core 0 made final before the post) */
         uint32_t t0 = TC_TICKS();
         tcb_c1_rev(send_r, tcb_wr, CTL);
         TC_ST(&tc_mb.brt, TC_TICKS() - t0);             /* (before done: tc_c1_step syncs, then writes done) */
@@ -405,7 +405,7 @@ static void tc_job_run(uint32_t arg)
 }
 
 #if MPJ_ON
-/* ---------------------------------------------------------------- B15 MPJ, core 0's side --- */
+/* ---------------------------------------------------------------- MPJ, core 0's side --- */
 enum { MPJ_OPEN, MPJ_RUNNING, MPJ_CLOSED, MPJ_YIELDED, MPJ_REFUSED };
 /* the open master job's state from core 1's words. Core 1 answers jobs in order, so a later job's claim, done or yld means the master is done. Only the master can be yielded
  * while it is the newest job (tcr_begin posts nothing behind an unclaimed master) */
@@ -532,23 +532,22 @@ static uint32_t tcr_active(const track_t *t)
  *   and TCR_SLACK_TICKS.
  * The costs are the NOTES table of budget.c (1/100 % of a half's time for a block's worth), with a 15 % margin in them (BUDGET_DL_MARGIN: part_dl, global_cost_dl). The table's
  * items are read at a half's first block; the sounding voices at every block (a count over 8 voices each). Core 1 is idle (the last job is closed)
- * when this runs, so reading part 2's settings is safe. It reads neither BUDGET_LIMIT, BUDGET_MARGIN nor BUDGET_HO (DUELL 1.1 item 132 changed the limit and the hand-over,
- * item 137 the caps' margin 1.15 -> 1.00 and the limit 88 -> 81: the NOTES caps rose, this deadline stayed bit for bit: tests/deadline_test.c). Item 142: the wait limit is
+ * when this runs, so reading part 2's settings is safe. It reads neither BUDGET_LIMIT, BUDGET_MARGIN nor BUDGET_HO (the NOTES caps follow them, this deadline does not: tests/deadline_test.c). The wait limit is
  * the later of the 1.15 one and the true-cost one less TCR_SLACK (below); the deadline and the items are unchanged */
-#define TCR_TRUE(x) (((x) * 100u + BUDGET_DL_MARGIN - 1u) / BUDGET_DL_MARGIN)   /* a 1.15 item back at its true cost, rounded up (>= the exact 1.00 item: item 137) */
+#define TCR_TRUE(x) (((x) * 100u + BUDGET_DL_MARGIN - 1u) / BUDGET_DL_MARGIN)   /* a 1.15 item back at its true cost, rounded up (>= the exact 1.00 item) */
 static uint32_t tcr_deadline(uint32_t now, int *nofit)
 {
     uint32_t k = tcr.blk, c1, c2, need, dl, cap, a1, a2;
     if (k == 0 || !tcr.cost_ok) {
-        MPJ_SYNC();                                     /* (B15 MPJ: budget.c reads wd_sel / bm_sel / cmp_cfg, which a running master's BYPASS writes for its block) */
+        MPJ_SYNC();                                     /* (MPJ: budget.c reads wd_sel / bm_sel / cmp_cfg, which a running master's BYPASS writes for its block) */
 #if DUELL_PROBE_STAGES
         uint32_t pb0 = fm1_ticks();                     /* (probe, test-mode builds: st_budget_us of the console `cpu`; ROADMAP Later 22, finding 6) */
 #endif
         const bd_dl_t *d = &bd_dl_buf[bd_dl_i];
-        if (bd_dl_ok && (uint32_t)(fm1_ms - d->ms) < BD_DL_AGE_MS) {   /* b11 (from DUELL 1.2 by OSCILL/R, GPL-3.0: tcr_costs): the copy the main loop handed over (budget.h bd_dl_publish): five words */
+        if (bd_dl_ok && (uint32_t)(fm1_ms - d->ms) < BD_DL_AGE_MS) {   /* (from DUELL 1.2 by OSCILL/R, GPL-3.0: tcr_costs): the copy the main loop handed over (budget.h bd_dl_publish): five words */
             tcr.c1f = d->c1f, tcr.c1v = d->c1v, tcr.c2f = d->c2f, tcr.c2v = d->c2v, tcr.g = d->g;
         } else {                                        /* (before the first publish, after a load until the next one, a copy BD_DL_AGE_MS old: worked out here, as before) */
-            part_dl(&trk[0], &tcr.c1f, &tcr.c1v);       /* (item 142: one bd_part a part, was two) */
+            part_dl(&trk[0], &tcr.c1f, &tcr.c1v);       /* (one bd_part a part) */
             part_dl(&trk[1], &tcr.c2f, &tcr.c2v);
             tcr.g = global_cost_dl();
         }
@@ -570,7 +569,7 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
 #endif
     c1 = tcr.c1f + a1 * tcr.c1v;
     c2 = tcr.c2f + a2 * tcr.c2v;
-    /* DUELL 1.1 item 90: under the two-core rule the parts may hold more notes than one core can play, so the later blocks are counted at core 0's own share (part 1 and the
+    /* under the two-core rule the parts may hold more notes than one core can play, so the later blocks are counted at core 0's own share (part 1 and the
      * globals: core 1 plays part 2 there again); under the one-core rule at the whole one-core cost as before */
     need = c2 + tcr.g + (TCR_BLOCKS - 1u - k) * (tcr.two ? c1 + tcr.g : c1 + c2 + tcr.g);
     if (need > TCR_NEED_MAX)
@@ -579,9 +578,9 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
     dl = cap - TCR_SLACK_NOW;                           /* the table's deadline */
     {   /* the wait limit: with part 2 done by core 1 core 0 still has to do the globals of this block and every later block at the whole one-core cost, so core 1's done word
          * is useful until the half's end less exactly that (= cap + part 2's own cost). Never later than the half's end (the globals are >= 0).
-         * DUELL 1.1 item 142 (HANDOFF_V2 item 139): the later of that (the 1.15 table) and the same rest at TRUE cost (the items brought back as tcr_deadline_true does, rounded up) less
-         * TCR_SLACK: the cushion is a flat 0.2 block instead of 15 % of the rest. Measured on the unit (item 139, 312 clean setups) the true rest covered core 0's real post-wait need
-         * at the half's peak in every case; core 1's block-0 job then fits the caps of BUDGET_LIMIT (84 until wave 14, 72 now: more slack; tests/deadline_test.c CORE 1). Never after the half's end */
+         * the later of that (the 1.15 table) and the same rest at TRUE cost (the items brought back as tcr_deadline_true does, rounded up) less
+         * TCR_SLACK: the cushion is a flat 0.2 block instead of 15 % of the rest. Measured on the unit (312 clean setups) the true rest covered core 0's real post-wait need
+         * at the half's peak in every case; core 1's block-0 job then fits the caps of BUDGET_LIMIT (72; tests/deadline_test.c CORE 1). Never after the half's end */
         uint32_t rest = need > c2 ? need - c2 : 0u, rt, c1t = tcr.t1f + a1 * tcr.t1v;
         int32_t lo, lt;
         rt = tcr.tg + (TCR_BLOCKS - 1u - k) * (tcr.two ? c1t + tcr.tg : c1t + tcr.t2f + a2 * tcr.t2v + tcr.tg);
@@ -614,15 +613,15 @@ static uint32_t tcr_deadline(uint32_t now, int *nofit)
     return dl;
 }
 
-/* DUELL 1.1 item 137: the block-0 take-over at the caps of margin 1.00. Called only under the two-core rule when tcr_deadline's deadline (the 1.15 table) is already past at
- * the post, i.e. when the old code had no take-over at all (tcr_begin's "nott" path: a core 1 that has not started by the wait limit = part 2 silent + a pause). The same
+/* the block-0 take-over at the caps of margin 1.00. Called only under the two-core rule when tcr_deadline's deadline (the 1.15 table) is already past at
+ * the post, i.e. when there is no take-over otherwise (tcr_begin's "nott" path: a core 1 that has not started by the wait limit = part 2 silent + a pause). The same
  * sum as tcr_deadline with each item at the true cost (1.00), taken from the 1.15 items and rounded UP (ceil(x * 100 / 115) >= the exact 1.00 item, never under it), less the same
  * slack. If that moment is still ahead of now and before the wait limit, it is the take-over deadline: a job core 1 has not started by then is played by core 0 (no click);
- * a job core 1 is running is waited for up to the wait limit, exactly as before. Otherwise dl comes back unchanged (the old "nott" path). The wait limit is not touched. */
+ * a job core 1 is running is waited for up to the wait limit, as usual. Otherwise dl comes back unchanged (the "nott" path). The wait limit is not touched. */
 static uint32_t tcr_deadline_true(uint32_t now, uint32_t dl)
 {
     uint32_t k = tcr.blk, c1, c2, need, cap, dt;
-    c1 = tcr.t1f + tcr_active(&trk[0]) * tcr.t1v;      /* (item 142: the true items tcr_deadline keeps; the same values as TCR_TRUE of the 1.15 ones) */
+    c1 = tcr.t1f + tcr_active(&trk[0]) * tcr.t1v;      /* (the true items tcr_deadline keeps; the same values as TCR_TRUE of the 1.15 ones) */
     c2 = tcr.t2f + tcr_active(&trk[1]) * tcr.t2v;
     need = c2 + tcr.tg + (TCR_BLOCKS - 1u - k) * (c1 + tcr.tg);   /* (two-core rule only: the later blocks at core 0's own share, as tcr_deadline) */
     if (need > TCR_NEED_MAX)
@@ -630,9 +629,9 @@ static uint32_t tcr_deadline_true(uint32_t now, uint32_t dl)
     cap = tcr.t0 + TCR_HALF_TICKS - need * TCR_BLOCK_TICKS / 10000u;
     dt = cap - TCR_SLACK_NOW;
 #if TC_MEAS
-    if (TCR_FLOOR_NOW) {   /* item 142: BENCHT3's floor (a diagnosis switch, off by default) on this deadline too, as tcr_deadline has it: not earlier than now + core 1's recent maximum
-                            * run time + the slack, never later than this cap; a job that cannot fit before the cap gets no take-over here (the old path: wait to the limit). Without it the later
-                            * wait limit of item 142 let a slow job overshoot this deadline (very late) where the floor run before waited for it in time */
+    if (TCR_FLOOR_NOW) {   /* BENCHT3's floor (a diagnosis switch, off by default) on this deadline too, as tcr_deadline has it: not earlier than now + core 1's recent maximum
+                            * run time + the slack, never later than this cap; a job that cannot fit before the cap gets no take-over here (the "nott" path: wait to the limit). Without it the later
+                            * wait limit would let a slow job overshoot this deadline (very late) where the floor run waits for it in time */
         uint32_t rm = tcr.fl_cur > tcr.fl_prev ? tcr.fl_cur : tcr.fl_prev;
         if (rm) {
             if ((int32_t)(now + rm - cap) > 0)
@@ -644,7 +643,7 @@ static uint32_t tcr_deadline_true(uint32_t now, uint32_t dl)
 #endif
     if ((int32_t)(dt - now) > 0 && (int32_t)(dt - tcr.lim) < 0) {
 #if TC_MEAS
-        tcr.cap = cap;                                  /* (bench measurement: the posted deadline is this true-cost one, so its ceiling is this cap (item 142: later than the 1.15 table's)) */
+        tcr.cap = cap;                                  /* (bench measurement: the posted deadline is this true-cost one, so its ceiling is this cap (later than the 1.15 table's)) */
 #endif
         return dt;
     }
@@ -677,7 +676,7 @@ static void tc_half_begin(uint32_t t0)
 
 /* main loop (main.c, beside tc_watch): the jobs paused or core 1 stopped: notes above a part's number fade out at once (the next block does it, in the
  * audio interrupt: the voices are not touched from here). Asked once for each pause or stop */
-static uint8_t tc_say;          /* DUELL 1.1 (owner 2026-10-25): 1 = the unit plays on one core and the screen has not said it yet (ui_input.c ui_notices says it once, then clears this) */
+static uint8_t tc_say;          /* 1 = the unit plays on one core and the screen has not said it yet (ui_input.c ui_notices says it once, then clears this) */
 static uint8_t tc_boot_looked;  /* the power-on state of core 1 was looked at (tc_trim_poll) */
 static void tc_trim_poll(void)
 {
@@ -802,7 +801,7 @@ static void tcr_begin(const blockstate_t *bs, uint32_t n)
     tcb.later = (uint8_t)(TCR_BLOCKS - 1u - tcr.blk);
     tcb_settle();
 #endif
-    {   /* DUELL 1.1 item 90: both parts on core 0 from this block (core 1 down, paused, or a flash park): the one-core numbers hold at once (trk_nvoice reads bnotes1), and the
+    {   /* both parts on core 0 from this block (core 1 down, paused, or a flash park): the one-core numbers hold at once (trk_nvoice reads bnotes1), and the
          * notes above them fade now (voice_trim_now: the one-block fade), not at the main loop's next pass */
         uint8_t one = (uint8_t)(!tc.up || tc.park || tcr.paused TCR_OR_NOCORE1);
         if (one && !bd_one_now)
@@ -819,15 +818,15 @@ static void tcr_begin(const blockstate_t *bs, uint32_t n)
         tcr.vw_n = 0;
         tcs.resumes++;
     }
-    if (!tc.up || tc.park || tcr.paused || tcr.open TCR_OR_NOCORE1 TCB_OR_OPEN) {   /* (TIDE K4: a late reverb job still open: core 1 is busy, core 0 plays part 2) */
+    if (!tc.up || tc.park || tcr.paused || tcr.open TCR_OR_NOCORE1 TCB_OR_OPEN) {   /* (a late reverb job still open: core 1 is busy, core 0 plays part 2) */
 #if TC_MEAS
         tcr.own_why = !tc.up || TCR_NOCORE1_NOW ? TCM_OWN_DOWN : tc.park ? TCM_OWN_PARK : TCM_OWN_PAUSE;
 #endif
         return;                                         /* core 0 plays part 2 itself, or waits for the open job (tcr_part2) */
     }
-    dl = tcr_post_deadline(now, &nofit);                /* (item 137: the 1.15 deadline, or when that is past the true-cost one if it is still ahead) */
+    dl = tcr_post_deadline(now, &nofit);                /* (the 1.15 deadline, or when that is past the true-cost one if it is still ahead) */
     tcr.nott = 0;
-    if (tcr.two && ((int32_t)(dl - now) <= 0 || nofit)) {   /* item 90: two-core numbers sound and core 0 can no longer take part 2 back in time: post it all the same, no take-over */
+    if (tcr.two && ((int32_t)(dl - now) <= 0 || nofit)) {   /* two-core numbers sound and core 0 can no longer take part 2 back in time: post it all the same, no take-over */
         tcr.nott = 1;
         dl = tcr.lim;
         nofit = 0;
@@ -841,7 +840,7 @@ static void tcr_begin(const blockstate_t *bs, uint32_t n)
         return;                                         /* the half is too far gone to wait for core 1 (or core 1's measured run time does not fit before the latest deadline: not a fault) */
     }
 #if MPJ_ON
-    mpj_claimed();                                      /* (B15: part 2 goes behind the master only once core 1 has claimed it) */
+    mpj_claimed();                                      /* (part 2 goes behind the master only once core 1 has claimed it) */
     if (!tc.up)
         return;                                         /* (core 1 stopped by it: core 0 plays part 2, tcr_part2's "no job") */
 #endif
@@ -900,11 +899,11 @@ static void tcr_part2(const blockstate_t *bs, uint32_t n)
             t1 = lim;                                   /* (the wait for the answer is inside the limit too) */
         while ((a = tc_answer(j)) == TCA_NONE && (int32_t)(TC_TICKS() - t1) < 0)
             ;
-        if (a == TCA_YIELD && tcr.nott) {               /* item 90: it had not started and core 0 has no time left for part 2: silent this block (core 1 never touched it). B15: no pause:
-                                                         * core 1 answered (it is alive, only late); a pause would put both parts on core 0 for TCR_CALM_MS and trim the notes (b15 root cause) */
+        if (a == TCA_YIELD && tcr.nott) {               /* it had not started and core 0 has no time left for part 2: silent this block (core 1 never touched it). No pause:
+                                                         * core 1 answered (it is alive, only late); a pause would put both parts on core 0 for TCR_CALM_MS and trim the notes */
             tcs.late++;
             tcs.silent++;
-            tcr.open = 0; /* [nott yld b15] */
+            tcr.open = 0;
             tcr.skip2 = 1;
             return;
         }
@@ -936,10 +935,10 @@ static void tcr_part2(const blockstate_t *bs, uint32_t n)
                 return;
             }
             if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: part 2 silent for this block, core 0 touches nothing of it */
-                /* B15: a pause only for a core 1 that gave no answer to the take (a real fault). A late but answering core 1 is not paused: the job stays open, part 2 stays
+                /* a pause only for a core 1 that gave no answer to the take (a real fault). A late but answering core 1 is not paused: the job stays open, part 2 stays
                  * silent until it is done (tcr_settle closes it at a block's start), then the jobs go on at once; a hung core 1 stops beating and tc_watch stops it after
-                 * TC_HANG_MS. Was: always a TCR_CALM_MS pause = both parts on core 0, notes trimmed (work/b15/cpu/root/ROOT_CAUSE.md) */
-                if (noans) /* [silent b15] */
+                 * TC_HANG_MS. (A TCR_CALM_MS pause would put both parts on core 0 and trim the notes) */
+                if (noans)
                     tcr_pause(TC_TICKS(), TCR_PW_FAULT);
                 tcs.silent++;
                 tcr.skip2 = 1;
@@ -969,7 +968,7 @@ static void tcr_part2(const blockstate_t *bs, uint32_t n)
 }
 
 #if TCB_ON
-/* ---------------------------------------------------------------- TIDE K4: the reverb job, core 0's side (see the comment at tcb_stat_t) --- */
+/* ---------------------------------------------------------------- the reverb job, core 0's side (see the comment at tcb_stat_t) --- */
 /* an open reverb job at a block's start (tcr_begin): closed now (its late run time counts for the fit), or core 1 was stopped (a claimed job may have left the reverb half
  * written: it is cleared before core 0 runs it again) */
 static void tcb_settle(void)
@@ -1116,9 +1115,9 @@ static void tcb_rev(const int32_t *rev_in, int32_t *wet, uint32_t n)
             while ((a = tc_answer(j)) == TCA_CLAIMED || a == TCA_NONE)
                 if ((int32_t)(TC_TICKS() - tcb.lim) >= 0)
                     break;
-            if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: silent this block, the job stays open (B15: a pause only if the take had no answer, as tcr_part2) */
+            if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: silent this block, the job stays open (a pause only if the take had no answer, as tcr_part2) */
                 tcbs.silent++;
-                if (noans) /* [k4 silent b15] */
+                if (noans)
                     tcr_pause(TC_TICKS(), TCR_PW_FAULT);
                 tcb_silent(wet, n);
                 return;

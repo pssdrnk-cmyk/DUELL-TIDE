@@ -16,10 +16,10 @@
  * After the landing the next reading is driven. The lowest driven reading of the first SC_WAIT of them is the landing's
  * strength: velocity = VMIN + (VMAX - VMIN) x u^e, u = 1 at the key's floor (hardest), 0 at its ceiling, on a log scale of
  * the resistance (reading / (1024 - reading)). While the key is held every second reading is driven: the aftertouch is
- * how far below the SETTLED reading it goes (SC_AT_SPAN counts = 127; item 126: the landing ramp, the finger pressing in, is not a squeeze).
- * Floor and ceiling start for every key at the unit's typical key (sense_cal.h SC_FLOOR_PRIOR / SC_CEIL_PRIOR: the owner's own recording, item 123) and
+ * how far below the SETTLED reading it goes (SC_AT_SPAN counts = 127; the landing ramp, the finger pressing in, is not a squeeze).
+ * Floor and ceiling start for every key at the unit's typical key (sense_cal.h SC_FLOOR_PRIOR / SC_CEIL_PRIOR: a recording of the unit's own keys) and
  * are learned per key from the landings: a running low and high quantile that move both ways in small steps from the very first press (no min / max
- * stage since item 123: one odd reading can no longer define a key's range), clamped to the windows of sense_cal.h, and a reset.
+ * stage: one odd reading cannot define a key's range), clamped to the windows of sense_cal.h, and a reset.
  * The gap guard: a sample later than SC_GAP_US after the key's last one (an interrupts-off window: a flash erase is ~40 ms,
  * and the converter reading in flight is lost) means the time between is UNKNOWN. A key that was held stays held (a gap is
  * never a release, and the open samples of before and after are not "in a row"); a landing that was waiting for its
@@ -41,7 +41,7 @@ typedef struct {
     volatile uint8_t lcount, plc;    /* counts the releases; its value when the last landing was published (a landing the key has been let go since is stale) */
     volatile uint8_t at;             /* aftertouch 0 .. 127 */
     uint8_t st, nopen, nd, cnt, follow, hold;
-    union { uint16_t u_land; uint16_t s_t; };      /* u_land: the landing depth (until the strength is in); s_t: then the time the settle window began, in 1024 us units (item 126; the same bytes: the state stays under 1 KB) */
+    union { uint16_t u_land; uint16_t s_t; };      /* u_land: the landing depth (until the strength is in); s_t: then the time the settle window began, in 1024 us units (the same bytes: the state stays under 1 KB) */
     union { uint16_t d_best; uint16_t s_ref; };    /* d_best: the hardest strength reading of the landing; s_ref: then the reading the settle window began at */
     uint16_t d_ref, d_s;   /* d_s: the smoothed driven reading, counts x 4 (aftertouch) */
     uint16_t lo6, hi6;               /* the learned low and high quantile of the driven landings, counts x 64 (a new key: its min and max) */
@@ -50,7 +50,7 @@ typedef struct {
 
 #define SC_RING_N 16u
 static struct {
-    uint8_t vtype1, atype1, on, at, curve1, walking, walk_done, ch_valid, ch_ready, ch_key, ch_vel;   /* curve1: the MENU curve + 1, 0 = SC_CURVE_DEFAULT (so the state is all zero: .bss, no flash image); on: the setting KEY VELOCITY is ON (0 = OFF, the default since 0.2.31: owner 2026-10-21, pressing a key hard made it very quiet; to be measured); at: the setting AFTERTOUCH is ON (DUELL 1.0, its own line: 0 = OFF, the default; the key sensing runs when either is ON, but the velocity gate and the velocity itself only with KEY VELOCITY, the channel pressure only with AFTERTOUCH) */
+    uint8_t vtype1, atype1, on, at, curve1, walking, walk_done, ch_valid, ch_ready, ch_key, ch_vel;   /* curve1: the MENU curve + 1, 0 = SC_CURVE_DEFAULT (so the state is all zero: .bss, no flash image); on: the setting KEY VELOCITY is ON (0 = OFF, the default: pressing a key hard made it very quiet); at: the setting AFTERTOUCH is ON (its own line: 0 = OFF, the default; the key sensing runs when either is ON, but the velocity gate and the velocity itself only with KEY VELOCITY, the channel pressure only with AFTERTOUCH) */
     /* The event step's own (written by sense_gate only; the tick never writes them, the event step never writes the tick's: no lock between the two
      * interrupts): the note bits it holds back for their velocity, the bits it has asked about, when it first asked, the landings it has taken */
     uint32_t defer, asked, g_ask[SC_NKEY];
@@ -226,8 +226,8 @@ static void sk_moved(uint32_t a, uint32_t b)
 static void sk_cal(sk_t *k, uint32_t d)
 {
     uint32_t x = d * 64u, eta, lo, hi, nlo, nhi;
-    if (!k->cnt) {                               /* the first landing: the quantiles start on the typical key (item 123: they used to start AT this reading, min = max, and the next */
-        lo = SC_FLOOR_PRIOR * 64u;               /* ten presses were read on a scale centred on it; one bounced or one extra hard reading then defined the key's range for hundreds of presses) */
+    if (!k->cnt) {                               /* the first landing: the quantiles start on the typical key (starting AT this reading, min = max, would read the next */
+        lo = SC_FLOOR_PRIOR * 64u;               /* ten presses on a scale centred on it; one bounced or one extra hard reading would then define the key's range for hundreds of presses) */
         hi = SC_CEIL_PRIOR * 64u;
     } else {
         lo = k->lo6;
@@ -329,7 +329,7 @@ static void sk_release_followers(uint32_t leader, uint32_t t)
         sk_t *f = &sn.k[j];
         if ((f->fl & K_FWAIT) && f->follow == leader + 1u) {
             f->follow = 0;
-            sk_publish(f, j, (f->fl & K_BYDRV) && f->vel > sn.ch_vel ? f->vel : sn.ch_vel, (f->fl & K_UNK) ? K_UNK : 0u, t);   /* (DUELL 1.1: never quieter than its own measured press) */
+            sk_publish(f, j, (f->fl & K_BYDRV) && f->vel > sn.ch_vel ? f->vel : sn.ch_vel, (f->fl & K_UNK) ? K_UNK : 0u, t);   /* (never quieter than its own measured press) */
         }
     }
 }
@@ -339,7 +339,7 @@ static void sk_finish(sk_t *k, uint32_t key, uint32_t vel, uint32_t flags, uint3
     if (k->follow && sn.ch_valid && sn.ch_key + 1u == k->follow) {
         if (sn.ch_ready) {
             k->follow = 0;
-            sk_publish(k, key, (flags & K_BYDRV) && vel > sn.ch_vel ? vel : sn.ch_vel, flags & K_UNK, t);   /* DUELL 1.1 (owner: a hard hit sometimes very quiet): a chord follower takes the first note's velocity, but never a lower one than its own measured press (a hard note 3 ms after a soft one stays hard) */
+            sk_publish(k, key, (flags & K_BYDRV) && vel > sn.ch_vel ? vel : sn.ch_vel, flags & K_UNK, t);   /* a chord follower takes the first note's velocity, but never a lower one than its own measured press (a hard note 3 ms after a soft one stays hard) */
         } else {                                 /* the leader is not in yet: wait for it (its own wait is bounded) */
             k->vel = (uint8_t)vel;
             k->fl = (uint8_t)((k->fl & ~(K_PEND | K_UNK | K_BYDRV)) | K_FWAIT | (flags & (K_UNK | K_BYDRV)));
@@ -360,9 +360,9 @@ static void sk_finish(sk_t *k, uint32_t key, uint32_t vel, uint32_t flags, uint3
 static void sk_final_driven(sk_t *k, uint32_t key, uint32_t t)
 {
     uint32_t d = k->d_best, vel;
-    vel = sk_map(k, d);                          /* DUELL 1.1 (owner: a hard hit played quiet): on the key's scale as it stood BEFORE this landing. Calibrating first let a press move its own
+    vel = sk_map(k, d);                          /* on the key's scale as it stood BEFORE this landing. Calibrating first would let a press move its own
                                                   * scale: the first press of a key never calibrated (a new unit, ERASE) set floor = ceiling = its own reading and always came out in the middle,
-                                                  * whatever its strength. Now that press is read on the typical key (SC_FLOOR_PRIOR .. SC_CEIL_PRIOR); a reading past the scale clamps to 127 / 1 */
+                                                  * whatever its strength. That press is read on the typical key (SC_FLOOR_PRIOR .. SC_CEIL_PRIOR); a reading past the scale clamps to 127 / 1 */
     if (sn.walking) {
         if (key == sn.w.key)
             sk_walk_press(k, d);
@@ -455,8 +455,8 @@ static void sk_driven(sk_t *k, uint32_t key, uint32_t d, uint32_t t)
             return;
         }
         if (d < SC_D_MIN)
-            d = SC_D_MIN;                        /* DUELL 1.1 (owner: a REALLY hard hit played very quiet): harder than the pill range is the hardest press, not "no pill". It was thrown away and
-                                                  * the next driven reading, the pill already relaxing, was taken as the landing: the hardest hits came out soft (tests/velo_mono_test.c) */
+            d = SC_D_MIN;                        /* harder than the pill range is the hardest press, not "no pill" (throwing it away and taking
+                                                  * the next driven reading, the pill already relaxing, as the landing makes the hardest hits come out soft: tests/velo_mono_test.c) */
         k->nd++;
         if (d < k->d_best)
             k->d_best = (uint16_t)d;
@@ -486,7 +486,7 @@ static void sk_driven(sk_t *k, uint32_t key, uint32_t d, uint32_t t)
         } else
             k->d_s = (uint16_t)((int32_t)k->d_s + (((int32_t)(d * 4u) - (int32_t)k->d_s) >> SC_AT_SMOOTH));
         ds = ((uint32_t)k->d_s + 2u) >> 2;
-        if (!(k->fl & K_SETTLED)) {              /* DUELL 1.1 item 126: the finger pressing IN after the landing (the reading keeps falling 25 .. 320 counts over 20 .. 260 ms) is not a squeeze.
+        if (!(k->fl & K_SETTLED)) {              /* the finger pressing IN after the landing (the reading keeps falling 25 .. 320 counts over 20 .. 260 ms) is not a squeeze.
                                                   * Until the reading has stood still (within SC_AT_STILL_BAND for SC_AT_STILL_US, at the earliest SC_AT_MIN_US after the landing; at the latest
                                                   * SC_AT_MAX_US) the reference follows it and the aftertouch is 0; the reading it settles at is zero pressure */
             uint32_t el = (uint32_t)(t - k->t_land), mv = ds > k->s_ref ? ds - k->s_ref : k->s_ref - ds, tm = t >> 10;
@@ -502,7 +502,7 @@ static void sk_driven(sk_t *k, uint32_t key, uint32_t d, uint32_t t)
         }
         if (!k->d_ref || ds > k->d_ref) {
             k->d_ref = (uint16_t)ds;             /* the landing reading, or the key relaxing: zero */
-        }                                        /* (no leak since DUELL 1.1: a pressure held stays held) */
+        }                                        /* (no leak: a pressure held stays held) */
         v = k->d_ref - ds;
         v = v > SC_AT_FLOOR ? (v - SC_AT_FLOOR) : 0u;
         v = sc_at_curve(v);
@@ -561,7 +561,7 @@ void sense_update(uint32_t note, uint32_t adc, uint32_t driven, uint32_t t)
     default:                                     /* DOWN, LIFT */
         if (open) {
             if (driven && (k->fl & K_PEND))
-                sk_driven(k, note, adc, t);      /* item 123: a soft landing's strength reads 900 .. 1022 on this unit: "open" by its value, but it is the pill. It was never looked at, and the press fell back to the landing depth */
+                sk_driven(k, note, adc, t);      /* a soft landing's strength reads 900 .. 1022 on this unit: "open" by its value, but it is the pill, so it is looked at (else the press falls back to the landing depth) */
             if (++k->nopen >= SC_REL_N)
                 sk_lift(k, note, t);
             else
@@ -680,7 +680,7 @@ void sense_enable(uint32_t on)
     }
 }
 uint32_t sense_enabled(void) { return sn.on; }
-void sense_at_enable(uint32_t on)                /* DUELL 1.0: AFTERTOUCH on its own line; the keys' states restart whenever the setting changes */
+void sense_at_enable(uint32_t on)                /* AFTERTOUCH on its own line; the keys' states restart whenever the setting changes */
 {
     on = on != 0u;
     if (on != sn.at) {

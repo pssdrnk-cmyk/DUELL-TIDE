@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* DUELL 0.2.5 PERFORM mode: its page and its controls (the sound: perform.c; SPEC "PERFORM mode"). Included at the end of ui_layer.c.
+/* PERFORM mode: its page and its controls (the sound: perform.c; SPEC "PERFORM mode"). Included at the end of ui_layer.c.
  *   ON / OFF   FX held 0.7 s (btn_hold, SAVE's hold) turns PERFORM on, and off again; a white key pressed while FX is held turns it on
  *              at once and is already PERFORM's key (seq.c keyboard_block; FX's release then opens no page). A tap of FX in PERFORM goes
  *              back to the page it was shown over; HOME, SAVE and every other page button leave it for their own page (ui.c perf_off:
@@ -10,11 +10,10 @@
  *              (PERFORM_NEW_LAYOUT_V4.png): an AREA page (template 9, grid_on 16): K1 MORPH is the knob-1 line with SELECT = BALANCE after its
  *              value (ui_draw.c), the big area the 4 x 4 box grid of the white keys (ui_boxes.c box_grid; a row per group of four keys, names
  *              centred, a held key's box in the accent, one that cannot run now dimmed: its key pressed says why), K2 .. K4 the card row.
- *              The footer has no hint rows on grid_on 16, only the engine and the patch name as on every page (perf_foot stays for the old
- *              layout's footer and the host tests).
+ *              The footer has no hint rows on grid_on 16, only the engine and the patch name as on every page (perf_foot serves the host tests).
  *   PRESETS    the sound of the part(s) ALGORITHM chose, as on every page (BOTH: each part one step on from its own sound); perf_presets.
  *   ALGORITHM  PART 1 / BOTH / PART 2: the part(s) K1 MORPH and ROLL A / B act on. The same selection as HOME's
- *              (1.0.0-b5: the one part selection, ui_input.c part_select; leaving PERFORM keeps it; the edit pages pick PART 1 / PART 2 only).
+ *              (the one part selection, ui_input.c part_select; leaving PERFORM keeps it; the edit pages pick PART 1 / PART 2 only).
  *   SELECT     BALANCE (item 160: LEVEL 1 against LEVEL 2 of the MIXER, push-pull, 0.5 dB a step, never above 0 dB: ui_input.c perf_balance; page_select does nothing here: PERFORM is one page). MASTER as ever.
  *   LEDS       the white keys their map: an effect that can run at the mid level, a held key lit, one that cannot run dark; the black
  *              keys (notes) lit while held or playing. */
@@ -65,7 +64,7 @@ static void perf_enter(void)
     ui.act = 0;
     ui.hot_t = 0;
     ui.perf_seen = 0;
-    perf_fading = 0;                                    /* (0.2.14: back in PERFORM while a fade runs: it stops where it is; the cards show the live values) */
+    perf_fading = 0;                                    /* (back in PERFORM while a fade runs: it stops where it is; the cards show the live values) */
     perf_nw_said = 0;
     ui.force = 1;
 }
@@ -123,16 +122,16 @@ static void perf_input(uint32_t pressed, uint32_t now, uint32_t lay)
 }
 
 static void perf_signed(char *v, int32_t x);
-/* SPACE's knob, PERFORM's K2 and the MIXER's third card (0.2.9): the one global value perf_space; role = the knob's EN_K* */
+/* SPACE's knob, PERFORM's K2 and the MIXER's third card: the one global value perf_space; role = the knob's EN_K* */
 static void space_turn(uint32_t role, int32_t s)
 {
     if (mods_off & MODS_SENDS)                          /* GLO > MODULES SENDS OFF: SPACE acts through the sends; its card is not shown, its knob does nothing */
         return;
     perf_space = (int8_t)clamp(perf_space + accel(role, s, 200), -100, 100);
-    perf_sp_live = ui.perf;                             /* (0.2.14: PERFORM's own move is faded on leaving; the MIXER's alone is kept) */
+    perf_sp_live = ui.perf;                             /* (PERFORM's own move is faded on leaving; the MIXER's alone is kept) */
     if (ui.perf)
         perf_fading = 0;                                /* (turned by hand: a running fade stops, the player has the knob) */
-    if (duell_mode == DM_SPLIT && !perf_nw_said) {      /* (0.2.9: SPACE's stereo width cannot work in DUEL, its sides are the two parts: */
+    if (duell_mode == DM_SPLIT && !perf_nw_said) {      /* (SPACE's stereo width cannot work in DUEL, its sides are the two parts: */
         perf_nw_said = 1;                               /* said once since PERFORM opened, the rest of SPACE works) */
         ui_message("DUEL: NO WIDTH");
     }
@@ -214,10 +213,10 @@ static int perf_foot(char *l, char *r)
 {
     if (!ui.perf || cur_page()->scope != SC_PERF)
         return 0;
-    str_cpy(l, "SELECT = BALANCE", 24);                /* (item 160: the old balance number is gone with its value; SELECT moves LEVEL 1 / LEVEL 2, shown on the MIXER page) */
+    str_cpy(l, "SELECT = BALANCE", 24);                /* (item 160: SELECT moves LEVEL 1 / LEVEL 2, shown on the MIXER page) */
     str_cpy(r, "ALGORITHM = ", 24);
 #if TIDE_PLAYSEL
-    str_cpy(r + str_len(r), PLS_NAME[play_pos()], 24 - str_len(r));   /* (1.0.0-b7) */
+    str_cpy(r + str_len(r), PLS_NAME[play_pos()], 24 - str_len(r));
 #else
     str_cpy(r + str_len(r), PART_BOTH() ? "BOTH" : song.sel ? "PART 2" : "PART 1", 24 - str_len(r));
 #endif
@@ -246,7 +245,7 @@ static void graph_perf(void)
     box_grid(UT_BOX_PF_Y0, 4u, 4u, UT_BOX_PF_DY, UT_BOX_PF_H, b);
 }
 /* the keys' LEDs in PERFORM: returns the lit ones (the held PERFORM keys, the black keys held or playing); *mid the row markers
- * (0.2.11, owner: the 1st, 5th, 9th and 13th key of the 16, to count the rows by; the UI lights them steadily at the LEDS
+ * (the 1st, 5th, 9th and 13th key of the 16, to count the rows by; the UI lights them steadily at the LEDS
  * mode's in-scale level; every other grid key stays dark unless held) */
 static uint32_t perf_key_leds(uint32_t *mid)
 {

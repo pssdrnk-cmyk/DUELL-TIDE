@@ -4,7 +4,7 @@
  * CrispyZebra (Leo Kuroshita, GPL-3.0, github.com/hugelton/CrispyZebra), the
  * author's own phase-distortion core: a -cos table read through a bent phase whose
  * bend is DCW. WAVE2 alternates with WAVE every other cycle. A second
- * line (DTN) can be mixed or ring-modulated (its own SUB, a sine an octave down, went in cloud job J: the global SUB LAYER, chain_sub.c, replaces it).
+ * line (DTN) can be mixed or ring-modulated (a SUB sine an octave down is the global SUB LAYER, chain_sub.c).
  * Envelopes are Felucca's own (ADSR, ENV -> DCW).
  *
  * The render is built for a core with no branch prediction (pi32v2): per voice and block the bends are set up once
@@ -131,7 +131,7 @@ static inline __attribute__((always_inline)) int32_t pd_wave_i(const pdw_t *b, u
 }
 static int32_t pd_wave(const pdw_t *b, uint32_t p) { return pd_wave_i(b, p); }
 
-/* hunt4 (range X has 24 B free in the BENCHH4 build, 76 before): pd_sl and pd_pair are out of line (they were inlined 6 and 5 times; one copy each, called, is 160 B smaller), both in range X
+/* pd_sl and pd_pair are out of line (one copy each, called, is 160 B smaller than inlining them 6 and 5 times), both in range X
  * (tools/ram_fns_x.py). They are called a few times a voice and block: no measurable cost.
  * pedal hunt: a stored DCW, ENV or SUB that jumps (the MORPH fader moved by several steps, a knob, a preset) moves at most `lim` a block, not at once: the bent wave and the
  * sub sine step otherwise (a click). st holds the value + 1 (0 = a new note: starts at the value); a value that stays is passed unchanged */
@@ -413,7 +413,7 @@ static void phase_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 
 #if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t PHASE_PRESETS[] = {
-    /* name, {WAVE, WAVE2, DCW, ENV, DTN, LINE, -, -}, {A D S R}, fenv, mono (E7 was the engine's own SUB until cloud job J) */
+    /* name, {WAVE, WAVE2, DCW, ENV, DTN, LINE, -, -}, {A D S R}, fenv, mono (E7: unused, the global SUB LAYER takes its place) */
     {"BRASS", {0, 0, 30, 90, 0, 0, 0, 0}, {8, 70, 90, 40}, 0, 0, FX(0, 20, 20, 40), PAT(6)},
     {"ORGAN", {3, 0, 40, 0, 0, 0, 0, 0}, {0, 127, 127, 30}, 0, 0, FX(0, 40, 0, 30), PAT(6)},
     {"STRING", {0, 4, 50, 40, 12, 0, 0, 0}, {40, 90, 100, 70}, 0, 0, FX(0, 50, 20, 60), PAT(5)},
@@ -433,7 +433,7 @@ static const engine_t ENG_PHASE = {
         {"ENV", F_PCT, 0, 0, 127, 64, 0},
         {"DTN", F_INT, U_CT, 0, 127, 0, 0},
         {"LINE", F_ENUM, 0, 0, 1, 0, N_PD_LINE},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the global SUB LAYER (chain_sub.c) replaces it */
+        {"-", F_INT, 0, 0, 0, 0, 0},                 /* unused: the global SUB LAYER (chain_sub.c) */
         {"-", F_INT, 0, 0, 0, 0, 0},
     },
 #if DUELL_PRESETS
@@ -443,5 +443,5 @@ static const engine_t ENG_PHASE = {
     .note_on = phase_note_on,
     .render = phase_render,
     .knob = {P_E2, P_E3, P_E4, P_REL},
-    .ufilt = 1,                 /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                 /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };

@@ -26,8 +26,8 @@ static __attribute__((noinline)) void chain_f1(const engine_t *e, track_t *t, vo
     uint32_t i, ac;
     if (!e->ufilt)
         return;
-    ac = acid_on(t);                                    /* (b13-acid: WAVE ACID / ACSQ, the filter's RES law) */
-    if ((uc < UF_TOP || t->p[P_FREEC] > 0) && !BYP(t, BY_MULTI)) {   /* the filter runs (DUELL 1.1: not while the BYPASS switch is on) */
+    ac = acid_on(t);                                    /* (WAVE ACID / ACSQ, the filter's RES law) */
+    if ((uc < UF_TOP || t->p[P_FREEC] > 0) && !BYP(t, BY_MULTI)) {   /* the filter runs (not while the BYPASS switch is on) */
         if (v->uft == UF_BYP) {                         /* out of the bypass while sounding: from rest, faded in over the block */
             for (i = 0; i < n; i++)
                 dry[i] = tmp[i];
@@ -91,9 +91,9 @@ static __attribute__((noinline)) void chain_voice(const engine_t *e, track_t *t,
     chain_stages(e, t, v, tmp, dst, n, m, uc);
 }
 
-/* filter 1's effective cutoff, made in this one place for track_render's plain path, chain_uc and chain_f1_on: the dial, every route (m->cutoff) and the key (KEY TRK, 0.2.21: the note's pitch
+/* filter 1's effective cutoff, made in this one place for track_render's plain path, chain_uc and chain_f1_on: the dial, every route (m->cutoff) and the key (KEY TRK: the note's pitch
  * around C3, an octave of cutoff per octave at +100 %; 0: nothing added, nothing computed); TIDE: through the crossing dip. *ucn, when given, gets the same without the accent (filter 2 LINK,
- * NOISE's make-up), dipped the same, so a LINKed filter 2 closes with filter 1 in a crossing (audit A04, owner D8) */
+ * NOISE's make-up), dipped the same, so a LINKed filter 2 closes with filter 1 in a crossing */
 static inline int32_t uc_eff(const track_t *t, const voice_t *v, const vmod_t *m, int32_t ucut0, int32_t *ucn)
 {
     const int16_t *p = t->p;
@@ -124,8 +124,8 @@ static int32_t chain_uc(const engine_t *e, track_t *t, voice_t *v, vmod_t *m, in
     return uc;
 }
 
-/* CHAIN_ALL (cloud job J): 1 = every note whose filter 1 runs goes through the chain (engine at unity, SUB, filter 1, DRIVE, filter 2, then the amp) on every engine: the owner's decision of
- * 2026-10-19, TWIN_FILTER_DESIGN_2 question 3. 0 = only where TWIN / SUB is on (chain_on) or the engine lost its own filter (ACCENT_BOTH: ANALOG, TRIO, NOISE), so the helper can back out
+/* CHAIN_ALL: 1 = every note whose filter 1 runs goes through the chain (engine at unity, SUB, filter 1, DRIVE, filter 2, then the amp) on every engine (TWIN_FILTER_DESIGN_2
+ * question 3). 0 = only where TWIN / SUB is on (chain_on) or the engine has no filter of its own (ACCENT_BOTH: ANALOG, TRIO, NOISE), so the helper can back out
  * in this one line if the renders show an audible change on the seven others */
 #ifndef CHAIN_ALL                               /* (a test or the helper may build with -DCHAIN_ALL=0) */
 #define CHAIN_ALL 1
@@ -138,7 +138,7 @@ static inline uint32_t chain_f1_on(const engine_t *e, const track_t *t, const vo
     if (!e->ufilt || !(CHAIN_ALL || ACCENT_BOTH(e)))
         return 0;
     if (BYP(t, BY_MULTI))
-        return 0;                                       /* (DUELL 1.1 BYPASS: the filter does not run) */
+        return 0;                                       /* (BYPASS: the filter does not run) */
     if (p[P_FREEC] > 0)
         return 1;
     return uc_eff(t, v, m, ucut0, 0) < UF_TOP;          /* (TIDE: the crossing dip runs the filter) */

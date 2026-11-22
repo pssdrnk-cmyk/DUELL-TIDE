@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* The chain's SUB LAYER (cloud job F, docs/design/SUB_AND_CYCLE_DESIGN.md A; the CYCLE source is cycle.c). Included by voice_chain.c, so voice.c's one translation unit.
+/* The chain's SUB LAYER (docs/design/SUB_AND_CYCLE_DESIGN.md A; the CYCLE source is cycle.c). Included by voice_chain.c, so voice.c's one translation unit.
  * chain_sub_on: 1 when the sub runs for voice v this block (SUB LEVEL above 0; in UNISON only voice 0 plays it); chain_sub: the stage, called by voice_chain.c right after the engine, on the voice's
  * scratch block tmp (n samples, the engine's signal at full level, before filter 1 and the amp), m the voice's modulation. The sub is added into tmp, so filter 1, filter 2 and DRIVE shape it, and the
  * amp ramp (the AMP ENV, velocity, LFO AMP, the matrix's AMP, LAYER XFADE, the steal's fade-out) is its envelope.
@@ -8,8 +8,8 @@
  *   OCTAVE  -2 -1 0 (stored 0..2): one phase accumulator at m->inc >> 2 (the pitch the engine gets once a block: glide, bend, vibrato, master tune, every PITCH route); the octave's phase is the
  *           accumulator << 0 / 1 / 2, so every octave is locked to the others (a switch of OCTAVE keeps the phase)
  *   WAVE    SINE sine_i, TRI osc_tri (a quarter cycle on: its zero crossing where the sine's is), SQUARE osc_pulse (polyBLEP at the sub's own increment), PULSE the same at width 1/4 (x 4/3: its high level is a full-scale pulse)
- *   HARM    (X_SUBHARM: the id is kept for the stored format; nothing reads or shows it since 2026-10-21, and the octave-copy code is gone)
- *   LEVEL   0..127, 0 = not run. A curve (SUB_CURVE: the owner sets it by ear) to a gain in the engine's own units, 127 = a full-scale engine oscillator (VOICE_FS); the gain glides per sample
+ *   HARM    (X_SUBHARM: the id is kept for the stored format; nothing reads or shows it)
+ *   LEVEL   0..127, 0 = not run. A curve (SUB_CURVE: set by ear) to a gain in the engine's own units, 127 = a full-scale engine oscillator (VOICE_FS); the gain glides per sample
  *           from the block before's (no zipper); a sub that is silent and stays silent is not run
  *   UNISON  only voice 0 plays it, undetuned (its step is made from the pitch without the voice's detune v->fine), at the velocity of the key, not of the unison share: one centred sub a key
  *   FM6     owns its amplitude (ownenv: the AMP ENV is forced to full, the operators' envelopes are inside the engine's signal): the sub follows the loudest carrier's gain (fm6_sub_follow, eng_fm6.c)

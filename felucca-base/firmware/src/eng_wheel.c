@@ -11,8 +11,7 @@
  *
  * Registration: 8 knobs cannot hold 9 drawbars, so REG picks one of 16 drawbar settings
  * (DRW_REG: our list of common registrations) and BODY / TOP add -8..+8 to its body (8', 4') and
- * its upper bars (2 2/3' .. 1'); the sub bars (16', 5 1/3') are the registration's alone (the SUB knob went in
- * cloud job J: more sub is the global SUB LAYER's, chain_sub.c). The louder the
+ * its upper bars (2 2/3' .. 1'); the sub bars (16', 5 1/3') are the registration's alone (more sub is the global SUB LAYER's, chain_sub.c). The louder the
  * registration, the less each bar gets (a soft normalisation: full bars are louder than one
  * bar, but they do not stack up to clipping).
  *
@@ -313,7 +312,7 @@ static void wheel_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 
 #if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t WHEEL_PRESETS[] = {
-    /* name, {REG, -, BODY, TOP, PERC, CLICK, DRIVE, ROTR}, {A D S R}, fenv, mono (E2 was SUB until cloud job J) */
+    /* name, {REG, -, BODY, TOP, PERC, CLICK, DRIVE, ROTR}, {A D S R}, fenv, mono */
     {"FULL ORGAN", {15, 0, 0, 0, 0, 30, 20, 1}, {0, 64, 127, 45}, 0, 0, FX(0, 0, 10, 35), PAT(5)},
     {"JAZZ PERC", {4, 0, 0, 0, 2, 50, 8, 1}, {0, 64, 127, 40}, 0, 0, FX(0, 0, 0, 25), PAT(3)},
     {"GOSPEL", {6, 0, 0, 0, 1, 60, 40, 2}, {0, 64, 127, 45}, 0, 0, FX(0, 0, 0, 40), PAT(6)},
@@ -329,7 +328,7 @@ static const engine_t ENG_WHEEL = {
     .page_title = {"BARS", "TONE"},
     .edit = {
         {"REG", F_ENUM, 0, 0, 15, 4, N_DRW_REG},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the registration's sub bars are not raised or lowered any more; the global SUB LAYER (chain_sub.c) adds sub */
+        {"-", F_INT, 0, 0, 0, 0, 0},                 /* the registration's sub bars are not raised or lowered; the global SUB LAYER (chain_sub.c) adds sub */
         {"BODY", F_INT, 0, -8, 8, 0, 0},
         {"TOP", F_INT, 0, -8, 8, 0, 0},
         {"PERC", F_ENUM, 0, 0, 6, 0, N_DRW_PERC},
@@ -346,5 +345,5 @@ static const engine_t ENG_WHEEL = {
     .knob = {P_E0, P_E4, P_E6, P_E7},
     .uiord = WHEEL_UIORD,
     .block = wheel_block,
-    .ufilt = 1,                 /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                 /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };

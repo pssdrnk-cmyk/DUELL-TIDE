@@ -30,7 +30,7 @@
 #define FELUCCA_UAC_TONE 0       /* bench: the USB input sends test triangles instead of the music */
 #endif
 #ifndef AUDIO_RING
-#define AUDIO_RING 0             /* B15: render one half ahead of the DMA (audio.c; on in every build.py build except DUELL_BENCH=1, env AUDIO_RING=0 turns it off; the host tests keep the old ping-pong unless they set it) */
+#define AUDIO_RING 0             /* render one half ahead of the DMA (audio.c; on in every build.py build except DUELL_BENCH=1, env AUDIO_RING=0 turns it off; the host tests keep the ping-pong unless they set it) */
 #endif
 #ifndef FELUCCA_UART
 #define FELUCCA_UART 1           /* TRS MIDI IN on UART1 / PH8 */
@@ -71,7 +71,7 @@
 #include "fm1_timer.h"
 #include "fm1_audio.h"
 #include "fm1_adc.h"
-#define FM1_LCD_BL_LATE 1        /* item 163: the backlight on only after the panel's first black frame (lcd.c lcd_init); the loader keeps 0 */
+#define FM1_LCD_BL_LATE 1        /* the backlight on only after the panel's first black frame (lcd.c lcd_init); the loader keeps 0 */
 #include "fm1_lcd_hw.h"
 #if DUELL_TWOCORE
 #include "fm1_core1.h"           /* the second core's start, entry and waiting loop; the hal of twocore.h */
@@ -117,7 +117,7 @@
 #include "menu_items.c"          /* MENU's rows and settings (ui_menu.c, editor_menu.c) */
 #include "icons.c"               /* parameter icons (FELUCCA_ICONS), used by ui_draw.c */
 #include "ui_graph.c"
-#include "twin_graph.c"            /* the TWIN FILTER's graph for the pages (cloud job E): uses ui_graph.c's filter helpers */
+#include "twin_graph.c"            /* the TWIN FILTER's graph for the pages : uses ui_graph.c's filter helpers */
 #include "ui_draw.c"
 #include "ui_menu.c"
 #include "ui_input.c"
@@ -144,7 +144,7 @@
 #include "velocap.c"            /* developer capture build: the readings' main-loop side (never in a release or normal build) */
 #endif
 #endif
-#include "master.c"              /* the MASTER pot (#137: read before the audio starts) */
+#include "master.c"              /* the MASTER pot (read before the audio starts) */
 #include "bootguard.h"          /* the boot guard's rules (main.c; tests/bootguard_test.c runs the same lines) */
 #include "main.c"
 

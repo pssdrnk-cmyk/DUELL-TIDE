@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Felucca SEQ > PARAMETER LOCKS (1.1.5 AUTO LIST; 1.2, Discussion #153: the PARAMETER LOCKS page, CHANCE and RATCH merged into it;
- * 1.2, #162: NUDGE and QUANTIZE too; 1.5, #173: VEL; included by ui.c): the selected track's automation as a list.
+/* Felucca SEQ > PARAMETER LOCKS (the PARAMETER LOCKS page, with CHANCE, RATCH,
+ * NUDGE, QUANTIZE and VEL; included by ui.c): the selected track's automation as a list.
  * The rows:
  *   PLAY     the first: the track's automation ON / OFF (KNOB 4; OFF keeps it) and its counts; OCT+ CLEAR asks
  *            "CLEAR Tn PARAMETER LOCKS?" (the locks and events go, the steps' CHANCE, RATCH, NUDGE, VEL stay)
@@ -34,7 +34,7 @@
  * Every edit is one undo (OCT- + a PRESETS turn: ui.c motion_undo_take, step_undo_take; a knob turned on is one; PLAY and QUANTIZE
  * are settings, as on their pages before). Not while a song plays (STOP TO EDIT). The 128 records are shared by the four
  * tracks: PARAMETER LOCKS FULL when they are used.
- * DUELL 1.0 (change list B.8): locks are made by turning a knob while the part records (motion.c motion_knob_lock); this page
+ * Locks are made by turning a knob while the part records (motion.c motion_knob_lock); this page
  * is the list where they are changed, deleted and switched LOCK / AUTO */
 static int32_t accel(uint32_t role, int32_t s, int32_t range);
 static void confirm_open(uint32_t kind, uint32_t trk);
@@ -56,7 +56,7 @@ static int ev_id_ok(const track_t *t, uint32_t id)
     const param_desc_t *d;
     if (ev_sid(id))
         return 1;
-    if (id >= 256u || !motion_param(id) || !mod_lock_ok(t, id))   /* (1.1: the matrix's destination list and its own offer rule, mod.c; DUELL 1.1: every destination, the extension slot and the virtual targets too) */
+    if (id >= 256u || !motion_param(id) || !mod_lock_ok(t, id))   /* (the matrix's destination list and its own offer rule, mod.c: every destination, the extension slot and the virtual targets too) */
         return 0;
     d = lock_desc(t, id);
     return d && d->label && d->label[0] && d->label[0] != '-' && d->max > d->min;
@@ -76,7 +76,7 @@ static void ev_name(const track_t *t, uint32_t id, char *b)
     desc_said(lock_desc(t, id), b + str_len(b), 32 - str_len(b));
 }
 
-/* 1.1 (owner, HANDOFF_V2 item 34): a lock's or event's parameter under the MATRIX's name. In a list row the full line as the matrix's DEST line says it ("FILTER ENV MULTI CUTOFF",
+/* a lock's or event's parameter under the MATRIX's name. In a list row the full line as the matrix's DEST line says it ("FILTER ENV MULTI CUTOFF",
  * "AMP ENV ATTACK"; b holds 32); on a card the matrix's DEST card name (two lines where it has them: mod_dst_name; nothing is shortened, the card cuts what does not fit) */
 static void ev_dest_name(const track_t *t, uint32_t id, char *b, int card)
 {

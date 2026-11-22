@@ -34,7 +34,7 @@
  * (voice.c uf_run; ufilt). Our own code: the approach (band-limited levels of a wavetable, a polyBLEP at sync resets) is the
  * textbook one.
  *
- * USER TABLES (DUELL 0.2.14): after the 26 factory tables, TABLE 26..28 are three user slots USR1..USR3 (wtab.c stores them in flash, the
+ * USER TABLES: after the 26 factory tables, TABLE 26..28 are three user slots USR1..USR3 (wtab.c stores them in flash, the
  * editor writes them: EDITOR_PROTOCOL "User wavetables"). A slot holds a table as the recipe's own source data: for each of the WV_F frames the
  * harmonics 1 .. 64, ONE BYTE each (wt_obj_t), a log amplitude relative to the frame's strongest: 0 off, b >= 1 -> 2^(-(255 - b) / 16)
  * (wt_q16, a 16 entry table and a shift). The build is the factory one: wv_frame takes the harmonics from wv_user instead of wv_recipe
@@ -46,9 +46,9 @@ static char wv_uname[3][9] = {"USR1", "USR2", "USR3"};   /* the user slots' show
 /* the tables (append-only: a stored sound keeps its number). Names: what the scan goes through, <= 5 letters (a card shows 5) */
 static const char *const N_WV_TABLE[] = {"SAWSQ", "PWM", "HARM", "ODD", "ORGAN", "VOWEL", "BRASS", "BOWED", "RESO", "COMB", "DIGI",
                                          "GLASS", "CHIME", "ROUGH",
-                                         /* 0.2.7: classic digital tables (in the spirit of the 1980s wavetable synths), then modern ones */
+                                         /* classic digital tables (in the spirit of the 1980s wavetable synths), then modern ones */
                                          "BAND", "DUAL", "THIN", "PIPE", "REESE", "HOOVR", "GROWL", "WOBBL", "YELL", "METAL", "STAIR", "AIR",
-                                         /* 0.2.14: the user slots: the shown name is the user's (wt_names: up to 8 characters, EMPTY when unused) */
+                                         /* the user slots: the shown name is the user's (wt_names: up to 8 characters, EMPTY when unused) */
                                          wv_uname[0], wv_uname[1], wv_uname[2]};
 #define WV_NT NELEM(N_WV_TABLE)
 #define WV_NTF 26u               /* the factory tables; TABLE WV_NTF .. WV_NT - 1 are the user slots */
@@ -433,7 +433,7 @@ static void wv_frame(uint32_t tb, uint32_t f, int8_t *out)
     int32_t *a = wvj.a, *oe = wvj.oe, big = 0;
     uint32_t l, k, n, at = 0, top = 0;
     uint64_t pk = 0, ss = 0, g;
-    if (tb >= WV_NTF)                                       /* DUELL 0.2.14: a user slot's bytes are the recipe's levels */
+    if (tb >= WV_NTF)                                       /* a user slot's bytes are the recipe's levels */
         wv_user(tb - WV_NTF, f, a);
     else
         wv_recipe(tb, (int32_t)((f * 65536u) / (WV_F - 1u)), a);
@@ -576,11 +576,11 @@ static __attribute__((unused)) void wave_build_now(track_t *t)
 /* v->s[]: 0 the scan place at the end of the last block (Q16 frames, -1: none yet), 1 the voice's table gain (Q15, the fades),
  * 2 3 a SYNC reset's correction still owed to the next block's first sample (the oscillator's, DTN's), 4 5 the synced read
  * phases (the oscillator's, DTN's; without SYNC they follow the free phases, so SYNC comes in without a jump), 6 the DC
- * tracker's level (BEND and SYNC move the cycle's mean; << 8), 7 DTN's share in blocks (bits 16..19, 0 .. WV_DF; bits 0..15 were the engine's own SUB level, retired in cloud job J: the global SUB LAYER,
- * chain_sub.c, replaces it; hunt3: bits 20..22 counted the note's first blocks, no longer used). ph[0] the oscillator, ph[1] DTN's.
- * DTN without a zipper (0.2.25, owner: turning DTN on a held note crackled, clearest on a sine, an EMPTY user slot): DTN's second
- * read fades in and out over WV_DF blocks when DTN leaves or reaches 0 (DTN's other changes are pitch only: no step). (hunt3: in a note's first 4 blocks it used to follow at once; ENV 2 opening DTN at
- * the attack (DIGI PLUCK) switched the second read in with a step of its mix, so now it glides from the first block like at any other time). A value that does not move plays bit for bit as before */
+ * tracker's level (BEND and SYNC move the cycle's mean; << 8), 7 DTN's share in blocks (bits 16..19, 0 .. WV_DF; bits 0..15 and 20..22 unused (the global SUB LAYER,
+ * chain_sub.c)). ph[0] the oscillator, ph[1] DTN's.
+ * DTN without a zipper (turning DTN on a held note would crackle, clearest on a sine, an EMPTY user slot): DTN's second
+ * read fades in and out over WV_DF blocks when DTN leaves or reaches 0 (DTN's other changes are pitch only: no step). (also in a note's first 4 blocks: ENV 2 opening DTN at
+ * the attack (DIGI PLUCK) does not step the second read's mix, it glides from the first block like at any other time). A value that does not move plays bit for bit the same */
 #define WV_DF 8u                 /* blocks of DTN's fade in / out: 5.8 ms (wv_dmix's weights: WV_DF x 4096 = 32768) */
 
 static int32_t wv_s7(const int16_t *p) { return p[P_E5] ? (int32_t)(WV_DF << 16) : 0; }
@@ -781,8 +781,8 @@ static void wv_line(const wv_mem_t *w, voice_t *v, uint32_t k, uint32_t inc, uin
     }
 }
 
-/* SYNC's ratio (*r16), BEND's warp (*wp) and the level they read at (*lw its cross-fade): once a block and voice, out of line (DUELL 0.2.25: in
- * the flash; their divides and 64-bit compares were 0.3 KB of the hot block, which DTN's smoothing now uses) */
+/* SYNC's ratio (*r16), BEND's warp (*wp) and the level they read at (*lw its cross-fade): once a block and voice, out of line (in
+ * the flash; this keeps their divides and 64-bit compares (0.3 KB) out of the hot block, which DTN's smoothing uses) */
 static __attribute__((noinline)) uint32_t wv_speed(uint32_t inc, int32_t sync, int32_t bend, uint32_t *r16, wv_warp_t *wp, int32_t *lw)
 {
     uint64_t ie = inc;
@@ -896,7 +896,7 @@ static __attribute__((noinline)) void wave_steps(track_t *t, voice_t *v, vmod_t 
 #if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t WAVE_PRESETS[] = {
     /* name, {TABLE, POS, BEND, SYNC, -, DTN, STEPS, -}, {A D S R}, fenv, mono: the host tests' renders and costs (tests/regress.c);
-     * DUELL's factory sounds are tools/duell_sounds.py's. The last one is the costliest voice: SYNC, BEND and DTN at once (E5 was the engine's own SUB until cloud job J) */
+     * DUELL's factory sounds are tools/duell_sounds.py's. The last one is the costliest voice: SYNC, BEND and DTN at once */
     {"SAW PAD", {0, 10, 0, 0, 0, 9, 0, 0}, {40, 90, 100, 70}, 0, 0, FX(0, 40, 20, 50), PAT(5)},
     {"PWM STRING", {1, 40, 0, 0, 0, 0, 0, 0}, {30, 90, 100, 60}, 0, 0, FX(0, 50, 20, 60), PAT(5)},
     {"HARM KEYS", {2, 70, 0, 0, 0, 0, 0, 0}, {0, 80, 40, 50}, 0, 0, FX(0, 20, 20, 40), PAT(7)},
@@ -909,7 +909,7 @@ static const preset_t WAVE_PRESETS[] = {
 };
 #endif
 
-static const uint8_t WAVE_UIORD[8] = {0, 1, 6, 3, 5, 2, 4, 7};   /* card position -> E index (DUELL 1.1, owner): ENGINE TABLE POS STEPS (K4: it sits with POSITION under the picture); EDIT 1 SYNC DTN BEND and the unused SUB slot (hidden); the stored ids never move */
+static const uint8_t WAVE_UIORD[8] = {0, 1, 6, 3, 5, 2, 4, 7};   /* card position -> E index: ENGINE TABLE POS STEPS (K4: it sits with POSITION under the picture); EDIT 1 SYNC DTN BEND and the unused SUB slot (hidden); the stored ids never move */
 
 static const engine_t ENG_WAVE = {
     .name = "WAVE",
@@ -919,7 +919,7 @@ static const engine_t ENG_WAVE = {
         {"POS", F_PCT, 0, 0, 127, 0, 0},
         {"BEND", F_PCT, 0, 0, 127, 0, 0},
         {"SYNC", F_PCT, 0, 0, 127, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was SUB: the global SUB LAYER (chain_sub.c) replaces it */
+        {"-", F_INT, 0, 0, 0, 0, 0},                 /* unused: the global SUB LAYER is chain_sub.c */
         {"DTN", F_INT, U_CT, 0, 127, 0, 0},
         {"STEPS", F_ENUM, 0, 0, 18, 0, N_WV_STEPS},
         {"-", F_INT, 0, 0, 0, 0, 0},
@@ -935,5 +935,5 @@ static const engine_t ENG_WAVE = {
     .uiord = WAVE_UIORD,
     .keep = 0xF3,                /* the scan place, the table gain, SYNC's phases, the DC blocker */
     .mem = sizeof(wv_hdr_t),     /* (only the header is cleared on a claim: the frames are read only after a build) */
-    .ufilt = 1,                  /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                  /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };

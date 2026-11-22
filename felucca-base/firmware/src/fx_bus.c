@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* The shared effect buses (chorus, tempo delay, reverb: ROOM, SPRING, HALL, SHIM, RESO, PLATE), as a template: fx.c includes it twice
- * (DUELL step 5), for bus A (BUS_FN(f) = f: the buses as they always were, on their own globals, so STEREO and LAYER
- * compile to the same code as before) and for bus B (part 2's in SPLIT: f_b, on fx_b, hl_b, rev_comb_b, rev_u_b,
+ * for bus A (BUS_FN(f) = f: the buses on their own globals, so STEREO and LAYER
+ * compile to the plain code) and for bus B (part 2's in SPLIT: f_b, on fx_b, hl_b, rev_comb_b, rev_u_b,
  * cho_buf_b and dly_buf's second half). The includer defines BUS_FX BUS_HL BUS_COMB BUS_U BUS_CHO BUS_DLY BUS_FN. */
 
 /* ROOM (G_RTYPE 0): 4 damped combs + 2 allpasses (Freeverb-like, mono), added to out */
@@ -18,14 +18,14 @@ static __attribute__((noinline)) void BUS_FN(rev_room)(const int32_t *rev_in, in
         x[i] = mulq15(rev_in[i], 2580);                 /* 1/8 at -4 dB: level as before the allpass fix */
         a[i] = 0;
     }
-    /* B15 (fx lane): a comb at a time over the whole block, its read / write point and low-pass in registers (the combs share no state, so this is
-     * the old sample-by-sample order's arithmetic, bit for bit; the old loop reloaded every comb's index, low-pass and length each sample) */
+    /* a comb at a time over the whole block, its read / write point and low-pass in registers (the combs share no state, so this is
+     * the sample-by-sample order's arithmetic, bit for bit) */
     for (k = 0; k < 4u; k++) {
         int16_t *p = c + BUS_FX.comb_i[k], *pe = c + REV_COMB[k];
         int32_t lp = BUS_FX.comb_lp[k];
         for (i = 0; i < n; i++) {
             int32_t o = *p;
-            lp = o + mulq15d(lp - o, kd);               /* (audit R08: mulq15d, the nearest but never stuck 1 LSB short of o. DUELL 1.1 REVERB_FIX: rounded to the nearest, no constant offset; the write below and the all-pass towards zero: a tail only gets smaller, and ends in exact silence) */
+            lp = o + mulq15d(lp - o, kd);               /* (mulq15d, the nearest but never stuck 1 LSB short of o: rounded to the nearest, no constant offset; the write below and the all-pass towards zero: a tail only gets smaller, and ends in exact silence) */
             *p = (int16_t)clamp(x[i] + sh_tz(lp * size, 15), -32768, 32767);
             a[i] += o;
             if (++p == pe)
@@ -54,7 +54,7 @@ static __attribute__((noinline)) void BUS_FN(rev_room)(const int32_t *rev_in, in
     }
 }
 
-/* SPRING's loop and taps while SIZE glides (0.2.9; rev_spring): the loop's length moves dq (Q8) a sample from s0 + dq (the block's first
+/* SPRING's loop and taps while SIZE glides (rev_spring): the loop's length moves dq (Q8) a sample from s0 + dq (the block's first
  * sample) on, and every read (the loop's end, the far end, the second pickup) is between two samples. Before, the length stepped a whole
  * sample once a block (the loop's end and the second pickup read at whole samples): a click a block while SIZE moved (PERFORM's SPACE
  * moves it over ~600 samples: ~0.45 s of clicks). At rest (SIZE still) rev_spring's own loop runs, as ever */
@@ -156,7 +156,7 @@ static __attribute__((noinline)) void BUS_FN(rev_spring)(const int32_t *rev_in, 
 /* the lines' gains for SIZE s: RT60 = 0.5 s * 2^(s / 30); a line of D samples (22.05 kHz) loses 60 dB in
  * RT60 * 22050 / D passes: g = 2^(-D * 3 log2(10) / (22050 * RT60)) = 2^(-D * 59.2 / 65536 * 2^(-s / 30)),
  * at most 0.99, over sqrt(7) (the matrix's rows have 7 entries of +-1: / sqrt(7) makes it orthogonal).
- * ROOM (audit R09, owner D24: a short diffuse room on this code): RT60 = 0.25 s * 2^(s / 48), 0.25 s at SIZE 0, 0.6 s at 64, 0.9 s at 90, 1.6 s at 127 (twice the exponent, half the SIZE slope).
+ * ROOM (a short diffuse room on this code): RT60 = 0.25 s * 2^(s / 48), 0.25 s at SIZE 0, 0.6 s at 64, 0.9 s at 90, 1.6 s at 127 (twice the exponent, half the SIZE slope).
  * The gains are kept for SIZE and the model (BUS_HL.sz: s + 1, + 256 for ROOM) */
 static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s, uint32_t room)
 {
@@ -168,13 +168,13 @@ static __attribute__((noinline)) void BUS_FN(hall_gains)(int32_t s, uint32_t roo
     BUS_HL.sz = (int16_t)(s + 1 + (room ? 256 : 0));
 }
 
-/* The pre-delay of HALL and PLATE (audit E3, owner D24: no new setting, it grows with SIZE): the block h->bx[0 .. n) (the send at half the rate, after its low cut) through a line h->pd read h->pdq behind
+/* The pre-delay of HALL and PLATE (no new setting, it grows with SIZE): the block h->bx[0 .. n) (the send at half the rate, after its low cut) through a line h->pd read h->pdq behind
  * the write point, 0 at SIZE 0 up to 7 samples a SIZE step (889 samples, 40 ms at SIZE 127), the delay moving a sample a block towards its SIZE's: the tail comes after the attack and
  * leaves the drum machine room; SIZE 0 reads the sample just written (the same signal), ROOM (room 1) has none. In place */
 #ifndef PRE_DLY_ONCE                                    /* (this file is included twice, bus A and bus B: the function once, on the bus's hall_t) */
 #define PRE_DLY_ONCE
 /* the send of HALL (plate 0) or PLATE (plate 1) at half the rate into h->bx: every other sample, 1 2 1 (HALL: ROOM's level, then its low cut of ~110 Hz, its step's remainder kept; PLATE: towards 0, a floor is an
- * offset its loops keep, held to 18 bits), then through the pre-delay line (audit E3: this was each model's own front, the pre-delay shares it) */
+ * offset its loops keep, held to 18 bits), then through the pre-delay line (the pre-delay is shared by the models) */
 static __attribute__((noinline)) void rev_front(hall_t *h, const int32_t *rev_in, uint32_t nc, uint32_t plate, int32_t t)
 {
     uint32_t i, w = h->pw;
@@ -282,11 +282,11 @@ static __attribute__((noinline)) void BUS_FN(rev_hall)(const int32_t *rev_in, in
     BUS_HL.side = 1;
 }
 
-/* SHIM's PITCH and MOD (DUELL 0.2.19, core.h G_SHPITCH / G_SHMOD; in the flash, not the hot set: rev_shim runs its plain loop below while PITCH is UP and
- * MOD 0, bit for bit the SHIM of 0.2.18, and calls this for the rest). The block's second half of rev_shim (the output's low cut and gate, the line, the
+/* SHIM's PITCH and MOD (core.h G_SHPITCH / G_SHMOD; in the flash, not the hot set: rev_shim runs its plain loop below while PITCH is UP and
+ * MOD 0, bit for bit the plain SHIM, and calls this for the rest). The block's second half of rev_shim (the output's low cut and gate, the line, the
  * return), for t = ROOM's output, with the grains' read point in Q16 and linearly interpolated (the plain loop reads whole samples):
  *   UP    the delay falls 1 sample a sample (read at 2x), DOWN: it rises 0.5 a sample (read at 0.5x): the same 2048-sample line, the same two triangles half a
- *         line apart (their sum flat). (BOTH, the two returns at once, was removed in 0.2.25 (owner): it cost ~12 % of the half in DUEL, 5-6 % otherwise; a stored BOTH plays UP)
+ *         line apart (their sum flat). (there is no BOTH, the two returns at once: it would cost ~12 % of the half in DUEL, 5-6 % otherwise; a stored BOTH plays UP)
  *   MOD   the read speed drifts by two slow sines (SH_L1, SH_L2), +-25 cents at 100 %: the pitched return does not stand still and the partials it feeds back
  *         spread a little with each pass, a chorus-like shimmer. The sines advance a block at a time (the pitch glides, nothing jumps)
  *   a change of PITCH: the return fades out (10 ms), the grains restart, it fades in. The plain loop's phase is taken over (and handed back, rounded, when PITCH
@@ -294,7 +294,7 @@ static __attribute__((noinline)) void BUS_FN(rev_hall)(const int32_t *rev_in, in
 #ifndef SH_GRAIN_ONCE                                   /* (this file is included twice, bus A and bus B: the helper once) */
 #define SH_GRAIN_ONCE
 /* one grain of rev_shimx's pitch shifter: the line b read at the Q16 phase ph (up: the read point falls behind the write point w, down: it
- * rises), linearly interpolated, under its triangle window. 0.2.24: out of the loop of four (always inlined, up is a constant at each call) */
+ * rises), linearly interpolated, under its triangle window. Out of the loop of four (always inlined, up is a constant at each call) */
 static inline __attribute__((always_inline)) int32_t sh_grain(const int16_t *b, uint32_t w, uint32_t ph, uint32_t up)
 {
     uint32_t d, di, f, p4;
@@ -309,11 +309,11 @@ static inline __attribute__((always_inline)) int32_t sh_grain(const int16_t *b, 
     return (a + (((c - a) * (int32_t)f) >> 8)) * tri >> 13;
 }
 #endif
-/* DUELL 1.1 REVERB_FIX: SHIM's octave-up line is read at two samples a step, so what is above a quarter of the sample rate folded back into the audible range as whistles (15.3, 9.6, 7.7 kHz in the audit). The sample that goes into the line is first
+/* SHIM's octave-up line is read at two samples a step, so what is above a quarter of the sample rate folded back into the audible range as whistles (15.3, 9.6, 7.7 kHz). The sample that goes into the line is first
  * run through a 1 2 1 low-pass (zero at half the sample rate, -6 dB at a quarter, unity at DC); its two past inputs are the bus's own state.
- * DUELL 1.1 (owner 2026-10-25, the whistle still heard): two such stages one after the other (1 4 6 4 1 over 16: -5.5 dB at 7.7 kHz, -12 dB at a quarter of the sample rate), and the same two stages on the return (sh_q). Both are plain
+ * Two such stages one after the other (1 4 6 4 1 over 16: -5.5 dB at 7.7 kHz, -12 dB at a quarter of the sample rate), and the same two stages on the return (sh_q). Both are plain
  * averages of the last samples: no recursion, so they add no ringing of their own and the tail still ends in exact silence */
-static inline int32_t BUS_FN(sh_lp2)(int32_t r, int32_t *z)   /* (audit R13: sh_lp and sh_rlp were the same body on two sets of states) */
+static inline int32_t BUS_FN(sh_lp2)(int32_t r, int32_t *z)   /* (sh_lp and sh_rlp share this body on two sets of states) */
 {
     int32_t y = (r + 2 * z[0] + z[1] + 2) >> 2, y2;
     z[1] = z[0];
@@ -329,7 +329,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, in
     const uint32_t wrap = (SH_LEN << 16) - 1u, half = (SH_LEN / 2u) << 16;
     uint32_t i, pu, pd, cfg, w = BUS_FX.sh_w;
     int32_t g, su, sd, dev, o;
-    uint32_t want = song.g[G_SHPITCH] == SHP_DOWN ? SHP_DOWN : SHP_UP, mod = (uint32_t)clamp(song.g[G_SHMOD], 0, 100);   /* (PITCH, MOD: core.h; 0.2.25: anything but DOWN, a stored BOTH too, is UP) */
+    uint32_t want = song.g[G_SHPITCH] == SHP_DOWN ? SHP_DOWN : SHP_UP, mod = (uint32_t)clamp(song.g[G_SHMOD], 0, 100);   /* (PITCH, MOD: core.h; anything but DOWN, a stored BOTH too, is UP) */
     if (!BUS_FX.sh_x) {                                 /* from the plain loop: its phase, the return whole */
         BUS_FX.sh_x = 1, BUS_FX.sh_cfg = SHP_UP, BUS_FX.sh_g = 32767;
         BUS_FX.sh_pu = (BUS_FX.sh_ph & (SH_LEN - 1u)) << 16, BUS_FX.sh_pd = 0;
@@ -351,7 +351,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, in
         ti -= BUS_FX.sh_hp;
         ti = ti > SH_OGATE ? ti - SH_OGATE : ti < -SH_OGATE ? ti + SH_OGATE : 0;
         out[i] += ti;
-        BUS_SHIM.buf[w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(ti >> 1, BUS_FX.sh_z), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
+        BUS_SHIM.buf[w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(ti >> 1, BUS_FX.sh_z), -32768, 32767);   /* (low-passed before it is read at double speed) */
         if (want != cfg) {                              /* PITCH changed: out, restart, in */
             g -= SH_FADE;
             if (g <= 0)
@@ -361,8 +361,8 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_shimx)(const int32_t *t, in
             if (g > 32767)
                 g = 32767;
         }
-        if (cfg == SHP_UP) {                            /* grains 0, 1 of the up return, or 0, 1 of the down return (0.2.24: straight-line grains, sh_grain; */
-            x += sh_grain(b, w, pu, 1u);                /* 0.2.25: BOTH, the two returns at once, is gone) */
+        if (cfg == SHP_UP) {                            /* grains 0, 1 of the up return, or 0, 1 of the down return (straight-line grains, sh_grain; */
+            x += sh_grain(b, w, pu, 1u);                /* no BOTH, the two returns at once) */
             x += sh_grain(b, w, pu + half, 1u);
         } else {
             x += sh_grain(b, w, pd, 0u);
@@ -391,7 +391,7 @@ static __attribute__((noinline)) void BUS_FN(rev_shim)(const int32_t *rev_in, in
         t[i] = 0;
     }
     BUS_FN(rev_room)(in, t, n);
-    if ((song.g[G_SHPITCH] | song.g[G_SHMOD] | BUS_FX.sh_x) && BUS_FN(rev_shimx)(t, out, n))   /* 0.2.19: PITCH DOWN, MOD (above; 0.2.25: a stored BOTH plays UP); UP with MOD 0 is the loop below, as ever */
+    if ((song.g[G_SHPITCH] | song.g[G_SHMOD] | BUS_FX.sh_x) && BUS_FN(rev_shimx)(t, out, n))   /* PITCH DOWN, MOD (above; a stored BOTH plays UP); UP with MOD 0 is the loop below */
         return;
     for (i = 0; i < n; i++) {
         int32_t x = 0, o = t[i] - BUS_FX.sh_hp + BUS_FX.sh_he;      /* the low cut, its step's remainder kept (exact silence) */
@@ -400,7 +400,7 @@ static __attribute__((noinline)) void BUS_FN(rev_shim)(const int32_t *rev_in, in
         t[i] -= BUS_FX.sh_hp;
         t[i] = t[i] > SH_OGATE ? t[i] - SH_OGATE : t[i] < -SH_OGATE ? t[i] + SH_OGATE : 0;   /* (ROOM's rounding cycles) */
         out[i] += t[i];
-        BUS_SHIM.buf[BUS_FX.sh_w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(t[i] >> 1, BUS_FX.sh_z), -32768, 32767);   /* (DUELL 1.1 REVERB_FIX: low-passed before it is read at double speed) */
+        BUS_SHIM.buf[BUS_FX.sh_w & (SH_LEN - 1u)] = (int16_t)clamp(BUS_FN(sh_lp2)(t[i] >> 1, BUS_FX.sh_z), -32768, 32767);   /* (low-passed before it is read at double speed) */
         for (j = 0; j < 2u; j++) {                      /* the delay falls a sample a sample: read at twice the speed */
             uint32_t ph = (BUS_FX.sh_ph + j * (SH_LEN / 2u)) & (SH_LEN - 1u), d = SH_LEN - 1u - ph;
             int32_t w = (int32_t)(ph < SH_LEN / 2u ? ph : SH_LEN - 1u - ph);   /* the triangles: their sum flat */
@@ -446,9 +446,9 @@ static __attribute__((noinline)) void BUS_FN(rev_reso)(const int32_t *rev_in, in
             int32_t x0 = c[(BUS_FX.rs_w - d) & (RS_LEN - 1u)], x1 = c[(BUS_FX.rs_w - d - 1u) & (RS_LEN - 1u)];
             int32_t o = x0 + (((x1 - x0) * (int32_t)f) >> 8);
             int32_t v;
-            BUS_FX.rs_lp[k] = o + mulq15d(BUS_FX.rs_lp[k] - o, 32767 - dk);   /* (audit R08: mulq15d, never stuck 1 LSB short of o. DUELL 1.1 REVERB_FIX: rounded to the nearest; the write towards zero, so the tail ends in exact silence) */
+            BUS_FX.rs_lp[k] = o + mulq15d(BUS_FX.rs_lp[k] - o, 32767 - dk);   /* (mulq15d, never stuck 1 LSB short of o: rounded to the nearest; the write towards zero, so the tail ends in exact silence) */
             v = in + sh_tz(BUS_FX.rs_lp[k] * fb, 15);
-            v = v > RS_KNEE ? RS_KNEE + ((v - RS_KNEE) >> 3) : v < -RS_KNEE ? -RS_KNEE + ((v + RS_KNEE) >> 3) : v;   /* a soft limit: above the knee the loop's gain falls to an eighth, so a held chord at the longest SIZE can no longer reach the 16-bit end and clip hard inside its loop */
+            v = v > RS_KNEE ? RS_KNEE + ((v - RS_KNEE) >> 3) : v < -RS_KNEE ? -RS_KNEE + ((v + RS_KNEE) >> 3) : v;   /* a soft limit: above the knee the loop's gain falls to an eighth, so a held chord at the longest SIZE cannot reach the 16-bit end and clip hard inside its loop */
             c[BUS_FX.rs_w & (RS_LEN - 1u)] = (int16_t)clamp(v, -32768, 32767);
             a += o;
         }
@@ -459,7 +459,7 @@ static __attribute__((noinline)) void BUS_FN(rev_reso)(const int32_t *rev_in, in
 
 /* PLATE (see fx.c above plate_gain): a block of the send (n samples) -> the mid added to out, the stereo difference into BUS_HL.sd. On the bus's own
  * state and lines (BUS_FX, BUS_HL, BUS_COMB, BUS_U.ap), as every model: handed over as pointers to a shared function it made ROOM's loop slower
- * (the host compiler no longer knew rev_comb from fx: ROOM 94 -> 119 instructions a sample) */
+ * (the host compiler did not know rev_comb from fx: ROOM 94 -> 119 instructions a sample) */
 static __attribute__((noinline)) void BUS_FN(rev_plate)(const int32_t *rev_in, int32_t *out, uint32_t n)
 {
     int16_t *ca = BUS_COMB, *cb = BUS_U.ap;
@@ -550,7 +550,7 @@ static void BUS_FN(rev_clear)(void)
     for (i = 0; i < 4u; i++)                            /* misses one of) and sp, the union's both views) */
         BUS_FX.comb_lp[i] = BUS_FX.rs_lp[i] = 0;
     BUS_FX.sh_hp = BUS_FX.sh_he = 0;
-    BUS_FX.sh_pu = BUS_FX.sh_pd = BUS_FX.sh_l1 = BUS_FX.sh_l2 = 0;     /* (0.2.19: rev_shimx from rest: its plain loop's phase is taken over at its first block) */
+    BUS_FX.sh_pu = BUS_FX.sh_pd = BUS_FX.sh_l1 = BUS_FX.sh_l2 = 0;     /* (rev_shimx from rest: its plain loop's phase is taken over at its first block) */
     BUS_FX.sh_g = 0, BUS_FX.sh_x = BUS_FX.sh_cfg = 0;
     for (i = 0; i < 4u; i++)
         BUS_FX.sh_z[i] = BUS_FX.sh_q[i] = 0;
@@ -569,7 +569,7 @@ static void BUS_FN(rev_clear)(void)
     BUS_FX.rq = 0;
 }
 
-/* the model changed (to rt): the old one's block fades out (HALL's stereo difference with it), its buffers are
+/* the model changed (to rt): the previous one's block fades out (HALL's stereo difference with it), its buffers are
  * cleared, the new one starts from silence */
 static __attribute__((noinline)) void BUS_FN(rev_fadeout)(const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
@@ -590,7 +590,7 @@ static __attribute__((noinline)) void BUS_FN(rev_switch)(const int32_t *rev_in, 
     BUS_FX.rtype = (uint8_t)rt;
 }
 
-/* DUELL 1.1 BYPASS of the REVERB (byp_blk & BYS_REV, fx.c): the bus is skipped, no wet sound, the tail stops. The block where it goes on, the model runs one more block and its return fades out over the block (the way
+/* BYPASS of the REVERB (byp_blk & BYS_REV, fx.c): the bus is skipped, no wet sound, the tail stops. The block where it goes on, the model runs one more block and its return fades out over the block (the way
  * rev_switch fades a model), then the buffers are cleared and the model is not run (the CPU is saved). When it goes off, the model starts again from silence. Returns 1: nothing more to run */
 static __attribute__((noinline)) uint32_t BUS_FN(rev_byp)(const int32_t *rev_in, int32_t *wet, uint32_t n)
 {
@@ -606,7 +606,7 @@ static __attribute__((noinline)) uint32_t BUS_FN(rev_byp)(const int32_t *rev_in,
     return 1;
 }
 
-/* The REVERB LOW CUT (0.2.14, G_RLOCUT, REVERB K4): a one-pole high-pass on the reverb bus's input, in front of every model (so none of the six
+/* The REVERB LOW CUT (G_RLOCUT, REVERB K4): a one-pole high-pass on the reverb bus's input, in front of every model (so none of the six
  * has a muddy bass, PLATE's DC through its tank goes too). lp += k (x - lp); out = x - lp (-3 dB at about LOCUT_HZ, 6 dB an octave below it, unity above). Q12 low-pass state, k = LOCUT_K (Q15) in a Q20 variable that glides: a block moves it at most 1/8 (+ a
  * little), as a linear ramp over the block's samples, so a turned knob is no zipper. 0 = OFF: the share g (Q12) of the low-pass that is
  * subtracted glides to 0 over 1024 samples, then the state is dropped and the block is left alone (bit for bit the input); ON from there:
@@ -656,16 +656,16 @@ static __attribute__((noinline)) const int32_t *BUS_FN(rev_locut)(const int32_t 
 /* audit R07: the chorus's and the delay modulation's DEPTH hold their PITCH swing once the rate is above the anchor (at and below it the sweep
  * in samples as before, bit for bit). The swing is depth x rate, so the sweep shrinks as 1 / rate there: LFO_INC's 0.05 .. 40 Hz law is 800^(step / 127),
  * 2^-(log2 800 / 127) = 2^-(4977 / 65536) a step. The chorus is anchored at CRT 40 (0.41 Hz: CDP 60 +-18 cents, 127 +-38 cents at any rate from there;
- * CRT 90 at CDP 60 was +-2.5 semitones), the delay's at MRATE 44 (0.51 Hz: MDEPTH 100 +-25 cents, DM_PCT). d the depth in Q8 samples */
+ * CRT 90 at CDP 60 would be +-2.5 semitones), the delay's at MRATE 44 (0.51 Hz: MDEPTH 100 +-25 cents, DM_PCT). d the depth in Q8 samples */
 #define CHO_SWING_AT 40
 #define DM_SWING_AT 44
-#define DM_PCT 521                                      /* the delay's MDEPTH, Q8 samples a percent: 100 % = 203 samples (4.6 ms; +-25 cents at 0.51 Hz; was 1129, 10 ms, +-55 cents) */
+#define DM_PCT 521                                      /* the delay's MDEPTH, Q8 samples a percent: 100 % = 203 samples (4.6 ms; +-25 cents at 0.51 Hz) */
 static __attribute__((noinline)) int32_t fx_swing(int32_t d, int32_t rate, int32_t at)
 {
     return rate > at ? (int32_t)(((int64_t)d * exp2_neg((uint32_t)(rate - at) * 4977u)) >> 15) : d;
 }
 #endif
-/* the chorus's DEPTH over a block (0.2.9): from the depth the last block reached (*cdq, Q8) to this block's (cdepth), *cst a sample
+/* the chorus's DEPTH over a block: from the depth the last block reached (*cdq, Q8) to this block's (cdepth), *cst a sample
  * (the read point's sweep is (sine + 1) x depth: a depth that jumped at a block's start jumped the read point, up to ~3 samples a block
  * while PERFORM's SPACE or the matrix moved it: a click a block, a buzz at 1.4 kHz). The loops read (sine + 32768) x (cdq >> 4) >> 12: a
  * depth that holds (cst 0, cdq = cdepth << 8) gives (sine + 32768) x cdepth >> 8 exactly, as before (bit for bit). What a block cannot
@@ -680,10 +680,10 @@ static inline void BUS_FN(cho_glide)(int32_t cdepth, int32_t *cdq, int32_t *cst)
 }
 
 /* The chorus's read (a modulated tap of the line BUS_CHO, linear interpolation, Q8 delay: 400 + (sine + 1) x depth samples) at the LFO phase ph.
- * DUELL 0.2.21: STEREO and LAYER (the bus has a side: dsd given) read the one line twice, the left tap at the LFO's phase, the right CHO_OFF
+ * STEREO and LAYER (the bus has a side: dsd given) read the one line twice, the left tap at the LFO's phase, the right CHO_OFF
  * of a turn on, so the two channels never move together; the return is their mid (the wet bus) and half their difference, the side, goes to
  * the left and from the right of the dry mix (mix_l, mix_r: as PING-PONG's, not through SPREAD, the width is fixed). DUEL / SPLIT (no side:
- * each part's own side) keep the one tap, bit for bit. DEPTH 0: both taps equal, the side exactly 0, the mid the old tap (bit for bit) */
+ * each part's own side) keep the one tap, bit for bit. DEPTH 0: both taps equal, the side exactly 0, the mid the plain tap (bit for bit) */
 #ifndef CHO_OFF
 #define CHO_OFF 0x40000000u                             /* a quarter turn (see SPEC: the chorus) */
 #endif
@@ -696,12 +696,12 @@ static inline int32_t BUS_FN(cho_tap)(uint32_t ph, int32_t cdq, uint32_t cw)
     return (c0 + (((c1 - c0) * f) >> 8)) * 2;
 }
 
-/* DUELL 0.2.21: the chorus loop is left out of a block that cannot give anything. The loops (fx_buses_m, dly_mod, dly_ev) all write cho_in >> 1 (clamped to
+/* The chorus loop is left out of a block that cannot give anything. The loops (fx_buses_m, dly_mod, dly_ev) all write cho_in >> 1 (clamped to
  * 16 bits) into the line BUS_CHO; cho_zrun, called by the caller of every path before it runs (fx.c fx_buses, split_buses), counts the zero samples written
  * in a row (cho_z, saturating at CHO_LEN: the whole line is 0). If this block's input is all 0 as well and the whole line was 0 before it, every tap reads 0
  * whatever the depth, so the chorus adds exactly 0 to the bus and to the dry mix: fx_buses_m (the plain bus) then leaves the chorus out (cho_zs), only its
  * state moving on (write index, LFO phase; the depth glide's state in cho_glide), the same values as the loop leaves; nothing else changes (bit for bit:
- * tests/chorusskip_test.c, built with -DCHO_NOSKIP for the loop as it was). dly_mod and dly_ev (hot RAM / rare paths) run the chorus always. */
+ * tests/chorusskip_test.c, built with -DCHO_NOSKIP for the loop without the skip). dly_mod and dly_ev (hot RAM / rare paths) run the chorus always. */
 #ifdef SIL_SKIP_STATS
 static uint32_t BUS_FN(dly_skipped);                    /* (tests/silentskip_test.c: the blocks fx_buses_m left the delay loop out of) */
 #endif
@@ -723,8 +723,8 @@ static __attribute__((noinline)) void BUS_FN(cho_zrun)(const int32_t *cho_in, ui
     BUS_FX.cho_z = (uint16_t)z;
 }
 
-/* The delay's MODULATION (DUELL 0.2.5, SPEC 5c.2): the delay time wobbles, a tape / chorus-like movement, with its own small LFO (not
- * LFO 1 / 2, not the matrix): G_DMDEP DEPTH (0 off .. 100: the time swings +- 4.6 ms up to MRATE 0.51 Hz, +-25 cents above it (fx_swing, audit R07),
+/* The delay's MODULATION (SPEC 5c.2): the delay time wobbles, a tape / chorus-like movement, with its own small LFO (not
+ * LFO 1 / 2, not the matrix): G_DMDEP DEPTH (0 off .. 100: the time swings +- 4.6 ms up to MRATE 0.51 Hz, +-25 cents above it (fx_swing),
  * never more than a quarter of the delay time, so a short delay keeps its feel) and G_DMRATE RATE (the chorus's rates, 0.05 .. 3.4 Hz). DEPTH 0 and at rest: fx_buses_m runs the loop below it
  * as ever (bit for bit, no cost); this runs while DEPTH > 0 and while the depth glides back to 0.
  * Two taps read the line at dl + oL and dl + oR (linear interpolation, dly_tap): oL = dev sin(pl), oR = dev sin(pr + 1/2 turn), pr
@@ -753,7 +753,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     BUS_FX.dm_dev += clamp(dev - BUS_FX.dm_dev, -DM_DEV_STEP, DM_DEV_STEP);
     dev = BUS_FX.dm_dev > cap ? cap : BUS_FX.dm_dev;
     BUS_FX.dm_dev = dev;
-    /* b9 dlyglide: a TIME change glides here as in fx_buses_m (K4: the modulated read jumped by the whole step in one block and clicked). g is the read offset now (Q15, the plain
+    /* dlyglide: a TIME change glides here as in fx_buses_m (a modulated read would jump by the whole step in one block and click). g is the read offset now (Q15, the plain
      * path's own state); this block moves it the plain path's 1/4096 of the way a sample, but at most 1/8 sample a sample (a tape's warp of +-12 %: with 1/2, as the plain path, two
      * TIME pairs came out 6 dB over the control in K4's measure, with 1/8 none), in one step bs; the read positions slope by it (sd a sample, Q16) and the wobble rides on top.
      * g == the TIME's length: bs = 0, the positions are the ones of before */
@@ -806,7 +806,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             x = (a + b) >> 1;
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
-            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1: the return is the low-passed repeat, the first one too) */
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (the return is the low-passed repeat, the first one too) */
             r = mulq15(a - b, dmix);
             mix_l[i] += r;
             mix_r[i] -= r;
@@ -814,7 +814,7 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
             x = dly_tap(BUS_DLY, dmask, ppos);
             BUS_FX.dly_lp += mulq15u(x - BUS_FX.dly_lp, col);
             BUS_DLY[w & dmask] = (int16_t)dly_wr(BUS_FX.dly_h, dly_in[i] >> 1, mulq15t(BUS_FX.dly_lp, fb));
-            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (b9 G1) */
+            y += mulq15(BUS_FX.dly_lp * 2, dmix);          /* (as above) */
         }
         w++;
         ppos += pstep;
@@ -828,9 +828,9 @@ static __attribute__((noinline)) void BUS_FN(dly_mod)(uint32_t dmask, uint32_t d
     BUS_FX.dm_xr = xr + sr * (int32_t)n;
 }
 
-/* the reverb of a block, the same after every delay path (audit R13: it was written three times): the model from G_RTYPE (an unknown value: ROOM), its low cut (0.2.14: before every model),
- * DUELL 1.1 BYPASS of the REVERB, a model change fades the old one out (rev_switch), else the model's block, added to wet */
-#define REV_IDLE 16384u                                 /* samples of no input and exact silence out after which the reverb is left out (0.37 s: every line and comb is shorter, and R08 made the tails end in exact zeros) */
+/* the reverb of a block, the same after every delay path (one body for all delay paths): the model from G_RTYPE (an unknown value: ROOM), its low cut (before every model),
+ * BYPASS of the REVERB, a model change fades the previous one out (rev_switch), else the model's block, added to wet */
+#define REV_IDLE 16384u                                 /* samples of no input and exact silence out after which the reverb is left out (0.37 s: every line and comb is shorter, and the tails end in exact zeros) */
 #ifdef REV_SKIP_STATS
 static uint32_t BUS_FN(rev_skipped), BUS_FN(rev_skip_off);   /* (tests/reverb_test.c: the blocks rev_tail left the model out of; 1 in _off: never) */
 #endif
@@ -880,11 +880,11 @@ static __attribute__((noinline)) void BUS_FN(rev_tail)(const int32_t *rev_in, in
 }
 
 /* process the three buses for one block (the delay line BUS_DLY[0 .. dmask], the delay dl); sends in, wet stereo-equal out.
- * pp (DUELL, SPEC 5c.2; STEREO and LAYER only, the callers of SPLIT pass 0 and the branch is gone): the delay PING-PONGs. The
+ * pp (SPEC 5c.2; STEREO and LAYER only, the callers of SPLIT pass 0): the delay PING-PONGs. The
  * mono send goes into one line of 2 x dl that feeds back from its end with the square of the feedback (the same decay in
  * time as the plain delay). The left return is the line at dl (the repeats 1, 3, 5 ...: the send, then the loop's turns), the
  * right the loop's own feedback tap (the repeats 2, 4, 6 ...: the line's end, low-passed, times FDBK). One line, no second
- * one. The delay's return is then no longer stereo-equal: wet gets its mid ((L + R) / 2) and dsd its side ((L - R) / 2,
+ * one. The delay's return is then not stereo-equal: wet gets its mid ((L + R) / 2) and dsd its side ((L - R) / 2,
  * added to the left and taken from the right: rev_side_mix does the same for HALL's). pp 0: the plain delay, bit for bit. A change of the delay time
  * (TIME, TEMPO, a BPM step, the external clock's tempo) slides (dly_slide: the read point bends, it does not jump); a steady time reads the line as ever.
  * dl is at most half the line (the caller: delay_split). While the delay's modulation runs, fx_buses_mod (above) is called instead */
@@ -960,7 +960,7 @@ static inline void BUS_FN(fx_buses_m)(uint32_t dmask, uint32_t dl, const int32_t
                 lp += mulq15u(x - lp, col);
                 BUS_DLY[w & dmask] = (int16_t)dly_wr(h, dly_in[i] >> 1, mulq15t(lp, fb));
                 w++;
-                wet[i] += mulq15(lp * 2, dmix);         /* (b9 G1: after the loop's low-pass, as every repeat) */
+                wet[i] += mulq15(lp * 2, dmix);         /* (after the loop's low-pass, as every repeat) */
             }
         }
         BUS_FX.dly_w = w;
@@ -989,7 +989,7 @@ static __attribute__((noinline)) void BUS_FN(fx_buses_mod)(uint32_t dmask, uint3
     BUS_REV(rev_in, wet, n);                            /* (rev_tail; TIDE K4: bus A's may have run on core 1 meanwhile, fx.c BUS_REV) */
 }
 
-/* The delay's EVENT modes (DUELL 0.2.14, owner 2026-10-15; core.h G_DMODE 2 RANDOM, 3 OCT UP since 0.2.16; this code's own mode argument is 1 RANDOM, 2 OCT UP, 0 back to the plain delay). A tempo-synced delay that bends its own repeats on a random
+/* The delay's EVENT modes (core.h G_DMODE 2 RANDOM, 3 OCT UP; this code's own mode argument is 1 RANDOM, 2 OCT UP, 0 back to the plain delay). A tempo-synced delay that bends its own repeats on a random
  * share of the clock edges. Based on the idea of the granular delay in the TEMPO firmware of CHOMPI (CHOMPI Club, MIT, <https://github.com/CHOMPI-Club/CHOMPI>,
  * firmware/chompi-tempo): two voices read one delay line; on a random share of the clock edges one retriggers, plays reversed, an octave up or an octave
  * down, then the plain delay comes back. Written here in integer code from that idea, no line of it copied (see LICENSES/MIT-CHOMPI.txt, NOTICE.md).
@@ -1103,9 +1103,9 @@ static inline void BUS_FN(dlyev_read)(dlyev_v_t *v, uint32_t w16, uint32_t dl16,
     }
 }
 /* a clock edge: the draw (CHANCE thr, 0 .. 32767 of the 15-bit draw) and the voices' next events */
-/* 0.2.22, DUEL (the bus has half the line, dlen < DLY_LEN): does the event fit in it? The read head of an event must stay inside the written line and
+/* DUEL (the bus has half the line, dlen < DLY_LEN): does the event fit in it? The read head of an event must stay inside the written line and
  * a REVERSE, DOWN or RETRIG one go back from the delay time (an UP one: see dlyev_in). One that does not fit is not played: that edge is an edge without an
- * event (the plain voice goes on). STEREO and LAYER (the whole line): always, as ever. D: the delay time, per: the clock period, in samples */
+ * event (the plain voice goes on). STEREO and LAYER (the whole line): always. D: the delay time, per: the clock period, in samples */
 static uint32_t BUS_FN(dlyev_fits)(uint32_t ev, uint32_t dl16, uint32_t per, uint32_t dlen)
 {
     uint32_t d = (dl16 >> 16) + 1u, cap = dlen - 1024u;
@@ -1159,7 +1159,7 @@ static __attribute__((noinline)) void BUS_FN(dly_ev)(uint32_t dlo, uint32_t dl, 
                                              uint32_t mode, uint32_t pp, int32_t *dsd, uint32_t dlen)
 {
     dlyev_t *e = &BUS_EV;
-    const uint32_t dmask = dlen - 1u, mono = dsd == 0;   /* (0.2.22 DUEL: dsd 0, mono: the events centred, one read, no side; dlen: this bus's line) */
+    const uint32_t dmask = dlen - 1u, mono = dsd == 0;   /* (DUEL: dsd 0, mono: the events centred, one read, no side; dlen: this bus's line) */
     uint32_t i, w = BUS_FX.dly_w, per = dl, tgt16 = dl << 16, xt = mode ? 32768u : 0u;
     int32_t fb = mulq15(SV_DFB, byp_dg), col = dly_cv, dmix = mulq15(Q15_FROM_127(song.g[G_DMIX]), byp_dg);   /* (byp_dg: the BYPASS of the DELAY, 32768 = on) */
     int32_t cdepth = SV_CDEP, cdq, cst, thr = clamp(song.g[G_DMDEP], 0, 100) * 328;

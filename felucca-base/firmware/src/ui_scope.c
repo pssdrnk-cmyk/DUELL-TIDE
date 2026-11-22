@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* The MORPH page's picture: the part's real sound, from fx.c's scope tap (wv_m, 512 mono entries a part at 11.025 kHz (46 ms), each a companded 8-bit code: wvr_code), drawn as a stack of ridges
- * (docs/design/WAVE_DISPLAY_PLAN.md 3.2, reduced to the RAM there is; the look is the owner's pick from the WAVE LAB preview on plan/wave-displays, WAVE STACK). Included by ui_graph.c before graph_morph.
+ * (docs/design/WAVE_DISPLAY_PLAN.md 3.2, reduced to the RAM there is; the look is WAVE LAB's WAVE STACK). Included by ui_graph.c before graph_morph.
  * Core 0, main loop, nothing in the audio path.
  * Per part and picture step (about 16 a second, the page's step: mv_tick):
- *   1 gate    wv_want = "wanted until block N", 256 blocks (190 ms) ahead; MENU > ANIM OFF shuts it: no tap, the last picture stays (a flat line before there was one)
+ *   1 gate    wv_want = "wanted until block N", 256 blocks (190 ms) ahead; MENU > ANIM OFF shuts it: no tap, the last picture stays (a flat line if there was none)
  *   2 read    the newest 400 entries or fewer, only those written since the gate opened and since the part's last hole (wv_gap); read IN PLACE (wl_dec on each read), the counter looked at again
  *             afterwards: if the writer went on by more than the ring leaves (512 less 400, less a block) the picture is made again, once, else the last one stays
  *   3 trigger the ring smoothed (a 5-point kernel); crossings of its middle, rising (falling when the falling edges are clearly the steeper: a saw's drop), that come after a clear dip (the Pico scope's hysteresis), found to 1/16 of an entry; of those in the last 3.5
@@ -14,20 +14,20 @@
  *             centre (a saw's drop and a square's edges stay vertical); no smoothing over neighbours; the middle of the line's range taken out
  *   6 gain    the peak of the window: a rise of more than 6 % at once, a fall of more than 12 % by 1/4 a step (a decaying note keeps a readable shape while it fades, a held note does not breathe), never under WL_FLOOR
  *             (-36 dB of the half scale: a quiet held note still shows its shape; quieter is smaller), a ridge under 2 px high is flat (a tail, not a line of dither)
- *   7 stack   every picture is a ridge (b6, owner 2026-11-09: "the initial version looked quite cool when we called it wave lab": WAVE LAB's WAVE STACK at this size): the last
+ *   7 stack   every picture is a ridge (WAVE LAB's WAVE STACK at this size): the last
  *             WL_HN, the newest in front (lowest), each older one about 2 rows higher, every one at the front's full height, coloured from the part's colour at the front toward the
  *             background at the back (mv_col's fade); a ribbon that scrolls back a step every picture. Each new picture is blended half and half into the front whenever the two
  *             are of a size (within 2 : 1, whatever the shape: the approved look's frame blend), so neighbouring lines stay alike and a busy sound flows instead of turning to noodles;
  *             a jump in size (an attack) is taken as it is. No line is laid flat or held still for its shape; an older line never crosses a newer one (wl_stack: it rides just above it).
- *             Silence fades the front's shape (wl_fade), the stack runs out, and every lane stays drawn, flat: at rest the page shows the same set of lines as when it plays (owner 2026-11-09)
+ *             Silence fades the front's shape (wl_fade), the stack runs out, and every lane stays drawn, flat: at rest the page shows the same set of lines as when it plays
  * Samples inside are the tap's steps (1/4,096 of the half scale) times 16 (the interpolation's fraction). The ridges are kept in 1/4 px from their middle, a byte a point (WL_AMAX: the half height of
- * a ridge is at most 31 px; the front's is about 20 px in a 68-row lane). b6 layout (owner 2026-11-09, "the bottom half of the screen is badly used"): the picture takes the page
- * from the knob-1 line down to the compact FILTER / RESONANCE / ECHO row (ui_draw.c morph_row; ROLL / AMOUNT until 1.0.0-b7) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
+ * a ridge is at most 31 px; the front's is about 20 px in a 68-row lane). Layout: the picture takes the page
+ * from the knob-1 line down to the compact FILTER / RESONANCE / ECHO row (ui_draw.c morph_row) and the whole width, the part tags over the lanes' left edge; HOLD SAVE = SAVE PATCH is a hint in
  * that row while SAVE is held (ui_draw.c morph_row). */
-#define WL_NP 56                                     /* points of a ridge (b6: 56, one every 3.9 px, so 13 ridges fit the RAM rule), spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
+#define WL_NP 56                                     /* points of a ridge (56, one every 3.9 px, so 13 ridges fit the RAM rule), spread over x WL_X0 .. WL_X1 (right of the part's tag column, x 0 .. 21: no line starts under or beside a tag) */
 #define WL_X0 22
-#define WL_X1 239                                     /* (b6: to the screen's last column, owner 2026-11-09) */
-#define WL_SOFT 24                                    /* b11: the waves' soft ends, px (the splash's fade) */
+#define WL_X1 239                                     /* (to the screen's last column) */
+#define WL_SOFT 24                                    /* the waves' soft ends, px (the splash's fade) */
 #define WL_HN 13                                     /* ridges kept: as many as fit 2 rows apart over the 68-row lanes (2 parts x 13 x 56 B; the build keeps 4 KB of RAM headroom) */
 #define WL_AMAX 31                                   /* the largest half height of a ridge, px (31 x 4 quarters fit a byte) */
 #define WL_STEP 2                                    /* the fewest rows between two ridges (WAVE LAB's) */
@@ -37,22 +37,19 @@
 #define WL_DEFW 200u
 #define WL_FLOOR (64 * 16)                           /* the smallest peak the gain scales to: 64 of the tap's 4,096 steps (-36 dB of the half scale), times 16 */
 #define WL_NC 24
-/* b10 wave flow (owner 2026-11-12, of the rc6 alternatives: "I like [the settling one] but with the speed of the original ... you could add VERY subtle ripples";
- * then "a bit more calmer or slower, or we could link it to the bpm"): the stack moves back one ridge every WL_FLOW_PACE 16ths of the tempo while a part sounds, every WL_FLOW_IDLE at rest, eased between them over a beat (beat_samples: the BPM, or an external
+/* wave flow: the stack moves back one ridge every WL_FLOW_PACE 16ths of the tempo while a part sounds, every WL_FLOW_IDLE at rest, eased between them over a beat (beat_samples: the BPM, or an external
  * clock's measured one; the same with the transport stopped), smoothly: each ridge drifts between its two places by the belt's phase, which runs at the tempo's
  * rate (an accumulator: a tempo change changes the speed, never jumps the place). The front takes every picture in place between the steps, so it follows the sound
  * as it dies; the last ridge fades out as it reaches the far end. An older ridge's shape settles flatter with its place (eased: the front whole, the back one at WL_FLOW_BACK %),
  * and the flat and settled lines carry very small ripples (WL_RIP_A, 150 px long, drifting a round every 16 lines) that ride back with their ridge, the two parts out of phase,
- * so at rest the lines still flow back. WL_FLOW 0: the rc2 look (a ridge every picture, no settling, no ripples) */
+ * so at rest the lines still flow back. WL_FLOW 0: a ridge every picture, no settling, no ripples */
 #ifndef WL_FLOW
 #define WL_FLOW 1
 #endif
-#define WL_FLOW_BACK 18                              /* THE FLATTENING: the oldest line's shape, % of the newest's, eased in between (owner: "flatten the further they get a bit more": 30 -> 18) */
-#define WL_FLOW_PACE 1                               /* THE SPEED while a part sounds: 16th notes a line moves back (the pace the owner approved) */
-#define WL_FLOW_IDLE 3                               /* THE SPEED at rest (no part above the wave's floor): 16ths a line (owner on rc6.3-test: the idle drift "need to slow down significantly") */
-#define WL_RIP_A 12                                  /* the ripples' height, 1/16 px (0.75 px each way: the owner tried 2.25, "the initial was better") */
-/* (b6: calm, 7032411's own drawing for sounds with no steady period, is gone: with every picture blended 1 : 1 into the front, a held pad chord measures the same without it,
- * neighbouring lines 1.66 px apart with it and 1.65 without; the blend does what it did) */
+#define WL_FLOW_BACK 18                              /* THE FLATTENING: the oldest line's shape, % of the newest's, eased in between */
+#define WL_FLOW_PACE 1                               /* THE SPEED while a part sounds: 16th notes a line moves back */
+#define WL_FLOW_IDLE 3                               /* THE SPEED at rest (no part above the wave's floor): 16ths a line */
+#define WL_RIP_A 12                                  /* the ripples' height, 1/16 px (0.75 px each way) */
 typedef struct {
     uint32_t base;                                   /* wv_cnt where the gate last opened */
     uint32_t gpk;                                    /* the slow gain's peak */
@@ -64,7 +61,7 @@ typedef struct {
     uint8_t fall;                                    /* the note's trigger takes falling crossings (held while its falling edges are the steeper; silence clears it) */
     uint8_t got, have, a, hn;                        /* a picture exists since the last reset; one with a trigger to match; the half height the ridges were made for; ridges kept */
 } wl_t;
-static wl_t wl[2] __attribute__((section(".pool")));   /* (b10 ui-c: the pool, not .bss; zeroed by wl_tick the first time) */
+static wl_t wl[2] __attribute__((section(".pool")));   /* (the pool, not .bss; zeroed by wl_tick the first time) */
 static uint8_t wl_zeroed;
 static uint32_t wl_tk = 0xFFFFFFFFu;
 #if WL_FLOW
@@ -294,7 +291,7 @@ static int wl_pic(const wl_t *s, int32_t n, int32_t a, int8_t *nd, int16_t *nf, 
         for (p = 0; p < WL_NP; p++)
             v[p] = wl_pte(cq, w, p, (hi - lo) / 2) - rm;
     }
-    /* (b6, owner 2026-11-09 "do we over-smooth the curves": no smoothing over neighbours any more; each point is the mean of its share of the window (wl_pt) and the anti-aliased stroke
+    /* (no smoothing over neighbours; each point is the mean of its share of the window (wl_pt) and the anti-aliased stroke
      * draws it smooth, so a saw keeps its edge and a square its corners) */
     {   /* the ridge centred on its own range (a low note shows less than a cycle: centred on the whole read it would sit off-centre and use half the height) */
         int32_t lo = v[0], hi = v[0], c;
@@ -396,7 +393,7 @@ static void wl_fade(wl_t *s)
     }
 }
 /* a picture that could not be read (too little since a hole in the tap, or torn twice): the front again (flat if it is), so the stack still moves back a step while the part
- * sounds (b6, owner 2026-11-09: "check why the current display doesn't move when piece is playing") */
+ * sounds */
 static void wl_again(wl_t *s)
 {
     int8_t nd[WL_NP];
@@ -479,14 +476,14 @@ static uint16_t ui_part_col(uint32_t k, int hot)
 }
 static void ui_part_tag(uint32_t k, int32_t y, int hot)
 {
-    /* (b6, owner: "numbers are also thrash quality, they get out of the background color and not centered": the digit centred by its own ink in a pill of the wider digit's ink and 1 px each
+    /* (the digit centred by its own ink in a pill of the wider digit's ink and 1 px each
      * side (the same for both parts), 1 row above and below the capitals (13 rows), the pill 2 px clear of the hot bar (x 1 .. 3); the knockout the pill and 1 px round it; a dimmed tag on the same grid) */
     const uint16_t kc = ui_part_col(k, hot);
     const char *d = k ? "2" : "1";
     const aag_t *g = &AF_S.g[glyph(&AF_S, (uint8_t)d[0])], *g1 = &AF_S.g[glyph(&AF_S, '1')], *g2 = &AF_S.g[glyph(&AF_S, '2')];
-    const int32_t wm = (int32_t)(glyph_bw(g1) > glyph_bw(g2) ? glyph_bw(g1) : glyph_bw(g2));   /* (both pills as wide: the wider digit's ink; owner: a "1" in a pill of its own 4 px
-                                                                                             * of ink read as an outlined box with a purple digit, its stem splitting the fill) */
-    const int32_t px0 = 6, pw = wm + 2, ph = AF_S_CAP_H + 2;   /* (1 px round the ink: AUTO TIDE's two rows are 14 apart, a taller pill lost its foot to the next tag's knockout) */
+    const int32_t wm = (int32_t)(glyph_bw(g1) > glyph_bw(g2) ? glyph_bw(g1) : glyph_bw(g2));   /* (both pills as wide: the wider digit's ink; a "1" in a pill of its own 4 px
+                                                                                             * of ink reads as an outlined box with a coloured digit, its stem splitting the fill) */
+    const int32_t px0 = 6, pw = wm + 2, ph = AF_S_CAP_H + 2;   /* (1 px round the ink: AUTO TIDE's two rows are 14 apart, a taller pill loses its foot to the next tag's knockout) */
     cv_rect(px0 - 1, y - ph / 2 - 1, pw + 2, ph + 2, T_BG);
     if (hot)
         cv_rrect(px0, y - ph / 2, pw, ph, 2, kc, T_BG);
@@ -505,7 +502,7 @@ static int32_t wl_fit(int32_t h, int32_t *a, int32_t *st)
 /* one column x of an anti-aliased stroke: the line passes from ya to yb (1/16 px) across the column, w16 thick (1/16 px); every column gets its ink, so the stroke is one connected line
  * at any slope (a steep part fills the rows between), the edges shaded by coverage. A pixel is blended toward the stroke's colour c by pct * its coverage (1/16 .. 16/16) %: from tab
  * (tab[n]: the canvas background bg blended by n/16, made once a stroke) where it is still the background, else mixed (ux_mix: the same colour either way, three divisions less) */
-/* t[n], n 1 .. 16: colour c at str % covering n/16 of a pixel on the background, for the canvas (byte-swapped); one mix and shifts (b6 wavepace: 13 ridges' tables a lane) */
+/* t[n], n 1 .. 16: colour c at str % covering n/16 of a pixel on the background, for the canvas (byte-swapped); one mix and shifts (13 ridges' tables a lane) */
 static uint16_t wl_bwn(uint16_t c) { return ux.bw ? ux_gray((uint32_t)c >> 11) : c; }   /* (MONO: a blend snapped to exact gray: the channels rounded apart drift
                                                                                         * off neutral where the flow's settling, ripples and fading line blend over each other) */
 static void wl_tab(uint16_t *t, uint16_t c, int32_t str)
@@ -540,18 +537,17 @@ static int32_t wl_atx(const wl_t *s, uint32_t r, int32_t x16, int32_t xl16, int3
     return (a * (256 - f) + b * f) >> 6;
 }
 /* part k's picture in rows y0 .. y1 - 1 (WAVE LAB's WAVE STACK): the ridges, the oldest first and the newest (the front, at the foot) last, each higher than the one after it and as
- * tall as the front; every ridge is ONE stroke across its width, nothing cut (owner 2026-11-09: "the lines are falling apart"). Colour: the part's, along its A..B gradient at the fader
- * (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front an anti-aliased stroke about 2 px thick, the others anti-aliased 1-px strokes (b6: plain
- * 1-px lines for the cost, "the new UI is definitely laggy"; then sub-pixel again, cheaply, owner: "somehow the smoothness is off": a plain line moves in 1-px jumps). The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape
+ * tall as the front; every ridge is ONE stroke across its width, nothing cut. Colour: the part's, along its A..B gradient at the fader
+ * (mv_col), toward the background from the front to the back (WAVE LAB's fade); the front an anti-aliased stroke about 2 px thick, the others anti-aliased 1-px strokes (sub-pixel: a plain line moves in 1-px jumps). The part the controls act on (ui_part_hot) in full colour with a bar at the half's edge, the other dimmed. A tail fades its shape
  * (wl_fade); a ridge that has faded flat and a lane not filled yet are drawn as straight lines in their place with the same colours, so every lane is always there.
- * Depth (b6, owner 2026-11-09: "something is missing"): the stack recedes like a landscape. Each older ridge is narrower, centred (the oldest 4/5 of the front's width), and the gaps
+ * Depth: the stack recedes like a landscape. Each older ridge is narrower, centred (the oldest 4/5 of the front's width), and the gaps
  * between ridges close toward the back (gap i from the front: 2 (N - 1) - i, the back one about half the front one); each ridge hides what lies behind it (WAVE LAB's): a column's
  * ridges are drawn from the front back and an older one only above the top of the newer ones there, so nothing behind a ridge shows under it. At rest (nothing yet, or silence) the
- * stack is the playing one with every line flat, the same middles and widths (b6, owner: "there is a fuckup with the default screen": the rest screen had its own even spread, the
- * front apart). The gaps never widen further back and are at least WL_STEP (owner: "a bigger gap after the 3rd line": each line's own rounding to whole rows made 3 2 3 2 ..);
+ * stack is the playing one with every line flat, the same middles and widths. The gaps never widen further back and are at least WL_STEP
+ * (computed in 1/16 px: rounding each line to whole rows would make 3 2 3 2 ..);
  * in 1/16 px, so 13 lines in the 25 rows of spread a 68-row lane leaves are about 2 1/16 px apart each.
- * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer one: where it would cross, the part behind is not drawn (b10, hidden lines: it used to ride on the newer one,
- * and a pile of 1-px lines fused into solid bars on steep slopes); elsewhere its shape is its own. A flat one is drawn flat.
+ * No older ridge is laid flat for being unlike the front or crossing it; a shaped ridge is never drawn under a newer one: where it would cross, the part behind is not drawn (hidden lines: riding on the newer one
+ * would fuse a pile of 1-px lines into solid bars on steep slopes); elsewhere its shape is its own. A flat one is drawn flat.
  * Column by column: every ridge's height there in one pass from the front back (each one's bound is the newer ones'), and drawn in that order under the horizon they leave */
 static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
 {
@@ -585,15 +581,15 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
         left -= sp * (2 * (nf - 1) - r) / gs;        /* (the sixteenths the gaps leave over: one more each to the front ones) */
     for (r = 0; r < nf; r++) {
         const int32_t w = nf > 1 ? hw16 * (5 * (nf - 1) - r) / (5 * (nf - 1)) : hw16;   /* (the half width: the front's, to 4/5 at the back) */
-        yb[r] = mid;                                 /* (ridge r's middle, 1/16 px: the front's swing room at the foot, the oldest's at the top; the gaps never wider further back. b6
-                                                      * wavepace, owner: "somehow the smoothness is off": in 1/16 px again, as the lines are drawn sub-pixel) */
+        yb[r] = mid;                                 /* (ridge r's middle, 1/16 px: the front's swing room at the foot, the oldest's at the top; the gaps never wider further back;
+                                                      * in 1/16 px, as the lines are drawn sub-pixel) */
         if (r + 1 < nf)
             mid -= m0 + sp * (2 * (nf - 1) - r) / gs + (r < left);
         xl[r] = cx16 - w;
         xr[r] = cx16 + w;
         mul[r] = (int32_t)(((WL_NP - 1u) << 16) / (uint32_t)(2 * w > 0 ? 2 * w : 1));
         shp |= (uint32_t)(r < nr && !((s->flat >> r) & 1u)) << r;
-        col[r] = mv_col(k, mv_lean(k, pct, nf > 1 ? r * 256 / (nf - 1) : 0), r * 90 / nf);   /* (WAVE LAB's fade toward the back; b11: leaning to the morph's target) */
+        col[r] = mv_col(k, mv_lean(k, pct, nf > 1 ? r * 256 / (nf - 1) : 0), r * 90 / nf);   /* (WAVE LAB's fade toward the back; leaning to the morph's target) */
         wl_tab(ft[r], col[r], r ? str : fstr);
 #if WL_FLOW
         rp[r] = (wl_pn[k] - (uint32_t)r) * 256u;      /* (1/64 of a round from one ridge to the next) */
@@ -656,8 +652,8 @@ static void wl_stack(uint32_t k, int32_t y0, int32_t y1)
                     const int32_t a0 = (ya + y[0]) / 2, a1 = (y[0] + yn) / 2;
                     wl_col(c, a0, a1, 28, col[0], fstr, y0 + 1, y1 - 1, ft[0], bg);
                     hz = ((a0 < a1 ? a0 : a1) - 14) >> 4;
-                } else {                             /* (an older ridge: a 1-px stroke from its height in the last column, anti-aliased as the front (b6 wavepace: the plain whole-row line
-                                                      * moved in 1-px jumps), the rows above the horizon only) */
+                } else {                             /* (an older ridge: a 1-px stroke from its height in the last column, anti-aliased as the front (a plain whole-row line
+                                                      * moves in 1-px jumps), the rows above the horizon only) */
                     const int32_t t16 = (ya < y[r] ? ya : y[r]) - 8, b16 = (ya < y[r] ? y[r] : ya) + 8;   /* (the stroke's top and bottom, 1/16 px) */
                     int32_t lo = t16 >> 4, hi = (b16 - 1) >> 4;
                     hi = hi < hz ? hi : hz - 1;      /* (above the horizon only: those pixels are still the background, so a coverage's colour is written as it is) */
@@ -737,7 +733,7 @@ static void wl_card(int32_t y0, int32_t y1)
     wl_stack(0, y0, ym);
     wl_stack(1, ym, y1);
 }
-#if WL_ROWS_DIFF   /* (ON in device builds since the rc3.1 package, +188 B: build.py, DUELL_WAVE_ROWS=0 turns it off; B14 emulator: 11 to 19 ms of the link a picture instead of 26) */
+#if WL_ROWS_DIFF   /* (ON in device builds, +188 B: build.py, DUELL_WAVE_ROWS=0 turns it off; 11 to 19 ms of the link a picture instead of 26) */
 /* Only the rows that changed go to the panel (ROADMAP Later 21: the SPI link costs ~44 ms for a whole picture, 32,640 px): a 32-bit hash of every screen row of what the panel
  * holds, kept in the canvas's unused tail (a half is 68 rows, the canvas holds 124: from row 72 on, a word a screen row; anything else drawn there only costs a row sent, never a
  * wrong picture), the changed rows blitted in runs. Every row after a page change or any redraw of the screen (ui.force: the area may hold anything).
@@ -772,7 +768,7 @@ static void wl_rows(uint32_t y)
     WL_TEST_HALF(y, n, 1);
 }
 #endif
-/* TEMPLATE 9: the picture in the big area, screen rows ay .. ay + ah - 1, all of it (b6: the hint went to the slim row under it). Taller than one canvas (gfx.c CV_MAX, 124 rows):
+/* TEMPLATE 9: the picture in the big area, screen rows ay .. ay + ah - 1, all of it (the hint is in the slim row under it). Taller than one canvas (gfx.c CV_MAX, 124 rows):
  * each part's half on a canvas of its own, blitted at its first row */
 static void wl_area(int32_t ay, int32_t ah)
 {

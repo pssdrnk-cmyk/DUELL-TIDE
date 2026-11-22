@@ -1,30 +1,29 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* Projects: the music as one record. DUELL: the four PROJECT slots are gone; SAVE > MULTI's sixteen multis (multi.c, its own
- * compact record, two per storage object) took their flash. The project format below is kept for the autosave (OBJ_AUTOSAVE)
+/* Projects: the music as one record. SAVE > MULTI's sixteen multis (multi.c, its own
+ * compact record, two per storage object). The project format below is used for the autosave (OBJ_AUTOSAVE)
  * and the editor's backup / restore of the music (editor_backup.c id 0); project_capture and project_restore_runtime
  * are shared with the multis.
  *
- * Format 11 ("FUNB", FUN11), revision 6 (memory trim 1's two parts + cloud job A's extension slots and hand-set B lists): 3840 bytes (a whole storage object, storage.c ST_PAYLOAD_MAX), little endian, parts A and B
- * only (NPART = 2: the hidden parts 3 and 4 and the song chain block of the older revisions are gone). From byte 0: the magic, the size, the 27 globals (int16), the selected part (62), NPART (63),
- * PROJ_PHYS (64), BASS MONO (65: 0 OFF, 1..11 the corner; 0.2.19, was reserved), P_COUNT (66), the revision PROJ_REV (67); from byte 68 per part its P_COUNT values (+64, a byte
+ * Format 11 ("FUNB", FUN11), PROJ_REV 8 (two parts, extension slots, hand-set B lists): 3840 bytes (a whole storage object, storage.c ST_PAYLOAD_MAX), little endian, parts A and B
+ * only (NPART = 2: no hidden parts 3 and 4, no song chain block). From byte 0: the magic, the size, the 27 globals (int16), the selected part (62), NPART (63),
+ * PROJ_PHYS (64), BASS MONO (65: 0 OFF, 1..11 the corner), P_COUNT (66), the revision PROJ_REV (67); from byte 68 per part its P_COUNT values (+64, a byte
  * each), then nx and nx extension slots (+64) and ne and ne hand-set B edits (wide id, value + 64; revision 6), engine, preset and 64 steps of 9 bytes (notes with the NUDGE in bit 7, time / count / flags, velocity with RATCH bit 0, two
  * reserved bytes written 0 and ignored, chance with RATCH bit 1); then the motion (388 bytes: 128 records), the parts' FM6 patches
  * (PROJ_FM6_OFF, NPART x 128 just before the name), the 12-byte name and the FNV-1a hash. 68 + 2 x (127 + 2 + 576) + 388 = 1866 of the 3568
  * bytes before the patches (the _Static_assert at proj_pack keeps it inside).
  *
- * DUELL 0.2.14: a project loads only if it is exactly this format: the magic, the hash, P_COUNT (127) at byte 66 and PROJ_REV 3 at
- * byte 67 (CRUSH's BITS in INS A on the curve of ins_bits.h; the delay MODE of 0.2.16; 0.2.19's MIXER LEVEL and PATCH TRIM) must all match, NPART and PROJ_PHYS at bytes 63 / 64. Anything else, in
- * particular a project of firmware before 0.2.14 (FUN1 .. FUN10 of Felucca, a FUN11 of DUELL up to 0.2.13: revision 0, fewer
+ * A project loads only if it is exactly this format: the magic, the hash, P_COUNT (127) at byte 66 and the PROJ_REV at
+ * byte 67 (CRUSH's BITS in INS A on the curve of ins_bits.h; the delay MODE; MIXER LEVEL and PATCH TRIM) must all match, NPART and PROJ_PHYS at bytes 63 / 64. Anything else, in
+ * particular a project of an older format (FUN1 .. FUN10 of Felucca, a FUN11 of DUELL before 0.2.14: revision 0, fewer
  * parameters), is no project: proj_import returns 0, the autosave is ignored at power-on, a backup restore is refused (rc 2) and
- * nothing is changed. Their readers (the formats' conversions, the mapping by parameter count, the CRUSH BITS and multimode filter
- * migrations) are gone.
+ * nothing is changed. There are no readers for them.
  *
  * Built on the Mac too (tests/project_test.c, -DPROJ_HOST): the part above the #ifndef
  * PROJ_HOST needs core.h, params.c (TP) and engines.c. */
 #define PROJ_MAGIC 0x46554E42u                 /* "FUNB" (FUN11, DUELL): parts A and B only */
 #define PROJ_PHYS 2u                           /* project_t.phys, byte 64: always written 2, a project that says otherwise is not one */
-#define PROJ_REV 8u                            /* byte 67: 8 = ROLL CHAINED storage (2026-10-29): per part, after the extension slots, End B as values (a length byte, 0 = none, then morph.c's MBV block: the hand-set marks in it), then engine, preset and the steps; the edit list and the 7-byte seed block are gone. 7 (editable B: the edit list and the 7-byte block) and before are refused */
+#define PROJ_REV 8u                            /* byte 67: 8 = ROLL CHAINED storage: per part, after the extension slots, End B as values (a length byte, 0 = none, then morph.c's MBV block: the hand-set marks in it), then engine, preset and the steps. Revisions 7 (with the edit list and the 7-byte block) and before are refused */
 #define PROJ_MB_N 7u                           /* End B's seed block: morph.c MB_N (a MULTI keeps it: multi.c; the project file does not since PROJ_REV 8) */
 #define PROJ_BV_MAX (195u + TIDE_MBV_FMT_N)    /* End B as values: morph.c MBV_MAX (the _Static_assert at project_capture) */   /* TIDE hook (H9) */
 #define PROJ_NAME_LEN 12u                      /* the name: the reserved tail's end */
@@ -40,7 +39,7 @@ typedef struct {
     uint8_t sel;                               /* the selected track */
     uint8_t parts;                             /* NPART (always; a stored project that says another number is refused) */
     uint8_t phys;                              /* PROJ_PHYS (always) */
-    uint8_t bm;                                /* byte 65 (was reserved, written 0): BASS MONO, 0 OFF .. BM_N (0.2.19; core.h G_BM); a larger byte reads OFF */
+    uint8_t bm;                                /* byte 65: BASS MONO, 0 OFF .. BM_N (core.h G_BM); a larger byte reads OFF */
     proj_trk_t t[NTRK];
     uint8_t xe_n[NSHOWN];                      /* each shown part's hand-set B edits (up_xb.h): their number .. */
     xb_edit_t xe[NSHOWN][XB_MAX];              /* .. and the edits (project_capture fills them from the morph; project_restore_runtime hands them back) */
@@ -76,8 +75,8 @@ static uint32_t proj_sum(const project_t *p) { return proj_hash(p, sizeof *p - 4
 static int proj_ok(const project_t *q) { return q->magic == PROJ_MAGIC && q->size == sizeof *q &&
     q->sum == proj_sum(q) && motion_valid(&q->motion); }
 
-/* every track's engine a number this firmware has (a retired one is: it plays silent): a project of another number
- * is not one (it never was: no engine number past the last was ever stored) */
+/* every track's engine a number this firmware has (a removed one is: it plays silent): a project of another number
+ * is not one (no engine number past the last is stored) */
 static int proj_engines_ok(const project_t *q)
 {
     uint32_t t;
@@ -153,7 +152,7 @@ static int proj_pack(project_store_t *out, const project_t *q)
                                                          * velocity 0..127, accents */
             b[pos++] = (uint8_t)(s->n | s->time << 3 | (s->flags & 3u) << 5);   /* only on hits */
             b[pos++] = (uint8_t)((s->vel > 127u ? 127u : s->vel) | (r & 1u) << 7);
-            b[pos++] = 0; b[pos++] = 0;                 /* (the drum lane hits and accents: gone in 0.2.14, the two bytes stay) */
+            b[pos++] = 0; b[pos++] = 0;                 /* (two reserved bytes, written 0) */
             b[pos++] = (uint8_t)(s->probability | (r >> 1) << 7);
         }
     }
@@ -213,7 +212,7 @@ static int proj_unpack(project_t *q, const uint8_t *b, uint32_t st)
     }
     memcpy(&q->motion, b + pos, sizeof q->motion);
     if (q->motion.count <= MOTION_MAX)
-        motion_sanitize(&q->motion);                /* (DUELL 1.1: an older firmware's events on targets that are no longer recorded: dropped, the project stays) */
+        motion_sanitize(&q->motion);                /* (events on targets that are not recorded: dropped, the project stays) */
     if (!motion_valid(&q->motion) || (q->motion.on >> PROJ_NTRK)) return 0;
     for (i = 0; i < q->motion.count; i++)
         if (MOTION_TRK(&q->motion.event[i]) >= PROJ_NTRK) return 0;
@@ -230,7 +229,7 @@ static int proj_unpack(project_t *q, const uint8_t *b, uint32_t st)
 
 #ifndef PROJ_HOST
 static project_t proj_scratch               /* decoded main-loop work, never audio ISR */
-    SCRATCH_BSS;                             /* (ordinary RAM since memory trim 1, item 5) */
+    SCRATCH_BSS;                             /* (ordinary RAM) */
 static char proj_name[PROJ_NAME_LEN + 1u]    /* the name of the music as it is now (loaded, saved, the editor's */
     __attribute__((section(".pool")));       /* runtime restore); "" = none. A save takes it unless one is given */
 #define PROJ_NO_SLOT 0xFFu
@@ -269,7 +268,7 @@ static void proj_bound(project_t *q)
         }
         for (i = 0; i < P_COUNT; i++) {
             const param_desc_t *d = param_desc_of(q->t[t].engine % NENGINES, i);
-            q->t[t].p[i] = (int16_t)param_fit(d, q->t[t].p[i]);   /* (a retired KIT: the kit it plays) */
+            q->t[t].p[i] = (int16_t)param_fit(d, q->t[t].p[i]);   /* (a removed KIT: the kit it plays) */
         }
         for (i = 0; i < NX; i++)                        /* (the extension slots: the byte range only, until the descriptors of job B fit them) */
             q->t[t].x[i] = (int16_t)(q->t[t].x[i] < -64 ? -64 : q->t[t].x[i] > 127 ? 127 : q->t[t].x[i]);
@@ -290,7 +289,7 @@ static void project_capture(project_t *p)
     p->sel = song.sel;
     p->parts = NPART;
     p->phys = PROJ_PHYS;
-    p->bm = 0;                                          /* (byte 65: BASS MONO up to 0.2.23; a unit setting since 0.2.24 (ui.c ms_sync): written 0, not read) */
+    p->bm = 0;                                          /* (byte 65: BASS MONO is a unit setting (ui.c ms_sync): written 0, not read) */
     for (i = 0; i < NTRK; i++) {
         for (uint32_t j = 0; j < P_COUNT; j++) p->t[i].p[j] = motion_base_value(&trk[i], j);
         for (uint32_t j = 0; j < NX; j++) p->t[i].x[j] = (int16_t)(XV(&trk[i], j) < -64 ? -64 : XV(&trk[i], j) > 127 ? 127 : XV(&trk[i], j));   /* (the hand-set B edits, p->xe: none live yet, job G) */
@@ -326,12 +325,12 @@ static int project_restore_runtime(const project_t *input)
     uint8_t fv[NTRK][FP_SIZE + 1u];
     int32_t fslot[NTRK];
     if (!proj_ok(input) || !proj_engines_ok(input)) return 1;
-    bd_dl_ok = 0;                                       /* b11: the deadline's items from the audio interrupt again until budget_poll's next publish (budget.h) */
+    bd_dl_ok = 0;                                       /* the deadline's items from the audio interrupt again until budget_poll's next publish (budget.h) */
     if (p != input) memcpy(p, input, sizeof *p);
     if (!proj_keep_play)
         transport_req = 2;
     panic_req = (1u << NTRK) - 1u;                      /* (every note off) */
-    panic_keep = 0;                                     /* (a project or multi load follows the old rules: nothing of the arp is kept) */
+    panic_keep = 0;                                     /* (a project or multi load keeps nothing of the arp) */
     /* the slow part first, interrupts on (a window of ~74 k instructions here once, a quarter of the audio interrupt's time: a load
      * with the audio running missed blocks): every value fitted to its range, each FM6 patch unpacked and the SLOT it shows found
      * (fm6_adopt_slot compares with up to 32 factory patches). The window then only copies */
@@ -357,9 +356,9 @@ static int project_restore_runtime(const project_t *input)
     for (i = 0; i < G_COUNT; i++)
         if (i != G_SLOT && i != G_LOAD && i != G_SAVE)
             song.g[i] = (int16_t)(i == G_TUNE && (p->g[i] < TUNE_MIN || p->g[i] > TUNE_MAX) ? TUNE_DEF :
-                                  i == G_SHPITCH && p->g[i] != SHP_DOWN ? SHP_UP :   /* (0.2.25: SHIM's PITCH BOTH is gone: a stored BOTH, or any value but DOWN, reads UP) */   /* (0.2.22: MASTER TUNE is A4 in 0.1 Hz: an older project's cents, or any value out of range, read 440.0, not the nearest end) */
+                                  i == G_SHPITCH && p->g[i] != SHP_DOWN ? SHP_UP :   /* (SHIM's PITCH has no BOTH: a stored BOTH, or any value but DOWN, reads UP) */   /* (MASTER TUNE is A4 in 0.1 Hz: a project's cents, or any value out of range, read 440.0, not the nearest end) */
                                   clamp(p->g[i], GP[i].min, GP[i].max));
-    /* (0.2.24: BASS MONO is a device setting, ui.c ms_sync: a project's byte 65 is written but not read) */
+    /* (BASS MONO is a device setting, ui.c ms_sync: a project's byte 65 is written but not read) */
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         const proj_trk_t *s = &p->t[k];
@@ -372,12 +371,12 @@ static int project_restore_runtime(const project_t *input)
         t->preset = (uint8_t)(ds_count(e) ? s->preset % ds_count(e) : 0u);   /* (sounds.c) */
         memcpy(t->step, s->step, sizeof t->step);
         fm6_set_patch(k, fv[k]);                        /* the project's own FM6 patch, never reloaded from SLOT: F n if it is that */
-        fm6_env_look(k, FM6_LOOK_KEEP);                 /* (DUELL 1.1: its own AMP ENV knobs stay; the numbers its patch gives are noted) */
+        fm6_env_look(k, FM6_LOOK_KEEP);                 /* (its own AMP ENV knobs stay; the numbers its patch gives are noted) */
         fm6_own_ok &= (uint8_t)~(1u << k);              /* factory patch, else OWN (fm6_adopt, done above) */
         if (e == ENGI_FM6)
             t->p[P_E7] = (int16_t)fslot[k];
         fm6_slot[k] = (uint8_t)fslot[k];
-        (void)mod_legacy_move(t);                       /* DUELL 1.1: the retired DEST cards' routes into free matrix slots (same sound), then the preselected pairs at amount 0 (mod.c) */
+        (void)mod_legacy_move(t);                       /* the DEST cards' routes of older projects into free matrix slots (same sound), then the preselected pairs at amount 0 (mod.c) */
         mod_preselect(t);
         mod_compact(t);
     }
@@ -386,7 +385,7 @@ static int project_restore_runtime(const project_t *input)
     proj_name_get(proj_name, (const uint8_t *)p->name);
     proj_cur = PROJ_NO_SLOT;                            /* (project_load: its slot) */
     pat_from_set(0);                                    /* (project_load: its slot; the header's letter) */
-    undo.trk = 0;                                       /* (ui.c) the undo copy belongs to the old project */
+    undo.trk = 0;                                       /* (ui.c) the undo copy belongs to the previous project */
     undo_depth++;                                       /* and these loads take none */
     for (k = 0; k < NTRK; k++)
         pat_sig[k] = ~steps_sig(&trk[k]);               /* a project's steps are the user's */
@@ -399,7 +398,7 @@ static int project_restore_runtime(const project_t *input)
     sync_reload = 1;
     ui.force = 1;
     ui_message("LOADED");
-    memset(snd_said, 0, sizeof snd_said);               /* a part on a retired engine is said again (NO ENGINE), after LOADED */
+    memset(snd_said, 0, sizeof snd_said);               /* a part on a removed engine is said again (NO ENGINE), after LOADED */
     return 0;
 }
 /* settings + learned panel table: one flash object. The flash copy wins at
@@ -430,8 +429,8 @@ static uint8_t persist_pending;                 /* 1 requested, 2 waiting after 
 static uint32_t persist_retry_ms;
 #endif
 
-/* The velocity calibration (the cloud plan's job A for job D, docs/design/VELO_STUDY.md): up to VELO_CAL_MAX bytes of the owner's key calibration in their own
- * storage object (OBJ_VELO, an A/B pair, 0xC6000 / 0xC7000, commit record last: a power cut leaves the old record). The bytes are job D's: the store keeps
+/* The velocity calibration (docs/design/VELO_STUDY.md): up to VELO_CAL_MAX bytes of the key calibration in their own
+ * storage object (OBJ_VELO, an A/B pair, 0xC6000 / 0xC7000, commit record last: a power cut leaves the old record). The bytes belong to the caller: the store keeps
  * them whole and checks only the length. Without flash (host tests, the browser build) a RAM copy stands in, gone at power-off. Main loop only, and the transport
  * must be stopped for a save (the same flash erase as every store: the caller checks transport_busy).
  *   velo_cal_load(buf, n): the record into buf (n bytes of room); its length (1..VELO_CAL_MAX), or -1 when there is none, it is damaged or longer than n.
@@ -483,7 +482,7 @@ static void persist_boot(void)                    /* before settings_init / pane
     flash_ok = FL_FAR(fl_jedec_ram)() == 0x856014u;       /* the expected 1 MiB part, else stay RAM-only */
     irq_restore(f);
     if (!flash_ok) {
-        settings_defaults(favorites.factory[15]);  /* (DUELL 0.2.14: RAM only, as a new unit: the new defaults) */
+        settings_defaults(favorites.factory[15]);  /* (RAM only, as a new unit: the defaults) */
         return;
     }
     fl_plain_window_init();                        /* flash above 0x93000 reads as plaintext through XIP (the stores' read-back) */
@@ -493,17 +492,17 @@ static void persist_boot(void)                    /* before settings_init / pane
             persist_note(&p);
         else {
             first_boot_pending = 1;                    /* no valid settings: a new unit (ui_input.c first_boot_poll) */
-            settings.magic = 0;                        /* DUELL 1.1 (item 91, owner: the theme survived the installer's ERASE DATA, 1.0 too): `settings` (the colour */
+            settings.magic = 0;                        /* ERASE DATA must reset the theme: `settings` (the colour */
             panel.magic = 0;                           /* theme) and `panel` (the button / knob map, panel.c) are .noinit RAM, and the erase's restart is a chip reset
-                                                        * (fm1_reboot) that keeps RAM, so the old ones came back and the first start saved them again. No record =
+                                                        * (fm1_reboot) that keeps RAM, so the old ones would come back and the first start would save them again. No record =
                                                         * a new unit: the first theme and the built-in map (settings_init, panel_init; a BUTTON MAP calibration redoes it) */
-            settings_defaults(favorites.factory[15]);  /* DUELL 0.2.14: KNOB ACCEL ON, CLICK REC, USB SERIAL OFF (before usb_serial_apply) */
+            settings_defaults(favorites.factory[15]);  /* KNOB ACCEL ON, CLICK REC, USB SERIAL OFF (before usb_serial_apply) */
         }
     }
     multi_boot();                                  /* DUELL: the multis' names, so SAVE > MULTI's list is right */
     up_boot();                                     /* user presets */
 #else
-    settings_defaults(favorites.factory[15]);      /* (DUELL 0.2.14: no flash, as a new unit: the new defaults) */
+    settings_defaults(favorites.factory[15]);      /* (no flash, as a new unit: the defaults) */
 #endif
 }
 
@@ -514,11 +513,11 @@ static void settings_poll(void)
 #if FELUCCA_FLASH
     persist_t p;
     if (erase_busy())
-        return;                                    /* DUELL 0.2.2: nothing is written over the erased flash */
+        return;                                    /* nothing is written over the erased flash */
     ps_poll();                                     /* DUELL: pattern slots saved / erased (patslot.c) */
-    /* DUELL 0.2.11: a flash erase stops the audio ~40 ms, so the write waits until nothing sounds (autosave_quiet: transport
+    /* a flash erase stops the audio ~40 ms, so the write waits until nothing sounds (autosave_quiet: transport
      * stopped, no key or button down, no voice, release tails included), not only for the transport: the one-time "layer seen"
-     * bit, set on the first open of a layer while a multi is played by hand, clicked and spiked the CPU bar (0.2.10) */
+     * bit, set on the first open of a layer while a multi is played by hand, would click and spike the CPU bar */
     if (!persist_pending || !flash_ok || !autosave_quiet() ||
         (persist_pending == 2u && (uint32_t)(fm1_ms - persist_retry_ms) < 1000u))
         return;
@@ -600,10 +599,10 @@ static uint32_t autosave_sig(void)
         h = as_mix(h, fm6_patch[i], sizeof fm6_patch[i]);
     }
     for (i = 0; i < G_COUNT; i++)
-        if (i != G_SLOT && i != G_LOAD && i != G_SAVE)       /* (G_SHMOD, SHIM's MOD since 0.2.19; was G_NAME) */
+        if (i != G_SLOT && i != G_LOAD && i != G_SAVE)       /* (G_SHMOD, SHIM's MOD) */
             h = as_mix(h, &song.g[i], sizeof song.g[i]);
     h = as_mix(h, &motion, sizeof motion);
-    h = as_mix(h, &(uint32_t){morph_sig()}, 4u);        /* (cloud job G: End B's roll and the values set by hand are part of the music) */
+    h = as_mix(h, &(uint32_t){morph_sig()}, 4u);        /* (End B's roll and the values set by hand are part of the music) */
     return as_mix(h, proj_name, sizeof proj_name);
 }
 
@@ -653,10 +652,10 @@ static void autosave_poll(void)
 
 /* power-on, after the defaults (main.c): the autosave becomes the music when `allowed` (no crash, hang or failed boot
  * before) and RESTORE LAST is ON; an autosave that does not load (none, torn, damaged, another format) is ignored.
- * DUELL 0.2.2: a part never starts muted (MUTE is a part's setting, kept in multis and the autosave while editing, but
+ * A part never starts muted (MUTE is a part's setting, kept in multis and the autosave while editing, but
  * power-on is audible, see boot_unmute); a restored autosave is cleared of it, a later multi LOAD keeps its stored mute.
  * The music now (restored or not) is what is saved: nothing is written until it changes. 1 = restored */
-static void boot_unmute(void)                     /* power-on is audible: no part starts muted (DUELL 0.2.2) */
+static void boot_unmute(void)                     /* power-on is audible: no part starts muted */
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++)
@@ -688,7 +687,7 @@ static int autosave_boot(int allowed)
     return rc;
 }
 
-#include "erase_data.c"                          /* DUELL 0.2.2: ERASE DATA (MENU > SYSTEM, editor cmd 80) */
+#include "erase_data.c"                          /* ERASE DATA (MENU > SYSTEM, editor cmd 80) */
 #if FELUCCA_FLASH
 _Static_assert(sizeof(project_store_t) <= ST_PAYLOAD_MAX, "project does not fit one flash sector");
 _Static_assert(sizeof(persist_t) <= ST_PAYLOAD_MAX, "settings do not fit one flash sector");

@@ -1,22 +1,22 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS patch slots (owner, 2026-10-15: 128; TIDE b12: 175, every factory sound
+/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS patch slots (175, every factory sound
  * and the USER slots, the store holds 150 records: see below).
  * Slot k holds a SAVED record if one was written (SAVE overwrites the slot it is told to), else the FACTORY sound at browse position k
  * (sounds.c DS_LIST: category, engine, name = the #NN numbers): a virtual fallback, nothing is written at first boot, a fresh or erased
  * unit shows the factory sounds in all 128 slots. RESTORE removes the record of a slot, so the factory sound comes back; the factory sound
  * a slot falls back to is the one at that position in the INSTALLED firmware (the factory set changes between versions; a saved record
  * stays in its slot number: no compatibility is promised before the alpha). The slot layer is at the end of this file (sl_*).
- * Stored COMPACTLY in sixteen storage.c objects (chunks 0..15: OBJ_PATCH0..5, A/B sector pairs 0xC8000..0xCDFFF USR3's old place, 0xDC000..0xDFFFF
- * Felucca's retired preset banks, 0x9F000 / 0xFE000 the retired FM6 bank's pair; and, DUELL 0.2.15, OBJ_PATCHX0..9 = chunks 6..15 at 0xA6000..0xB9FFF),
+ * Stored COMPACTLY in sixteen storage.c objects (chunks 0..15: OBJ_PATCH0..5, A/B sector pairs 0xC8000..0xCDFFF, 0xDC000..0xDFFFF,
+ * 0x9F000 / 0xFE000, and OBJ_PATCHX0..9 = chunks 6..15 at 0xA6000..0xB9FFF),
  * one CHUNK each (at most PT_CAP bytes: the payload ends at sector offset 0xF00, where the update loader scans). NOT mirrored in RAM
- * (DUELL 0.2.15; the six mirrored chunks took 23 KB of the pool): RAM holds only a DIRECTORY (pt_dir: per slot its chunk, offset, length,
+ * (mirroring six chunks would take 23 KB of the pool): RAM holds only a DIRECTORY (pt_dir: per slot its chunk, offset, length,
  * revision and what the lists need: name, engine, category, shadow marker), built at boot from the chunks; a record is read from flash
  * when it is loaded or edited (pt_raw: a ring of four), a write loads the one chunk it changes into a work buffer (pt_work).
  * The limit is HONEST and it is the slot count: PT_WORST is the largest record there can be (an FM6 sound with its patch, a SEQ-mode arp
  * with a full 16-step pattern, End B, a shadow marker, every parameter off its default), PT_K of them fit a chunk with its header,
  * PT_MAX = PT_NCH x PT_K records of any kind always fit: 22 x 6 = 132 >= 128 = UP_SLOTS, so without TIDE every one of the 128 slots can always be written,
- * whatever the other 127 hold. With TIDE (chunk 21 stays out of the store: earlier TIDE builds keep their settings there, tide_store.c) it was 21 x 6 = 126; b12 adds
+ * whatever the other 127 hold. With TIDE it is 21 x 6 = 126 (chunk 21 stays out of the store: earlier TIDE builds keep their settings there, tide_store.c); and
  * chunks 21..24 (objects 55..58 at 0xF4000..0xFBFFF, pt_obj) for the slots past the bank's 128: 24 records there, 126 for slots 1..128 (two rooms, never mixed:
  * pt_put_enc). A NEW record its room cannot take finds no chunk under PT_K records, PT_FULL,
  * nothing written (the screen says STORE FULL, tide.h TIDE_SAVE_ERROR); a slot that already holds a record can always be rewritten. A chunk takes a NEW
@@ -26,7 +26,7 @@
  *   0 u16 length of the whole record     2 u8 slot (0..127)       3 u8 revision (+1 at every rewrite; a record that moved to
  *   4 u8 flags PTF_*                      5 u8 engine              another chunk exists twice for a moment: the newer wins)
  *   6 u8 category (raw, 0 none)           7 12 bytes name, 0-padded                19 u8 nvalues (the bits set below)
- *   20 PT_VER 4 (ROLL CHAINED storage, 2026-10-29): the values, SPARSE: a PT_VB (20) byte bitmap, a bit per wide id (0..126 the parameter ids, 127 never,
+ *   20 PT_VER 4: the values, SPARSE: a PT_VB (20) byte bitmap, a bit per wide id (0..126 the parameter ids, 127 never,
  *      128..155 the extension slots) that differs from its stored default (up_def: the engine's INIT, params.c, as the factory sounds' format, sounds.c;
  *      a slot's: XTP), then those values in wide id order, each in the bits of its range (param_desc_of: value - min, LSB first; morph.c wv_bits,
  *      bs_put), padded to the byte. Lossless: what a load fits a value to (param_fit) is what is stored. The ranges are part of the format: from the
@@ -40,12 +40,12 @@
  *
  * Felucca's own banks (32 slots, 192-byte records, 0xDC000..) are not read: DUELL is not released on a device that has them.
  *
- * DUELL 0.2.14: only a record of today's form is read. A stored record carries PTF_CB (below); one without it was written by
- * firmware before 0.2.14 (its CRUSH BITS on the old curve) and is no record: pt_rec_ok refuses it, pt_scan_img leaves it out of the directory
+ * Only a record of today's form is read. A stored record carries PTF_CB (below); one without it (an older firmware's, its CRUSH BITS on an older curve)
+ * is no record: pt_rec_ok refuses it, pt_scan_img leaves it out of the directory
  * (the flash chunk follows at its next write), the slot reads as unused, and a backup PUT of a chunk that holds one is refused (rc 2).
  * The decoded record (up_rec_t) is always UP_VER with P_COUNT values, a byte each: the records of Felucca's versions 1..5 (16-bit values,
- * its layout of ids 8, 61..80 and 83..90), the drum-grid versions and the mapping of a record by parameter count are gone, and so are
- * the conversions of PHYS MODEL 2 (DUST) and of the filter's CUT of before 0.2.9. A record of PHYS MODEL 4 or SAMPLE SET 4, or of the
+ * its layout of ids 8, 61..80 and 83..90), the drum-grid versions and the mapping of a record by parameter count are not read, and there are no
+ * conversions of PHYS MODEL 2 (DUST) or of the filter's CUT from older records. A record of PHYS MODEL 4 or SAMPLE SET 4, or of the
  * retired engines (DIGITAL, SAMPLE, GRAIN, DRUM, SLICE: 1, 4, 8, 10, 13), stays as stored and loads onto the silent placeholder
  * (engines.c ENG_RETIRED).
  * A note pattern keeps each step's RATCH in its flags (core.h SF_RATCH, 8 | 16; 0 = x1). A pattern keeps no step's NUDGE (core.h
@@ -78,8 +78,8 @@ _Static_assert(P_COUNT <= UP_PMAX * 2u && P_COUNT < 128, "user preset record: P_
 #define UP_MB_N 7u
 #define UP_MB_AT (UP_CAT_AT - UP_MB_N)
 _Static_assert(P_COUNT <= UP_MB_AT, "user preset record: P_COUNT leaves the morph block its room");
-/* The two bytes before the morph block, packed[134..135], were the SHADOW marker of the 2026-10-11 save flow (a copy of a factory sound
- * named its engine + 1 and preset + 1). 0.2.17 has one list of slots and no shadows; since PT_VER 3 the record flag of the marker (16) is PTF_XB, the
+/* The two bytes before the morph block, packed[134..135], are unused (there is one list of slots, no shadows);
+ * since PT_VER 3 the record flag of the marker (16) is PTF_XB, the
  * EXTENSION BLOCK. The bytes stay reserved in up_rec_t */
 #define UP_SH_AT (UP_MB_AT - 2u)
 _Static_assert(P_COUNT <= UP_SH_AT, "user preset record: P_COUNT leaves the shadow marker its room");
@@ -105,16 +105,16 @@ static void up_set_value(up_rec_t *r, uint32_t k, int16_t v) { r->packed[k] = (u
 static void up_pat_norm(uint8_t *note, uint8_t *flags);
 
 /* the sparse store's default of parameter id for engine eng: params.c's, except the two LFO TRIGs, the DUCK's CURVE and the multimode
- * filter's CUT and SLOPE, KEY TRK (0.2.22: params.c made 32 the default, the store keeps 0) and the old LEVEL (id 0, 0.2.19). The record format leaves out what equals this default, so it is part of the stored format and must not change
- * with params.c's: NOTE (0) for the TRIGs, LIN (0) for the CURVE (params.c made FREE and EXP the defaults), 0 for CUT and SLOPE (params.c: the
+ * filter's CUT and SLOPE, KEY TRK (params.c's default is 32, the store keeps 0) and LEVEL (id 0: 104). The record format leaves out what equals this default, so it is part of the stored format and must not change
+ * with params.c's: NOTE (0) for the TRIGs, LIN (0) for the CURVE (params.c's defaults are FREE and EXP), 0 for CUT and SLOPE (params.c: the
  * open end and 12 dB); a FREE one, an EXP one, an open CUT and a 12 dB SLOPE store their pair (2 bytes each; PT_WORST counts every
  * parameter off its default anyway) */
 static int32_t up_def(uint32_t eng, uint32_t id)
 {
-    if (id == P_LEVEL)                           /* 0.2.19: the stored default of id 0 is the old LEVEL's 104 (params.c: the mixer level is 112 now): a record before PTF_TR left it out at 104 and
-                                                  * means a trim of 104 by it; a record now never writes the mixer level (pt_encode), so it reads as this */
+    if (id == P_LEVEL)                           /* the stored default of id 0 is 104 (params.c: the mixer level is 112): a record without PTF_TR left it out at 104 and
+                                                  * means a trim of 104 by it; a record never writes the mixer level (pt_encode), so it reads as this */
         return 104;
-    return id == P_LTRIG || id == P_L2TRIG || id == P_DKCRV || id == P_FREEA || id == P_FREED || id == P_KTRK || id == P_DKSRC ? 0 : param_desc_of(eng, id)->def;   /* (0.2.24: DUCK SRC's stored default stays PUMP (0): a record that left it out still reads PUMP; a new sound's default is OFF, params.c) */
+    return id == P_LTRIG || id == P_L2TRIG || id == P_DKCRV || id == P_FREEA || id == P_FREED || id == P_KTRK || id == P_DKSRC ? 0 : param_desc_of(eng, id)->def;   /* (DUCK SRC's stored default is PUMP (0): a record that left it out reads PUMP; a new sound's default is OFF, params.c) */
 }
 
 static int up_name_ok(const uint8_t *s, uint32_t n)   /* 1..12 printable ASCII */
@@ -159,8 +159,8 @@ static int up_pat_empty(const up_rec_t *r)
 }
 
 /* UP_PUT arguments: slot, engine, name, P_COUNT x v14, 16 x (note, flags) [, kind, 16 x hi [, category]] -> *r
- * (values not yet clamped); 0 ok, 1 bad arguments. *slot gets the slot byte when there is one. The kind is 0 (1 was a drum grid:
- * gone in 0.2.14, refused as bad arguments), then 16 bytes, ignored.
+ * (values not yet clamped); 0 ok, 1 bad arguments. *slot gets the slot byte when there is one. The kind is 0 (1, a drum grid,
+ * is refused as bad arguments), then 16 bytes, ignored.
  * category (1.2, category.c CAT_*, 0 none): after the kind's 16 bytes */
 static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_t *slot)
 {
@@ -216,28 +216,28 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PT_HDR 4u
 #define PT_MAGIC 0x5450u                         /* "PT" */
 #define PT_FIX 20u                               /* a record's fixed part */
-#define PT_VER 4u                                /* the chunk image's version (byte 2 after "PT"): 4 = ROLL CHAINED storage (2026-10-29: the values by wide id in the bits of their ranges, End B as values (morph.c MBV), the AK block's steps in 7 bytes; 6 records a chunk, 22 chunks); 3 and before are refused (no backward compatibility before the alpha) */
+#define PT_VER 4u                                /* the chunk image's version (byte 2 after "PT"): 4 = ROLL CHAINED storage (the values by wide id in the bits of their ranges, End B as values (morph.c MBV), the AK block's steps in 7 bytes; 6 records a chunk, 22 chunks); 3 and before are refused (no backward compatibility before the alpha) */
 #define PT_NONE 0xFFFFu
 #define PT_NOCH 0xFFu                            /* a directory entry with no record */
 #define PT_FULL 4                                /* up_put: no chunk takes a new record (the 127th of slots 1..128, the 25th of 129..175: STORE FULL) */
 #define PT_VB 20u                                /* PT_VER 4: the values' bitmap, a bit per wide id (0..126 the ids, 127 never, 128..155 the extension slots) */
 #define PTF_PAT 1u
-#define PTF_TR 2u                                /* 0.2.19: the TRIM form: the loudness is the pair of P_TRIM (the PATCH TRIM) and the record carries no MIXER LEVEL (P_LEVEL is never written). A record
-                                                  * WITHOUT it (0.2.14 .. 0.2.18) stored the loudness as P_LEVEL: up_rec reads that as the trim. Always set in a record written now */
+#define PTF_TR 2u                                /* the TRIM form: the loudness is the pair of P_TRIM (the PATCH TRIM) and the record carries no MIXER LEVEL (P_LEVEL is never written). A record
+                                                  * WITHOUT it stores the loudness as P_LEVEL: up_rec reads that as the trim. Always set in a record written */
 #define PTF_FM6 4u
-#define PTF_MB 8u                                /* PT_VER 4: End B as values, morph.c's MBV block (was the 7-byte seed block) */
+#define PTF_MB 8u                                /* PT_VER 4: End B as values, morph.c's MBV block */
 #define PTF_AK 32u                               /* DUELL: the ARP / KEYS / SEQUENCER block (ak_* below), the record's last part */
-#define PTF_CB 128u                              /* 0.2.14: always set in a record written now (its CRUSH BITS, INS A, is the curve of ins_bits.h); a record without it is
-                                                  * of firmware before 0.2.14 and no record (pt_rec_ok). Bit 2 (2) was the drum grid, never set: 0.2.19 uses it as PTF_TR. Bits 16 (the extension
-                                                  * block) and 64 (the values' bitmap form) were PT_VER 3's: not in a record now */
-#define PTF_W4 64u                               /* b9: ANALOG's WAVE (0..8 since b8) takes 4 bits in this record's values (the bitmap form of PT_VER 4); a record WITHOUT it was saved before b8 (WAVE 0..6, 3 bits: morph.c wv_bitsl).
+#define PTF_CB 128u                              /* always set in a record written (its CRUSH BITS, INS A, is the curve of ins_bits.h); a record without it is
+                                                  * of an older firmware and no record (pt_rec_ok). Bit 2 (2) is PTF_TR. Bits 16 (the extension
+                                                  * block) and 64 (the values' bitmap form) were PT_VER 3's: not in a record */
+#define PTF_W4 64u                               /* ANALOG's WAVE (0..8) takes 4 bits in this record's values (the bitmap form of PT_VER 4); a record WITHOUT it has WAVE 0..6 in 3 bits (morph.c wv_bitsl).
                                                   * pt_encode always sets it. The record's End B block says it in its own flag (MBV_W4). PT_VER stays 4: no record is moved or rewritten by this */
 #define PTF_ALL (PTF_PAT | PTF_TR | PTF_FM6 | PTF_MB | PTF_AK | PTF_CB | PTF_W4)
 #define UPF_PK 112u                              /* an FM6 patch, FM6_PACKED 7-bit bytes packed 8 to 7 (112 bytes) */
 #define AK_MAX 190u                              /* the AK block's most bytes with its length (ak_build) */
 #define AK_NS 16u
 #define PS_STEP_N 9u                             /* patslot.c PS_STEP */
-#define AK_STEP_N 7u                             /* PT_VER 4: a step in the AK block: ps_pack_step's bytes 0..5 and 8 (6 and 7, the drum lane of before 0.2.14, are always 0: left out) */
+#define AK_STEP_N 7u                             /* PT_VER 4: a step in the AK block: ps_pack_step's bytes 0..5 and 8 (6 and 7, a drum lane, are always 0: left out) */
 #define AK_VMAX 8u                               /* the AK block's fifteen values at the bits of their ranges (64 bits; pt_limits_ok) */
 /* the worst record (PT_VER 4, measured on every engine's ranges, ROLL_CHAIN_CHANGE.md): PT_VMAX_SEQ the Original's values when the AK block carries its
  * fifteen (the worst engine: 820 bits, every value off its default), PT_VMAX all of them but the MIXER LEVEL (884 bits). AK_WORST is a block with all its
@@ -279,7 +279,7 @@ static uint8_t pt_work[PT_CAP] __attribute__((aligned(4), section(".pool")));   
 static uint8_t pt_ram[PT_NCH][PT_CAP];           /* no flash (host tests, the browser build): the chunks as flash would hold them */
 static uint16_t pt_ramlen[PT_NCH];
 #endif
-static uint8_t pt_enc[768] SCRATCH_BSS;   /* (memory trim 1: ordinary RAM, main loop only; cloud job A: 768 B for the extension block's worst record) */
+static uint8_t pt_enc[768] SCRATCH_BSS;   /* (ordinary RAM, main loop only; 768 B for the extension block's worst record) */
 static const uint8_t *up_ak_in;                  /* the AK block (u16 length, content) the record up_put writes carries (0: none) */
 static const uint8_t *up_pk_in;                  /* the FM6 patch (FM6_PACKED bytes) the record up_put writes carries (0: none) */
 
@@ -397,7 +397,7 @@ static int pt_limits_ok(void)
 }
 /* ---- the flash (or, with no flash, RAM) side of a chunk ---- */
 #if FELUCCA_FLASH
-static uint32_t pt_obj(uint32_t c) { return c < 6u ? OBJ_PATCH0 + c : c < TIDE_PT_NOLD ? OBJ_PATCHX0 + (c - 6u) : OBJ_PATCHY0 + (c - TIDE_PT_NOLD); }   /* (b12: 21..24 = 55..58; object 48 stays out) */
+static uint32_t pt_obj(uint32_t c) { return c < 6u ? OBJ_PATCH0 + c : c < TIDE_PT_NOLD ? OBJ_PATCHX0 + (c - 6u) : OBJ_PATCHY0 + (c - TIDE_PT_NOLD); }   /* (21..24 = 55..58; object 48 stays out) */
 #else
 static uint32_t pt_obj(uint32_t c) { return c; }   /* (no flash: no storage.c objects) */
 #endif
@@ -453,7 +453,7 @@ static int pt_sv(uint32_t c, const uint8_t *img, uint32_t len)
 
 /* ---- the directory ---- */
 static uint32_t pt_rgen __attribute__((section(".pool")));            /* +1 whenever the chunks change: the read records (pt_raw) are stale */
-static uint32_t pt_stale __attribute__((section(".pool")));           /* b7 (review E3): bit c, chunk c holds a record the directory does not point to (a move cut short): rewritten before the next write (pt_stale_fix) */
+static uint32_t pt_stale __attribute__((section(".pool")));           /* bit c, chunk c holds a record the directory does not point to (a move cut short): rewritten before the next write (pt_stale_fix) */
 static void pt_dir_chunk_out(uint32_t c)         /* the records of chunk c out of the directory */
 {
     uint32_t k;
@@ -547,19 +547,19 @@ static const uint8_t *pt_raw(uint32_t k)
 
 /* ---------------------------------------------------------------- the AK block (DUELL: arp, keys, sequencer) ---
  * A patch carries the part's ARP, its chord / voicing keys and its SEQUENCER pattern, so loading it brings them back (up_load, ui.c ds_arp).
- * DUELL 1.0 (owner, 2026-10-21): EVERY patch restores its own arp state, ON and OFF; there are no factory and user kinds. The block is therefore ALWAYS written:
+ * EVERY patch restores its own arp state, ON and OFF; there are no factory and user kinds. The block is therefore ALWAYS written:
  * the arp group and the keys group are always present (an arp that is off is the group with all eight values at their defaults, 4 bytes), the SEQ group when the
- * arp mode is SEQ. A record without the block (written by firmware before 1.0, or by the editor's UP_PUT) reads as arp OFF, keys at their defaults, no pattern
- * of its own: the same as a block of defaults. PT_VER stays 3: such a record still reads, with the new rule. The record's last
+ * arp mode is SEQ. A record without the block (from an older firmware, or written by the editor's UP_PUT) reads as arp OFF, keys at their defaults, no pattern
+ * of its own: the same as a block of defaults. Such a record still reads. The record's last
  * part, flag PTF_AK: u16 content length, then
  *   u8 g       groups present: AK_ARP 1 (the arp's eight values P_AMODE .. P_AORDER), AK_KEYS 2 (P_CHRD P_VOIC; the SCALE slot, ordinal 8,
- *              is retired: read and discarded, never written), AK_SEQ 4 (the sequencer pattern; written when the arp mode is SEQ, as the pattern is then the arp's)
+ *              is not stored: read and discarded, never written), AK_SEQ 4 (the sequencer pattern; written when the arp mode is SEQ, as the pattern is then the arp's)
  *   u16 bm     PT_VER 4: a bit per value of the present groups that differs from its default (bit = the value's ordinal: the arp's eight 0..7, the keys'
- *              three 8..10 (8, the retired SCALE, never set), the sequencer's five 11..15), then those values in ordinal order, each in the bits of its
+ *              three 8..10 (8, the SCALE, never set), the sequencer's five 11..15), then those values in ordinal order, each in the bits of its
  *              range (param_desc_of: value - min, LSB first, morph.c bs_put), padded to the byte; AK_SEQ's ids are LEN DIV SWING GATE QUANTIZE (LEN at most 16)
  *   AK_SEQ:    u16 map (bit i: step i of 16 is stored; a step not stored is empty), then AK_STEP_N = 7 bytes per stored step: the multi's / pattern
  *              slots' packing (patslot.c ps_pack_step: notes, time, accent, slide, RATCH, NUDGE, velocity, CHANCE) without its bytes 6 and 7 (the drum lane
- *              of before 0.2.14, always 0)
+ *              always 0)
  * The ids of the present groups are not stored in the record's own pairs (up_rec puts them back). ARP TARGET
  * (P_ATGT) is not in it: it is the sound's own, a pair of the record as ever. The pattern is 16 steps (the record's old pattern,
  * PTF_PAT, is these steps' notes and flags: not stored twice). A MULTI holds all of it already: every part's arp values and its 64 steps (multi.c). */
@@ -568,9 +568,9 @@ static const uint8_t *pt_raw(uint32_t k)
 #define AK_SEQ 4u
 static void ps_pack_step(const step_t *s, uint8_t *b);   /* (patslot.c) */
 static int ps_unpack_step(const uint8_t *b, step_t *s);
-/* the keys' three ordinals 8..10. The SCALE (ordinal 8, once the id P_SCALE) is RETIRED (owner 2026-10-12: the scale is the instrument's, core.h): a record that holds one
- * still reads (the parse stays as it was) and the value is DISCARDED; ak_build never writes it */
-#define AK_NOSCALE P_COUNT                       /* the retired ordinal's id: not an id (P_COUNT is the reserved 127; param_desc_of gives it the free descriptor). The ids 25 and 26 are the TWIN FILTER's RES 2 and DRIVE now (cloud job B) */
+/* the keys' three ordinals 8..10. The SCALE (ordinal 8, P_SCALE) is not stored (the scale is the instrument's, core.h): a record that holds one
+ * still reads (the parse stays) and the value is DISCARDED; ak_build never writes it */
+#define AK_NOSCALE P_COUNT                       /* the SCALE ordinal's id: not an id (P_COUNT is the reserved 127; param_desc_of gives it the free descriptor). The ids 25 and 26 are the TWIN FILTER's RES 2 and DRIVE */
 static const uint8_t AK_KEYID[3] = {AK_NOSCALE, P_CHRD, P_VOIC};
 static const uint8_t AK_SEQID[5] = {P_SLEN, P_SDIV, P_SSWING, P_SGATE, P_SQNT};
 static uint32_t ak_id(uint32_t o)                /* the ordinal o (0..15) -> its parameter id */
@@ -777,7 +777,7 @@ static up_rec_t *up_rec(uint32_t k)
                     up_set_xval(r, w - XW_BASE, (int16_t)v);
             }
     }
-    if (!(p[4] & PTF_TR)) {                          /* 0.2.19: a record of before the split: its LEVEL was the sound's loudness, the trim (and the pair of its TRIM's id was the
+    if (!(p[4] & PTF_TR)) {                          /* a record without PTF_TR: its LEVEL is the sound's loudness, the trim (and the pair of its TRIM's id is the
                                                       * legacy DUCK HOLD): the trim it is; the mixer level is no record's */
         up_set_value(r, P_TRIM, up_value(r, P_LEVEL));
         up_set_value(r, P_LEVEL, (int16_t)up_def(r->engine, P_LEVEL));
@@ -794,7 +794,7 @@ static up_rec_t *up_rec(uint32_t k)
             for (i = 0; i < 8u; i++)
                 if (a.g & AK_ARP)
                     up_set_value(r, P_AMODE + i, a.arp[i]);
-            for (i = 1; i < 3u; i++)                 /* (key[0], the retired SCALE: discarded) */
+            for (i = 1; i < 3u; i++)                 /* (key[0], the SCALE: discarded) */
                 if (a.g & AK_KEYS)
                     up_set_value(r, AK_KEYID[i], a.key[i]);
             if (a.g & AK_SEQ) {
@@ -934,7 +934,7 @@ static int pt_write(uint32_t c, uint32_t skip, uint32_t n)
     pt_tally();
     return rc;
 }
-/* b7 (review E3): each chunk holding a record the directory does not point to (a move cut short by a power cut) is written again with its own
+/* each chunk holding a record the directory does not point to (a move cut short by a power cut) is written again with its own
  * records only, before the next write of the store: a RESTORE or a new save of that slot can no longer lose to the stale one at power-on */
 static void pt_stale_fix(void)
 {
@@ -960,8 +960,8 @@ static int pt_put_enc(uint32_t k, uint32_t n)
     }
     if (oc != PT_NCH && pt_len[oc] - orl + n <= PT_CAP)   /* in its own chunk */
         return pt_write(oc, k, n);
-    /* b12: two rooms, never mixed: a slot of the bank's 128 lives in chunks 0..20 (126 records, as before), a slot past it in 21..24 only (24). An earlier
-     * build reads 0..20 and never writes 21..24 (its FL_STORE_OK): it neither meets a record it would drop nor misses one it should see (review PR 99, 1 and 2) */
+    /* two rooms, never mixed: a slot of the bank's 128 lives in chunks 0..20 (126 records), a slot past it in 21..24 only (24). An earlier
+     * build reads 0..20 and never writes 21..24 (its FL_STORE_OK): it neither meets a record it would drop nor misses one it should see */
     for (d = k < UP_BANK ? 0u : TIDE_PT_NOLD; d < d1 && (d == oc || !pt_takes(d, n)); d++)
         ;
     if (d == d1)
@@ -982,7 +982,7 @@ static int pt_put(uint32_t k, const up_rec_t *r, const uint8_t *pk)
     }
     return pt_put_enc(k, pt_encode(k, pt_next_rev(k), r, pk));
 }
-/* 0.2.19 (the editor's PATCH_RAW, editor_patchraw.c): slot k := the stored record rec (n bytes, exactly the form pt_encode writes; a record read
+/* The editor's PATCH_RAW (editor_patchraw.c): slot k := the stored record rec (n bytes, exactly the form pt_encode writes; a record read
  * by up_raw_get). Refused (1) when it is no well-formed record of today's form (pt_rec_ok, a printable name, an engine that exists); 2 the transport
  * runs or the flash fails (nothing changed), 3 no flash (kept in RAM), PT_FULL (4) no chunk takes a new record (TIDE: the 127th; nothing written; the editor says
  * STORE FULL, rc 6). The slot and revision bytes are the unit's: the record's own are ignored. */
@@ -1038,7 +1038,7 @@ static uint32_t up_raw_get(uint32_t k, uint8_t *out)
 static int pt_wipe(uint32_t c)
 {
     int rc;
-    if (!pt_n[c] && !((pt_stale >> c) & 1u))      /* (b7: a chunk holding only a stale record is wiped too) */
+    if (!pt_n[c] && !((pt_stale >> c) & 1u))      /* (a chunk holding only a stale record is wiped too) */
         return pt_idle();
     pt_work[0] = (uint8_t)PT_MAGIC;
     pt_work[1] = (uint8_t)(PT_MAGIC >> 8);
@@ -1071,9 +1071,9 @@ static uint32_t up_cat(uint32_t k)             /* a used slot's category (an unu
 
 static int up_put(uint32_t k, const up_rec_t *r);
 #include "up_fm6.c"                            /* an FM6 sound's patch in its record */
-#include "fm6_vbank.c"                         /* FM6's voice bank (SLOT B1..B32, 1.4.1) */
+#include "fm6_vbank.c"                         /* FM6's voice bank (SLOT B1..B32) */
 #include "patslot.c"                           /* DUELL: the pattern slots P1..P16 (SAVE > PATTERNS) */
-#include "wtab.c"                              /* DUELL 0.2.14: the user wavetables USR1..USR3 (eng_wave.c reads them) */
+#include "wtab.c"                              /* the user wavetables USR1..USR3 (eng_wave.c reads them) */
 
 static void pt_boot(void)                      /* the directory from the chunks in flash (a power-on's RAM: all gone before) */
 {
@@ -1092,7 +1092,7 @@ static void up_boot(void)                      /* persist_boot: the chunks from 
     pt_boot();
     fvb_boot();                                  /* FM6's voice bank: a staged one finished, its voices */
     ps_boot();                                   /* DUELL: the pattern slots */
-    wt_boot();                                   /* DUELL 0.2.14: the user wavetables */
+    wt_boot();                                   /* the user wavetables */
     up_gen++;                                    /* (the favourites are the slots': a slot with no record is a factory sound, FAV stays) */
 }
 
@@ -1304,7 +1304,7 @@ static int up_load(uint32_t k)
         fm1_irq_off();                                  /* the audio ISR must not see half a sound */
         t->eng_req = r->engine;
         for (i = 0; i < P_COUNT; i++)
-            if (!param_kept_on(t, i))                   /* (0.2.19: P_TRIM comes with the patch, as a factory sound's does; the MIXER LEVEL stays, with the rest of the mix) */
+            if (!param_kept_on(t, i))                   /* (P_TRIM comes with the patch, as a factory sound's does; the MIXER LEVEL stays, with the rest of the mix) */
                 t->p[i] = v[i];
         for (i = 0; i < NX; i++)                        /* the extension slots: the record's, the defaults for what it does not name (up_rec) */
             XV(t, i) = up_xval(r, i);
@@ -1358,14 +1358,14 @@ static const uint8_t *up_ldv(uint32_t k, uint8_t *bv)
     memcpy(bv, p + mb, n);
     return bv;
 }
-/* b7 (review C2): a part given back a stored USER record without a load (the load UNDO, AUTO TIDE's HOME) gets that record's own End B at the
+/* a part given back a stored USER record without a load (the load UNDO, AUTO TIDE's HOME) gets that record's own End B at the
  * rebase, not a fresh roll: morph_ldv from the record (re-read: no RAM copy) */
 static void up_ldv_rec(const track_t *t, uint8_t *bv)
 {
     morph_ldv = t->user && t->user <= UP_SLOTS ? up_ldv(t->user - 1u, bv) : 0;
 }
 
-/* the patterns of the user presets (no longer listed by SAVE > PATTERNS: its list is the sixteen slots; kept for tests) */
+/* the patterns of the user presets (not listed by SAVE > PATTERNS: its list is the sixteen slots; kept for tests) */
 static int up_has_pat(uint32_t k) { return up_used(k) && !up_pat_empty(up_rec(k)); }
 
 __attribute__((unused)) static uint32_t up_pat_count(void)
@@ -1490,7 +1490,7 @@ static uint32_t sl_cat(uint32_t k)               /* its category (category.c CAT
         return up_cat(k);
     return sl_fac(k, &e, &fk) ? preset_cat(e, fk) : CAT_OTHER;
 }
-/* slot k -> the selected part: its record, else its factory sound (the ENGINE changes with it, silently: item 157, owner: no page announces an
+/* slot k -> the selected part: its record, else its factory sound (the ENGINE changes with it, silently: no page announces an
  * engine change, the ENGINE page and the footer show the engine). 1 = loaded, 0 = no slot k */
 static int sl_load(uint32_t k)
 {
@@ -1594,7 +1594,7 @@ static int sl_restore_all(void)
     return rc;
 }
 
-/* b12: the place (= slot) of the factory sound at browse position r: #1..#124 at their own, the ones the USER slots displaced and those past the 128 after the
+/* the place (= slot) of the factory sound at browse position r: #1..#124 at their own, the ones the USER slots displaced and those past the 128 after the
  * USER slots (r + UP_NUSER); UP_SLOTS: none */
 static uint32_t sl_place_of(uint32_t r) { return r < UP_USER0 ? r : r < UP_BANK + UP_NXTRA ? r + UP_NUSER : UP_SLOTS; }
 /* The slot a part's sound is in: its t->user (a saved record loaded; or a restored slot) else the slot whose factory sound it plays and that
@@ -1612,11 +1612,11 @@ static uint32_t slot_of(const track_t *t)
     r = sl_place_of(ds_list_rank(e, t->preset));
     return r < UP_SLOTS && !up_used(r) ? r : UP_SLOTS;
 }
-/* the browse place of part t's sound: its slot (b12: every place is a slot); UP_VSLOTS: none */
+/* the browse place of part t's sound: its slot (every place is a slot); UP_VSLOTS: none */
 static uint32_t slot_place(const track_t *t) { return slot_of(t); }
 /* factory sound (e, k) by name with the number PATCHES gives it (b holds 20): its slot's while the slot still holds it, the read-only place past the slots (#125 .. #171)
- * for one a USER slot or the list's end displaced; a sound whose slot a saved patch took has no place, so no number (as PATCHES). b10 (owner: "some of the voices are
- * still without number"): the one rule for every list that names a factory sound (TIDE's parts, TRAVEL, SAVE > MULTIS' parts; audit C11) */
+ * for one a USER slot or the list's end displaced; a sound whose slot a saved patch took has no place, so no number (as PATCHES). This is
+ * the one rule for every list that names a factory sound (TIDE's parts, TRAVEL, SAVE > MULTIS' parts) */
 static void ds_label(uint32_t e, uint32_t k, char *b)
 {
     const uint32_t r = ds_list_rank(e % NENGINES, k);
@@ -1628,7 +1628,7 @@ static void ds_label(uint32_t e, uint32_t k, char *b)
     }
     str_cpy(b + str_len(b), ds_name(e % NENGINES, k), 16);
 }
-/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record now; b12: a displaced one and one
+/* where SAVE offers to write part t's sound: its slot; else the slot its factory sound belongs to (even if that holds a record; a displaced one and one
  * past the 128 have their own slot too); else #1 */
 static uint32_t slot_home(const track_t *t)
 {
@@ -1638,7 +1638,7 @@ static uint32_t slot_home(const track_t *t)
     r = sl_place_of(ds_list_rank(t->eng_req % NENGINES, t->preset));
     return r < UP_SLOTS ? r : 0u;
 }
-/* SAVE with BOTH: part pi's slot (b12: every factory sound has its own, so two parts share one only when they play the same sound: the ask says so) */
+/* SAVE with BOTH: part pi's slot (every factory sound has its own, so two parts share one only when they play the same sound: the ask says so) */
 static uint32_t slot_both(uint32_t pi) { return slot_home(&trk[pi % NSHOWN]); }
 
 /* ---- SAVE (hold SAVE, ui_input.c patch_save_ask) ---- */
@@ -1653,7 +1653,7 @@ static void up_adopt(uint32_t pi, uint32_t k)    /* part pi's sound was written 
  * SEQ pattern (AK block) and an FM6 sound's patch. 0 saved, else up_put's result */
 static uint8_t both_names;                       /* 1 while both parts are saved at once: the dialog's RENAME does not apply */
 /* part pi's End B as its values (ROLL CHAINED storage), against the Original the record stores (the values set by hand and their marks in it):
- * up_bv_in / up_bv_n for the next up_store / up_store_trk; the caller clears them after. The device's SAVE and the editor's UP_STORE (b7, review E1) */
+ * up_bv_in / up_bv_n for the next up_store / up_store_trk; the caller clears them after. The device's SAVE and the editor's UP_STORE */
 static void up_bv_take(uint32_t pi, uint8_t *bv)
 {
     track_t *t = &trk[pi];
@@ -1676,7 +1676,7 @@ static int up_patch_save_part(uint32_t pi, uint32_t k)
     int rc;
     if (k >= UP_SLOTS)
         return 1;
-    if (save_nm[0] && !both_names)                      /* 0.2.21: RENAME in the SAVE dialog (one part only) */
+    if (save_nm[0] && !both_names)                      /* RENAME in the SAVE dialog (one part only) */
         str_cpy(nm, save_nm, sizeof nm);
     else if (UP_REC_USER(t))   /* its slot's name; else the factory sound it plays */
         sl_name((uint32_t)t->user - 1u, nm);
@@ -1718,8 +1718,8 @@ static void patch_save_do(uint32_t both)
     ui.force = 1;
 }
 
-/* ---- RESTORE (SAVE > TOOLS: RESTORE ALL; the PATCHES page's K4 RESTORE and its dialog are removed: patch_restore_do stays, the host tests call it) ---- */
-/* K4 RESTORE (owner, 2026-10-26): the selected part loads the SAVED version of the slot it plays again, its unsaved edits gone (one undo:
+/* ---- RESTORE (SAVE > TOOLS: RESTORE ALL; patch_restore_do is called by the host tests) ---- */
+/* RESTORE: the selected part loads the SAVED version of the slot it plays again, its unsaved edits gone (one undo:
  * load_begin in up_load / apply_preset). The saved record is never touched or deleted, the factory sound only comes for a slot that holds none */
 static void patch_restore_do(uint32_t k)
 {

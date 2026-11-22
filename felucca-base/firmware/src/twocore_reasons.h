@@ -16,9 +16,9 @@ static inline int tc_is_strike(uint32_t r)
 /* names of the reasons, for the bench's log (same order as the enum) */
 #define TCR_NAMES { "none", "ok", "NOANSWER", "HANG", "MISREAD", "BADJOB", "BADWORD", "CRASH", "WDT", "RESET", "SKIPBOOT", "FLASH" }
 
-/* TC_AUTO_ARM (DUELL 1.0: set in every DUELL_TWOCORE build, the release included, and in a DUELL_BENCH developer build): tc_boot arms the start itself at every power-on, so the owner needs
- * no developer page and the Mac needs no restart. A strike (tc_is_strike: core 1 crashed,
- * hung or answered wrong) does NOT stop it: since item 92 addendum 3 the next power-on STILL tries two cores (tc.boot_last keeps the strike for a notice). The boot
+/* TC_AUTO_ARM (set in every DUELL_TWOCORE build, the release included, and in a DUELL_BENCH developer build): tc_boot arms the start itself at every power-on, so no developer page is needed
+ * and the Mac needs no restart. A strike (tc_is_strike: core 1 crashed,
+ * hung or answered wrong) does NOT stop it: the next power-on STILL tries two cores (tc.boot_last keeps the strike for a notice). The boot
  * guard (a start that died within 30 s) still wins: one core that time (SKIPBOOT). A core 1 that does not answer is NOANSWER: one core,
  * the unit boots and plays as a normal one-core DUELL. */
 #ifndef TC_AUTO_ARM

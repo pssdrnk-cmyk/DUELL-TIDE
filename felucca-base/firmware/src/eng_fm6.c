@@ -19,15 +19,15 @@
  *         36 with 4, 60 with 6). A lone carrier (algorithms 17 to 19) has nothing to spread against: DTUN does nothing there (it would only transpose the voice)
  *   SLOT  F1..F8 load a factory patch; OWN (8) is the track's own patch: what a project, a user preset or the
  *         editor put there. A load shows F n when the patch is that factory one unchanged, else OWN (fm6_adopt).
- *         B1..B32 (9..40, 1.4.1) load a voice of the 32-voice bank in flash (fm6_vbank.c) as F n do; a bank slot
+ *         B1..B32 (9..40) load a voice of the 32-voice bank in flash (fm6_vbank.c) as F n do; a bank slot
  *         without a voice is skipped by the knob (params.c enum_step) and refused anywhere else (fm6_poll).
  *         Turning SLOT from OWN to F n / B n keeps the own patch aside; back to OWN brings it back (fm6_poll).
- *         Before 1.0.3 the values 8..34 were F1..F8 then B1..B27, a flash bank (retired: its patches moved into
- *         the user presets, up_fm6.c). A stored value is never a bank slot: projects, user presets and motion
+ *         Values 8..34 of before 1.0.3 (F1..F8 then B1..B27, a flash bank whose patches are in
+ *         the user presets, up_fm6.c) are not bank slots. A stored value is never a bank slot: projects, user presets and motion
  *         load 9..40 as 8, OWN (params.c param_fit), and the patch comes with the project / the record. So a
  *         project or a preset made with a bank voice sounds the same after the bank is replaced
  * The operator envelopes are the voice's amplitude and end it (engine_t.ownenv / done): the track's ADSR curve,
- * ENV DEST and the matrix's ENV do nothing here. DUELL 1.1 (owner 2026-10-25): the four AMP ENV knobs ATTACK DECAY
+ * ENV DEST and the matrix's ENV do nothing here. The four AMP ENV knobs ATTACK DECAY
  * SUSTAIN RELEASE move the envelopes of the carrier operators by their distance from the numbers the patch gives
  * (fm6_env_derive, fm6_sync); a knob on that number leaves the DX7 voice exactly as it is. The track's FLT moves MLVL (ENV / LFO -> FLT, the
  * matrix's CUT), SHP the feedback, PIT the pitch (bend, glide, tune: the voice's pitch and fine factor).
@@ -40,11 +40,11 @@
 #include "felucca_fm6.h"         /* tools/gen_fm6_patches.py: FM6_INIT, FM6_FACTORY[] */
 
 #define ENGI_FM6 12u             /* engines.c ENGINES[] (append-only) */
-#define FM6_POLY 8               /* engine_t.poly (D18: the engine's cap is the pool's, NVOICE; the NOTES budget sets the number: budget.c) */
+#define FM6_POLY 8               /* engine_t.poly (the engine's cap is the pool's, NVOICE; the NOTES budget sets the number: budget.c) */
 #define FM6_OWN FM6_NFACTORY     /* SLOT: the track's own patch (F1..F8 before it) */
 #define FM6_NBANK 32u            /* SLOT: B1..B32 after OWN, the voice bank (fm6_vbank.c) */
-/* DUELL 0.2.17: FM6_NXF more factory patches (felucca_fm6.h FM6_XFACTORY: F9, F10; b13: F12 F13 F14 imported voices) at SLOT 41 and up, AFTER B32, so the SLOT values of
- * F1..F8, OWN (8) and B1..B32 (9..40) mean what they meant. Like a bank slot a stored value is never one of them (params.c param_fit:
+/* FM6_NXF more factory patches (felucca_fm6.h FM6_XFACTORY: F9, F10, F12 F13 F14 imported voices) at SLOT 41 and up, AFTER B32, so the SLOT values of
+ * F1..F8, OWN (8) and B1..B32 (9..40) stay fixed. Like a bank slot a stored value is never one of them (params.c param_fit:
  * above OWN is OWN, the patch comes with the project / the record), the factory sounds that use them (FM BASS 2, TUBE BELLS) load them */
 #define FM6_XBASE (FM6_OWN + FM6_NBANK + 1u)
 #define FM6_PACKED 128u
@@ -210,8 +210,8 @@ static void fm6_pack(const uint8_t *v, uint8_t *b)
         b[118 + i] = v[FP_NAME + i] & 0x7Fu;
 }
 
-/* ------------------------------------------- the AMP ENV knobs (DUELL 1.1) --- */
-/* Owner 2026-10-25 (FM6_ENV_MAP_V2.md): the part's AMP ENV knobs ATTACK, DECAY, SUSTAIN, RELEASE carry and move the envelopes of the CARRIER operators. The knob's stored value T (0..127, as on
+/* ------------------------------------------- the AMP ENV knobs --- */
+/* The part's AMP ENV knobs ATTACK, DECAY, SUSTAIN, RELEASE carry and move the envelopes of the CARRIER operators. The knob's stored value T (0..127, as on
  * every engine: a higher value is longer or higher) is compared with D, the value the loaded patch itself gives (fm6_env_derive: the numbers of the loudest carrier); the sound changes only by
  * T - D, so a knob on D is bit for bit the DX7 voice. The knob shows the DX7 number 0..99 (params.c F_N99): ATTACK, DECAY and RELEASE as 99 minus the DX7 rate (the knob inverts the rate), SUSTAIN
  * as the DX7 level L3. Nothing per sample: D is made in the main loop (fm6_env_look) and in fm6_sync only when something changed */
@@ -468,7 +468,7 @@ static void fm6_sync(const track_t *t)
             return;
     }
 #if DUELL_PROBE_STAGES && DUELL_MEASURE
-    {                                                   /* (b14 measuring builds: [8] counts part 1's full syncs a READ, 24 a sync: it reads back as the count) */
+    {                                                   /* (measuring builds: [8] counts part 1's full syncs a READ, 24 a sync: it reads back as the count) */
         extern volatile uint32_t prb_stage_pk[10];
         if (!tr) prb_stage_pk[8] += 24u;
     }
@@ -683,7 +683,7 @@ static const preset_t FM6_PRESETS[] = {
 };
 #endif
 
-/* 0.2.18 (page-order audit, finding 1): the cards show SLOT first (it loads a whole patch and so replaces what the cards after it hold), then ALG FB MLVL / MRAT MEG VMOD DTUN.
+/* The cards show SLOT first (it loads a whole patch and so replaces what the cards after it hold), then ALG FB MLVL / MRAT MEG VMOD DTUN.
  * Card position -> E index; the stored ids E1..E8 (P_E0..P_E0+7) do not move, nor do patches, multis, projects, the matrix's E1..E8 or MIDI LEARN */
 static const uint8_t FM6_UIORD[8] = {7, 0, 1, 2, 3, 4, 5, 6};
 static const engine_t ENG_FM6 = {
@@ -713,6 +713,6 @@ static const engine_t ENG_FM6 = {
     .done = fm6_done,
     .mem = FM6_MEM,
     .atgt = ATG_FM6,             /* ARP TARGET: OP1..OP6 (SPEC 2.3) */
-    .ufilt = 1,                 /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                 /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };
 

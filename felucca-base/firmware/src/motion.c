@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Sparse, bounded step automation. Main-loop writes publish under the same
- * interrupt guard as parameter batches. The ISR only scans MOTION_MAX fixed records (128 since 1.2, FUN10; 64 before).
+ * interrupt guard as parameter batches. The ISR only scans MOTION_MAX fixed records (128).
  * p[] is the sounding value; motion_base_value() is the patch's saved value.
  * Two kinds of record share the MOTION_MAX (core.h MOTION_LOCK): an automation event sets its value at its step and the value
- * holds (to the next event, the loop's restart, a stop); a parameter lock (DUELL 1.0, change list B.8: a knob turned while
+ * holds (to the next event, the loop's restart, a stop); a parameter lock (a knob turned while
  * the part records, motion_knob_lock below) sets its value at its step only when the step plays (its chance passed) and the next step puts back
  * what would sound without it: the latest automation event of the pass up to that step, else the sound's own value
  * (motion_unlock). A lock lasts the whole step, its RATCH parts too; swing only moves the step's start. */
 static motion_store_t motion;
-/* DUELL 1.1: a target's SLOT: the P_ ids and the extension slots by their wide ids (0..EXT_P_LEN - 1, t->p[slot]), then the virtual targets (EXT_P_LEN + the destination number: lk_virt in mod.c, base 0) */
+/* a target's SLOT: the P_ ids and the extension slots by their wide ids (0..EXT_P_LEN - 1, t->p[slot]), then the virtual targets (EXT_P_LEN + the destination number: lk_virt in mod.c, base 0) */
 #define MOTION_SLOTS (EXT_P_LEN + 64u)
 #define MOTION_WORDS ((MOTION_SLOTS + 31u) / 32u)
 static uint32_t motion_slot(uint32_t tid) { return tid >= MOTION_VBASE ? EXT_P_LEN + (tid - MOTION_VBASE) : tid; }
@@ -55,14 +55,14 @@ static void motion_unguard(uint32_t f)
 }
 static int motion_param(uint32_t id)
 {
-    /* DUELL 1.1 (owner, HANDOFF_V2 item 34): what a lock or an automation event can record is exactly the mod matrix's destination list (mod.c mod_lock_id: one shared
+    /* what a lock or an automation event can record is exactly the mod matrix's destination list (mod.c mod_lock_id: one shared
      * table, the matrix's own order and names). A parameter that is not a matrix destination (LFO WAVE, PHASE and FADE, GLIDE, DETUNE, SPREAD, INSERT TYPE, KEY TRK, the
-     * AMP ENV and FILTER ENV pitch and timbre depths, the LFO DEST depths, ...) is no longer recorded. Which of the destinations the unit offers right now is
-     * mod_lock_ok (the matrix's mod_dst_offered). Before this round: a list of id ranges of its own */
+     * AMP ENV and FILTER ENV pitch and timbre depths, the LFO DEST depths, ...) is not recorded. Which of the destinations the unit offers right now is
+     * mod_lock_ok (the matrix's mod_dst_offered) */
     return id < 256u && mod_lock_dst(id) != 0u;
 }
-/* DUELL 1.1: records saved by an older firmware (a multi, a project, a backup) may hold events on targets this firmware no longer records (the matrix list is the only list now), a doubled event or
- * a value out of range: they are dropped, one by one, so the multi still loads with everything else (it was refused whole as DAMAGED in test3). The kept events keep their order */
+/* records saved by an older firmware (a multi, a project, a backup) may hold events on targets this firmware does not record (the matrix list is the only list), a doubled event or
+ * a value out of range: they are dropped, one by one, so the multi still loads with everything else. The kept events keep their order */
 static void motion_sanitize(motion_store_t *m)
 {
     uint32_t i, j, n = 0;
@@ -218,7 +218,7 @@ static int motion_put(track_t *t, uint32_t step, uint32_t id, int16_t value, uin
     if (k >= NTRK || step >= NSTEP || !motion_param(id)) return 1;
     d = lock_desc_of(eng_idx(t->eng_req), id);
     if (value < d->min || value > d->max || value < -64 || value > 127) return 1;
-    value = (int16_t)param_fit(d, value);                    /* (a retired KIT: the kit it plays) */
+    value = (int16_t)param_fit(d, value);                    /* (a KIT value of a removed engine: the kit it plays) */
     f = motion_guard();
     for (i = 0; i < motion.count; i++)
         if (motion.event[i].place == MOTION_PLACE(k, step, id) && (motion.event[i].param & 0x7Fu) == (id & 0x7Fu)) break;
@@ -263,7 +263,7 @@ static uint32_t motion_clear_locks(track_t *t, uint32_t step)
     motion_unguard(f);
     return gone;
 }
-/* ---- DUELL 1.0 (owner, change list B.8): recording parameter locks with the knobs ----
+/* ---- recording parameter locks with the knobs ----
  * While the selected part records (song.rec, its bit: the header's REC mark shows it), a panel knob that sets a lockable
  * parameter (motion_param and mod_lock_ok: the matrix destination list, the same rule as the PARAMETER LOCKS list) records a
  * PARAMETER LOCK of that parameter with the value the knob set: with the transport stopped on the step at the sequencer's
@@ -318,7 +318,7 @@ static int motion_room(uint32_t k, uint32_t step, uint32_t id)
  * first step has started: step 1). 1 = recorded, 0 = not (the records are full), -1 = no step inside the pattern's length
  * (the turn is then a live edit, as with record off) */
 static uint32_t arp_dur(const track_t *t);              /* (seq.c) */
-/* b7 (review B2): an ARP SEQ part plays its steps (and their locks: seq.c arp_fire) on the arp's clock: a lock is recorded on the arp's step,
+/* an ARP SEQ part plays its steps (and their locks: seq.c arp_fire) on the arp's clock: a lock is recorded on the arp's step,
  * the one playing (half 0) or the next one past its middle (half 1, as rec_arp_note); 0xFFFFFFFF: not an ARP SEQ part */
 static uint32_t motion_arp_idx(const track_t *t, uint32_t len, uint32_t half)
 {
@@ -455,7 +455,7 @@ static int motion_replace_track(track_t *t, const motion_store_t *in)
     return 0;
 }
 
-/* ---- 1.1.5: SEQ > PARAMETER LOCKS (ui_events.c ev_*): the records of a track as a list, edited one by one ---- */
+/* ---- SEQ > PARAMETER LOCKS (ui_events.c ev_*): the records of a track as a list, edited one by one ---- */
 /* the record of track t on step / id (either kind): its index, -1 none */
 static int32_t motion_find(const track_t *t, uint32_t step, uint32_t id)
 {

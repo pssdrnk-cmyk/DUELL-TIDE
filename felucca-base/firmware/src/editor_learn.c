@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* MIDI LEARN's map for the editor (1.5, EDITOR_PROTOCOL.md "MIDI LEARN"; INFO 43 01 ML_N): LEARN_GET lists it,
+/* MIDI LEARN's map for the editor (EDITOR_PROTOCOL.md "MIDI LEARN"; INFO 43 01 ML_N): LEARN_GET lists it,
  * LEARN_SET learns one CC, clears one, or clears all. The device's own rules (midi_learn.c ml_learn): one CC sets one
  * parameter, a parameter has one CC; CC0 1 6 11 32 38 64 96..101 120..127 are never learned. The learned CCs are the learned
- * LINES of the MIDI MAP now (midi_control.c midi_map; the whole map: editor_map.c); the two commands are as they were for an old client,
- * with one change: a number that moves something else is not taken (LEARN_SET op 0 answers 6 and the owner's name after the list,
+ * LINES of the MIDI MAP now (midi_control.c midi_map; the whole map: editor_map.c); the two commands keep the form an old client knows,
+ * with one difference: a number that moves something else is not taken (LEARN_SET op 0 answers 6 and the owner's name after the list,
  * unless a fifth byte, force 1, takes it), and the entries are listed by CC number, not by slot */
 enum { ED_LEARN_GET = 78, ED_LEARN_SET };
 /* the map: ML_N, then per entry used (0 / 1), CC, track, parameter id (this firmware's P_*; an empty entry 0 0 0 0, one

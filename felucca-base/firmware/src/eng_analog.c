@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* ANALOG: two band-limited oscillators (saw / square / tri / sine / PWM),
- * noise and drive. No filter of its own since the engine filters left (TWIN_FILTER_DESIGN_2, cloud job J): its VCF is filter 1, the MULTI FILTER of the voice chain (voice.c uf_run;
+ * noise and drive. No filter of its own (TWIN_FILTER_DESIGN_2): its VCF is filter 1, the MULTI FILTER of the voice chain (voice.c uf_run;
  * ANALOG's softer RES floor became filter 1's). DRV stays here: it drives the oscillator mix before any filter (the Minimoog's overdriven mixer).
  * WAVE SYNC and SUB (#104, appended: WAVE 0..4 play as they always did) are two more oscillator pairs (analog_osc_x):
  *   SYNC  OSC 2 a saw hard-synced to OSC 1 (a saw): it restarts with OSC 1's every cycle, band-limited at the restart
@@ -12,7 +12,7 @@
  *   SUB   OSC 1 a saw, OSC 2 a square an octave below it (detuned by DTN in cents as before): MIX (shown SUB) is the
  *         sub oscillator's level */
 static const char *const N_ANALOG_WAVE[] = {"SAW", "SQR", "TRI", "SIN", "PWM", "SYNC", "SUB", "ACID", "ACSQ"};
-enum { AW_SYNC = 5, AW_SUB = 6, AW_ACSQ = 8 };   /* WAVE 7 ACID / 8 ACSQ (b8): a saw / a square that play as a 303 (voice.c acid_on); the oscillator is OSC 1 as SAW / SQR */
+enum { AW_SYNC = 5, AW_SUB = 6, AW_ACSQ = 8 };   /* WAVE 7 ACID / 8 ACSQ: a saw / a square that play as a 303 (voice.c acid_on); the oscillator is OSC 1 as SAW / SQR */
 static const param_desc_t ANALOG_SYNC = {"SYNC", F_INT, 0, 0, 127, 10, 0};   /* DTN's range and default */
 static const param_desc_t ANALOG_SUB = {"SUB", F_PCT, 0, 0, 127, 64, 0};      /* MIX's */
 
@@ -52,7 +52,7 @@ static __attribute__((noinline)) void atg_analog(const vmod_t *m, int32_t det, u
         *m2 = mulq15(*m2, m->again);
 }
 
-/* DRV (E6): the saturation fades in over DRV 1..8 (audit P14). DRV 1 used to switch the full tanh on: the signal lost about 0.9 dB at once, a step in the knob's first notch.
+/* DRV (E6): the saturation fades in over DRV 1..8 (DRV 1 does not switch the full tanh on: that would lose about 0.9 dB at once, a step in the knob's first notch).
  * (drive is 32768 + DRV x 512, up to 3x; the pre-shifts keep the product inside 32 bits; w - s is under 2^17 and the weight 4096 a step: no overflow) */
 static __attribute__((noinline)) int32_t an_drive(int32_t s, int32_t drive, int32_t drv)
 {
@@ -243,7 +243,7 @@ static void analog_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
         analog_osc(t, v, out, n, m);
 }
 
-/* {WAVE, DTN, MIX, NOIS, PW, -, DRV, -}: the filter's three slots are unused (CUT RES KTR were filter 1's since cloud job J) */
+/* {WAVE, DTN, MIX, NOIS, PW, -, DRV, -}: the filter's three slots are unused (CUT RES KTR are filter 1's) */
 #if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t ANALOG_PRESETS[] = {
     {"SAW LEAD", {0, 12, 64, 0, 0, 0, 10, 0}, {4, 70, 100, 50}, 20, 1, FX(0, 10, 45, 30), PAT(4)},
@@ -271,10 +271,10 @@ static const engine_t ENG_ANALOG = {
         {"DTN", F_INT, U_CT, 0, 127, 10, 0},
         {"MIX", F_PCT, 0, 0, 127, 64, 0},
         {"NOIS", F_PCT, 0, 0, 127, 0, 0},
-        {"PW", F_PCT, 0, 0, 127, 0, 0},              /* was CUT: filter 1 (voice.c uf_run). PWM's static width (P09): 0 = 50 %, 127 = 90 % duty (dsp.c pulse_pw); every stored sound has 0 */
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES */
+        {"PW", F_PCT, 0, 0, 127, 0, 0},              /* PWM's static width (filter 1 is voice.c uf_run): 0 = 50 %, 127 = 90 % duty (dsp.c pulse_pw) */
+        {"-", F_INT, 0, 0, 0, 0, 0},
         {"DRV", F_PCT, 0, 0, 127, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was KTR (filter 1's KEY TRK) */
+        {"-", F_INT, 0, 0, 0, 0, 0},
     },
 #if DUELL_PRESETS
     .presets = ANALOG_PRESETS,
@@ -283,8 +283,8 @@ static const engine_t ENG_ANALOG = {
     .note_on = analog_note_on,
     .render = analog_render,
     .desc = analog_desc,
-    .knob = {P_FREEA, P_FREEB, P_ATK, P_REL},   /* filter 1's CUT and RES (they were the engine's own) */
+    .knob = {P_FREEA, P_FREEB, P_ATK, P_REL},   /* filter 1's CUT and RES */
     .uiord = ANALOG_UIORD,
     .atgt = ATG_ANALOG,          /* ARP TARGET: OSC A, OSC B (SPEC 2.3) */
-    .ufilt = 1,                  /* no filter of its own since cloud job J: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                  /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };

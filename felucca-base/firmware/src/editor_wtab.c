@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* DUELL 0.2.14, the editor's USER WAVETABLES (EDITOR_PROTOCOL.md "User wavetables (81-83)"; INFO 42 01 caps bit 3, value 8):
+/* The editor's USER WAVETABLES (EDITOR_PROTOCOL.md "User wavetables (81-83)"; INFO 42 01 caps bit 3, value 8):
  *   81 WT_LIST  -> 3 (slots), 19 (frames), 64 (harmonics), per slot: used 0/1, name string (up to 8 characters), CRC-32 of its 1216 data bytes (u32)
  *   82 WT_GET   slot, offset (2 x 7 bit, LSB first), count (1..127) -> slot, rc, offset (2 bytes), count, pack7 data (rc 1: bad arguments or an empty slot)
  *   83 WT_PUT   op 0 begin: 0, slot, name (8 bytes, 0 padded), CRC-32 (u32); op 1 data: 1, slot, offset (2 bytes), pack7 data (in order, from 0);

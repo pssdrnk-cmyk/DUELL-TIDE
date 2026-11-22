@@ -39,7 +39,7 @@ static int32_t voicelead_walk(const step_t *source, uint32_t len, step_t *out, i
                 candidate[0] = s->note[order[0]];
                 for (uint32_t k = 1; k < n; k++) {
                     uint32_t id = order[k];
-                    int32_t base = note_snap(trk, s->note[id]);   /* (B3: OFF-SCALE PLAY keeps an out-of-scale chord tone; SNAP snaps it, as the keys) */
+                    int32_t base = note_snap(trk, s->note[id]);   /* (OFF-SCALE PLAY keeps an out-of-scale chord tone; SNAP snaps it, as the keys) */
                     int32_t note = base + ((int32_t)(bits % 3u) - 1) * 12;bits /= 3u;
                     candidate[k] = note;
                     if (!sqm_in_lane(note, lane_lo, lane_hi) || voicelead_abs(note - (source[i].n == n ? source[i].note[id] : s->note[id])) > 12 ||
@@ -76,7 +76,7 @@ static void sqm_voicelead(const step_t *source, uint32_t len, step_t *out)
     voicelead_walk(source, len, out, chord, &n, 1);
 }
 
-/* The chord bed breathes with ARC (b7, idea 2): a chord part's voicing follows the arc's phase, on the 8-bar grid. RISE and RECOVER as
+/* The chord bed breathes with ARC: a chord part's voicing follows the arc's phase, on the 8-bar grid. RISE and RECOVER as
  * written; PEAK open (the second-lowest voice an octave up: a drop-2 spread; then the top voice an octave up while it stays at G5 or
  * under); BREAK closed (a voice more than an octave over the lowest comes down inside it) and one inversion lower (the top voice under
  * the others) where that stays at or over the part's lowest written note. Octaves only: never a new pitch class; never over the
@@ -171,9 +171,9 @@ static void sqm_varp(uint32_t pi)
     n = n - 3u < 2u ? n : 0u;                            /* (a chord of 3 or 4 notes: a chord part) */
     sqm_v.cp = (uint8_t)((sqm_v.cp & ~(1u << pi)) | (n ? 1u << pi : 0u));
     n = sqm_varc ? n : 0u;
-    if (n) {                                             /* b10 Later 6: the steps play the chord moved by their offset from C4, so the chord may rise only by what the steps
+    if (n) {                                             /* the steps play the chord moved by their offset from C4, so the chord may rise only by what the steps
                                                           * leave of the Original's lane (its highest step + 12, sqm_lane): a VOIC octave on a step and PEAK's open voicing
-                                                          * added up past it (M01's stab 70 + 12 + 4 = 86, M07 +5, M08 +3, M04 +2) */
+                                                          * added up past it */
         uint32_t len = sqm_len(t);
         int32_t lo, hi, h0, h1;                          /* (each end's highest step + 12 against the Original's) */
         sqm_lane(t->step, len, &lo, &hi);

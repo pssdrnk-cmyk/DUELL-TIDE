@@ -41,9 +41,9 @@ static inline void *fl_far(void *p) { void *volatile q = p; return q; }
 #define FL_GLOB_HI      0x000FF000u
 #define FL_OTA_LO       0x000E0000u                /* M-UPGRADE loader staging, ota.c */
 #define FL_OTA_HI       0x000E5000u
-#define FL_AUTO_LO      0x000E5000u                /* 1.2: the autosave (storage.c OBJ_AUTOSAVE), A/B, just above */
+#define FL_AUTO_LO      0x000E5000u                /* the autosave (storage.c OBJ_AUTOSAVE), A/B, just above */
 #define FL_AUTO_HI      0x000E7000u                /* the OTA staging */
-#define FL_VBANK_LO     0x000E7000u                /* 1.4.1: the FM6 voice bank (fm6_vbank.c), the sector above */
+#define FL_VBANK_LO     0x000E7000u                /* the FM6 voice bank (fm6_vbank.c), the sector above */
 #define FL_VBANK_HI     0x000E8000u                /* (below the stock OTA's VM backup, 0xE8000: never written) */
 #define FL_PSLOT_LO     0x000D6000u                /* DUELL: the pattern slots (patslot.c), three A/B pairs: the end of the */
 #define FL_PSLOT_HI     0x000DC000u                /* user sample region (USR3 stops at FL_PSLOT_LO); inside FL_DATA below */
@@ -51,19 +51,19 @@ static inline void *fl_far(void *p) { void *volatile q = p; return q; }
 #define FL_MULTI_A_HI   0x0009F000u                /* four A/B pairs: M01..M08 where Felucca's projects were, */
 #define FL_MULTI_B_LO   0x000CE000u                /* M09..M16 the end of USR3's stride (USR3 stops at FL_MULTI_B_LO); */
 #define FL_MULTI_B_HI   0x000D6000u                /* both inside FL_DATA below */
-#define FL_MULTI_C_LO   0x000EA000u                /* b10 U4: M17..M26 (storage.c OBJ_MULTIX0..4), five A/B pairs in the stock firmware's unused USR region; */
+#define FL_MULTI_C_LO   0x000EA000u                /* M17..M26 (storage.c OBJ_MULTIX0..4), five A/B pairs in the stock firmware's unused USR region; */
 #define FL_MULTI_C_HI   0x000F4000u                /* 0xE8000..0xE9FFF (the stock VM backup) stays unused */
-#define FL_PATCH_D_LO   0x000F4000u                /* b12: the PATCH store's chunks 21..24 (storage.c OBJ_PATCHY0..3), four A/B pairs, the rest of the */
+#define FL_PATCH_D_LO   0x000F4000u                /* the PATCH store's chunks 21..24 (storage.c OBJ_PATCHY0..3), four A/B pairs, the rest of the */
 #define FL_PATCH_D_HI   0x000FC000u                /* stock USR region, up to the settings (right after FL_MULTI_C_HI: FL_STORE_OK takes both as one range) */
 _Static_assert(FL_MULTI_C_HI == FL_PATCH_D_LO, "the multis M17..M26 and the patch chunks 21..24 are one range");
 /* [off, off + n) inside [lo, hi), without wrapping: off + n can overflow, and
  * the 1 MiB part ignores the high address bits, so a wrapped range lands low. */
 #define FL_IN(off, n, lo, hi) ((uint32_t)(off) >= (lo) && (uint32_t)(off) <= (hi) && \
                                (uint32_t)(n) <= (hi) - (uint32_t)(off))
-/* Felucca's own store (DUELL's multis, the (retired, 0.2.9: unused) user sample region, pattern slots, user presets; settings; the autosave
+/* Felucca's own store (DUELL's multis, the unused user sample region, pattern slots, user presets; settings; the autosave
  * and the FM6 voice bank: one range) */
 #define FL_STORE_OK(off, n) (FL_IN(off, n, FL_DATA_LO, FL_DATA_HI) || FL_IN(off, n, FL_GLOB_LO, FL_GLOB_HI) || \
-                             FL_IN(off, n, FL_AUTO_LO, FL_VBANK_HI) || FL_IN(off, n, FL_MULTI_C_LO, FL_PATCH_D_HI))   /* (M17..M26 and, b12, the patch chunks 21..24: one range) */
+                             FL_IN(off, n, FL_AUTO_LO, FL_VBANK_HI) || FL_IN(off, n, FL_MULTI_C_LO, FL_PATCH_D_HI))   /* (M17..M26 and the patch chunks 21..24: one range) */
 /* Where the RAM driver may erase / program. The app build allows only its own
  * data regions; the update loader (firmware/loader) defines its own window. */
 #ifndef FL_RANGE_OK

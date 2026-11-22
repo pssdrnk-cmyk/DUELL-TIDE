@@ -14,7 +14,7 @@ static struct {
 } midi_clock;
 static uint8_t midi_bar;                           /* the pulses of the master's bar (0..95) counted so far, 0 after its Start; bit 7: this unit's PLAY waits for the next bar (audit S08) */
 
-/* DUELL 0.2.14, CLK AUTO (SPEC 4.2, MIDI clock): a port locks after AUTO_LOCK_N pulses AUTO_MIN_MS..AUTO_MAX_MS apart (24 ppqn at ~31..312 BPM)
+/* CLK AUTO (SPEC 4.2, MIDI clock): a port locks after AUTO_LOCK_N pulses AUTO_MIN_MS..AUTO_MAX_MS apart (24 ppqn at ~31..312 BPM)
  * within AUTO_LOCK_MS, or at once on its Start / Continue; the other port is ignored while locked; no pulse for AUTO_DROP_MS: back to the
  * internal clock, at the last tempo and the current step phase, the transport as it was (seq.c events_block) */
 #define AUTO_LOCK_N 3u

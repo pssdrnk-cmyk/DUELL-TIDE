@@ -128,7 +128,7 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
         int32_t rv = (int32_t)(((uint32_t)v->s[7] >> 25) << 8), v0 = p[P_E0] << 8, v1 = p[P_E1] << 8;
         v0 += ((rv - v0) * Q15_FROM_127(p[P_E7])) >> 15;
         v1 += ((rv - v1) * Q15_FROM_127(p[P_E7])) >> 15;
-        vowel_at(v0, fa, ba);      /* (the accent no longer moves the vowel: another vowel is another level) */
+        vowel_at(v0, fa, ba);      /* (the accent does not move the vowel: another vowel is another level) */
         vowel_at(v1, fb, bb);
     }
     /* SHIFT (semitones) and FOLOW (key tracking around C4, fixed), one ratio for all four */
@@ -243,5 +243,5 @@ static const engine_t ENG_FORMANT = {
     .render = formant_render,
     .knob = {P_E0, P_E4, P_E5, P_E2},
     .poly = 4,
-    .ufilt = 1,                 /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                 /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };

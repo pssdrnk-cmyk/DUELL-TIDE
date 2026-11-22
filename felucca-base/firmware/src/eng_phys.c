@@ -27,9 +27,7 @@
  * mixes the exciter itself into the output (the mallet / pick). The track's ENV / LFO -> FLT move BRIT, -> SHP (DUELL)
  * STRC, the structure (SYMP: BUZZ, the structure it takes there; CHRD stays); centre = as set, bit for bit.
  *
- * MODEL 4 was DRUM before 1.0 (a DRUM engine took it over, and DUELL 0.2.14 removed that engine): there is no MODEL 4 now.
- *
- * DUST (resonant particles, value 2 before 1.0) was dropped: MODEL 2 is MEMB now (stores of before 1.0 are no longer read).
+ * There is no MODEL 4; MODEL 2 is MEMB (stores of before 1.0, with DRUM as 4 and DUST as 2, are not read).
  *
  * Polyphony 3 per part (engine_t.poly): each part's voices 0..2 own a state slot in the part's engine
  * memory (engines.c eng_mem; phys_slot_of: SYMP's, the largest: the string's 512 + 128 sample lines, Q20, and three
@@ -93,7 +91,7 @@ static phys_slot_t *phys_slot_of(track_t *t, voice_t *v)
 /* a clean state for model md */
 static void phys_reset(phys_slot_t *S, uint32_t md, uint32_t seed)
 {
-    memset(&S->u, 0, sizeof S->u);                       /* (libc.c: a word at a time; the loop here was the voice start's biggest lump) */
+    memset(&S->u, 0, sizeof S->u);                       /* (libc.c: a word at a time) */
     S->model = (uint8_t)md;
     seed |= 1u;
     switch (md) {
@@ -242,5 +240,5 @@ static const engine_t ENG_PHYS = {
     .poly = PHYS_POLY,
     .desc = phys_desc,
     .mem = sizeof(phys_slot_t) * PHYS_POLY,
-    .ufilt = 1,                 /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                 /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };

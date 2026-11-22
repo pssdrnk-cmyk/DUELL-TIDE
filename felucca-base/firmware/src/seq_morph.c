@@ -22,14 +22,14 @@
 /* MUSIC WNDR/JRNY also carries the cumulative phrase overlay (seq_rhythm.c,
  * seq_phrase.c): retained routing, repeats/rests and phrase-level pitch edits.
  * These are session state until KEEP commits the reached ordinary steps. */
-#define SQM_HIST 1u                                      /* End B kept per part (b9, R1: was a ring of 4 for a UNDO that left in b5; only b[top] was ever read: -276 B of .bss) */
+#define SQM_HIST 1u                                      /* End B kept per part (only b[top] is read) */
 enum { SD_DENS, SD_SYNC, SD_ACC, SD_VOIC, SD_N };
 #define SQM_PITCH_BYTES ((NSTEP * 5u + 7u) / 8u)
 typedef struct { uint16_t seed; int8_t d[SD_N]; uint8_t pitch[SQM_PITCH_BYTES]; } sqm_end_t;
 typedef struct {
     sqm_end_t b[SQM_HIST];                               /* b[top] is End B (SQM_HIST 1: top stays 0) */
     sqm_end_t a;                                         /* End A while aon (a WANDER / JOURNEY generation), else the Original */
-    uint8_t aon, top, n;                                 /* n: 0 until the part's default End B is made (b9: 1 after; there is no history to count) */
+    uint8_t aon, top, n;                                 /* n: 0 until the part's default End B is made (1 after; there is no history to count) */
     uint8_t fader;                                       /* 0 End A .. 127 End B */
     uint8_t amt_x;                                       /* SEQ AMT 0..100 as SQM_AMT_DEF ^ it (no knob; 0 = the default, so the table is .bss, not 504 B of flash; tests set it) */
     int8_t dir[SD_N];                                    /* WANDER: each dial's way */
@@ -69,7 +69,7 @@ static void sqm_lane(const step_t *p, uint32_t len, int32_t *lo, int32_t *hi)
                 l = p[i].note[k] < l ? p[i].note[k] : l;
                 h = p[i].note[k] > h ? p[i].note[k] : h;
             }
-    if (l > h) l = 24, h = 96;                           /* (no hit: the old bounds) */
+    if (l > h) l = 24, h = 96;                           /* (no hit: the default bounds) */
     l = l > 48 ? 48 : l < 24 ? 24 : l;                   /* (a pad, a skank: never under C3) */
     h += 12;
     *lo = l, *hi = h > 108 ? 108 : h;
@@ -108,7 +108,7 @@ static volatile uint8_t sqm_lead;                        /* the parts that liste
 static volatile uint8_t sqm_arc;                         /* ARC: 0 OFF, 1 RISE, 2 DROP (tide_ui.c, the TIDE LIST; seq_arc.c) */
 static volatile uint8_t tarc_dropphr = 0xFFu, tarc_lev, tarc_unit;   /* seq_arc.c's planner to the audio side: the drop's 8-bar unit; the parts thinned (bits 0-1) and no POLY (bit 2) now,
                                                           * and the same three bits for the next 8-bar unit (bits 3-5); the unit the planner last looked at. The audio side takes the next unit's from
-                                                          * its first bar on (tarc_lvl), so a new phase's first downbeat plays with its levers, not the main loop's catching up (1.0.0-b8) */
+                                                          * its first bar on (tarc_lvl), so a new phase's first downbeat plays with its levers, not the main loop's catching up */
 #define TARC_ARMED 1
 #define TARC_DYN_ARMED 1                                 /* (and ARC's loudness step, sqm_dyn_nx: Later 25) */
 static __attribute__((noinline)) uint32_t tarc_lvl(uint32_t bar)   /* what bar plays with: the parts thinned (bits 0-1), no POLY (bit 2) */
@@ -360,7 +360,7 @@ static const step_t *seq_play_step_at(const track_t *t, uint32_t idx, uint32_t b
     uint32_t pi = (uint32_t)(t - trk);
     const step_t *s;
     if (pi < NSHOWN && ((song.rec >> pi) & 1u) && idx < NSTEP)
-        return &t->step[idx];                            /* b10 round 8: a part armed for REC plays its own notes, not the evolved ones (the take is what the player hears) */
+        return &t->step[idx];                            /* a part armed for REC plays its own notes, not the evolved ones (the take is what the player hears) */
     s = sqm_step(t, idx, sqm_vary_all || !song.playing || (bar & 3u) == 3u);
     /* a thinned bar (sqm_thinned) plays End A's mask: onsets only, a tie after one stays silent */
     if (pi < NSHOWN && song.playing && s->time == ST_NOTE) {
@@ -454,7 +454,7 @@ static void seqm_set_amount(uint32_t pi, uint32_t amt)   /* SEQ AMT */
     sqm[pi].amt_x = (uint8_t)((amt > 100u ? 100u : amt) ^ SQM_AMT_DEF);
     sqm_refresh(pi, 1);
 }
-/* main loop, every pass: the ends built again when the pattern was edited (every 20 ms at most) */
+/* main loop, every pass: the ends built again when the pattern is edited (every 20 ms at most) */
 static void sqm_bass_scan(void)                         /* B1: sqm_bassm from the parts' sounds (main loop); the PAD sounds too (CAT_PAD, category.c: included later) */
 {
     uint32_t k, b = 0;
