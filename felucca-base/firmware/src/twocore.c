@@ -1,14 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 OSCILL/R (DUELL). Part of DUELL, a modified version of Felucca. */
 /* DUELL TWO-CORE, stage 1: core 0's side (DUELL_TWOCORE=1 only; src/twocore.h has the words and core 1's side; docs/TWOCORE_STAGE1.md).
- * From the bench that ran on the owner's unit (wip/bench0226 src/bench.c, BENCH-B3): the record across a reset, the armed start, the
- * supply raise before the start, the heartbeat watch, the read check, the flash park; rewritten against the stage-1 words and without the
- * bench's screen. What is NOT here (cloud job 5): the runner (the hand-over every block, the deadline, the three cases, pausing the jobs),
+ * The record across a reset, the armed start, the
+ * supply raise before the start, the heartbeat watch, the read check, the flash park (from wip/bench0226 src/bench.c, BENCH-B3). What is NOT here: the runner (the hand-over every block, the deadline, the three cases, pausing the jobs),
  * the job itself (TC_JOB_RUN: part 2's stages), the strike counter's storage, the notice, the menu line.
  *
  * Who calls what (all core 0):
  *   power-on, interrupts off, before audio_init     tc_boot (main.c)
- *   the audio interrupt (the runner, job 5)         tc_post, tc_answer, tc_take, tc_closed, tc_fail; it must honour tc.park
+ *   the audio interrupt (the runner)         tc_post, tc_answer, tc_take, tc_closed, tc_fail; it must honour tc.park
  *   every main-loop pass                            tc_watch (main.c)
  *   before every flash read, erase or program       tc_flash_park (storage_hw.c)
  *   before an intended reset (an update)            tc_hold_clean (main.c)
@@ -19,7 +18,7 @@
 static tc_t tc TC_BSS;          /* (tc_nv, the record across a reset: declared by the hal, twocore.h) */
 
 /* ---------------------------------------------------------------- the hand-over's primitives (the runner's policy is job 5's) --- */
-/* hand core 1 the next job (only when tc_closed(): the words of the job before are no longer read). Returns its number */
+/* hand core 1 the next job (only when tc_closed(): the words of the job before are not read any more). Returns its number */
 static TC_FN uint32_t tc_post(uint32_t arg)
 {
     uint32_t j = tc_next(tc.job);
@@ -81,7 +80,7 @@ static TC_FN void tc_fail(uint32_t why)
     tc_nv.state = 0;
     tc_nv.last = why;
 }
-/* an intended end (an update, a restart the owner asked for): held, the record says OK */
+/* an intended end (an update, a requested restart): held, the record says OK */
 static TC_FN void tc_hold_clean(void)
 {
     if (tc.up) {
@@ -142,7 +141,7 @@ static TC_FN void tc_flash_park(void)
     tc_park_wait();
 }
 
-/* b7 (review F1): a store read, program or erase (storage_hw.c), called inside each of its IRQ-off windows. With the interrupts off the runner
+/* a store read, program or erase (storage_hw.c), called inside each of its IRQ-off windows. With the interrupts off the runner
  * posts no job, and the job of the block before is over (the runner waits for it), so core 1 is normally idle already: nothing is parked,
  * nothing counted, and the audio keeps its two-core numbers (a park held to the next pass made the runner trim the held notes to the one-core
  * numbers: tcr_begin). Only the fault path's very late job can still be open: it gets TC_PARK_US, else core 1 is stopped (TCR_FLASH), as a park */
@@ -185,7 +184,7 @@ static TC_FN int tc_boot(uint32_t rst, int crashed, int boot_failed)
     armed = tc_nv.state == TCNV_ARMED;
     tc.armed = armed ? TCW_ONESHOT : TCW_NOT;
 #if TC_AUTO_ARM
-    if (!armed) {                                       /* DUELL 1.1 (item 92 addendum 3, owner): two cores are tried at EVERY power-on, also after a strike */
+    if (!armed) {                                       /* (item 92 addendum 3): two cores are tried at EVERY power-on, also after a strike */
         armed = 1;                                      /* (the strike stays in tc.boot_last for the notice; the boot guard below still wins) */
         tc.armed = TCW_AUTO;
     }
@@ -220,7 +219,7 @@ static TC_FN int tc_boot(uint32_t rst, int crashed, int boot_failed)
     }
     return tc.up;
 }
-/* ERASE DATA (main.c, just before the restart; DUELL 1.1 item 92 addendum 2): the record across a reset is wiped whole (strike, last reason, SKIPBOOT,
+/* ERASE DATA (main.c, just before the restart; item 92 addendum 2): the record across a reset is wiped whole (strike, last reason, SKIPBOOT,
  * ARMED/RAN), the magic too: the next start finds no record, begins from NONE and tries two cores (tc_boot) */
 static TC_FN void tc_forget(void)
 {

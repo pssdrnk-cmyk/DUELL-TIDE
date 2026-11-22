@@ -149,8 +149,8 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
         if (!((g.flags | h.flags) & (MF_NEVER | MF_ARP | MF_GONE)) && (!((g.flags | h.flags) & MF_PIT) || (morph.cfg & MC_PIT)))
             end[id] = tv;                                /* (a switch, a route, TRIM too: morph_build flips what does not blend at the middle) */
     }
-    {                                                    /* B15 (manager, sound first, 2026-11-17): the b14 "TRAVEL keeps the part's mix" rule (PR 147) is rolled back: the destination brings its
-                                                          * own AMP ENV, SAT, sends, SPREAD, INSERT and EQ again, as in 1.0.0; the CPU it costs is met by the two cores and the ring (work/b15/cpu/cores) */
+    {                                                    /* TRAVEL does not keep the part's mix: the destination brings its
+                                                          * own AMP ENV, SAT, sends, SPREAD, INSERT and EQ; the CPU it costs is met by the two cores and the ring (work/b15/cpu/cores) */
 #ifdef TRAVELCPU_KEEPVAR                                 /* (tests/travel_cpu_probe.c only: which groups of the destination's values the Original keeps, a bisection of the cost) */
         for (j = 0; j < EXT_P_LEN; j++) {
             uint32_t g = j >= XW_BASE ? ((j - XW_BASE >= X_SUBLVL && j - XW_BASE <= X_CYSYNC) || (j - XW_BASE >= X_CYCUT2 && j - XW_BASE <= X_CYPIT) ? 3u : j - XW_BASE <= X_LFO2 ? 1u : 2u)
@@ -163,10 +163,10 @@ static int morph_to_sound(uint32_t pi, uint32_t x, uint32_t k)
         }
 #endif
     }
-    {                                                    /* the destination's loudness. b10 Later 26: a part as a factory multi loaded it (tide_mu) plays the destination at the
+    {                                                    /* the destination's loudness. a part as a factory multi loaded it (tide_mu) plays the destination at the
                                                           * part's measured level, both in the Original's class pattern (jrny_mu.h, jrny_ctx.h; 2 TRIM steps a dB): the part's TRIM
                                                           * says nothing alone, it lifts or lowers a sound the multi re-voiced (M06's darker EP +5 dB, M19's sparse bass +12 dB:
-                                                          * TRAVEL played 4 dB over to 9 dB under the multi). Else MR5 (b7): the destination's factory TRIM less what the part's TRIM
+                                                          * TRAVEL played 4 dB over to 9 dB under the multi). Otherwise the destination's factory TRIM less what the part's TRIM
                                                           * takes off the Original's (M16's pads: JOURNEY played 9-12 dB over the multi); a lift is not carried */
         const track_t *t = &trk[pi];
         int32_t o;

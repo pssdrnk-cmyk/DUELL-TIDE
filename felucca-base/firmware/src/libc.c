@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* The few libc routines the compiler may call implicitly (struct copies,
  * zeroing). Freestanding: no other libc. */
-#include "memfast.h"                    /* word-at a-time loops: a clear or a copy was 2-3 instructions a byte */
+#include "memfast.h"                    /* word-at a-time loops: a byte loop would take 2-3 instructions a byte */
 void *memset(void *d, int c, unsigned n) { return mf_memset(d, c, n); }
 void *memcpy(void *d, const void *s, unsigned n) { return mf_memcpy(d, s, n); }
 

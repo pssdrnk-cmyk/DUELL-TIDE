@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* TIDE LIVE GRAPHS (design: docs/design/LIVE_GRAPHS.md): over the pictures of ui_graph.c, what the selected part is doing now: a playhead (a line and a dot) on the envelopes,
  * LFOs, CYCLE and the INSERT sweep, the live cutoff on MULTI FILTER and TWIN, a bar under each acting MATRIX row, a bar in each sounding CHORD key. An overlay: the pictures are
- * drawn as before. The taps below only READ the audio's state (a torn read draws one frame wrong); the one audio-side code is the pair of bytes track_t.lvc / lvc2 it writes.
+ * drawn as they are without it. The taps below only READ the audio's state (a torn read draws one frame wrong); the one audio-side code is the pair of bytes track_t.lvc / lvc2 it writes.
  * Every kind ends in one marker (lv.x, lv.y: canvas px of the picture; lv.pv: it comes from a UI clock, not the audio) drawn by lv_mark; one UI clock (lv_uiph) serves every
  * PREVIEW; one sweep (lv_cyc) the LFO, INSERT and CYCLE cycles; one curve walk (lv_eg_lvl) the envelopes. MENU > ANIMATION OFF (PREF_ANIM_OFF): none of it.
  * Included by ui_graph.c after the pictures, whose geometry it repeats (graph_adsr, graph_fm6env, graph_lfo, graph_cycle, graph_filt, graph_insert, graph_mod_new). */

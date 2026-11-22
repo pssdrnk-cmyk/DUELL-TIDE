@@ -3,14 +3,13 @@
 /* Felucca 1.2: the SEQ TOOLS layer's actions (ui_layer.c: SEQ held, on every page). Included by ui_layer.c. The white
  * keys from F3 (TL_*):
  *   F3 CLEAR  G3 REVERSE  A3 SHIFT <  B3 SHIFT >       the whole sequence
- *   C4 SWELL  D4 RIPPLE                                  a whole new wave / a few notes move (b11: were RANDOM and COOK; tide_take.c tide_tl_swell takes them for TIDE)
- *   E4 TRANS + F4 TRANS -                                every note of the pattern one semitone up / down per press (owner 2026-10-28; clamped to 1..127)
- * (DUELL 0.2.14: the DRUM engine is gone, and with it E4 BEAT and the four lane tools G4..C5)
+ *   C4 SWELL  D4 RIPPLE                                  a whole new wave / a few notes move (tide_take.c tide_tl_swell takes them for TIDE)
+ *   E4 TRANS + F4 TRANS -                                every note of the pattern one semitone up / down per press (clamped to 1..127)
  * Each works on the selected track's steps 1..LEN (the steps past LEN stay) and is one undo: OCT- held and a PRESETS turn swap back
  * the copy taken just before it (ui.c undo, UNDO_PAT; unlike a load the track's automation stays), so after a few
- * COOKs that undo takes back the last one only; the layer's OCT- puts back the track as the layer opened (tl_open).
+ * RIPPLEs that undo takes back the last one only; the layer's OCT- puts back the track as the layer opened (tl_open).
  * A step that held something and is empty after loses its locks (as EDIT's step clear); REVERSE and SHIFT move the
- * steps' automation and locks with them. SWELL and RIPPLE (b11) have a seed a press (tl_sd; same seed, same notes), the key of the multi when SCL is off
+ * steps' automation and locks with them. SWELL and RIPPLE have a seed a press (tl_sd; same seed, same notes), the key of the multi when SCL is off
  * and no rubs against the other part. A sequence of ties reversed keeps its note first: N T T -> N T T at the mirrored place */
 enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_TUP, TL_TDN TIDE_TL_KEEP, TL_N };   /* TIDE hook (H14: G4 KEEP) */
 
@@ -18,7 +17,7 @@ enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_TUP, TL_TDN T
 static struct { step_t step[NSTEP]; motion_store_t mo; } tl_open __attribute__((section(".pool")));
 
 static uint32_t tl_len(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }
-/* b11 (SWELL / RIPPLE, TIDE's rules): a press has a seed (tl_sd, never 0: the same seed, the same notes; 0 = libc rng(), the stock dice), the part's key (SCL, else the multi's key byte), and it keeps clear of semitone rubs
+/* SWELL / RIPPLE (TIDE's rules): a press has a seed (tl_sd, never 0: the same seed, the same notes; 0 = libc rng(), the stock dice), the part's key (SCL, else the multi's key byte), and it keeps clear of semitone rubs
  * against the other part (tl_rub) */
 static uint32_t tl_sd __attribute__((section(".pool"))), tl_ms __attribute__((section(".pool"))), tl_rt __attribute__((section(".pool")));
 static int32_t tl_off __attribute__((section(".pool")));                                    /* with the multi's key: what the part's steps sound above their notes (TRN, an ARP SEQ part's stand-in) */
@@ -75,7 +74,7 @@ static int tl_cell(uint32_t p) { return p < TL_N; }
 static void tl_undo_take(track_t *t)
 {
     uint32_t i = trk_index(t);
-    TIDE_TAKE_STALE();                                  /* (b11: the newest edit is not a take / SWELL any more: OCT- + PRESETS undoes this one) */
+    TIDE_TAKE_STALE();                                  /* (the newest edit is not a take / SWELL: OCT- + PRESETS undoes this one) */
     undo.trk = (uint8_t)(i + 1u);
     undo.what = UNDO_PAT;
     undo.keep = 0;                                      /* (the next load or action takes its own copy) */
@@ -301,7 +300,7 @@ static void tl_trans(track_t *t, uint32_t len, int32_t d)
                 t->step[i].note[k] = (uint8_t)((int32_t)t->step[i].note[k] + d);
 }
 
-/* SWELL (a whole new wave: C4, was RANDOM) or RIPPLE (a few notes move: D4, was COOK) of t with the press's seed: the steps it changed (the header says how many), 0 nothing (RIPPLE with no notes says so) */
+/* SWELL (a whole new wave: C4) or RIPPLE (a few notes move: D4) of t with the press's seed: the steps it changed (the header says how many), 0 nothing (RIPPLE with no notes says so) */
 static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t live)
 {
     uint32_t len = tl_len(t), i, n = 0, h[NSTEP];

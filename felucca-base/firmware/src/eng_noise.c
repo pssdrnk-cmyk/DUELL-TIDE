@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* NOISE: from analog-style noise to shift-register noise. No filter of its own since the engine filters left (TWIN_FILTER_DESIGN_2, cloud job J): its FREQ / RES / TRK are filter 1, the MULTI FILTER
- * (voice.c uf_run; RES as MODE LP > BP and the damping). What stays here is the loudness make-up, which now reads filter 1's effective cutoff WITHOUT the velocity accent (vmod_t.ucn, set by the voice path; 1.1: it fell as the accent opened the filter):
+/* NOISE: from analog-style noise to shift-register noise. No filter of its own: its FREQ / RES / TRK are filter 1, the MULTI FILTER
+ * (voice.c uf_run; RES as MODE LP > BP and the damping). What stays here is the loudness make-up, which reads filter 1's effective cutoff WITHOUT the velocity accent (vmod_t.ucn, set by the voice path: the make-up must not fall as the accent opens the filter):
  * the source is made louder the lower the filter will close, BEFORE the filter (the amp ramp is applied to the signal scaled down by 2^sh, sh 0..4, and the shift put back, so the
  * x16 of a low cutoff cannot overflow mulq15). DRFT's wander of the cutoff is handed to filter 1 one block late (v->s[0], voice.c track_render adds it to the voice's cutoff routes while
  * filter 1 is on). CRSH is the last thing the engine does, so it runs before filter 1 and the filter smooths its steps.
@@ -208,7 +208,7 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     v->ph[2] = (uint32_t)drift;
 }
 
-/* {MODE, COLR, -, -, -, DENS, DRFT, CRSH / CLK} (FREQ RES TRK are filter 1's since cloud job J) */
+/* {MODE, COLR, -, -, -, DENS, DRFT, CRSH / CLK} (FREQ RES TRK are filter 1's) */
 #if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t NOISE_PRESETS[] = {
     {"WIND", {NZ_ANLG, 64, 0, 0, 0, 0, 70, 0}, {90, 90, 110, 90}, 0, 0, FX(0, 30, 20, 80), PAT(5)},
@@ -228,9 +228,9 @@ static const engine_t ENG_NOISE = {
     .edit = {
         {"MODE", F_ENUM, 0, 0, 3, 0, N_NOISE_MODE},
         {"COLR", F_PCT, 0, 0, 127, 64, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was FREQ: filter 1's CUT */
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES: filter 1's RES and MODE */
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was TRK: filter 1's KEY TRK */
+        {"-", F_INT, 0, 0, 0, 0, 0},                 /* unused: filter 1's CUT */
+        {"-", F_INT, 0, 0, 0, 0, 0},                 /* unused: filter 1's RES and MODE */
+        {"-", F_INT, 0, 0, 0, 0, 0},                 /* unused: filter 1's KEY TRK */
         {"DENS", F_PCT, 0, 0, 127, 0, 0},           /* LFSR, META: the register (noise_desc) */
         {"DRFT", F_PCT, 0, 0, 127, 0, 0},
         {"CRSH", F_PCT, 0, 0, 127, 0, 0},           /* LFSR, META: the clock above the key */
@@ -241,9 +241,9 @@ static const engine_t ENG_NOISE = {
 #endif
     .note_on = noise_note_on,
     .render = noise_render,
-    .knob = {P_FREEA, P_FREEB, P_E1, P_REL},   /* filter 1's CUT and RES (FREQ and RES were here) */
+    .knob = {P_FREEA, P_FREEB, P_E1, P_REL},   /* filter 1's CUT and RES */
     .keep = 0xF1,                /* the wander handed to filter 1, the colour poles */
     .desc = noise_desc,
     .uiord = NOISE_UIORD,
-    .ufilt = 1,                  /* no filter of its own since cloud job J: the multimode filter (voice.c uf_run) */
+    .ufilt = 1,                  /* no filter of its own: the multimode filter (voice.c uf_run) */
 };

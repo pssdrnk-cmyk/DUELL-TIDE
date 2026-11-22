@@ -8,16 +8,16 @@
 #define HALF_WORDS (HALF_FRAMES * 2u)
 #define DAC_TICKS 544u            /* TIMER4 ticks per I2S frame (24 MHz / 44,117.6 Hz) */
 #define CPU_AVG (4096u / HALF_FRAMES)   /* halves the load meter averages: ~93 ms whatever the half */
-#define OUT_SHIFT 8               /* Q15 -> 24-bit at full scale (B13: was 7, a -6 dBFS ceiling from the bring-up, "M0f ran clean at -18 dBFS"; the master's knee keeps the mix under it) */
+#define OUT_SHIFT 8               /* Q15 -> 24-bit at full scale (the 16-bit scale is the DAC's full scale; the master's knee keeps the mix under it) */
 
 static int32_t abuf[2u * HALF_WORDS] __attribute__((aligned(4)));
 
-/* B15 THE RING (AUDIO_RING; owner 17 Nov: +2.9 ms latency approved; work/b15/cpu/cores/DESIGN.md). The interrupt renders one half AHEAD: at its entry it copies the half it
+/* THE RING (AUDIO_RING; +2.9 ms latency; work/b15/cpu/cores/DESIGN.md). The interrupt renders one half AHEAD: at its entry it copies the half it
  * rendered last time (rbuf) into the DMA's free half and acknowledges at once, then renders the next half into rbuf. A half is then late only when its interrupt ENTERS a
  * whole half after it came due (the copy is the deadline, not the render's end), so a render over 100 % borrows from the next half and a lighter one pays it back (Deluge's
  * output ring, research #1). The "debt" is how late an entry is: ring_due is when this interrupt came due (the entry of an on-time one, else the last due + a half: the DMA and
  * TIMER4 run from the same 24 MHz clock, 544 ticks a frame). The ease ladder and the in-buffer guard read the debt the half leaves (ring_eff, guard_block), not the half's own
- * length: a spike the ring absorbs eases and sheds nothing (owner: no note cutting). The flash duck needs three silent halves (rbuf and both DMA halves). Off (0): the old
+ * length: a spike the ring absorbs eases and sheds nothing (no note cutting). The flash duck needs three silent halves (rbuf and both DMA halves). Off (0): the
  * ping-pong, bit for bit (the host tests' default) */
 #ifndef AUDIO_RING
 #define AUDIO_RING 0
@@ -40,9 +40,9 @@ static uint32_t ring_debt, ring_debt_pk;               /* this entry's lateness 
 struct felucca_dbg {
     uint32_t magic, halves, max_us, nested, in_audio, late, timer_irqs, ui_frames;
     uint32_t last_us, cpu_q8, boots;
-    uint32_t stage, page, home;           /* where the main loop is (breadcrumbs); home: always 0 since 0.2.14 (the OVERVIEW screen is gone; the field keeps the layout) */
+    uint32_t stage, page, home;           /* where the main loop is (breadcrumbs); home: always 0 (the field keeps the layout) */
     uint32_t prev_stage, prev_page, prev_home, prev_rst, prev_frames;   /* as found at boot */
-    uint32_t erase_max_us, erase_last_us, prog_max_us, erases;   /* DUELL 0.2.11: the flash driver's own times (storage_hw.c), since boot */
+    uint32_t erase_max_us, erase_last_us, prog_max_us, erases;   /* the flash driver's own times (storage_hw.c), since boot */
 } felucca_dbg __attribute__((section(".noinit")));
 static volatile uint32_t audio_halves, audio_max_us;
 static volatile uint32_t t5_nested_ticks;              /* TIMER4 ticks TIMER5 spent nested in this ISR (main.c) */
@@ -68,25 +68,25 @@ static uint32_t meter_est_us(void)
 }
 #endif
 
-/* MASTER, the DAC's volume (DUELL 0.2.25, owner 2026-10-20: "the master volume glitches when I rotate it, in the headphone"). The codec has no volume
+/* MASTER, the DAC's volume. The codec has no volume
  * register the firmware writes (hal/fm1_audio.h: only its enable lines), so this is the only volume there is. mix_block makes the mix at the fixed level
  * MASTER_USB_REF and USB took it; here out (Q15) becomes Q15 x 2^OUT_SHIFT (the 24-bit stream's scale) times song.master_q12 / MASTER_USB_REF, with two
- * differences from the stage that was here (usb_fixed_dac: out * m >> 11 per block, in Q15):
+ * differences from the fixed USB stage (usb_fixed_dac: out * m >> 11 per block, in Q15):
  *  - the gain glides: mdac_g (Q24: Q12 x 2^12) follows the knob's level with a one-pole step every sample (1/512 of the way: tau 512 samples = 11.6 ms), so a
  *    knob step (the level is read every block and changes every main-loop pass) is a glide of a few ms, not a step of up to 6 dB at the low end of the
  *    knob (a step of s dB is a jump of (10^(s/20) - 1) x the signal at the block seam: a click). The step is rounded away from the target, so the gain
- *    reaches it exactly (settled, the result is the old stage's bit for bit at the same level and 2^OUT_SHIFT times its Q15 value);
- *  - the result keeps OUT_SHIFT fractional bits of Q15 (it used to be cut to Q15 first): a quiet knob position (gain 1/30) no longer loses 5 bits of the
+ *    reaches it exactly (settled, the result is the fixed stage's bit for bit at the same level and 2^OUT_SHIFT times its Q15 value);
+ *  - the result keeps OUT_SHIFT fractional bits of Q15 (not cut to Q15 first): a quiet knob position (gain 1/30) does not lose 5 bits of the
  *    signal to truncation (distortion and grain in headphones at a low volume).
- * (0.2.30: the knob has no boost any more, its top is unity; the saturation stays as a safety.) A gain above 1 saturates at the old ceiling, never wraps. mdac_g < 0: not started (power-on: the first block takes the
+ * (The knob has no boost, its top is unity; the saturation stays as a safety.) A gain above 1 saturates at the ceiling, never wraps. mdac_g < 0: not started (power-on: the first block takes the
  * knob's level, no fade-in).
- * B13 (owner 2026-11-15: "very quiet compared to my other synths"; work/b13/level/REPORT.md): the DAC gets 8 dB more than before at every knob position, all of it after the limiter
- * (the mix, the limiter and USB unchanged): OUT_SHIFT 8 (+6 dB: the 16-bit scale is the DAC's full scale, not -6 dBFS of it) and the target x 1.2588 (+2 dB); fx.c's knee holds the
+ * The DAC level (work/b13/level/REPORT.md): 8 dB of gain at every knob position, all of it after the limiter
+ * (the mix, the limiter and USB are unaffected): OUT_SHIFT 8 (+6 dB: the 16-bit scale is the DAC's full scale, not -6 dBFS of it) and the target x 1.2588 (+2 dB); fx.c's knee holds the
  * mix to 21900 (-3.5 dBFS), so the DAC's loudest sample is -1.5 dBFS and the saturation is never reached by the music (the click, added after, can). */
 #ifndef MDAC_SHIFT
 #define MDAC_SHIFT 9                                   /* the glide: 1/512 of the way a sample (tau 512 samples = 11.6 ms) */
 #endif
-/* Saturation to the 24-bit scale's 16-bit-Q15 range: +4,194,303 .. -4,194,304 (the old stage clipped at +4,194,176 .. -4,194,304). Written as a test of the bits above and the sign
+/* Saturation to the 24-bit scale's 16-bit-Q15 range: +4,194,303 .. -4,194,304. Written as a test of the bits above and the sign
  * mask instead of two limits, because a limit of -4,194,304 as a literal is an address in the chip ROM to build.py's "no reference to the ROM" check (0xFFC00000..) */
 static inline int32_t mdac_sat(int32_t v)
 {
@@ -102,7 +102,7 @@ static __attribute__((noinline)) void master_dac(int32_t *out, uint32_t n)   /* 
 {
     uint32_t i, s, q = song.master_q12, p = master_g16;
     int32_t t = (int32_t)((p >> 4) == q ? p << 8 : q << 12), g;   /* (the target, Q24) */
-    t += (t >> 2) + (t >> 7) + (t >> 10);              /* B13: the DAC level +2.0 dB (x 1.2588; shifts, once a block): fx.c's knee ceiling (-3.5 dBFS) lands at -1.5 dBFS of the DAC; |out| <= 21900, k < 2^15 */
+    t += (t >> 2) + (t >> 7) + (t >> 10);              /* the DAC level +2.0 dB (x 1.2588; shifts, once a block): fx.c's knee ceiling (-3.5 dBFS) lands at -1.5 dBFS of the DAC; |out| <= 21900, k < 2^15 */
     g = mdac_g < 0 ? t : mdac_g;
     for (i = 0; i < n && g != t; i++) {                /* gliding: the gain moves a step every sample */
         int32_t d = t - g, k;
@@ -134,7 +134,7 @@ static void audio_post(int32_t *out, uint32_t n)        /* after the block's mas
     click_render(out, n, OUT_SHIFT);                    /* the metronome (click.c): the DAC only, not USB */
 }
 #if MPJ_ON
-/* B15 MPJ (twocore_run.c): a block whose master went to core 1 gets its DAC steps after the next block's mix (its master is closed by then: mix_gather waited for it), in block
+/* MPJ (twocore_run.c): a block whose master went to core 1 gets its DAC steps after the next block's mix (its master is closed by then: mix_gather waited for it), in block
  * order; the click's request is the one the block had at its own end (the next block's events may have set a new one, which waits) */
 static struct { int32_t *out; uint8_t creq, on; } mpj_q;
 static void mpj_fin(void)
@@ -172,12 +172,12 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
 #endif
 }
 
-/* DUELL 0.2.11, the flash duck (SPEC 6.3): a flash erase keeps the interrupts off for its whole time (~40 ms; the device's own
+/* The flash duck (SPEC 6.3): a flash erase keeps the interrupts off for its whole time (~40 ms; the device's own
  * figure: felucca_dbg.erase_max_us, the TEST screen), and the DMA loops abuf meanwhile, so the buffer must hold silence. Before
  * an erase (and a long program burst) the main loop asks for a duck (audio_duck): the ISR fades the DAC output to 0 over one half
  * (2.9 ms, linear), then renders on in silence (voices, envelopes and effects run as ever: what sounded keeps sounding after) and
  * counts the silent halves; after two, both halves of abuf are 0 and the erase may stop the interrupts. audio_unduck: the next
- * half fades back in over one half. A soft dip instead of the old step to silence and back (two clicks). USB (uac_tap) is not ducked */
+ * half fades back in over one half. A soft dip, not a step to silence and back (two clicks). USB (uac_tap) is not ducked */
 #define DUCK_STEP (32768u / HALF_FRAMES)               /* Q15 a frame: 1 .. 0 over one half */
 static volatile uint8_t duck_on;                       /* main loop: 1 fade out and stay silent, 0 fade back in */
 static volatile uint8_t duck_zero;                     /* ISR: whole silent halves since the fade ended (up to 2: all of abuf) */
@@ -214,7 +214,7 @@ static void audio_unduck(void) { duck_on = 0; }       /* the next half fades bac
 /* Overload: two halves in a row above 85 % (the render plus TIMER5 nested in it), fade one voice over the
  * next block, and one more each half while it lasts. Keep each part's
  * lowest POLY note and MONO / LEGATO / UNISON lead, as the shared budget does.
- * DUELL 0.2.11 (SPEC 6.3): a single half over 100 % (it missed) sheds at once, without waiting for a second one: the
+ * SPEC 6.3: a single half over 100 % (it missed) sheds at once, without waiting for a second one: the
  * SHED_FAST_N oldest released voices (their tails) fade over the next block; held notes only by the rule above */
 #define SHED_HELD 1u                                   /* shed_req bits: the 85 % rule (shed_voice) */
 #define SHED_FAST 2u                                   /* .. a half over 100 %: released voices at once (shed_released) */
@@ -225,24 +225,23 @@ static uint8_t shed_over;                              /* bit k: the half k halv
 #define SHED_FULL_TICKS ((HALF_FRAMES * 1000000u / FS) * FM1_TICKS_PER_US)                 /* the whole half */
 static uint32_t shed_count;
 
-/* K3 THE EASE LADDER (TIDE 1.0.0-b4, CPU audit K3; core.h ease, EASE_*): in place of the two rules below (kill a voice after two halves over 85 %, LIGHT FX the
- * same), one level that eases the cheapest, least audible work first and cuts sound only when a half really missed. Driven by the ELAPSED half (all: TIMER5's
+/* THE EASE LADDER (core.h ease, EASE_*): one level that eases the cheapest, least audible work first and cuts sound only when a half really missed. Driven by the ELAPSED half (all: TIMER5's
  * nested work included, what the DMA deadline sees):
  *  - up: two halves in a row over EASE_UP_PCT (85 %): one level up (at most one a half); a half over its whole time (a miss): to EASE_TAILS at least;
  *  - down, one level, the first of two rules to hold (both counts then start again; an up step restarts them too):
  *    a) PEAK: no half over EASE_DOWN_PCT (80 %) for EASE_DOWN_HALVES (~1 s) below LIGHT FX, for EASE_DOWN_HALVES_FX (~3 s) from LIGHT FX up. The meter's
- *       average alone would not do: the NOTES budget plans up to BUDGET_LIMIT on average (72 % in b1 .. b5; b6 N1's steps 76 / 80 / 84, budget.h DUELL_NOTES_STEP),
- *       so a scene that sits at 70 .. 85 % would never step down. (b6 N1: at 72 the busiest factory multis of the unit's GLIDE sweep already average 69 .. 70 % with a
+ *       average alone would not do: the NOTES budget plans up to BUDGET_LIMIT on average (72 %, steps 76 / 80 / 84, budget.h DUELL_NOTES_STEP),
+ *       so a scene that sits at 70 .. 85 % would never step down. (at 72 the busiest factory multis of the unit's GLIDE sweep already average 69 .. 70 % with a
  *       per-second elapsed peak of 86 .. 91 %; at a higher step neither release may hold in those scenes, so the ladder can stay at level 1 or 2 there: nothing is
  *       cut, but at level 2 a new note takes over a fading tail instead of a free voice while it lasts. The console's `cpu` shows the entries per level,
  *       ease_n1 .. ease_n5.) LIGHT FX saves
  *       5.5 .. 8.8 points, more than the 5-point gap between 85 and 80 %, so leaving it takes longer; and if level 3 is entered again within those 3 s
  *       of leaving it (a scene that needs it: 87 % without, 78 % with), the next release from 3 up waits 3 x as long (ease_fxl): at most one LIGHT FX
  *       blip in ~10 s instead of one every 3 s;
- *    b) AVERAGE: the meter's load (song.cpu_q8) under 70 % for ~3 s (OVL_CALM_HALVES, 0.2.25's LIGHT FX rule): a single half over 80 % every second
+ *    b) AVERAGE: the meter's load (song.cpu_q8) under 70 % for ~3 s (OVL_CALM_HALVES, the LIGHT FX rule): a single half over 80 % every second
  *       would otherwise hold a level for good at a 50 % average;
  *  - EASE_TAILS fades the SHED_FAST_N oldest released tails on the half it is entered from below and on each half the overload lasts; EASE_HELD fades a held
- *    note (shed_voice) only on a half that missed. Levels 1 .. 3 fade nothing. The ISR's own shedding code (shed_req) is unchanged.
+ *    note (shed_voice) only on a half that missed. Levels 1 .. 3 fade nothing. The ISR's own shedding code (shed_req) does the fading.
  * ease_step runs every half (range Z: tools/ram_fns_z.py); ease_set, a level change, is in the flash */
 #define EASE_UP_PCT 85u
 #define EASE_DOWN_PCT 80u
@@ -312,9 +311,9 @@ static uint32_t shed_released(uint32_t n)             /* the n oldest released v
     return k;
 }
 
-/* THE IN-BUFFER GUARD (b11, ported from DUELL 1.2 by OSCILL/R, GPL-3.0: audio.c guard_block). 1.2's bench: the missed halves at a chord's start ran only 10 to 30 us over (the half's
- * first block runs slow: its code reloads after the main loop), and the ladder above acts only after two halves over 85 % or after a miss: the first half over is already lost (TIDE's
- * 13 Nov sweep: 9 of the 14 seconds over 100 % were the first second after a load, PLAY or a glide's start). Here, after every block but the last: the time used so far (TIMER5's nested
+/* THE IN-BUFFER GUARD (ported from DUELL 1.2 by OSCILL/R, GPL-3.0: audio.c guard_block). 1.2's bench: the missed halves at a chord's start ran only 10 to 30 us over (the half's
+ * first block runs slow: its code reloads after the main loop), and the ladder above acts only after two halves over 85 % or after a miss: the first half over is already lost (a CPU
+ * sweep: 9 of the 14 seconds over 100 % were the first second after a load, PLAY or a glide's start). Here, after every block but the last: the time used so far (TIMER5's nested
  * work included, as the DMA deadline sees it) plus the blocks still to come at the running mean of a later block; when that would end past GUARD_TICKS, the GUARD_N oldest released
  * voices (keys let go: their tails; shed_released) fade now (voice_kill: over the next block), so the half's later blocks have them no more. A held note is never touched. Nothing
  * happens below the limit, so the sound changes only where a half would have been missed. A guard fade is not an ease-ladder step: the ladder (ease_step) reads only the halves'
@@ -327,7 +326,7 @@ static uint32_t shed_released(uint32_t n)             /* the n oldest released v
 static uint32_t guard_q;                                /* the running mean of a later block (blocks 1 .. 3 of a half), ticks x 8 */
 static uint32_t guard_count;                            /* checks that faded tails */
 #if AUDIO_RING
-static uint32_t guard_lim = GUARD_TICKS;                /* B15 ring: the half may end up to half a half past its time (the debt it leaves is then at most half the ring), less the debt it came in with */
+static uint32_t guard_lim = GUARD_TICKS;                /* ring: the half may end up to half a half past its time (the debt it leaves is then at most half the ring), less the debt it came in with */
 #define GUARD_LIM guard_lim
 #else
 #define GUARD_LIM GUARD_TICKS
@@ -341,8 +340,8 @@ static inline void guard_block(uint32_t t0, uint32_t tb, uint32_t k)
         guard_count++;
 }
 #if AUDIO_RING
-/* B15 ring: what the ease ladder reads for a half of length `all` that came in `debt` late. With no debt left after it: its length, capped at EASE_UP_TICKS (never "over":
- * a spike the ring absorbed eases nothing; under the cap the ladder's way down works as before). With a debt left: just over EASE_UP_TICKS for a small one, rising to the
+/* ring: what the ease ladder reads for a half of length `all` that came in `debt` late. With no debt left after it: its length, capped at EASE_UP_TICKS (never "over":
+ * a spike the ring absorbed eases nothing; under the cap the ladder's way down works as for a plain half). With a debt left: just over EASE_UP_TICKS for a small one, rising to the
  * whole half (a "miss" to the ladder: EASE_TAILS) when the debt left reaches half the ring. A real miss is counted at the next entry (a debt of a whole half) */
 static uint32_t ring_eff(uint32_t all, uint32_t debt)
 {
@@ -412,7 +411,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
     if (p & FM1_AUDIO_HALF) {
         uint32_t half = fm1_audio_free_half(), b, us, late, all, el, mp;
 #if AUDIO_RING
-        int32_t *o = rbuf;                              /* B15: this half is rendered ahead, into rbuf; the one rendered last time goes to the DMA now */
+        int32_t *o = rbuf;                              /* this half is rendered ahead, into rbuf; the one rendered last time goes to the DMA now */
         uint32_t ring_miss = 0;
         fm1_audio_ack_half();                           /* (at once: a half that comes due while this one renders keeps its pending flag, and the next entry follows this one) */
         {
@@ -425,7 +424,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
                 ring_due = exp;
                 ring_debt = t0 - exp;
                 if (ring_debt + RING_COPY_TICKS >= RING_HALF_TICKS) {   /* a whole half late: the DMA played a stale half (one per half of lateness); start again from this entry */
-                    if (!(duck_on && duck_zero >= DUCK_SILENT_HALVES))   /* (not after a flash erase: the interrupts were off on purpose and the DMA looped silence, as the old code counted none) */
+                    if (!(duck_on && duck_zero >= DUCK_SILENT_HALVES))   /* (not after a flash erase: the interrupts were off on purpose and the DMA looped silence: none counts) */
                         ring_miss = (ring_debt + RING_COPY_TICKS) / RING_HALF_TICKS;
                     ring_due = t0;
                     ring_debt = 0;
@@ -463,7 +462,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
 #endif
 #endif
             audio_block(o + 2u * b, CTL);
-            guard_block(t0, tb, b / CTL);               /* b11: the in-buffer guard (above) */
+            guard_block(t0, tb, b / CTL);               /* the in-buffer guard (above) */
         }
 #if MPJ_ON
         mpj_fin();                                      /* (none waits here: the half's last block keeps its master on core 0; a safety net) */
@@ -476,7 +475,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         audio_halves++;
         all = fm1_ticks() - t0;
 #if AUDIO_RING
-        (void)ease_step(ring_eff(all, ring_debt));      /* (B15: the ladder reads the debt this half leaves) */
+        (void)ease_step(ring_eff(all, ring_debt));      /* (the ladder reads the debt this half leaves) */
         us = (all - t5_nested_ticks) / FM1_TICKS_PER_US;
 #else
         us = ease_step(all);
@@ -504,7 +503,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             audio_cpu_rem = load % CPU_AVG;
         }
 #if AUDIO_RING
-        late = ring_miss != 0;                          /* (B15: a miss is an entry a whole half late: the DMA replayed a half; a long render alone is not one) */
+        late = ring_miss != 0;                          /* (a miss is an entry a whole half late: the DMA replayed a half; a long render alone is not one) */
         mp = 0;
         cpu_miss += ring_miss;
 #else

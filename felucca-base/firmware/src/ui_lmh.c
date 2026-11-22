@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* b11 MIXER / QUICK GLO: LOW / MID / HIGH a part (owner: "display like the low mid high on the same design language we have"). One module, one call: ui_layer.c draw_layer
+/* MIXER / QUICK GLO: LOW / MID / HIGH a part. One module, one call: ui_layer.c draw_layer
  * calls lmh_draw() each frame the MIXER or QUICK GLO is shown (template 7), in the level meter's place; drop this file and that call and the page has no meter.
  *
  * The levels: each part's LOW, MID and HIGH from the MORPH card's tap (fx.c wv_m: the part's finished block as one mono entry per two frames, 22.05 kHz, wvr_code; one writer a
@@ -113,8 +113,8 @@ static void lmh_band(int32_t x, int32_t y, int32_t px, int32_t hp, const uint16_
     if (hp > 0)
         cv_rect(x + (hp < LMH_W - 2 ? hp : LMH_W - 2), y, 2, LMH_BH, c[3]);
 }
-/* part k's H M L labels and three bands, the MUTE card's top left at x, y of the canvas. b13 (owner: "flickering when using the quick menus"): the MIXER's panel
- * (ui_layer.c glo_mute_cards) draws them in its own picture; they were sent after it, over a card just painted without them: every band blinked on each open */
+/* part k's H M L labels and three bands, the MUTE card's top left at x, y of the canvas. The MIXER's panel
+ * (ui_layer.c glo_mute_cards) draws them in its own picture; they are sent after it, over a card painted without them */
 static void lmh_card(uint32_t k, int32_t x, int32_t y)
 {
     static const char LB[3][2] = {"H", "M", "L"};

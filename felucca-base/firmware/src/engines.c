@@ -55,19 +55,19 @@ static const engine_t ENG_RETIRED = {
 /* the editor protocol, user presets and projects store these indices: append, never reorder */
 static const engine_t *const ENGINES[NENGINES] = {
     &ENG_ANALOG,                 /* 0 */
-    &ENG_RETIRED,                /* 1: reserved (DIGITAL, replaced by FM6; its code is gone since DUELL 0.2.14) */
+    &ENG_RETIRED,                /* 1: reserved (DIGITAL; FM6 is the FM engine) */
     &ENG_PHASE,                  /* 2 */
     &ENG_LOFI,                   /* 3 */
-    &ENG_RETIRED,                /* 4: reserved (SAMPLE, retired in DUELL 0.2.9: silent, core.h ENGI_RETIRED) */
+    &ENG_RETIRED,                /* 4: reserved (SAMPLE: silent, core.h ENGI_RETIRED) */
     &ENG_FORMANT,                /* 5 VOICE (eng_formant.c: "voice" is a sounding note in voice.c) */
     &ENG_TRIO,                   /* 6 */
     &ENG_WHEEL,                  /* 7 */
-    &ENG_RETIRED,                /* 8: reserved (GRAIN, retired in DUELL 0.2.9) */
+    &ENG_RETIRED,                /* 8: reserved (GRAIN) */
     &ENG_PHYS,                   /* 9 (ENGI_PHYS) */
-    &ENG_RETIRED,                /* 10: reserved (DRUM, hidden in DUELL; its code is gone since 0.2.14) */
+    &ENG_RETIRED,                /* 10: reserved (DRUM) */
     &ENG_NOISE,                  /* 11 */
     &ENG_FM6,                    /* 12 (ENGI_FM6) */
-    &ENG_RETIRED,                /* 13: reserved (SLICE, retired in DUELL 0.2.9; WAVE keeps 14) */
+    &ENG_RETIRED,                /* 13: reserved (SLICE; WAVE keeps 14) */
     &ENG_WAVE,                   /* 14 (ENGI_WAVE) */
 };
 
@@ -161,7 +161,7 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 #define NPAT_STEPS 32u
 static const struct {
     const char *name;
-    uint32_t fl[3];                              /* the flags as bit masks, bit i step i (1.0.0-b7, SP3: 52 B a pattern, was 72): fl[0] accent, fl[1] slide, fl[2] tie; pat_fl */
+    uint32_t fl[3];                              /* the flags as bit masks, bit i step i (52 B a pattern): fl[0] accent, fl[1] slide, fl[2] tie; pat_fl */
     uint8_t len, div;
     uint8_t swing, gate;                         /* 0 = the default (SWG 50 %, GATE 64) */
 } PATTERNS[] = {
@@ -230,7 +230,7 @@ static const struct {
     /* 32 prog: a riff in 7/8 (14 steps) */
     {"SEVEN EIGHT", {65u, 0u, 0u}, 14, 2, 0, 0},
 };
-/* the notes of the 32 patterns, one run of LEN bytes each in the table's order (1.0.0-b9, SP3: only the steps a pattern has, the offset of
+/* the notes of the 32 patterns, one run of LEN bytes each in the table's order (only the steps a pattern has, the offset of
  * pattern k is the sum of the LENs before it; pat_note) */
 static const uint8_t PAT_NOTES[] = {
     /* 1 dub techno chord: stabs on the off-beat 8ths, two of them held on ties for the echo to carry, the last a minor 3rd up */
@@ -305,7 +305,7 @@ static const uint8_t PAT_NOTES[] = {
 #undef ROOT
 #define NPATTERNS (sizeof PATTERNS / sizeof PATTERNS[0])
 
-/* default pattern k's note at step i (0 = rest, also past its LEN: the old table was padded with rests to 32 steps) */
+/* default pattern k's note at step i (0 = rest, also past its LEN: the table holds only the steps a pattern has) */
 static __attribute__((noinline)) uint32_t pat_note(uint32_t k, uint32_t i)
 {
     uint32_t j, o = 0;
@@ -315,7 +315,7 @@ static __attribute__((noinline)) uint32_t pat_note(uint32_t k, uint32_t i)
         o += PATTERNS[j].len;
     return PAT_NOTES[o + i];
 }
-/* default pattern k's flags at step i (1 accent, 2 slide, 4 tie), as the table's columns were before SP3 */
+/* default pattern k's flags at step i (1 accent, 2 slide, 4 tie) */
 static __attribute__((noinline)) uint32_t pat_fl(uint32_t k, uint32_t i)
 {
     return (PATTERNS[k].fl[0] >> i & 1u) | (PATTERNS[k].fl[1] >> i & 1u) << 1 | (PATTERNS[k].fl[2] >> i & 1u) << 2;
@@ -324,7 +324,7 @@ static __attribute__((noinline)) uint32_t pat_fl(uint32_t k, uint32_t i)
 /* the parts at power-on (engine, preset, PATTERNS[n - 1] in the sequencer, 0 = empty: all are): bass, pad (lead and drums: the hidden parts 3 and 4, gone, memory trim 1).
  * DUELL: the preset is the engine's factory sound k (sounds.c; ANALOG 4 = SAW 303), INIT for an engine with none yet
  * (FM6 until its sounds come); the host renders (tests/hostsim.c host_preset) still read Felucca's presets with it */
-static const uint8_t TRK_DEF[NPART][3] = {{0, 4, 0}, {ENGI_FM6, 4, 0}   /* ANALOG ACID, FM6 PAD (was DIGITAL PAD) */
+static const uint8_t TRK_DEF[NPART][3] = {{0, 4, 0}, {ENGI_FM6, 4, 0}   /* ANALOG ACID, FM6 PAD */
 #if NPART > 2
                                           , {3, 0, 0}, {0, 0, 0}                /* (the host rig with four parts: LOFI PULSE LD, ANALOG) */
 #endif

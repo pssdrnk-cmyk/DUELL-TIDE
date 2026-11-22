@@ -6,9 +6,9 @@
  * used, the NAME screen opens before anything is written; OCT+ writes, OCT- cancels (back to the page, nothing
  * written). Any page button or HOME cancels it too (NOT SAVED, nothing written; ui_input.c). The name is prefilled:
  * PROJECT the current multi's (as loaded or last saved; none: "MULTI M01"), so SAVE, OCT+, OCT+ saves with the default name.
- * (DUELL 0.2.21: NK_SAVE_NAME, the SAVE dialog's RENAME (K2): the NAME screen for the sound's name; OCT+ keeps the name and goes back to the dialog (it writes nothing),
+ * (NK_SAVE_NAME, the SAVE dialog's RENAME: the NAME screen for the sound's name; OCT+ keeps the name and goes back to the dialog (it writes nothing),
  * OCT- goes back with the old one; the dialog's OCT+ then saves the record under it: ui.c save_nm, upreset.c up_patch_save_part.)
- * (DUELL 0.2.17: a PATCH SLOT has no NAME screen on the device: hold SAVE overwrites a slot under the sound's own name; NK_USER_SAVE /
+ * (A PATCH SLOT has no NAME screen on the device: hold SAVE overwrites a slot under the sound's own name; NK_USER_SAVE /
  * NK_USER_RENAME are kept for the tests and a later rename, no page opens them.)
  * Writing needs the transport stopped (STOP TO SAVE; the screen stays).
  *
@@ -20,7 +20,7 @@
  *   black keys   by name, in both octaves: F# cursor left, G# SPACE, A# cursor right, C# DELETE (the character
  *                before the cursor; held: repeats, as the arrows do), D# ABC / 123.
  *   KNOB 1       the cursor; KNOB 2 the character at the cursor (SPACE A..Z 0..9 - . _ / # +; at the end: a new one).
- *   KNOB 3       (1.2, Discussion #90) USER: the sound's category (BASS LEAD PAD PLUCK KEYS DRUM FX OTHER, category.c),
+ *   KNOB 3       USER: the sound's category (BASS LEAD PAD PLUCK KEYS DRUM FX OTHER, category.c),
  *                shown in the field's title row and written with the name (PRESETS > LIST filters by it); it starts at
  *                the slot's own (a rename) or the sound's (a save: its user preset's, its factory preset's).
  *                PROJECT: a random name too (as KNOB 4).
@@ -30,7 +30,7 @@
  *                keeps (a rename; overwriting a named sound; a multi with a name) or, if there is none, a random one.
  *   LEDs         only the five black function keys are lit (both octaves); the white keys stay dark.
  * Spaces at either end are dropped when it is written; an empty name: USER the automatic one, PROJECT none. */
-enum { NK_NONE, NK_USER_SAVE, NK_USER_RENAME, NK_PROJ_SAVE, NK_PROJ_RENAME, NK_PATTERN, NK_SAVE_NAME };   /* NK_PATTERN: SAVE > PATTERNS (0.2.17: no NAME screen for patches: SAVE overwrites a slot, the sound keeps its name) */
+enum { NK_NONE, NK_USER_SAVE, NK_USER_RENAME, NK_PROJ_SAVE, NK_PROJ_RENAME, NK_PATTERN, NK_SAVE_NAME };   /* NK_PATTERN: SAVE > PATTERNS (no NAME screen for patches: SAVE overwrites a slot, the sound keeps its name) */
 #define NM_LEN 12u
 #define NM_TAP_MS 800u                                 /* multi-tap: the next letter within this */
 #define NM_REP_MS 450u                                 /* a held arrow / DELETE repeats after this, */
@@ -434,7 +434,7 @@ static void nm_draw_panel(void)
                 int32_t x = 10 + 26 * (int32_t)i;
                 char c[2] = {g[i], 0};
                 int typed = i == nm.tap, next = i == (nm.tap + 1u) % n;
-                uint16_t f = typed ? T_THEME : T_BG;   /* (DUELL 1.1: idle keys a neutral cell, as PERFORM) */
+                uint16_t f = typed ? T_THEME : T_BG;   /* (idle keys a neutral cell, as PERFORM) */
                 cv_rrect(x, 4, 22, 22, 4, f, T_BG);
                 GFX_HOOK_ALIGN(x, 4, x + 22, 26, AL_HV, "name cycling letter in its cell");
                 cv_text_in(x, 4 + CAP_IN(M, 22), 22, &AF_M, c, typed ? T_INK : next ? T_ACCENT : T_TEXT, f);
@@ -481,7 +481,7 @@ static void nm_draw_foot(void)
     a[2] = (khint_t){KC_K4, "RANDOM"};                 /* (every NAME screen: a new random name) */
     b[0] = (khint_t){KC_K1, "MOVE"};
     b[1] = (khint_t){KC_K2, "CHAR"};
-    b[2] = NM_USER() ? (khint_t){KC_K3, "CAT"} : (khint_t){KC_KEYS, "TYPE"};   /* (1.2: USER's category) */
+    b[2] = NM_USER() ? (khint_t){KC_K3, "CAT"} : (khint_t){KC_KEYS, "TYPE"};   /* (USER's category) */
     b[3] = (khint_t){KC_KEYS, "TYPE"};
     cv_begin(240, H_FOOT, T_BG);
     cv_key_row(8, 232, 2, a, 3, ok ? 7u : 6u, T_BG);

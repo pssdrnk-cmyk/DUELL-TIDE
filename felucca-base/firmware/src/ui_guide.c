@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* DUELL 0.2.11: the first-start GUIDE (SPEC "First-start guide"; docs/GUIDE_PLAN.md, the owner's pages). Included at the end of ui_layer.c.
+/* the first-start GUIDE (SPEC "First-start guide"; docs/GUIDE_PLAN.md). Included at the end of ui_layer.c.
  *   WHEN       once, after the power-on splash, while the settings bit "guide seen" (ui.c PREF_GUIDE_SEEN, bit 5 of [15][24]) is clear: a
  *              new unit, a flash erase, and any settings record of an older build (the bit was never written before), so an update
  *              shows it once too. The splash then stays GUIDE_SPLASH_MS longer (ui_draw.c splash_draw). Leaving it, or finishing it,
- *              sets the bit and writes the settings once (settings_save: the write waits for silence, as every settings write since 0.2.11: project.c settings_poll).
+ *              sets the bit and writes the settings once (settings_save: the write waits for silence, as every settings write: project.c settings_poll).
  *              Power off with the guide up: the bit stays clear, so the next start shows it again.
  *              MENU > SYSTEM > GUIDE opens the same pages at any time; that never touches the bit.
- *   PAGES      GUIDE_N full-screen pages over whatever page is under them: the header (item 118: its title SETUP or GUIDE, no counter in it), the text, the legend row
+ *   PAGES      GUIDE_N full-screen pages over whatever page is under them: the header (its title SETUP or GUIDE, no counter in it), the text, the legend row
  *              (rows 197 .. 209: OCT + NEXT, OCT - BACK, HOME SKIP) and the SHARED footer (engine, patch, the counter 1/5, battery: ui_draw.c draw_foot). A page's text: "#" a heading (L, the theme colour), "~" a
  *              small gap, "*" a line whose words up to its first ':' are in the theme colour (what it is, then how), else a line
  *              (M, the text colour); each line at most GD_W px (the layout lint, tests/ui_render.c, checks
@@ -16,9 +16,9 @@
  *              SCL GLO SEQ SAVE leave at once and go on to their own job, in the same press (as they leave the MENU); PLAY/STOP and
  *              REC (the HOLD switch) work as on HOME; the keys and MIDI play as ever. KNOB 1-4, PRESETS and ALGORITHM do nothing (the header
  *              says "[HOME] CLOSES GUIDE" for a moment, so no turn is silently ignored). */
-#define GD_X UT_T6_X                                    /* the text's left edge (item 118: x 9, as the picture; was 12) */
+#define GD_X UT_T6_X                                    /* the text's left edge (x 9, as the picture) */
 #define GD_W (240 - 2 * UT_T6_X)                        /* the text's room: x 9 .. 230 */
-#define GD_HINT_Y UT_T6_END                             /* the body's end (item 118): the legend row is drawn in the last strip, the shared footer (draw_foot) owns rows 217 .. 239 */
+#define GD_HINT_Y UT_T6_END                             /* the body's end: the legend row is drawn in the last strip, the shared footer (draw_foot) owns rows 217 .. 239 */
 static uint8_t guide_pick[2];                           /* the option picked on SETUP 1/5 (0 LAYER, 1 STEREO, 2 DUEL) and on SETUP 5/5 (0 LATER, 1 NOW) */
 #define GUIDE_KNOB_MSG "HOME ENDS THE GUIDE"            /* a knob turned while it is up (it does nothing there) */
 static const khint_t *guide_kh;                       /* the key hints drawn last (the host test reads them) */
@@ -28,7 +28,7 @@ static uint32_t guide_hi(void) { return ui.guide_menu ? 4u : GUIDE_N; }
 static int guide_ask(uint32_t pg) { return pg == 1u || pg == 5u; }          /* SETUP pages ask, GUIDE pages tell */
 
 #if DUELL_BENCH
-/* (DUELL_BENCH developer builds, HANDOFF_V2 item 107: the first-start guide is not built in, so XIP holds the CPU suite and the velocity capture together:
+/* (DUELL_BENCH developer builds: the first-start guide is not built in, so XIP holds the CPU suite and the velocity capture together:
  * it counts as seen, so no start shows it and the splash is not stretched; the pages' text and the H / G heading faces (about 19 KB) are left out.
  * The GUIDE row is the BENCH row there; nothing of the audio side is touched.) */
 static int guide_seen(void) { return 1; }
@@ -185,7 +185,7 @@ static int32_t guide_wrap(int32_t x, int32_t y, int32_t w, const aafont_t *f, co
     return y;
 }
 #if !DUELL_BENCH                                       /* (the guide's page drawing: not in a DUELL_BENCH developer build, see guide_seen) */
-/* DUELL 1.1 (FIRST_RUN_SETUP_V2_A.png): a sentence (M) wrapped at spaces to w px, a word "[SAVE]" drawn as its keycap (kc_tag) in the line, centred on the line's capitals; the first line's capitals end on row `base`,
+/* (FIRST_RUN_SETUP_V2_A.png): a sentence (M) wrapped at spaces to w px, a word "[SAVE]" drawn as its keycap (kc_tag) in the line, centred on the line's capitals; the first line's capitals end on row `base`,
  * the next ones UT_T6_G_LINE under it; -> the last line's baseline */
 static int32_t guide_rich(int32_t x, int32_t base, int32_t w, const char *s)
 {
@@ -220,7 +220,7 @@ static int32_t guide_rich(int32_t x, int32_t base, int32_t w, const char *s)
     }
     return base;
 }
-/* TEMPLATE 6 (item 118; ui_tokens.h): the rows of one option block */
+/* TEMPLATE 6 (ui_tokens.h): the rows of one option block */
 typedef struct { int16_t top, h, nbase, dbase; } t6_opt_t;
 /* a question's option: the picked one on a box of the selected part's colour (hard corners), its name (L, white) on baseline nbase, up to three explanation lines (S; grey, lilac on the box) from dbase, 15 px apart, a pill (RECOMMENDED,
  * DEFAULT) after the name in the part's colour, as tall as the name's capitals */
@@ -270,7 +270,7 @@ static void guide_content(uint32_t pg)
         guide_option(&O1[0], "LAYER", "BOTH PARTS COMBINED:", "VELOCITY CROSSFADE, KEY SPLIT", "", "RECOMMENDED", guide_pick[0] == 0u);
         guide_option(&O1[1], "STEREO", "BOTH PARTS IN ONE STEREO FIELD", "", "", "", guide_pick[0] == 1u);
         guide_option(&O1[2], "DUEL", "DUAL MONO, FOR EXTERNAL EFFECTS", "", "", "", guide_pick[0] == 2u);
-    } else if (pg == 2u) {                              /* FIRST_RUN_SETUP_V2_A.png: PART MARKER, the capsule at the right, two short notes (part number, morph end; b10: the voices cell is gone), each joined to its cell by a thin line */
+    } else if (pg == 2u) {                              /* FIRST_RUN_SETUP_V2_A.png: PART MARKER, the capsule at the right, two short notes (part number, morph end), each joined to its cell by a thin line */
         const int32_t cx = 240 - 12 - CAP_W, tw = 172, my = AF_M_CAP_Y + AF_M_CAP_H / 2;
         static const char *const NOTE[2] = {"Number: part 1 or 2.", "Letter: morph end A or B."};
         static const int32_t NY[2] = {62, 81};
@@ -299,9 +299,9 @@ static void guide_content(uint32_t pg)
         guide_option(&O5[1], "NOW", "OPENS GLO > MIDI.", "WHEN YOU LEAVE IT,", "HOME ENDS THE FIRST START", "", guide_pick[1] == 1u);
     }
 }
-/* the legend row (item 118, FINAL_V1_08_setup): each key's cap (the firmware's own) and its word (S, grey) on the capitals' last row UT_T6_LEG_BASE; two items: at x UT_T6_LEG_X1 and UT_T6_LEG_X2 as the picture,
+/* the legend row (FINAL_V1_08_setup): each key's cap (the firmware's own) and its word (S, grey) on the capitals' last row UT_T6_LEG_BASE; two items: at x UT_T6_LEG_X1 and UT_T6_LEG_X2 as the picture,
  * three: the first at X1, the last ending at UT_T6_LEG_R, the middle one between them. Three items whose words do not leave UT_T6_LEG_MIN px between them (the MENU copy's OCT+ NEXT / OCT- BACK / HOME CLOSE and
- * OCT+ FINISH: 219 / 229 px of 222) lose the LAST item's word, as cv_key_row always did; no other word is touched (HANDOFF_V2 item 118 lists it) */
+ * OCT+ FINISH: 219 / 229 px of 222) lose the LAST item's word, as cv_key_row; no other word is touched */
 static void guide_legend(const khint_t *h, uint32_t n)
 {
     uint32_t i;
@@ -361,7 +361,7 @@ static void guide_draw(void)
         }
     }
     draw_head();                                        /* SETUP or GUIDE (ui_draw.c head_page_title), or a message (STOP ALL) */
-    draw_foot();                                        /* item 118: the shared footer, the counter 1/5 (MENU's copy 1/3) in it */
+    draw_foot();                                        /* the shared footer, the counter 1/5 (MENU's copy 1/3) in it */
     if (ui.msg_t && !--ui.msg_t && ui.msg2[0]) {
         str_cpy(ui.msg, ui.msg2, sizeof ui.msg);
         ui.msg2[0] = 0;

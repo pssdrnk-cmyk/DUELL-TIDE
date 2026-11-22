@@ -3,30 +3,30 @@
 /* Felucca quick layers: while a page button is held, the keys and KNOB 1..4
  * are its shortcuts and its map shows over the page. One table (LAYERS) drives the gesture, the keys, the knobs,
  * the LEDs and the overlay:
- *   FX   (DUELL 0.2.2: not a layer any more. The FX hold layer and its performance effects are removed: FX is a plain page button, a
+ *   FX   (not a layer: FX is a plain page button, a
  *              short press opens the FX pages and holding it does nothing special. The LAYER_RES slot keeps the other layers' ids)
- *   GLO  QUICK (DUELL 0.2.11, LK_QUICK): GLO's MAIN PAGE, graph GR_GLO, which draw_layer draws, as a layer over any page (QUICK GLO: hold GLO; a tap
- *              still opens GLO's pages). The keys play notes there as on every page; 0.2.24 (owner: PAN could not be set from the panel): KNOB 1 LEVEL 1,
- *              KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (glo_knob; item 117: K1 K3 part 1, K2 K4 part 2, as the screen: part 1 left, part 2 right), and the MUTES moved to the keys: with GLO held OCT- mutes /
+ *   GLO  QUICK (LK_QUICK): GLO's MAIN PAGE, graph GR_GLO, which draw_layer draws, as a layer over any page (QUICK GLO: hold GLO; a tap
+ *              still opens GLO's pages). The keys play notes there as on every page. KNOB 1 LEVEL 1,
+ *              KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (glo_knob: K1 K3 part 1, K2 K4 part 2, as the screen: part 1 left, part 2 right), and the MUTES are on the keys: with GLO held OCT- mutes /
  *              unmutes part 1, OCT+ part 2 (layer_glo_oct: on the press, no octave on the release); between the parts' columns the level
- *              meters (glo_meters). Let go: the page under it is back. 0.2.21: GLO's page is gone from the page round (a tap of GLO opens TEMPO): this layer is its only place, so the RESTART of GLO held + PLAY, which only worked on that page, is gone too)
- *   EDIT SET   QUICK FILTER (DUELL 0.2.9): KNOB 1..4 CUT RES MODE and the AMP ENV's REL (ly_page: 0.2.14, the multimode filter on every
- *              engine; up to 0.2.8 ENG, No., FAV: the ENGINE page has them). 0.2.11: the keys stay notes (ly_keys): no INIT key and no engine quick actions
- *              any more (INIT is EDIT > ENGINE, K4). OCT- puts back the four
- *   LFO ENV ARP QUICK (DUELL 0.2.9, LK_QUICK): QUICK LFO (LFO 1 RATE, its FLT depth, LFO 2 RATE, its FLT depth; a RATE whose LFO is synced:
+ *              meters (glo_meters). Let go: the page under it is back. GLO has no page in the page round (a tap of GLO opens TEMPO): this layer is its only place)
+ *   EDIT SET   QUICK FILTER: KNOB 1..4 CUT RES MODE and the AMP ENV's REL (ly_page: the multimode filter on every
+ *              engine; ENG, No., FAV are on the ENGINE page). The keys stay notes (ly_keys): no INIT key and no engine quick actions
+ *              (INIT is EDIT > ENGINE, K4). OCT- puts back the four
+ *   LFO ENV ARP QUICK (LK_QUICK): QUICK LFO (LFO 1 RATE, its FLT depth, LFO 2 RATE, its FLT depth; a RATE whose LFO is synced:
  *              its SYNC), QUICK ENV (AMP ATK REL, ENV 2's FLT depth and DEC), QUICK ARP (MODE RATE GATE OCT), the selected part's (ly_page).
  *              The keys stay notes (no kb_mask: they are not the layer's, a key is no combo), OCT- / OCT+ keep the octave, no put back,
- *              no lock (#83: two quick taps step the family's pages as before). One seen bit for the three and GLO (bit 0)
+ *              no lock (two quick taps step the family's pages). One seen bit for the three and GLO (bit 0)
  *   SEQ  SET   (1.2, on every page) TOOLS: the white keys from F3 the sequence tools
- *              (ui_tools.c: CLEAR, REVERSE, SHIFT < >, RANDOM, COOK, TRANS + / TRANS - on E4, F4; 0.2.14: the DRUM tracks' BEAT and lane tools are gone); KNOB 1..4 LEN DIV SWING GATE (the PATTERN page's up to
- *              1.1.5: the page is gone, they are here). Each action one undo (OCT- + a PRESETS turn outside the layer), OCT- the track as the layer
+ *              (ui_tools.c: CLEAR, REVERSE, SHIFT < >, RANDOM, COOK, TRANS + / TRANS - on E4, F4); KNOB 1..4 LEN DIV SWING GATE (the pattern's length,
+ *              division, swing, gate). Each action one undo (OCT- + a PRESETS turn outside the layer), OCT- the track as the layer
  *              opened (tl_open)
- *   REC  SET   (1.1.5, on every page; REC's tap still arms / disarms) DUELL 1.0 layout (QUICK_REC_NEW_LAYOUT.png; FIRMWARE_CHANGE_LIST_2026-10-28.md
- *              B.6): four cells of template 8 (grid_on 14, 2 x 2, knob c in cell c; the layer draws no panel of its own): KNOB 1 CLICK (OFF REC ON),
+ *   REC  SET   (on every page; REC's tap still arms / disarms) layout QUICK_REC_NEW_LAYOUT.png:
+ *              four cells of template 8 (grid_on 14, 2 x 2, knob c in cell c; the layer draws no panel of its own): KNOB 1 CLICK (OFF REC ON),
  *              KNOB 2 COUNT (COUNT-IN: OFF 1 BAR 2 BARS), KNOB 3 LEVEL (CLICK LEVEL: LOW MID HIGH), each with the choice's segment line; KNOB 4
  *              CLEAR: NO SEQUENCE (dimmed) when the selected track holds nothing, else TURN TO CLEAR; turning it opens the "CLEAR Tn SEQUENCE?"
- *              dialog (CF_CLEAR_SEQ: OCT+ YES, OCT- NO; the steps and automation go, one undo, OCT- + a PRESETS turn). The white keys F G A B no
- *              longer act here (keys and LEDs). The settings are MENU > AUDIO's (ui.c rp_get / rp_put: one store), saved when the layer
+ *              dialog (CF_CLEAR_SEQ: OCT+ YES, OCT- NO; the steps and automation go, one undo, OCT- + a PRESETS turn). The white keys F G A B do
+ *              not act here (keys and LEDs). The settings are MENU > AUDIO's (ui.c rp_get / rp_put: one store), saved when the layer
  *              closes; OCT- puts back the settings and the track as the layer opened (tl_open)
  * The gesture: let go before HOLD (the menu: 0.3 .. 0.6 s) with nothing else touched: a tap, the button's page.
  * Held past HOLD alone: the map (a peek), letting go does nothing. A key, a knob or a button meanwhile: a combo,
@@ -47,7 +47,7 @@
  * a double tap leaves the page as it was. A first tap that acted instead of opening a page (EDIT on STEP: clear the
  * step; on USER / PROJECT: rename) arms no double tap: two quick taps there still act twice. */
 #include "ui_tools.c"                                   /* SEQ TOOLS' actions */
-enum { LK_HOLD, LK_SET, LK_QUICK };   /* (LK_QUICK, 0.2.9: a QUICK EDIT layer, its keys stay notes) */
+enum { LK_HOLD, LK_SET, LK_QUICK };   /* (LK_QUICK: a QUICK EDIT layer, its keys stay notes) */
 typedef struct {
     uint8_t btn, kind, fam;            /* the button, HOLD / SET, the family whose first page KNOB 1..4 edit */
     const char *head;                  /* (FAM_HOME: the layer's own knobs) the header over the map */
@@ -55,9 +55,9 @@ typedef struct {
 } layer_t;
 static const layer_t LAYERS[LAYER_N] = {
     {0, 0, 0, "", "", ""},
-    {0, 0, 0, "", "", ""},                                  /* (LAYER_RES: the FX hold layer, removed in 0.2.2) */
+    {0, 0, 0, "", "", ""},                                  /* (LAYER_RES: an unused slot that keeps the other layers' ids) */
     {B_GLO, LK_QUICK, FAM_HOME, "QUICK GLO", "GLO", ""},
-    {B_EDIT, LK_SET, FAM_EDIT, "QUICK EDIT", "EDIT", "SET"},   /* (0.2.9: every layer's header is QUICK and the page, the bolt before it in the accent: ui_draw.c head_msg; QUICK SCALE removed, owner 2026-10-28: SCL is a plain page button) */
+    {B_EDIT, LK_SET, FAM_EDIT, "QUICK EDIT", "EDIT", "SET"},   /* (every layer's header is QUICK and the page, the bolt before it in the accent: ui_draw.c head_msg; SCL is a plain page button) */
     {B_SEQ, LK_SET, FAM_SEQ, "QUICK SEQ", "SEQ", "TOOLS"},
     {B_REC, LK_SET, FAM_HOME, "QUICK REC", "REC", "SET"},
     {B_LFO, LK_QUICK, FAM_LFO, "QUICK LFO", "LFO", ""},
@@ -65,17 +65,16 @@ static const layer_t LAYERS[LAYER_N] = {
     {B_ARP, LK_QUICK, FAM_ARP, "QUICK ARP", "ARP", ""},
 };
 static const uint8_t LY_KC[LAYER_N] = {0, 0, KC_GLO, KC_EDIT, KC_SEQ, KC_REC, KC_LFO, KC_ENV, KC_ARP};
-/* SEQ TOOLS' knobs: LEN DIV SWING GATE (the length the tools work in; up to 1.1.5 the PATTERN page's) */
+/* SEQ TOOLS' knobs: LEN DIV SWING GATE (the length the tools work in) */
 static const page_t LY_SEQ = {"PATTERN", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P_SDIV, P_SSWING, P_SGATE}};
-/* DUELL 0.2.9, the QUICK EDIT layers' knobs, the selected part's (EDIT, LFO, ENV, ARP: LY_Q[q], q = ly_q(l)): the same parameters, cards
+/* the QUICK EDIT layers' knobs, the selected part's (EDIT, LFO, ENV, ARP: LY_Q[q], q = ly_q(l)): the same parameters, cards
  * (names, values, greying), motion and MIDI LEARN as on their pages. QUICK FILTER's K1..K3 are the MULTIMODE filter's CUT RES MODE (ids 45..47)
- * on every engine, K4 the AMP ENV's REL (0.2.14, owner: up to 0.2.13 ANALOG TRIO NOISE showed their own filter here, and ANALOG's TYPE
- * switched that one, not the multimode filter he meant; those pages are gone since; all ten
+ * on every engine, K4 the AMP ENV's REL (all ten
  * shown engines have the multimode filter, ufilt 1 or 2; SLOPE stays on the FILTER page). QUICK LFO: a synced LFO's RATE does nothing (its
  * card is faded on the LFO page), so its knob is the active one, SYNC (to OFF: RATE again) */
 static const page_t LY_Q[4] = {
-    {"MULTI FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FREEA, P_FREEB, P_FREEC, P_REL}},   /* 0.2.20 (owner): CUT RES MODE, REL */
-    {"LFO", FAM_LFO, SC_TRACK, GR_NONE, {P_LRATE, P_LD_FLT, P_L2RATE, XW_BASE + X_LFO2}},   /* (DUELL 1.1: K4 is LFO 2's TWIN CUTOFF depth; its MULTI CUTOFF depth no longer acts) */
+    {"MULTI FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FREEA, P_FREEB, P_FREEC, P_REL}},   /* CUT RES MODE, REL */
+    {"LFO", FAM_LFO, SC_TRACK, GR_NONE, {P_LRATE, P_LD_FLT, P_L2RATE, XW_BASE + X_LFO2}},   /* (K4 is LFO 2's TWIN CUTOFF depth; its MULTI CUTOFF depth does not act) */
     {"ENV", FAM_ENV, SC_TRACK, GR_NONE, {P_ATK, P_REL, P_E2FLT, P_E2DEC}},
     {"ARP", FAM_ARP, SC_TRACK, GR_NONE, {P_AMODE, P_ARATE, P_AGATE, P_AOCT}},
 };
@@ -86,8 +85,8 @@ static const page_t *ly_page(uint32_t l)
     uint32_t q = ly_q(l);
     if (q > 3u)
         return l == LAYER_SEQ ? &LY_SEQ : 0;
-    ly_qp = LY_Q[q];                                    /* (QUICK FILTER: the multimode filter on every engine, 0.2.14) */
-    if (q == 0u && twin_on(TSEL)) {                     /* QUICK EDIT with filter 2 on (cloud job H, decided 2026-10-19): LINKED (and COMB, which follows the key by itself): CUT RES DRIVE AMP REL; UNLINKED: CUT 1 RES 1 CUT 2 RES 2 (the absolute CUTOFF 2) */
+    ly_qp = LY_Q[q];                                    /* (QUICK FILTER: the multimode filter on every engine) */
+    if (q == 0u && twin_on(TSEL)) {                     /* QUICK EDIT with filter 2 on: LINKED (and COMB, which follows the key by itself): CUT RES DRIVE AMP REL; UNLINKED: CUT 1 RES 1 CUT 2 RES 2 (the absolute CUTOFF 2) */
         if (XV(TSEL, X_LINK) || TSEL->p[P_TWTYPE] == TT_COMB) {
             ly_qp.id[2] = P_DRV2;
         } else {
@@ -105,7 +104,7 @@ static const page_t *ly_page(uint32_t l)
 }
 static int ly_two(void) { return twin_on(TSEL) && !XV(TSEL, X_LINK) && TSEL->p[P_TWTYPE] != TT_COMB; }   /* QUICK EDIT shows both filters' cutoffs and resonances (ly_page) */
 /* the name a QUICK card shows where the generic one does not say which filter: QUICK EDIT with both filters on (ui_draw.c draw_columns), MULTI CUTOFF / MULTI RES / TWIN CUTOFF / TWIN RES in
- * two lines (DUELL 1.1, owner; the group cells above say MULTI FILTER and TWIN FILTER; the page keeps its name); QUICK LFO's K2 and K4 (each LFO's cutoff depth) MULTI CUTOFF; 0: the card's own */
+ * two lines (the group cells above say MULTI FILTER and TWIN FILTER; the page keeps its name); QUICK LFO's K2 and K4 (each LFO's cutoff depth) MULTI CUTOFF; 0: the card's own */
 static const char *quick_label(const page_t *pg, uint32_t s)
 {
     static const char *const L[4] = {"MULTI\nCUTOFF", "MULTI\nRES", "TWIN\nCUTOFF", "TWIN\nRES"};
@@ -117,17 +116,17 @@ static const char *quick_label(const page_t *pg, uint32_t s)
         return s == 1u ? "MULTI\nCUTOFF" : "TWIN\nCUTOFF";
     return 0;
 }
-/* the layer takes the keys (seq.c kb_mask). 0.2.11: not QUICK FILTER's either (EDIT's keys used to be INIT and the engine's quick actions: an F played
- * erased the sound); every quick layer's keys play */
+/* the layer takes the keys (seq.c kb_mask). Not QUICK FILTER's either (a key played in EDIT must not erase the
+ * sound); every quick layer's keys play */
 static int ly_keys(uint32_t l) { return l && LAYERS[l % LAYER_N].kind != LK_QUICK && l != LAYER_EDIT; }
-static int ly_lock(uint32_t l) { return l && LAYERS[l % LAYER_N].kind != LK_QUICK; }   /* a double tap locks it open (#83; EDIT's keeps its lock) */
+static int ly_lock(uint32_t l) { return l && LAYERS[l % LAYER_N].kind != LK_QUICK; }   /* a double tap locks it open (EDIT's keeps its lock) */
 static uint32_t ly_seen(uint32_t l) { return LAYERS[l % LAYER_N].kind == LK_QUICK ? 1u : 1u << l; }   /* its bit in layer_seen */
 #define LY_OPEN 2u                     /* ui.ly_t0: the map opened (no tap any more) */
 #define LY_COMBO 4u                    /* .. by a combo */
 #define LY_DEAD 8u                     /* .. pressed where there is no layer: does nothing */
 #define layer_seen (favorites.factory[15][31])   /* bit l: layer l opened once (a byte no engine uses); bit 0 (LAYER_NONE's, never set
                                                   * before): the QUICK EDIT layers LFO, ENV, ARP, one for the three (ly_seen) */
-/* (favorites.factory[15][14..23], 10 bytes: the FX layer's key map up to 0.2.1, retired in 0.2.2: not read or written any more, never reused) */
+/* (favorites.factory[15][14..23], 10 bytes: not read or written, never reused) */
 
 static struct {
     uint8_t l, trk, loaded, oct;       /* SET: the layer and the track of the snapshot; EDIT: a sound loaded since
@@ -154,7 +153,7 @@ static uint32_t layer_bits(void)
 {
     uint32_t l, m = 0;
     for (l = LAYER_GLO; l < LAYER_N; l++)
-        if (ly_keys(l))                                 /* (0.2.9: the QUICK EDIT layers' keys stay notes; 0.2.11: GLO's and EDIT's too) */
+        if (ly_keys(l))                                 /* (the QUICK EDIT layers', GLO's and EDIT's keys stay notes) */
             m |= ly_bit(l);
     return m;
 }
@@ -175,7 +174,7 @@ static void layer_foot_title(char *nm, char *ct)
 {
     const layer_t *l = &LAYERS[ui.layer % LAYER_N];
     str_cpy(nm, l->name, 12);
-    ct[0] = 0;                                          /* (DUELL 1.1: no SET / HOLD / TOOLS word in the footer corner) */
+    ct[0] = 0;                                          /* (no SET / HOLD / TOOLS word in the footer corner) */
 }
 static uint32_t layer_open(void) { return ui.ly && (ui.ly_t0 & LY_OPEN) && ly_down(ui.ly) && layer_allowed() ? ui.ly : 0u; }
 static int layer_set_open(void)
@@ -183,8 +182,8 @@ static int layer_set_open(void)
     return layer_open() && LAYERS[layer_open()].kind == LK_SET;
 }
 static uint32_t layer_held(void) { return ui.ly && ly_down(ui.ly) && layer_allowed(); }
-/* GLO's MIXER page shown (no menu, dialog or NAME over it): drawn by draw_layer, as the hold-GLO QUICK layer. 0.2.25 layout round (owner): the MIXER is GLO's first page again
- * (graph GR_GLO, scope SC_GMIX); the old RESTART of GLO held + PLAY on that page is not revived */
+/* GLO's MIXER page shown (no menu, dialog or NAME over it): drawn by draw_layer, as the hold-GLO QUICK layer. The MIXER is GLO's first page
+ * (graph GR_GLO, scope SC_GMIX); there is no RESTART of GLO held + PLAY on that page */
 static int glo_pg(void) { return layer_allowed() && cur_page()->graph == GR_GLO; }
 
 /* each pass, before the keys: what the ISR (seq.c keyboard_block) gives to a layer. Armed: its button; none
@@ -209,14 +208,14 @@ static void layer_arm(uint32_t pressed, uint32_t now)
         if (pressed & ly_bit(l)) {
             ui.ly = (uint8_t)l;
             ui.ly_t0 = (now & ~15u) | 1u | (layer_allowed() ? 0u : LY_DEAD);
-            lys.dtap = lys.dt_l == l && fm1_ms - lys.dt_ms <= LY_DTAP_MS;   /* (#83: the second tap of a double tap?) */
+            lys.dtap = lys.dt_l == l && fm1_ms - lys.dt_ms <= LY_DTAP_MS;   /* (the second tap of a double tap?) */
             lys.dt_l = 0;
             return;
         }
 }
 
 /* the armed layer lets go (its button up, or its lock closed); one that
- * opened, or a combo: KNOB 1..4 quiet for a while (#39: the knob still turning is not the page's) */
+ * opened, or a combo: KNOB 1..4 quiet for a while (the knob still turning is not the page's) */
 static void layer_let_go(uint32_t quiet)
 {
     if (lys.rp_dirty) {                                 /* REC: its settings kept, as MENU does when it closes */
@@ -283,7 +282,7 @@ static void layer_opened(uint32_t l)
         layer_seen |= (uint8_t)ly_seen(l);
         settings_save();                                /* (deferred while playing) */
     }
-    if (lys.dt_hint && ui.msg_t && ui.msg[0] == 'H' && ui.msg[5] == '[') {   /* (0.2.9: the tap's "HOLD [..] QUICK" goes: the layer's */
+    if (lys.dt_hint && ui.msg_t && ui.msg[0] == 'H' && ui.msg[5] == '[') {   /* (the tap's "HOLD [..] QUICK" goes: the layer's */
         ui.msg_t = 0;                                   /* QUICK header shows at once) */
         lys.dt_hint = 0;
     }
@@ -296,7 +295,7 @@ static void layer_opened(uint32_t l)
     }
     for (k = 0; k < 4u; k++)
         lys.v[k] = l == LAYER_SEQ ? TSEL->p[P_SLEN + k] : 0;
-    if (l == LAYER_EDIT)                                /* QUICK FILTER: its four as they are (OCT-); the ids too (cloud job H: they follow filter 2's state, which a MIDI message may change while it is held) */
+    if (l == LAYER_EDIT)                                /* QUICK FILTER: its four as they are (OCT-); the ids too (they follow filter 2's state, which a MIDI message may change while it is held) */
         for (k = 0; k < 4u; k++) {
             lys.qid[k] = ly_page(l)->id[k];
             lys.v[4u + k] = ly_page(l)->id[k] == 0xFFu ? 0 : TSEL->p[ly_page(l)->id[k]];
@@ -360,7 +359,7 @@ static void layer_tap(uint32_t l)
 {
     uint8_t m = ui.msg_t;
     int acted;
-    lys.nv.page = ui.page;                              /* (#83: the page this tap leaves, for a double tap) */
+    lys.nv.page = ui.page;                              /* (the page this tap leaves, for a double tap) */
     lys.nv.act = ui.act;
     lys.nv.seq = song.seq_mode;
     memcpy(lys.nv.fam, ui.fam_last, sizeof lys.nv.fam);
@@ -436,7 +435,7 @@ static const char W_NOTE[16] = {'F', 'G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A'
 static void layer_key(uint32_t l, uint32_t k)
 {
     uint32_t p = key_place(k);
-    if (l == LAYER_SEQ) {                               /* (QUICK REC: the white keys no longer act, FIRMWARE_CHANGE_LIST_2026-10-28.md B.6) */
+    if (l == LAYER_SEQ) {                               /* (QUICK REC: the white keys do not act) */
         if (!key_black(k))
             tools_key(p);
     }
@@ -450,9 +449,9 @@ static void layer_keys(uint32_t keys)
             layer_key(l, k);
 }
 
-/* KNOB 1..4 in the open layer: its own (REC's settings), else its four (ly_page: SEQ's, the QUICK EDIT layers'; 0.2.9: EDIT's
- * are CUT RES MODE REL, up to 0.2.8 ENG No. FAV), edited as on their page (edit_param: motion, MIDI LEARN) */
-/* 0.2.10: OCT- held + a knob in a QUICK EDIT layer (EDIT, LFO, ENV, ARP): that card to its default, as on a page (ui_input.c knob_reset,
+/* KNOB 1..4 in the open layer: its own (REC's settings), else its four (ly_page: SEQ's, the QUICK EDIT layers'; EDIT's
+ * are CUT RES MODE REL), edited as on their page (edit_param: motion, MIDI LEARN) */
+/* OCT- held + a knob in a QUICK EDIT layer (EDIT, LFO, ENV, ARP): that card to its default, as on a page (ui_input.c knob_reset,
  * "RESET <CARD>"). The turn is not applied, the knob's further detents are ignored until it has been still (kr_on), and OCT- used so is a
  * modifier: its release neither puts back (QUICK FILTER, layer_oct) nor moves the octave (LFO ENV ARP, oct_rel: oct_mod). OCT- pressed
  * and let go with no knob turned keeps its meaning (QUICK FILTER: put back; the others: the octave). 1: the turn was taken here */
@@ -486,7 +485,7 @@ static void rec_clear_ask(void);                       /* (QUICK REC, KNOB 4: be
 static void layer_knob(uint32_t k, int32_t s)
 {
     uint32_t l = layer_open();
-    if (l && off_layer(l)) {                            /* item 125: QUICK ARP / QUICK SEQ with the module OFF: any knob closes the layer and jumps to MODULES */
+    if (l && off_layer(l)) {                            /* QUICK ARP / QUICK SEQ with the module OFF: any knob closes the layer and jumps to MODULES */
         if (kr_on[k]) {
             if (fm1_ms - kr_t[k] < KR_QUIET_MS) {
                 kr_t[k] = fm1_ms;
@@ -505,7 +504,7 @@ static void layer_knob(uint32_t k, int32_t s)
             rec_set(k, (uint32_t)clamp((int32_t)rp_get(RL_F[k]) + s, 0, 2));
         else if (s)
             rec_clear_ask();
-    } else if (l == LAYER_GLO) {                        /* QUICK GLO: K1 LEVEL 1, K2 LEVEL 2, K3 PAN 1, K4 PAN 2 (the MIXER page's own; item 117) */
+    } else if (l == LAYER_GLO) {                        /* QUICK GLO: K1 LEVEL 1, K2 LEVEL 2, K3 PAN 1, K4 PAN 2 (the MIXER page's own) */
         glo_knob(k, s);
     } else if (l) {                                     /* the page's knobs, wherever the page is */
         uint8_t pg = ui.page;
@@ -517,7 +516,7 @@ static void layer_knob(uint32_t k, int32_t s)
     }
 }
 
-/* QUICK GLO's and the MIXER's knobs (0.2.24; item 117, TEMPLATE 4: the order follows the screen, part 1 left and part 2 right on both rows): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (recorded as
+/* QUICK GLO's and the MIXER's knobs (TEMPLATE 4: the order follows the screen, part 1 left and part 2 right on both rows): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (recorded as
  * on MIXER; MIDI LEARN picks all four). PAN in DUEL: its card is not drawn (part 1 is left, part 2 right: ui_draw.c card_hidden_vp) and the knob does nothing. The ONE place the order lives: glo_knob,
  * glo_cards (below) and ui_input.c reset_desc (the quick reset) read it the same way: part = k & 1, parameter = k >> 1 (0 LEVEL, 1 PAN) */
 static void glo_knob(uint32_t k, int32_t s)
@@ -531,9 +530,9 @@ static void glo_knob(uint32_t k, int32_t s)
     motion_capture(t, id, *vp);
     ml_knob(t, id);                                     /* (MIDI LEARN: Tk LEVEL / Tk PAN picked) */
 }
-/* OCT- / OCT+ pressed while GLO is held (0.2.24, owner: the mutes left the knobs for the keys): OCT- flips part 1's MUTE, OCT+ part 2's, at once (P_MUTE, latched; MIDI LEARN picks it);
+/* OCT- / OCT+ pressed while GLO is held (the mutes are on the keys, not the knobs): OCT- flips part 1's MUTE, OCT+ part 2's, at once (P_MUTE, latched; MIDI LEARN picks it);
  * the hold becomes a combo (GLO's release is no tap) and the key's release moves no octave (ui_input.c: oct_pend is not set). 1 = taken here. The quick reset (OCT- + a knob) never
- * was QUICK GLO's (layer_quick_reset: the four quick EDIT layers only), so nothing is lost */
+ * applies to QUICK GLO (layer_quick_reset: the four quick EDIT layers only) */
 static int layer_glo_held(void) { return ui.ly == LAYER_GLO && ly_down(LAYER_GLO) && layer_allowed(); }
 static int layer_glo_oct(uint32_t b)
 {
@@ -550,7 +549,7 @@ static int layer_glo_oct(uint32_t b)
     m = (int16_t)!trk[k].p[P_MUTE];
     ml_knob(&trk[k], P_MUTE);
     trk[k].p[P_MUTE] = m;
-    ui_say(k ? "PART 2: " : "PART 1: ", m ? "MUTE" : "UNMUTE");   /* (0.2.25: the action's word; no MUTED / LIVE state words) */
+    ui_say(k ? "PART 2: " : "PART 1: ", m ? "MUTE" : "UNMUTE");   /* (the action's word; no MUTED / LIVE state words) */
     ui.force = 1;
     return 1;
 }
@@ -606,7 +605,7 @@ static uint32_t layer_oct(uint32_t pressed, uint32_t oct)
 
 /* --------------------------------------------------------- the LEDs --- */
 /* lit = in effect now (held, the value, a track sounding), breathing = can be pressed (*br: dark .. ~60 % and
- * back, ~1.1 s, hal/fm1_input.h fm1_led_breath; was a hard 250 ms blink, #119), dark = nothing there */
+ * back, ~1.1 s, hal/fm1_input.h fm1_led_breath), dark = nothing there */
 static int glo_sounding(uint32_t t) { return !trk[t].p[P_MUTE]; }
 static int rec_clearable(void) { return !seq_is_empty(TSEL) || motion_count(TSEL) != 0u; }
 /* QUICK REC, KNOB 4 CLEAR turned: the "CLEAR Tn SEQUENCE?" dialog (CF_CLEAR_SEQ, the TOOLS page's CLEAR: OCT+ YES clears the selected track's steps and automation and
@@ -628,7 +627,7 @@ static uint32_t layer_leds(uint32_t *br)
         uint32_t p = key_place(k), b = (uint32_t)key_black(k), on = 0, can = 0;
         if (l == LAYER_SEQ) {                    /* the tools breathe (not while a song plays) */
             can = !b && tl_cell(p);
-        }                                               /* (QUICK REC: the white keys no longer act, so they stay dark) */
+        }                                               /* (QUICK REC: the white keys do not act, so they stay dark) */
         m |= on << k;
         n |= (can & !on) << k;
     }
@@ -672,10 +671,10 @@ static uint16_t lc_box(int32_t x, int32_t y, int32_t w, int32_t h, uint16_t fill
     { CV_HL(x, y, w, h); cv_rrect(x, y, w, h, 4, fill, T_BG); }
     return fill;
 }
-#include "ui_boxes.c"                                   /* DUELL 1.0 layout: the box grid of PERFORM and QUICK SEQ (box_grid; LAYOUT_IMPLEMENTATION_PLAN.md block D) */
+#include "ui_boxes.c"                                   /* the box grid of PERFORM and QUICK SEQ (box_grid; LAYOUT_IMPLEMENTATION_PLAN.md block D) */
 /* GLO (DUELL 5b.3), two parts: a column each (88 px, x 6 and 146; part 1 is the left of KNOB 1 and 2, part 2 the right): one tall
  * cell with the part's badge and the word in M; between the columns (x 98 .. 142) the parts' level meters (glo_meters; a muted part's bar greyed
- * and empty). 0.2.25 layout round (owner): the word is always MUTE: muted, the cell is lit in the part's colour (the badge dark); sounding, the cell is
+ * and empty). The word is always MUTE: muted, the cell is lit in the part's colour (the badge dark); sounding, the cell is
  * dark (RAISE, the word MID). No LIVE / MUTED / ON / OFF */
 #define GC_W 88
 #define GC_X(k) (6 + 140 * (int32_t)(k))
@@ -808,8 +807,8 @@ static void glo_meters(void)
     }
     cv_blit(GM_X, Y_GRAPH + GM_Y);
 }
-/* DUELL 1.1 MIXER, TEMPLATE 4 (item 117; FINAL_V1_09_mixer, ui_tokens.h UT_T4_*): two MUTE cards (round, 116 x 60: the word MUTE n, the hint "Hold GLO" / "and press OCT -" ("OCT +") with its keycaps standing on the text's
- * baselines, the part's small level meter at the right), the four cards under them (grid_on 7, ui_draw.c card_t4_paint). A muted part's card is filled in its colour (ink text) as before */
+/* MIXER, TEMPLATE 4 (FINAL_V1_09_mixer, ui_tokens.h UT_T4_*): two MUTE cards (round, 116 x 60: the word MUTE n, the hint "Hold GLO" / "and press OCT -" ("OCT +") with its keycaps standing on the text's
+ * baselines, the part's small level meter at the right), the four cards under them (grid_on 7, ui_draw.c card_t4_paint). A muted part's card is filled in its colour (ink text) */
 static void lmh_card(uint32_t k, int32_t x, int32_t y);   /* (ui_lmh.c) */
 static void glo_mute_cards(void)
 {
@@ -822,13 +821,13 @@ static void glo_mute_cards(void)
         lb[5] = (char)('1' + e);
         { CV_HL(x, y, UT_T4_W, UT_T4_MUTE_H); cv_rrect(x, y, UT_T4_W, UT_T4_MUTE_H, UT_T4_R, fill, T_BG); }
         (void)ink;
-        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill) + 6;   /* b11 (design review 2.3): MUTE n and the keys that flip it, chips on one row */
+        kx = cv_text_on(x + UT_T4_PAD, y + UT_TY(S, UT_T4_LBL_BASE), &AF_S, lb, grey, fill) + 6;   /* MUTE n and the keys that flip it, chips on one row */
         kx = cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, KC_GLO, T_KEY, T_KINK, fill) + UT_T4_KEY_GAP;
         cv_keycap(kx, y + UT_T4_LBL_BASE - KC_H + 2, kc, T_KEY, T_KINK, fill);
-        lmh_card(e, x, y);                              /* b13: the LOW / MID / HIGH bands in this picture (ui_lmh.c), not sent after it over the card */
+        lmh_card(e, x, y);                              /* the LOW / MID / HIGH bands in this picture (ui_lmh.c), not sent after it over the card */
     }
 }
-#include "ui_lmh.c"                                     /* b11: the MIXER's LOW / MID / HIGH (its one call: lmh_draw, below) */
+#include "ui_lmh.c"                                     /* the MIXER's LOW / MID / HIGH (its one call: lmh_draw, below) */
 static void layer_glo(void)
 {
     uint32_t e;
@@ -854,13 +853,13 @@ static void layer_glo(void)
     }
 }
 /* Item 120: the four QUICK EDIT layers are template 1 (grid_on 1: ui_draw.c ui_draw_page `want`): the picture card (76 rows) holds one line a group, the numbers of the group's knobs in dots and its name; the four cards are
- * template 1's. DUELL 1.0 layout: QUICK SEQ is an area page (grid_on 16: the tools' box grid, layer_seq), QUICK REC four cells (grid_on 14, layer_cards).
- * DUELL 0.2.9, the QUICK EDIT layers' panel (before item 120): a cell over each group of their cards, its name (M) on its middle, so the cards that share
+ * template 1's. QUICK SEQ is an area page (grid_on 16: the tools' box grid, layer_seq), QUICK REC four cells (grid_on 14, layer_cards).
+ * the QUICK EDIT layers' panel: a cell over each group of their cards, its name (M) on its middle, so the cards that share
  * a label (LFO 1's FLT and LFO 2's) are told apart: QUICK FILTER: FILTER (K1..K3), AMP (K4); QUICK LFO: LFO 1, LFO 2; QUICK ENV: AMP ENV,
  * ENV 2; QUICK ARP: ARP. The cells line up with the cards (CARD_X), 3 px in */
 static const char *const LQ_NAME[4][2] = {{"MULTI FILTER", "AMP"}, {"LFO 1", "LFO 2"}, {"AMP ENV", "FILTER ENV"}, {"ARP", 0}};
 static const uint8_t LQ_SPLIT[4] = {3, 2, 2, 4};       /* the first card of the second group */
-/* b11: the step QUICK ARP's strip marks (0xFF: none): the arp's own step while keys are held or latched, as the footer's on the ARP pages (ui_draw.c foot_playhead: the arp runs
+/* the step QUICK ARP's strip marks (0xFF: none): the arp's own step while keys are held or latched, as the footer's on the ARP pages (ui_draw.c foot_playhead: the arp runs
  * without PLAY) */
 static uint32_t qa_step(const track_t *t)
 {
@@ -872,11 +871,11 @@ static void layer_quick(uint32_t q, int32_t y, int32_t h)
     uint32_t g, split = LQ_SPLIT[q];
     const char *const *nm = LQ_NAME[q];
     static const char *const TWO[2] = {"MULTI FILTER", "TWIN FILTER"};
-    if (q == 0u && ly_two()) {                          /* (cloud job H: MULTI CUTOFF, MULTI RES | TWIN CUTOFF, TWIN RES) */
+    if (q == 0u && ly_two()) {                          /* (MULTI CUTOFF, MULTI RES | TWIN CUTOFF, TWIN RES) */
         nm = TWO;
         split = 2;
     }
-    if (grid_on == 1 && q == 3u && arp_mode(TSEL) == AM_SEQ) {   /* b11 (design review 2.5): QUICK ARP in SEQ mode shows the steps the arp plays, the standard note strip (its playhead's
+    if (grid_on == 1 && q == 3u && arp_mode(TSEL) == AM_SEQ) {   /* QUICK ARP in SEQ mode shows the steps the arp plays, the standard note strip (its playhead's
                                                          * bank), the part bar beside them; the footer's rule (ui_draw.c foot_steps); other modes keep the group's line */
         uint8_t st[16];
         const uint32_t ph = qa_step(TSEL);
@@ -887,7 +886,7 @@ static void layer_quick(uint32_t q, int32_t y, int32_t h)
         (void)h;
         return;
     }
-    if (grid_on == 1) {                                 /* item 120, template 1 (PAGES_V2_perform-quick.png, the 76 px card of the part pages): a line a group, the numbers of its knobs in dots, then its name (L, M where L is too wide) */
+    if (grid_on == 1) {                                 /* template 1 (PAGES_V2_perform-quick.png, the 76 px card of the part pages): a line a group, the numbers of its knobs in dots, then its name (L, M where L is too wide) */
         uint32_t ng = nm[1] ? 2u : 1u;
         for (g = 0; g < ng; g++) {
             uint32_t k0 = g ? split : 0u, k1 = g ? 4u : split, k;
@@ -920,7 +919,7 @@ static const char *const TL_NAME[TL_N] = {"CLEAR", "REVERSE", "SHIFT <", "SHIFT 
     "KEEP",
 };
 #define TL_BIG ((1u << TL_CLEAR) | (1u << TL_COOK))      /* QUICK_SEQ_NEW_LAYOUT.png: CLEAR and RIPPLE in the larger size, the rest in the smaller */
-/* DUELL 1.0 layout (QUICK_SEQ_NEW_LAYOUT.png): the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
+/* (QUICK_SEQ_NEW_LAYOUT.png) the eight tools as a 4 x 2 box grid in the big area (ui_boxes.c box_grid; rows UT_BOX_QS_*), the white
  * keys F G A B over C D E F, the key letter in the corner, the names centred */
 static void layer_seq(void)
 {
@@ -930,7 +929,7 @@ static void layer_seq(void)
         b[p].name = p < TL_N ? TL_NAME[p] : "";
         b[p].key = W_NOTE[p];
         b[p].big = (uint8_t)((TL_BIG >> p) & 1u);
-        b[p].state = (pend && p == (pend == 2u ? TL_COOK : TL_RANDOM)) ? LS_WAIT : LS_OFF;   /* (b11: the SWELL / RIPPLE that waits for the loop start is lit) */
+        b[p].state = (pend && p == (pend == 2u ? TL_COOK : TL_RANDOM)) ? LS_WAIT : LS_OFF;   /* (the SWELL / RIPPLE that waits for the loop start is lit) */
     }
     box_grid(UT_BOX_QS_Y0, 2u, 4u, UT_BOX_QS_DY, UT_BOX_QS_H, b);
     int32_t ay, ah;
@@ -942,7 +941,7 @@ static void layer_seq(void)
     }
 }
 
-/* QUICK GLO's and the MIXER's four cards (item 117, TEMPLATE 4): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (the part's colour; DIM when it is muted; PAN not drawn in DUEL; PAN shows its own signed
+/* QUICK GLO's and the MIXER's four cards (TEMPLATE 4): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (the part's colour; DIM when it is muted; PAN not drawn in DUEL; PAN shows its own signed
  * number, no % sign, and its bar fills from the middle) */
 static void glo_cards(void)
 {
@@ -969,7 +968,7 @@ static void layer_cards(uint32_t l)
     uint32_t c;
     if (l == LAYER_GLO) {
         glo_cards();
-    } else if (l == LAYER_REC) {                        /* DUELL 1.0 layout (QUICK_REC_NEW_LAYOUT.png): four cells CLICK, COUNT, LEVEL (choices of three: the segment line), CLEAR */
+    } else if (l == LAYER_REC) {                        /* (QUICK_REC_NEW_LAYOUT.png) four cells CLICK, COUNT, LEVEL (choices of three: the segment line), CLEAR */
         for (c = 0; c < 3u; c++) {
             uint32_t v = rp_get(RL_F[c]);
             cell_seg_n = 3;                             /* (template 8: the CHOICE this card shows, for this card only) */
@@ -991,7 +990,7 @@ static void layer_cards(uint32_t l)
 static void draw_layer(void)
 {
     uint32_t l = ui.layer ? ui.layer % LAYER_N : LAYER_GLO, sig = l * 7919u + ux.gen * 977u;   /* (no layer: GLO's page) */
-    if (off_layer(l) && grid_on == 13) {                /* item 125: QUICK ARP / QUICK SEQ with the module OFF: only the notice */
+    if (off_layer(l) && grid_on == 13) {                /* QUICK ARP / QUICK SEQ with the module OFF: only the notice */
         if (ui.force || sig != ui.layer_sig) {
             ui.layer_sig = sig;
             graph_off(off_layer(l));
@@ -999,17 +998,17 @@ static void draw_layer(void)
         return;
     }
     layer_cards(l);
-    sig += vals_hash(TSEL) * 2246822519u;               /* (DUELL 1.1 general rule, ui_graph.c vals_hash: every value the panel could show) */
+    sig += vals_hash(TSEL) * 2246822519u;               /* (ui_graph.c vals_hash: every value the panel could show) */
     if (l == LAYER_GLO)
         sig += (uint32_t)(trk[0].p[P_MUTE] | trk[1].p[P_MUTE] << 1) * 131u + (duell_mode_req == DM_SPLIT) * 977u;
     else if (l == LAYER_REC)
         sig += (uint32_t)ui_rec_prefs * 31u + (uint32_t)rec_clearable() * 5u + song.sel * 977u;
     else if (l == LAYER_SEQ)
-        sig += song.sel * 977u + steps_sig(TSEL) * 31u + tide_sw_pending() * 4099u;   /* (b11: the steps and a waiting SWELL / RIPPLE are in the picture) */
-    else if (ly_q(l) == 3u && grid_on == 1)             /* b11: QUICK ARP's steps (SEQ mode) and their playhead */
+        sig += song.sel * 977u + steps_sig(TSEL) * 31u + tide_sw_pending() * 4099u;   /* (the steps and a waiting SWELL / RIPPLE are in the picture) */
+    else if (ly_q(l) == 3u && grid_on == 1)             /* QUICK ARP's steps (SEQ mode) and their playhead */
         sig += song.sel * 977u + steps_sig(TSEL) * 31u + qa_step(TSEL) * 4099u + (uint32_t)arp_mode(TSEL) * 65537u;
     else if (l == LAYER_EDIT)
-        sig += (TSEL->eng_req % NENGINES) * 31u + song.sel * 977u + (uint32_t)ly_page(l)->id[2] * 4099u + (uint32_t)ly_page(l)->id[3] * 65537u;   /* (cloud job H: its cards follow filter 2) */
+        sig += (TSEL->eng_req % NENGINES) * 31u + song.sel * 977u + (uint32_t)ly_page(l)->id[2] * 4099u + (uint32_t)ly_page(l)->id[3] * 65537u;   /* (its cards follow filter 2) */
     if (l == LAYER_REC && grid_on == 14)                /* QUICK REC (template 8): the cells are the whole body, no panel of its own */
         return;
     if (ui.force || sig != ui.layer_sig) {
@@ -1041,5 +1040,5 @@ static void draw_layer(void)
     }
 }
 
-#include "ui_perform.c"                                 /* DUELL 0.2.5: the PERFORM mode (FX held; its page, knobs, keys) */
-#include "ui_guide.c"                                   /* DUELL 0.2.11: the first-start GUIDE (after the splash; MENU > SYSTEM > GUIDE) */
+#include "ui_perform.c"                                 /* the PERFORM mode (FX held; its page, knobs, keys) */
+#include "ui_guide.c"                                   /* the first-start GUIDE (after the splash; MENU > SYSTEM > GUIDE) */

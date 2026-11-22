@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* The firmware side of storage.c (FELUCCA_FLASH): flash reads in short IRQ-off windows so the
  * audio keeps up, erases and writes only inside the storage areas, the audio ducked to silence
- * first (DUELL 0.2.11). The host tests (storage_test.c) provide their own st_* on a simulated NOR. */
+ * first. The host tests (storage_test.c) provide their own st_* on a simulated NOR. */
 static uint8_t flash_ok;                 /* JEDEC id matched at boot (persist_boot) */
 #if DUELL_TWOCORE
 #define ST_TC() tc_store_wait()                 /* (the XIP map is off while the driver works: core 1 idle first, inside the IRQ-off window; twocore.c) */
@@ -32,7 +32,7 @@ static void audio_silence(void)                 /* IRQs off: the DMA would loop 
     for (i = 0; i < sizeof abuf / sizeof abuf[0]; i++)
         abuf[i] = 0;
 }
-/* DUELL 0.2.11: the flash duck (audio.c audio_duck, SPEC 8.2a) around every erase and long program burst, nested: storage.c's
+/* the flash duck (audio.c audio_duck, SPEC 8.2a) around every erase and long program burst, nested: storage.c's
  * st_save_to holds one duck over its erase, its payload and its commit record (one dip, not three). The driver's own times
  * (took, us) go to felucca_dbg (the TEST screen shows the longest erase) */
 static uint8_t st_ducks;
@@ -58,7 +58,7 @@ static int st_erase(uint32_t off)
     f = irq_save();
     ST_TC();
     audio_silence();                            /* (already silent after the duck; kept for a duck that timed out) */
-    fm1__led_lines(0);                          /* DUELL 0.2.14, from Felucca 1.6 (#236): the erase stops the LED scan (IRQs off */
+    fm1__led_lines(0);                          /* the erase stops the LED scan (IRQs off */
     rc = FL_FAR(fl_erase4k_ram)(off, &took);    /* for ~17-40 ms): the column lit at that moment would burn at full duty and the */
     irq_restore(f);                             /* rest go dark, a flash of the panel. All rows dark instead: the panel just drops
                                                  * out, and the scan tick (fm1_input_tick, pending while the IRQs were off) lights

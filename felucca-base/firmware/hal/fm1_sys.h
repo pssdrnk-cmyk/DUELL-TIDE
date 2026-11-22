@@ -95,7 +95,7 @@ static void fm1_wdt_stop(void) { fm1_p33_write(FM1_P3_WDT_CON, 0); }
 
 /* ------------------------------------------- TWO-CORE: the second core held, the supplies --- */
 /* DUELL builds with the second core only (DUELL_TWOCORE=1; hal/fm1_core1.h, src/twocore.c, docs/TWOCORE_STAGE1.md; from the bench's
- * BENCH-B code, which ran on the owner's unit). Every other build: FM1_RESET_PREP() is nothing and not a byte of this is compiled (the
+ * BENCH-B code). Every other build: FM1_RESET_PREP() is nothing and not a byte of this is compiled (the
  * normal package is bit-identical without it).
  * fm1_cpu1_halt: core 1 held (C1_CON bit 1 set, then bit 3 cleared), first in every reset path below and in the fault report, so a core 1 left
  * running never executes what the ROM, the SPL or the update loader put in RAM. The bus-invalid traps are off around the hold: holding core 1

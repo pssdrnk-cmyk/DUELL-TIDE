@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 OSCILL/R (DUELL) */
-/* The update loader's screen (DUELL 1.0; TIDE builds draw it in TIDE's look: ldr_screen_tide.c, the same rules below): while the firmware is written the panel shows the DUELL word over the splash's wave lines, WRITING and the percent, a segmented
+/* The update loader's screen (TIDE builds draw it in TIDE's look: ldr_screen_tide.c, the same rules below): while the firmware is written the panel shows the DUELL word over the splash's wave lines, WRITING and the percent, a segmented
  * bar (20 segments of 5 percent) and DO NOT SWITCH OFF, as in release_drafts/LOADER_SCREEN_DESIGN.png (tools/loader_screen_design.py is the same picture).
  *
  * The write comes first, always. The screen is a guest of the loader:
@@ -17,7 +17,7 @@
 #endif
 
 #if LDR_SCREEN
-#include "ldr_screen_tide.c"                    /* TIDE 1.0.0-b5: the same screen in TIDE's look (drawing only: the guest rules below are the same) */
+#include "ldr_screen_tide.c"                    /* the same screen in TIDE's look (drawing only: the guest rules below are the same) */
 
 static void ls_give_up(void) { ls_on = 0; }
 

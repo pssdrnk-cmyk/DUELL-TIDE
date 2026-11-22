@@ -2,15 +2,15 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Complete musical archive: no raw addresses are accepted. Small objects are staged
  * in main-loop RAM and fully validated before the existing A/B commit path writes.
- * Ids 32..34 were the user sample slots USR1..USR3: DUELL 0.2.9 retired the sample engines and their slots, so they are listed empty
+ * Ids 32..34 (the user sample slots USR1..USR3 of the sample engines, which do not exist) are listed empty
  * (the archive keeps its 16 ids); an archive's sample objects are not restored (SMP_BEGIN answers rc 6, unsupported: editor.c).
- * The PATCH store (upreset.c) is carried ONE PATCH AT A TIME as LOGICAL records (the cloud plan's job A, INFO 42 01 caps bit 5, value 32; the archive is
+ * The PATCH store (upreset.c) is carried ONE PATCH AT A TIME as LOGICAL records (INFO 42 01 caps bit 5, value 32; the archive is
  * "version 5", duellbackup.js): object id ED_BK_PATCH (40) plus a SLOT byte, the stored record as PATCH_RAW moves it (up_raw_get: the slot and revision bytes
- * zero, so the same sound is the same bytes in any slot; up_put_raw writes it back through the store's own placement), so an archive survives any later change of
- * the store's geometry (chunks, records a chunk). Before it (DUELL 0.2.15 .. job A) the archive carried the PHYSICAL chunks, ids 6, 7, 9..12, 27..31 and 35..39
- * (OBJ_PATCH0 .. OBJ_PATCHX0..9): those ids are gone (a LIST does not list them, GET and PUT answer rc 1); an old archive of chunks is refused by the editor.
+ * zero, so the same sound is the same bytes in any slot; up_put_raw writes it back through the store's own placement), so an archive survives any change of
+ * the store's geometry (chunks, records a chunk). The PHYSICAL chunks, ids 6, 7, 9..12, 27..31 and 35..39
+ * (OBJ_PATCH0 .. OBJ_PATCHX0..9), are not archived: a LIST does not list them, GET and PUT answer rc 1; an old archive of chunks is refused by the editor.
  *   LIST (no argument)        stops the transport, takes the snapshot, lists the other objects (ids 0..5, 8, 13..26, 32..34: 24 in all)
- *   LIST page                 (page 1 .. 4; b12: .. 6, pages 5 and 6 list slots 128..174 by slot - 128, their id 47; needs the LIST before) the saved patches of slots 32 (page - 1) .. 32 page - 1: count, then per saved
+ *   LIST page                 (page 1 .. 6, pages 5 and 6 list slots 128..174 by slot - 128, their id 47; needs the LIST before) the saved patches of slots 32 (page - 1) .. 32 page - 1: count, then per saved
  *                             patch slot (the id byte), size u32, crc u32 (a slot that holds its factory sound is not listed: it has no record)
  *   GET 40 off count slot     (9 bytes: id, offset u32, count lo, count hi, slot) a piece of the record; the reply is the usual one with id 40
  *   PUT begin 40 size crc slot (13 bytes) / data / commit / abort as every object; the record goes in through up_put_raw (refused at commit, rc 2, when the store would not
@@ -18,15 +18,15 @@
  * DUELL with TIDE (INFO 44 01 bit 1): id 41 = FM6's voice bank B1..B32 (fm6_vbank.c), READ ONLY here: the stored payload (header and the 32 voices as stored, FVB_LEN bytes) and its CRC-32 after
  *                             it (u32, little endian), 3620 bytes. It is NOT in the plain LIST (an older tool knows no such id): GET 41 off count reads it (rc 1 when the unit holds no bank: probe with count 1).
  *                             A restore writes it with the editor's FM6B_BEGIN / WRITE / END (cmds 74..76), voice by voice; a PUT of 41 answers rc 1
- * Id 8 (the FM6 patch bank of 1.0..1.0.2) is listed empty and a PUT of it is accepted and dropped.
- * Ids 2..5 (Felucca's project slots A..D) are listed empty since DUELL's MULTI store took their flash (project.c multi.c);
+ * Id 8 (an FM6 patch bank of older firmware) is listed empty and a PUT of it is accepted and dropped.
+ * Ids 2..5 (Felucca's project slots A..D) are listed empty (DUELL's MULTI store uses their flash: project.c multi.c);
  * a PUT of one from an older archive is accepted (whatever its length) and dropped.
- * DUELL 0.2.14: what a PUT restores must be of this firmware's formats (project.c, multi.c, upreset.c): a project of another format
+ * What a PUT restores must be of this firmware's formats (project.c, multi.c, upreset.c): a project of another format
  * or revision (2), a multi object whose record is not MU_VER with P_COUNT values (2), a patch chunk with a record without PTF_CB (2) are
  * refused; nothing is written or changed then.
- * b10 U4 (INFO 42 01 caps bit 6, value 64): ids 42..46 = OBJ_MULTIX0..4 (M17-18 .. M25-26, the same object format as 13..20; "version 6"; the flash holds exactly M26: a build with fewer slots lists the last
+ * INFO 42 01 caps bit 6, value 64): ids 42..46 = OBJ_MULTIX0..4 (M17-18 .. M25-26, the same object format as 13..20; "version 6"; the flash holds exactly M26: a build with fewer slots lists the last
  * object empty and a restore of it is kept as it is). A version 5 archive has none of them: its restore leaves M17 and up as they are.
- * DUELL 0.2.14 (INFO 42 01 caps bit 2): ids 13..20 = OBJ_MULTI0..7 (M01-02 .. M15-16, two multis an object, magic MUL1, multi.c) and ids
+ * INFO 42 01 caps bit 2: ids 13..20 = OBJ_MULTI0..7 (M01-02 .. M15-16, two multis an object, magic MUL1, multi.c) and ids
  * 21..23 = OBJ_PATSLOT0..2 (P01-11, P12-22, P23-32, 11 / 11 / 10 slots an object, magic PTS3, a compact variable-length object, patslot.c) are in the
  * archive (27 ids). They are read
  * where they live (a multi object from flash through st_current, a pattern object from RAM (patslot.c ps_obj), which is the truth while a
@@ -34,7 +34,7 @@
  * with length 0, and a PUT of length 0 writes that empty object (the factory multis show again). A pattern object is never empty (every
  * slot holds a pattern): a PUT of length 0 gives its slots their defaults again.
  * A pattern restore replaces the mirror and clears its dirty bit, so a pending write cannot overwrite what was restored.
- * DUELL 0.2.14 (INFO 42 01 caps bit 3): ids 24..26 = the user wavetables USR1..USR3 (wtab.c; the object is wt_obj_t, 1228 bytes, read from the RAM
+ * INFO 42 01 caps bit 3: ids 24..26 = the user wavetables USR1..USR3 (wtab.c; the object is wt_obj_t, 1228 bytes, read from the RAM
  * mirror wt_ram; length 0 = EMPTY, a PUT of length 0 empties the slot). A restore is wt_store: the same checks and the same write as the
  * editor's WT_PUT (the playing sequencer is stopped first, ed_flash_stop). 30 ids.
  */
@@ -42,7 +42,7 @@
 #define ED_BK_PAT0 21u
 #define ED_BK_WT0 24u
 #define ED_BK_PATCH 40u                         /* a patch record, with its slot (see the top) */
-#define ED_BK_PATCH2 47u                        /* b12 (INFO 44 01 bit 2, archive version 7): the same for the slots 128..174 (#129..#175 of the list), slot byte = slot - 128 */
+#define ED_BK_PATCH2 47u                        /* (INFO 44 01 bit 2, archive version 7): the same for the slots 128..174 (#129..#175 of the list), slot byte = slot - 128 */
 static uint32_t ed_bk_pslot(uint32_t id, uint32_t b) { return id == ED_BK_PATCH ? b : id == ED_BK_PATCH2 ? 128u + b : UP_SLOTS; }   /* (UP_SLOTS: no patch id) */
 #define ED_BK_ISP(id) ((id) == ED_BK_PATCH || (id) == ED_BK_PATCH2)
 #define ED_BK_MULX0 42u                         /* ids 42..46: the multi objects 8..12 (M17..M26, b10 U4, INFO 42 01 caps bit 6): always all five, the flash has room for M26 (MU_OBJ_ALL); the ones past MU_SLOTS read empty; 41 is the voice bank */
@@ -123,7 +123,7 @@ static const uint8_t *ed_bk_settings_rec(void)
 static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
 {
     *len = 0;
-    if (ed_bk_multi(id) >= 0) {                     /* DUELL 0.2.14: a MULTI object, where it lives (not in the staging RAM) */
+    if (ed_bk_multi(id) >= 0) {                     /* a MULTI object, where it lives (not in the staging RAM) */
         uint32_t o = (uint32_t)ed_bk_multi(id), n;
         const uint8_t *p;
 #if FELUCCA_FLASH
@@ -141,7 +141,7 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
         *len = n;
         return p;
     }
-    if (ed_bk_wt(id) >= 0) {                        /* DUELL 0.2.14: a user wavetable, from the RAM mirror (EMPTY: length 0) */
+    if (ed_bk_wt(id) >= 0) {                        /* a user wavetable, from the RAM mirror (EMPTY: length 0) */
         uint32_t u = (uint32_t)ed_bk_wt(id);
         if (!(wt_used >> u & 1u) || !wt_obj_ok((const uint8_t *)&wt_ram[u], sizeof wt_ram[u]))
             return ED_BK_RAW;
@@ -164,11 +164,11 @@ static const uint8_t *ed_bk_object(uint32_t id, uint32_t *len)
     }
     if (id == 0u) { *len = sizeof(project_store_t); return ED_BK_RAW; }
     if (id == 1u) { *len = sizeof(persist_t); return ed_bk_settings_rec(); }
-    if (id >= 2u && id <= 5u)                       /* the retired project slots: always empty */
+    if (id >= 2u && id <= 5u)                       /* the unused project slots: always empty */
         return ED_BK_RAW;
-    if (id == 8u)                                   /* the retired FM6 patch bank: always empty */
+    if (id == 8u)                                   /* the unused FM6 patch bank: always empty */
         return ED_BK_RAW;
-    if (id >= 32u && id <= 34u)                     /* the retired user sample slots (DUELL 0.2.9): always empty */
+    if (id >= 32u && id <= 34u)                     /* the unused user sample slots: always empty */
         return ED_BK_RAW;
     return 0;
 }
@@ -223,7 +223,7 @@ static uint32_t ed_bk_commit(void)
         if (ed_bk_len != sizeof *p || p->magic != PERSIST_MAGIC || !palette_stored_ok(p->palette) ||
             !leds_stored_ok(p->zoom) || !hold_stored_ok(p->bold) || p->favorites.filter > 1u || !ed_bk_panel_valid(&p->panel)) return 2;
         obj = OBJ_SETTINGS;
-    } else if (ed_bk_multi(ed_bk_id) >= 0) {   /* DUELL 0.2.14: a MULTI object (two multis); length 0 = both empty */
+    } else if (ed_bk_multi(ed_bk_id) >= 0) {   /* a MULTI object (two multis); length 0 = both empty */
         uint32_t o = (uint32_t)ed_bk_multi(ed_bk_id);
         if (!ed_bk_len) {
             uint32_t magic = MU_MAGIC;
@@ -233,11 +233,11 @@ static uint32_t ed_bk_commit(void)
         } else if (!ed_bk_mul_ok(raw, ed_bk_len)) return 2;
         if (mu_obj_write(o, ed_bk_len)) return 4;   /* (mu_buf is the staging RAM; host builds: mu_ram) */
         mu_obj_read(o);                             /* what the unit holds now (flash, checked); its names and used mask */
-        if (o < MU_NOBJ)                            /* (b10 U4: the objects past the slots in use hold what the archive carried: M25, M26 come with MR9) */
+        if (o < MU_NOBJ)                            /* (the objects past the slots in use hold what the archive carried) */
             mu_note(o);
         sync_reload = 1; ui.force = 1;
         return 0;
-    } else if (ed_bk_wt(ed_bk_id) >= 0) {      /* DUELL 0.2.14: a user wavetable; length 0 = EMPTY */
+    } else if (ed_bk_wt(ed_bk_id) >= 0) {      /* a user wavetable; length 0 = EMPTY */
         uint32_t u = (uint32_t)ed_bk_wt(ed_bk_id);
         if (!ed_bk_len)
             return wt_erase(u) ? 4u : 0u;
@@ -279,12 +279,12 @@ static uint32_t ed_bk_commit(void)
     sync_reload = 1; ui.force = 1;
     return 0;
 }
-/* a project object's length: FUN11's (the older lengths, FUN7 .. FUN9, are no project since 0.2.14) */
+/* a project object's length: FUN11's (the older lengths, FUN7 .. FUN9, are no project) */
 static int proj_store_len(uint32_t len) { return len == sizeof(project_store_t); }
 static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
 {
     /* the arguments first: a malformed request never stops the transport */
-    if (n < 2u || a[0] > 3u || (a[1] > 5u && a[1] != 8u && !ED_BK_ISP(a[1]) && ed_bk_multi(a[1]) < 0 && ed_bk_pat(a[1]) < 0 && ed_bk_wt(a[1]) < 0)) return 1;   /* (the ids 6, 7, 9..12, 27..31, 35..39 were the patch store's chunks: gone) */
+    if (n < 2u || a[0] > 3u || (a[1] > 5u && a[1] != 8u && !ED_BK_ISP(a[1]) && ed_bk_multi(a[1]) < 0 && ed_bk_pat(a[1]) < 0 && ed_bk_wt(a[1]) < 0)) return 1;   /* (the ids 6, 7, 9..12, 27..31, 35..39 are the patch store's physical chunks: not archived) */
     if (a[0] == 0u) {
         if (n != (ED_BK_ISP(a[1]) ? 13u : 12u) || a[6] > 15u || a[11] > 15u) return 1;
         uint32_t len = ed_bk_r32(a + 2);
@@ -323,7 +323,7 @@ static uint32_t ed_bk_write(const uint8_t *a, uint32_t n)
 static int ed_backup_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
 {
     if (cmd == ED_BACKUP_LIST && n == 1u) {         /* a page of the saved patch records (see the top) */
-        uint32_t pg = a[0], rc = pg >= 1u && pg <= (UP_SLOTS + ED_BK_PPAGE - 1u) / ED_BK_PPAGE ? 0u : 1u, k, cnt = 0, ke = pg * ED_BK_PPAGE < UP_SLOTS ? pg * ED_BK_PPAGE : UP_SLOTS;   /* (b12: pages 5, 6 = 128..174) */
+        uint32_t pg = a[0], rc = pg >= 1u && pg <= (UP_SLOTS + ED_BK_PPAGE - 1u) / ED_BK_PPAGE ? 0u : 1u, k, cnt = 0, ke = pg * ED_BK_PPAGE < UP_SLOTS ? pg * ED_BK_PPAGE : UP_SLOTS;   /* (pages 5, 6 = 128..174) */
         if (!rc && (!ed_bk_valid || ed_bk_usb != usb.resets))
             rc = 5u;
         else if (!rc && transport_busy())

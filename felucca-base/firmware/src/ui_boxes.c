@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* DUELL 1.0 layout: the BOX GRID (DUELL/release_drafts/LAYOUT_IMPLEMENTATION_PLAN.md block D; the approved pictures PERFORM_NEW_LAYOUT_V4.png and
+/* The BOX GRID (DUELL/release_drafts/LAYOUT_IMPLEMENTATION_PLAN.md block D; the pictures PERFORM_NEW_LAYOUT_V4.png and
  * QUICK_SEQ_NEW_LAYOUT.png). One function for the PERFORM page's 16 effects (4 x 4) and the QUICK SEQ layer's 8 tools (4 x 2), drawn into the big
  * area of the area page (template 9, grid_on 16: ui_draw.c area_rect). Included by ui_layer.c after its cell states (LS_OFF, LS_HELD, LS_WAIT,
  * LS_DIM) and after ui_draw.c (area_rect, the faces, the theme colours).
  *   A box: a rounded rectangle (cv_rrect, radius BOX_R) in a dark fill (the picture's 36,10,46 on VIOLET: the part tone mixed toward the theme
- *   colour by BOX_FILL_PCT). Held: the accent fill with dark text. Waiting (an effect that waits for the next 1/16): the theme fill, as today.
- *   Cannot run now: the dark fill with dimmed text, as today.
- *   The name: CENTRED across the box (the owner's rule for these two pages: FIRMWARE_CHANGE_LIST_2026-10-28.md B.5). Two text sizes only: the
+ *   colour by BOX_FILL_PCT). Held: the accent fill with dark text. Waiting (an effect that waits for the next 1/16): the theme fill.
+ *   Cannot run now: the dark fill with dimmed text.
+ *   The name: CENTRED across the box (for these two pages). Two text sizes only: the
  *   larger face (BOX_BIG) where the picture shows the larger size AND the name's ink fits the box with BOX_FIT_PAD free at each side, else the
  *   11-row face (BOX_SMALL). Without a key letter the name is centred up and down too; with one (QUICK SEQ) the name's capitals end BOX_NAME_FOOT
  *   rows above the box's last row, under the key letter.
  *   The key letter (QUICK SEQ: the white key's note name, F G A B over C D E F) in the box's top left corner, in the accent colour, face BOX_KEYF.
- * The faces are one constant each: BOX_BIG is the names role (the 20 px face P, owner 2026-10-29).
+ * The faces are one constant each: BOX_BIG is the names role (the 20 px face P).
  * The geometry comes from ui_tokens.h (template 9 block): UT_BOX_X0, UT_BOX_DX, UT_BOX_W across; the caller gives the rows (UT_BOX_PF_* for
  * PERFORM, UT_BOX_QS_* for QUICK SEQ). */
 #define BOX_BIG NAME               /* the larger name size: the names role AF_NAME (ui_tokens.h: face P, Bold 20, capitals 14 rows; a developer bench build: face L) */
@@ -23,7 +23,7 @@
 #define BOX_CAP_Y_(F) AF_##F##_CAP_Y
 #define BOX_CAP_H(F) BOX_CAP_H_(F)
 #define BOX_CAP_H_(F) AF_##F##_CAP_H
-#define BOX_R 4                    /* the corner radius (as the old cells' lc_box) */
+#define BOX_R 4                    /* the corner radius (as lc_box) */
 #define BOX_FILL_PCT 13            /* the dark fill: T_BASE -> T_THEME, % (VIOLET 36,11,47; the pictures 36,10,46) */
 #define BOX_FIT_PAD 2              /* the larger size only when the name's ink leaves this many px free at each side */
 #define BOX_KEY_X 4                /* the key letter's pen from the box's left edge (the picture: x 13 in a box from x 9) */

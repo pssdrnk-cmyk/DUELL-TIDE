@@ -6,7 +6,7 @@
  * their anchors and beats, a chord part to two voices, softer sounds: seq_answer.c), RECOVER 1 (one part still thinned for its first 4 bars).
  * ARC RISE has no drop of its own; ARC DROP drops on the first arc after PLAY, then on about half; the hand
  * (OCT- + K2 on the TIDE page, tarc_drop_hand) drops at the next unit in either. Playback masks only: KEEP stores the whole pattern,
- * nothing here is saved, a power cycle starts at RISE. STOP and PLAY leave the arc where it was; a load or a K1 stop starts it again. ARC OFF: every lever neutral, as before. The planner is main loop only; the
+ * nothing here is saved, a power cycle starts at RISE. STOP and PLAY leave the arc where it was; a load or a K1 stop starts it again. ARC OFF: every lever neutral. The planner is main loop only; the
  * audio interrupt reads tarc_dropphr, tarc_lev (the parts thinned, seq_morph.c, and no POLY, seq_poly.c); the levers of the next unit's phase are armed a unit ahead (tarc_levers: tarc_lev bits 3-5,
  * tarc_unit: the unit the main loop last saw) and taken from the bar the unit begins on, like the drop's silence (tarc_lvl). */
 enum { AP_RISE, AP_PEAK, AP_DROP, AP_BREAK, AP_RECOVER };
@@ -32,7 +32,7 @@ static void tarc_begin(uint32_t ph)
     if (ph == AP_RISE)
         tarc.au = 0;
     if (ph == AP_BREAK && tarc.phase == AP_DROP)
-        len--;                                           /* (the drop's unit was the breakdown's first) */
+        len--;                                           /* (the drop's unit is the breakdown's first) */
     if (len && tarc.au + len + (ph == AP_PEAK ? 2u : 1u) > 8u)
         len--;                                           /* (room for what follows: the breakdown and RECOVER after a peak, RECOVER after a breakdown) */
     if (!len)
@@ -63,14 +63,14 @@ static uint32_t tarc_lv(uint32_t auto_mask, uint32_t bar, uint32_t dr)
 {
     uint32_t ph = tarc.phase;
     return (auto_mask & (ph - AP_DROP < 2u ? 3u : ph == AP_RECOVER && tarc.left == tarc.len && !(bar & 4u) ? 1u << (tarc.cnt & 1u) : 0u)) |   /* (RECOVER: one part still thinned for its first 4 bars) */
-           (ph - AP_PEAK < 3u || dr ? 4u : 0u);          /* (PEAK, DROP, BREAK; B1: no POLY stretch in the breakdown either) */
+           (ph - AP_PEAK < 3u || dr ? 4u : 0u);          /* (PEAK, DROP, BREAK; no POLY stretch in the breakdown either) */
 }
 static void tarc_tset(void)                              /* the phase's progress t (RISE: the brighter half from 128), from the units done */
 {
     uint32_t el = (uint32_t)tarc.len - tarc.left, ph = tarc.phase;
     tarc.t = (uint8_t)(ph == AP_RISE ? (el + 1u) * 255u / tarc.len : ph == AP_PEAK ? 255u : ph == AP_RECOVER ? (el + 1u) * 100u / tarc.len : 0u);
 }
-/* the levers of the phase and the phrase now, and of the next unit's phase (1.0.0-b8: the audio side takes those from the bar the unit begins on, tarc_thin_at: the same dice, run on a copy) */
+/* the levers of the phase and the phrase now, and of the next unit's phase (the audio side takes those from the bar the unit begins on, tarc_thin_at: the same dice, run on a copy) */
 static void tarc_levers(uint32_t auto_mask, uint32_t cur)
 {
     uint32_t now, nxt;
@@ -85,13 +85,13 @@ static void tarc_levers(uint32_t auto_mask, uint32_t cur)
     tarc_tset();
     ndyn = tarc_dyn();                                   /* (the loudness step of the next unit's phase: its first beat plays with it, Later 25) */
     tarc = keep;
-    MORPH_LOCK();                                        /* (audit C12: the levers change together for the audio interrupt) */
+    MORPH_LOCK();                                        /* (the levers change together for the audio interrupt) */
     tarc_lev = (uint8_t)(now | nxt << 3);
     sqm_dyn = (int8_t)dyn, sqm_dyn_nx = (int8_t)ndyn;
     tarc_unit = (uint8_t)cur;
     MORPH_UNLOCK();
 }
-/* b10 round 6 (owner: ARC "rather underwhelming"): the arc through the sound as well as the notes, on PERFORM's master filter (K3 FILTER, 24 dB,
+/* The arc through the sound as well as the notes, on PERFORM's master filter (K3 FILTER, 24 dB,
  * +k a high-pass at about 20 Hz x 2^(k / 10), -k a low-pass at about 20 kHz x 2^(-k / 10)) while the player's K3 is at rest (perform.c PF_FILT).
  * RISE: a low-pass opening from about 400 Hz (the first arc after PLAY or a load from about 2.5 kHz: a multi does not start muffled) to open over its bars but the last 2, which pull the lows out (a high-pass rising to about 120 Hz,
  * a step a beat: the build's riser); PEAK: open, the full low end on its first beat; DROP and BREAK: the lows out (about 140 Hz: the bass keeps its
@@ -116,7 +116,7 @@ static int32_t tarc_flt_of(void)
 }
 static void tarc_poll(void)
 {
-    uint32_t cur = (uint32_t)(sqm_bar >> 3) & 63u, am = sqm_auto;   /* (the 8-bar unit now: MR4) */
+    uint32_t cur = (uint32_t)(sqm_bar >> 3) & 63u, am = sqm_auto;   /* (the 8-bar unit now) */
     if (!sqm_arc || (!am && !glide_tide_on()))
         tarc.run = 0;                                    /* (no tide to follow: a K1 stop, a lane taken by hand; STOP / PLAY, REC and the launch wait only pause the arc) */
     if (!am || !sqm_arc) {                                /* (ARC OFF: every lever neutral at once, a drop under way too) */
@@ -152,7 +152,7 @@ static const char *tarc_drop_hand(void)
         tarc.hand = 0;
         tarc_dropphr = 0xFFu;
         tarc.next = (uint8_t)tarc_next_of(tarc.phase);
-        tarc.left = tarc.hleft;                          /* (audit C6: the phase gets its phrases back) */
+        tarc.left = tarc.hleft;                          /* (the phase gets its phrases back) */
         return "DROP CANCELLED";
     }
     if (tarc.phase == AP_DROP)
@@ -174,7 +174,7 @@ static uint32_t tarc_cap(uint32_t base)                  /* the density bound: b
     q = sqm_arc && sqm_auto && tarc.t >= 200u && tarc.phase <= AP_PEAK ? base / 2u : base / 4u;
     return base + (q ? q : 1u);
 }
-static uint32_t tarc_need(void)                          /* the phrase edits' cadence: every loop in the rise, every 4th in the breakdown, else every 2nd (M09) */
+static uint32_t tarc_need(void)                          /* the phrase edits' cadence: every loop in the rise, every 4th in the breakdown, else every 2nd */
 {
     if (!sqm_arc || !sqm_auto || !tarc.run)
         return 2u;
@@ -192,7 +192,7 @@ static int32_t tarc_dyn(void)                            /* the dynamics' ARC si
     return b < 0 ? -2 : b;
 }
 static const char *tarc_name(void) { static const char *const N[5] = {"RISE", "PEAK", "DROP", "BREAK", "RECOVER"}; return N[tarc.phase % 5u]; }
-/* TIDE hook H18: a multi, project or pattern load into the parts of mask. The tide starts as written (no generation, no pitch edits, D6) and the
+/* TIDE hook H18: a multi, project or pattern load into the parts of mask. The tide starts as written (no generation, no pitch edits) and the
  * arc at RISE; a trip that runs starts again from A (sqm_restart: glide_poll) */
 static void tide_loaded(uint32_t mask)
 {
@@ -201,6 +201,6 @@ static void tide_loaded(uint32_t mask)
             seqm_home(k), tide_mu[k] = 0;                /* (a factory multi's load sets tide_mu after this: multi.c project_load) */
     tarc.run = 0;
     sqm_restart = 1;
-    tk_reset_v = 1;                                      /* (b10 round 8: the takes' history belongs to the music that was) */
+    tk_reset_v = 1;                                      /* (the takes' history belongs to the music before the load) */
     tk_fresh_v = 0;
 }

@@ -17,7 +17,7 @@
  * Threads: the tick and the event step are two interrupts of core 0 (the tick preempts the event step) and share no lock: every field has ONE
  * writer (sense.c: the tick's are in sk_t, the event step's in sn.asked / g_ask / g_seq / defer / vo). The event step reads a landing's velocity
  * only after the tick has counted it (sk_t.rseq, written last).
- * Settings KEY VELOCITY and AFTERTOUCH (DUELL 1.0: two lines; KEY VELOCITY OFF and AFTERTOUCH ON by default since 0.2.32, ui.c KEYVEL_ON_BIT): both OFF, sense_gate returns its input, sense_vel returns 100, sense_want_drive returns 0,
+ * Settings KEY VELOCITY and AFTERTOUCH (two lines; KEY VELOCITY OFF and AFTERTOUCH ON by default, ui.c KEYVEL_ON_BIT): both OFF, sense_gate returns its input, sense_vel returns 100, sense_want_drive returns 0,
  * sense_update ignores everything: the build plays as one without the feature. AFTERTOUCH alone: the sensing runs for the pressure; sense_gate and sense_vel stay as OFF
  * (the velocity is the fixed 100, no key waits). KEY VELOCITY alone: no pressure (sense_at_value 0). */
 #pragma once
@@ -42,7 +42,7 @@ uint32_t sense_vel(uint32_t note);                           /* the velocity of 
 uint32_t sense_at_value(void);                               /* 0 .. 127: the strongest held analog key (0 when OFF) */
 
 /* ---- settings (for the later menu page; no page here) ---- */
-void sense_enable(uint32_t on);                              /* default OFF (owner, 2026-10-21; the state is all zero at power-on = OFF; the menu setting turns it ON) */
+void sense_enable(uint32_t on);                              /* default OFF (the state is all zero at power-on = OFF; the menu setting turns it ON) */
 uint32_t sense_enabled(void);                                /* KEY VELOCITY is ON */
 void sense_at_enable(uint32_t on);                           /* AFTERTOUCH (DUELL 1.0, its own setting; default OFF): the channel pressure the keys send; sense_at_value is 0 while it is OFF */
 uint32_t sense_at_enabled(void);

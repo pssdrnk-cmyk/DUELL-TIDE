@@ -22,7 +22,7 @@
  * the operator that has it. Changed for Felucca:
  *   - no float or double: the start-up tables (Exp2, Freqlut, Lfo, PitchEnv, the detune curve, FINE) are
  *     const tables from tools/gen_tables.py (FM6_*); the amplitude-modulation exp() is an Exp2 of the same
- *     curve; msfa's float pitch bend, MPE and microtuning are gone (Felucca's pitch, bend, glide and tune
+ *     curve; msfa's float pitch bend, MPE and microtuning are not used (Felucca's pitch, bend, glide and tune
  *     arrive as the note's pitch in 1/16 semitone plus a fine factor: fm6_note_logfreq);
  *   - the sine is Felucca's 1024-point SINE (Q15), linearly interpolated, scaled by the Q24 gain to msfa's
  *     Q24 operator output;
@@ -516,9 +516,9 @@ static void fm6_note_init(fm6_note_t *n, const uint8_t *p, int32_t note, int32_t
     n->live = n->down = 1;
 }
 
-/* DUELL MORPH (JAM fix, 2026-10-29): an operator's OL that moved under a sounding note (the morph moves it per block) is a
- * gain over the note-on envelope, not an edit of its state. Before, the EG's level and target were shifted and clamped,
- * so an OL that went to 0 and back lost its attenuation and the note came back louder or silent. The key and velocity
+/* DUELL MORPH: an operator's OL that moved under a sounding note (the morph moves it per block) is a
+ * gain over the note-on envelope, not an edit of its state (shifting and clamping the EG's level and target would lose the attenuation of an OL that went to 0 and back,
+ * and the note would come back louder or silent). The key and velocity
  * scaling are re-evaluated before the clamp (an operator that started silent keeps them too), and the current patch's
  * EG ceiling keeps an all-zero envelope silent. Unchanged OL: not called (bit-identical) */
 static __attribute__((noinline)) int32_t fm6_live_level(const fm6_env_t *e, const uint8_t *op, int32_t level)

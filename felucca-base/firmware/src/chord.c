@@ -174,7 +174,7 @@ static uint32_t chord_build(track_t *t, uint32_t root, uint8_t *out)
 }
 
 /* the name of pitch class pc into b (3 bytes): flats in a flat key (the scale's relative major, or ROOT for a scale that has none: F Bb Eb Ab Db),
- * else sharps (audit S13: C minor's Eb Ab Bb were D# G# A#) */
+ * else sharps */
 static void note_str(char *b, uint32_t pc)
 {
     uint32_t m = scale_mask(&trk[0]), k = 0, r = (uint32_t)root_of(&trk[0]) % 12u;

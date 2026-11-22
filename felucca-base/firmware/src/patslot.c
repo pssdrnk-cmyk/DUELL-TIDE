@@ -34,7 +34,7 @@
  * A LOAD reads its slot's object into ps_buf (or, while ps_buf holds another object's unsaved SAVE, reads the slot from the flash
  * for that load only); SAVE and ERASE change ps_buf at once (jam: while playing too); the flash write waits until nothing plays
  * (ps_poll, from settings_poll: no erase is heard). The one exception: a SAVE into ANOTHER object while one still waits writes the
- * waiting one at once (ps_take: the flash duck's short dip, owner 2 November 2026). An object that was missing or unreadable is its
+ * waiting one at once (ps_take: the flash duck's short dip). An object that was missing or unreadable is its
  * defaults (ps_def): built again whenever it is needed, written once nothing plays.
  * Without FELUCCA_FLASH (host builds) the three objects stay in RAM (ps_bank): that is all there is. */
 #define PS_PER_OBJ 11u
@@ -87,7 +87,7 @@ static void ps_pack_step(const step_t *s, uint8_t *b)
         b[j] = (uint8_t)((s->note[j] & 127u) | (nd >> j & 1u) << 7);
     b[4] = (uint8_t)((s->n > 4u ? 4u : s->n) | (s->time > ST_REST ? ST_REST : s->time) << 3 | (s->flags & 3u) << 5);
     b[5] = (uint8_t)((s->vel & 127u) | (r & 1u) << 7);
-    b[6] = 0;                                      /* (the drum lane hits and accents: gone in 0.2.14, the two bytes stay) */
+    b[6] = 0;                                      /* (the two bytes are reserved) */
     b[7] = 0;
     b[8] = (uint8_t)((s->probability > 101u ? 0u : s->probability) | (r >> 1) << 7);
 }
@@ -556,7 +556,7 @@ static int ps_load_trk(track_t *t, uint32_t k)
 /* SAVE > PATTERNS' preview of slot k (read only: the record is read as a LOAD reads it, no write, no dip, and decoded into pat_pv_t; the tracks are not touched) */
 static void ps_preview(uint32_t k, pat_pv_t *o)
 {
-    uint8_t ps_top[16] = {0};                           /* (b11 note strip B: the steps' top notes) */
+    uint8_t ps_top[16] = {0};                           /* (the steps' top notes) */
     const uint8_t *r, *p, *end;
     uint32_t i, nl, nst, len;
     uint8_t b[PS_STEP], tmp[PS_REC_MAX];

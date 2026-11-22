@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* TRIO: three oscillators with ring modulation and hard sync, in the style of the sound chips of early 8-bit home computers. Felucca's own design.
- * No filter of its own since the engine filters left (TWIN_FILTER_DESIGN_2, cloud job J): its filter lives on as filter 2's LP, BP, HP and NOTCH (chain_f2.c f2_svf: the same SVF, the
+ * No filter of its own (TWIN_FILTER_DESIGN_2): its filter lives on as filter 2's LP, BP, HP and NOTCH (chain_f2.c f2_svf: the same SVF, the
  * same knees and damping, the slow drift from a generator of its own); filter 1 is the MULTI FILTER (voice.c uf_run).
  *
  * Oscillators: triangle, saw, pulse (PW), pitched noise (a new random value 16 times a cycle)
@@ -327,7 +327,7 @@ static void trio_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
 
 #if DUELL_PRESETS                                     /* (Felucca's engine presets: no firmware code reads them since the factory sounds of sounds.c; the host tests do: core.h) */
 static const preset_t TRIO_PRESETS[] = {
-    /* name, {WAVE, INT2, INT3, DTN, -, -, -, PW} (MODE CUT RES are filter 2's since cloud job J), {A D S R}, fenv, mono */
+    /* name, {WAVE, INT2, INT3, DTN, -, -, -, PW} (MODE CUT RES are filter 2's), {A D S R}, fenv, mono */
     {"FAT BASS", {0, 0, -12, 9, 0, 0, 0, 64}, {0, 62, 60, 25}, 40, 1, FX(10, 0, 10, 10), PAT(2)},
     {"ARP LEAD", {2, 12, 0, 4, 0, 0, 0, 32}, {0, 60, 90, 30}, 8, 0, FX(0, 0, 35, 20), PAT(13)},
     {"SYNC LEAD", {9, 9, 0, 0, 0, 0, 0, 64}, {2, 70, 100, 40}, 18, 1, FX(0, 10, 40, 25), PAT(4)},
@@ -346,9 +346,9 @@ static const engine_t ENG_TRIO = {
         {"INT2", F_SEMI, 0, -24, 24, 0, 0},
         {"INT3", F_SEMI, 0, -24, 24, -12, 0},
         {"DTN", F_INT, U_CT, 0, 50, 6, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was MODE: filter 2's TYPE */
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was CUT: filter 2's CUTOFF */
-        {"-", F_INT, 0, 0, 0, 0, 0},                 /* was RES: filter 2's RES */
+        {"-", F_INT, 0, 0, 0, 0, 0},
+        {"-", F_INT, 0, 0, 0, 0, 0},
+        {"-", F_INT, 0, 0, 0, 0, 0},
         {"PW", F_PCT, 0, 0, 127, 64, 0},
     },
 #if DUELL_PRESETS
@@ -357,8 +357,8 @@ static const engine_t ENG_TRIO = {
 #endif
     .note_on = trio_note_on,
     .render = trio_render,
-    .knob = {P_FREEA, P_FREEB, P_E7, P_E1},   /* filter 1's CUT and RES (the engine's own CUT and RES were here) */
+    .knob = {P_FREEA, P_FREEB, P_E7, P_E1},   /* filter 1's CUT and RES */
     .uiord = TRIO_UIORD,
     .atgt = ATG_TRIO,            /* ARP TARGET: OSC1..OSC3 (SPEC 2.3) */
-    .ufilt = 1,                  /* no filter of its own since cloud job J: the multimode filter (voice.c uf_run), and filter 2 (TWIN) */
+    .ufilt = 1,                  /* no filter of its own: the multimode filter (voice.c uf_run), and filter 2 (TWIN) */
 };

@@ -30,7 +30,6 @@
  *   string  String (the extended Karplus-Strong string of DaisySP's KarplusString: delay line,
  *           dispersion all-pass or curved bridge, DcBlock, OnePole damping, the low-note
  *           resampler) excited by StringVoice: a noise burst one period long (or Dust) through Svf
- * (DaisySP's Particle was ported too until the DUST model was dropped.)
  *
  * Number formats (no float anywhere):
  *   signals         Q20 (1.0 = 2^20) between the stages; the exciter of the modal bank in Q24, the
@@ -243,7 +242,7 @@ static __attribute__((noinline)) void px_modal_exciter(px_modal_blk_t *B, px_mod
     uint32_t cut;
     uint64_t fr;
     int32_t ex;
-    /* exciter low-pass: cutoff = min(f 2^((b (2 - b) - 0.5) range / 12), 0.499). DUELL 1.1: from the key's BRIT, not from b (the velocity's accent): a resonant low-pass swept across the modes
+    /* exciter low-pass: cutoff = min(f 2^((b (2 - b) - 0.5) range / 12), 0.499). from the key's BRIT, not from b (the velocity's accent): a resonant low-pass swept across the modes
      * (and the strike's 1 / cut) made the level fall as the velocity rose, by up to 4 dB and more (VELOCITY_AFTERTOUCH_V1.md 10) */
     ex = (int32_t)(((int64_t)px_m(brightness, 131072 - brightness, 16) - 32768) * (bow ? 36 : 60) / 12);   /* octaves, Q16 */
     fr = ((uint64_t)f0c * (bow ? 4u : 2u) * px_exp2(ex)) >> 16;
@@ -565,11 +564,11 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
         B->curving = px_m(px_m(nl, nl, 16), 10737418, 16);     /* nl^2 0.01 */
         B->ap_gain = -(int32_t)(((int64_t)663568203 * nl) / (9830 + nl));   /* -0.618 nl / (0.15 + nl) */
     }
-    {   /* (after 2.8.3) the loop in tune: its delays and the phase lags of its filters at the fundamental add up
+    {   /* the loop in tune: its delays and the phase lags of its filters at the fundamental add up
          * to one period. DaisySP takes 2 atan(1 / ratio) / 2 pi of a period off for the damping filter (twice the lag
          * of its OnePole: the compensation of Rings' two-pole Svf) and shortens the line for the dispersion all-pass
-         * by a rule of thumb that grows with the delay: the strings were sharp, by up to +20 cents high and +100 below
-         * F2. Here: the OnePole's lag atan(tan(pi f) / g), the DcBlock's lead, the all-pass's lag at its integer
+         * by a rule of thumb that grows with the delay (strings up to +20 cents sharp, +100 below
+         * F2). Here: the OnePole's lag atan(tan(pi f) / g), the DcBlock's lead, the all-pass's lag at its integer
          * delay and the linear read's at its fraction, exactly; turns Q32, per block (kept while delay, df and the non-linearity hold) */
         uint32_t ap = (uint32_t)(((uint64_t)delay * (uint32_t)sp) >> 16), mn;
         if (S->lk_delay == delay && S->lk_df == df && S->lk_nl == (uint32_t)nl) {   /* a held pitch: the same lag, no divisions */

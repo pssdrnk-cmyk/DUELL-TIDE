@@ -29,13 +29,13 @@
 enum {
     MAP_T_MORPH = 256,                  /* the MORPH fader 0..127 */
     MAP_T_ROLL_A, MAP_T_ROLL_B,         /* a roll of End A / End B: 64 and up fires once, below 64 re-arms (no shipped line: the shipped map has the one ROLL below; kept for typed lines and the reference tests) */
-    MAP_T_SPARE_UNDO,                   /* 1.0.0-b5: MORPH UNDO's code until the morph lost its history, kept so no later code moves (stored maps, EDITOR_PROTOCOL); no target: map_code_ok refuses it */
+    MAP_T_SPARE_UNDO,                   /* spare: formerly MORPH UNDO's code, kept so no later code moves (stored maps, EDITOR_PROTOCOL); no target: map_code_ok refuses it */
     MAP_T_ROLL,                         /* ROLL, one CC centred like the knob (MIDI_MAP_FINAL): 0..42 rolls End A, 43..84 nothing, 85..127 rolls End B; a roll fires when the value ENTERS its zone */
     MAP_T_AMOUNT,                       /* the morph AMOUNT 0..127 -> 0..100 % */
     MAP_T_TARGET,                       /* the morph TARGET 0-42 PART 1, 43-85 PART 2, 86-127 BOTH */
     MAP_T_SMART, MAP_T_ARP, MAP_T_PITCH,    /* the morph's three switches: 64 and up on */
     MAP_T_MODE,                         /* the output MODE 0-42 SPLIT, 43-85 STEREO, 86-127 LAYER (global) */
-    MAP_T_SPARE_BAL,                    /* item 157: BALANCE's code until it left the MODE page, kept so no later code moves (stored maps, EDITOR_PROTOCOL); no target: map_code_ok refuses it */
+    MAP_T_SPARE_BAL,                    /* spare: formerly BALANCE's code, kept so no later code moves (stored maps, EDITOR_PROTOCOL); no target: map_code_ok refuses it */
     MAP_T_XFADE,                        /* 0..100 % (global) */
     MAP_T_SPLIT,                        /* 0 OFF, 1..127 the note (global) */
     MAP_T_CUTOFF_SMART,                 /* CC74: the engine's own cutoff, or the multimode filter's (MIDI_CC_ENG) */

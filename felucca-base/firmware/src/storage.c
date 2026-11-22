@@ -20,21 +20,20 @@
                                                 * where the update loader and the SPL scan for update records (fm6_vbank.c, patslot.c) */
 
 /* flash map (FL_DATA 0x97000..0xDFFFF, FL_GLOB 0xFC000.., FL_AUTO 0xE5000..0xE6FFF, FL_VBANK 0xE7000): settings 0xFC000, DUELL's
- * MULTI store M01..M08 0x97000..0x9EFFF (Felucca's four project slots were there: OBJ_PROJECT0..3 are retired, below), the
- * user sample slots 0xA0000..0xC7FFF (USR1 0xA0000, USR2 0xB4000, 80 KiB each; DUELL retired USR3, which lay at 0xC8000..0xCDFFF;
- * DUELL 0.2.9 retired USR1 and USR2 with the SAMPLE engine: 0xA0000..0xC7FFF (160 KiB) was UNUSED, nothing read or wrote it (old
- * sample data may still lie there). DUELL 0.2.14: the USER WAVETABLES (wtab.c, OBJ_WTAB0..2, three A/B pairs) take the first 24 KiB of it, all inside the old USR1 range,
- * 0xA0000..0xA5FFF (USR1 0xA0000/0xA1000, USR2 0xA2000/0xA3000, USR3 0xA4000/0xA5000); DUELL 0.2.15: the PATCH store's chunks 6..15 (OBJ_PATCHX0..9, ids 33..42, ten A/B pairs) take the next 80 KiB, 0xA6000..0xB9FFF; the cloud plan's job A (PT_VER 3: 6 records a chunk, 22 chunks): chunks 16..21 = OBJ_PATCHX0+10..15 (ids 43..48, six more pairs) 0xBA000..0xC5FFF; 0xC6000..0xC7FFF (8 KiB, one pair) is OBJ_VELO, id 49, the velocity calibration (VELO_STUDY, up to 128 bytes: project.c velo_cal_load / velo_cal_save). Every one of these is inside FL_STORE_OK (fm1_flash.h: FL_DATA 0x97000..0xE0000)), DUELL's PATCH store (upreset.c, OBJ_PATCH0..5: six A/B pairs, below) 0xC8000..0xCDFFF (chunks 0..2),
- * the MULTI store M09..M16 0xCE000..0xD5FFF (taken from USR3's end), DUELL's pattern slots 0xD6000..0xDBFFF (below); the user
- * preset banks of Felucca (OBJ_UPRESET0/1, 0xDC000..0xDFFFF: since DUELL step 3.6b the PATCH store's chunks 3 and 4) and the user
- * presets' FM6 patches (OBJ_UPFM6, copy A 0x9F000, copy B 0xFE000, shared with the retired FM6 bank: the PATCH store's chunk 5)
- * are retired as objects: DUELL keeps patches in the patch store only; the autosave (project.c,
- * 1.2): A 0xE5000, B 0xE6000, above the OTA staging (0xE0000..0xE4FFF), in the margin the stock firmware's own update
+ * MULTI store M01..M08 0x97000..0x9EFFF (OBJ_PROJECT0..3, Felucca's project slots, are reserved: below), the
+ * user sample region 0xA0000..0xC7FFF (160 KiB; there is no sample engine, so only what the stores below take is written; old
+ * sample data may still lie in the rest): the USER WAVETABLES (wtab.c, OBJ_WTAB0..2, three A/B pairs) take the first 24 KiB of it,
+ * 0xA0000..0xA5FFF (USR1 0xA0000/0xA1000, USR2 0xA2000/0xA3000, USR3 0xA4000/0xA5000); the PATCH store's chunks 6..15 (OBJ_PATCHX0..9, ids 33..42, ten A/B pairs) take the next 80 KiB, 0xA6000..0xB9FFF; PT_VER 3 has 6 records a chunk and 22 chunks: chunks 16..21 = OBJ_PATCHX0+10..15 (ids 43..48, six more pairs) 0xBA000..0xC5FFF; 0xC6000..0xC7FFF (8 KiB, one pair) is OBJ_VELO, id 49, the velocity calibration (VELO_STUDY, up to 128 bytes: project.c velo_cal_load / velo_cal_save). Every one of these is inside FL_STORE_OK (fm1_flash.h: FL_DATA 0x97000..0xE0000)), DUELL's PATCH store (upreset.c, OBJ_PATCH0..5: six A/B pairs, below) 0xC8000..0xCDFFF (chunks 0..2),
+ * the MULTI store M09..M16 0xCE000..0xD5FFF (the end of USR3's stride), DUELL's pattern slots 0xD6000..0xDBFFF (below); the user
+ * preset banks of Felucca (OBJ_UPRESET0/1, 0xDC000..0xDFFFF: the PATCH store's chunks 3 and 4) and the user
+ * presets' FM6 patches (OBJ_UPFM6, copy A 0x9F000, copy B 0xFE000: the PATCH store's chunk 5)
+ * are reserved ids, not objects: DUELL keeps patches in the patch store only; the autosave (project.c):
+ * A 0xE5000, B 0xE6000, above the OTA staging (0xE0000..0xE4FFF), in the margin the stock firmware's own update
  * stages into (only ever while the stock firmware runs: a later Felucca finds no valid copy and starts as without one).
- * Those two sectors (0x9F000, 0xFE000) held the FM6 patch bank of 1.0..1.0.2 and then the user presets' FM6 patches; DUELL
- * stores an FM6 patch inside the patch's own record, so only the patch store (chunk 5) uses them now. Nothing else touches
+ * Those two sectors (0x9F000, 0xFE000): DUELL
+ * stores an FM6 patch inside the patch's own record, so only the patch store (chunk 5) uses them. Nothing else touches
  * 0xDC000..0xDFFFF (below the OTA staging 0xE0000, inside FL_DATA) nor those two (FL_DATA / FL_GLOB, below 0xFF000).
- * The FM6 voice bank (1.4.1, fm6_vbank.c): 0xE7000, the sector above the autosave, with a commit record of the same
+ * The FM6 voice bank (fm6_vbank.c): 0xE7000, the sector above the autosave, with a commit record of the same
  * kind (type OBJ_FM6VB, not an st_load object); a new bank is first staged in the autosave's older copy (fm6_vbank.c).
  * DUELL's pattern slots (patslot.c, OBJ_PATSLOT0..2): A/B pairs at 0xD6000..0xDBFFF (FL_PSLOT_*), the last 24 KiB
  * of the user sample region (taken from USR3, which ends at 0xD5FFF), just below the user preset banks; nothing is written to the
@@ -45,27 +44,27 @@
  * (newer revision byte wins at the next boot), then cut from the old one.
  * DUELL's MULTI store (project.c, SAVE > MULTI; OBJ_MULTI0..7, two multis per object): eight A/B pairs in two ranges
  * (fm1_flash.h FL_MULTI_*): objects 0..3 at 0x97000..0x9EFFF (the sectors of Felucca's four project slots, OBJ_PROJECT0..3:
- * retired, their numbers kept so no other object's commit records change; st_head / st_save refuse them, so nothing
+ * reserved, their numbers kept so no other object's commit records change; st_head / st_save refuse them, so nothing
  * writes there under their name and an old project's record reads as no multi), objects 4..7 at 0xCE000..0xD5FFF.
- * b10 U4: objects OBJ_MULTIX0..+4 (ids 50..54, M17..M26) at 0xEA000..0xF3FFF, the first ten sectors of the stock firmware's USR region.
- * b12 (every factory sound editable): objects OBJ_PATCHY0..+3 (ids 55..58) = the PATCH store's chunks 21..24 at 0xF4000..0xFBFFF, the rest of that region, up to the
- * settings (0xFC000). Blank on every unit before b12 (nothing wrote there; a stock unit's own data there fails the commit record and reads as no chunk).
+ * Objects OBJ_MULTIX0..+4 (ids 50..54, M17..M26) at 0xEA000..0xF3FFF, the first ten sectors of the stock firmware's USR region.
+ * Objects OBJ_PATCHY0..+3 (ids 55..58) = the PATCH store's chunks 21..24 at 0xF4000..0xFBFFF, the rest of that region, up to the
+ * settings (0xFC000). A stock unit's own data there fails the commit record and reads as no chunk.
  * The factory multis M01..M10 (multi.c, build/gen/duell_multis.h) are ROM, not flash: an empty record shows them, a stored one wins. */
 #define OBJ_FM6VB 32u                          /* the voice bank's commit records (fm6_vbank.c; not an st_load object: OBJ_RETIRED, so
                                                 * st_head / st_save / st_wipe refuse it, and no object here takes its sectors) */
 enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_FM6BANK = OBJ_UPRESET0 + 2, OBJ_UPFM6,
        OBJ_AUTOSAVE, OBJ_PATSLOT0, OBJ_MULTI0 = OBJ_PATSLOT0 + 3,   /* DUELL: the pattern slots (patslot.c), 3 objects */
        OBJ_PATCH0 = OBJ_MULTI0 + 8,                                 /* DUELL: the MULTI store (project.c), 8 objects; the PATCH store (upreset.c), */
-       OBJ_WTAB0 = OBJ_PATCH0 + 6,                                  /* .. 6 objects; DUELL 0.2.14: the user wavetables (wtab.c), 3 objects */
-       OBJ_PATCHX0 = OBJ_FM6VB + 1,                                 /* DUELL 0.2.15: the PATCH store's chunks 6..15 (upreset.c), 10 objects, ids 33..42: id 32 is skipped */
-       OBJ_VELO = OBJ_PATCHX0 + 16,                                 /* the cloud plan's job A: chunks 6..21 = OBJ_PATCHX0..15 (ids 33..48), six more at 0xBA000..0xC5FFF; id 49: the velocity calibration, 0xC6000 / 0xC7000 */
-       OBJ_MULTIX0 = OBJ_VELO + 1,                                  /* b10 U4: M17..M26, objects 50..54 (multi.c), 0xEA000..0xF3FFF (fm1_flash.h FL_MULTI_C); ids after everything else, so no commit record of another object changes */
-       OBJ_PATCHY0 = OBJ_MULTIX0 + 5,                               /* b12: the PATCH store's chunks 21..24 (upreset.c pt_obj), objects 55..58, 0xF4000..0xFBFFF */
+       OBJ_WTAB0 = OBJ_PATCH0 + 6,                                  /* .. 6 objects; the user wavetables (wtab.c), 3 objects */
+       OBJ_PATCHX0 = OBJ_FM6VB + 1,                                 /* the PATCH store's chunks 6..15 (upreset.c), 10 objects, ids 33..42: id 32 is skipped */
+       OBJ_VELO = OBJ_PATCHX0 + 16,                                 /* chunks 6..21 = OBJ_PATCHX0..15 (ids 33..48), six more at 0xBA000..0xC5FFF; id 49: the velocity calibration, 0xC6000 / 0xC7000 */
+       OBJ_MULTIX0 = OBJ_VELO + 1,                                  /* M17..M26, objects 50..54 (multi.c), 0xEA000..0xF3FFF (fm1_flash.h FL_MULTI_C); ids after everything else, so no commit record of another object changes */
+       OBJ_PATCHY0 = OBJ_MULTIX0 + 5,                               /* the PATCH store's chunks 21..24 (upreset.c pt_obj), objects 55..58, 0xF4000..0xFBFFF */
        OBJ_COUNT = OBJ_PATCHY0 + 4 };
 _Static_assert(OBJ_WTAB0 + 3 <= OBJ_FM6VB, "the object ids below the voice bank's");
-/* the project slots' numbers, Felucca's user preset banks and the FM6 patch objects (DUELL: all retired, never read or written) */
+/* the project slots' numbers, Felucca's user preset banks and the FM6 patch objects (DUELL: all reserved, never read or written) */
 #define OBJ_RETIRED(obj) (((obj) >= OBJ_PROJECT0 && (obj) < OBJ_PROJECT0 + 4u) || ((obj) >= OBJ_UPRESET0 && (obj) <= OBJ_UPFM6) || \
-                          ((obj) >= OBJ_WTAB0 + 3u && (obj) <= OBJ_FM6VB))   /* (+ the unused ids 30, 31 and the voice bank's 32: DUELL 0.2.15, the patch chunks' ids run past them) */
+                          ((obj) >= OBJ_WTAB0 + 3u && (obj) <= OBJ_FM6VB))   /* (+ the unused ids 30, 31 and the voice bank's 32: the patch chunks' ids run past them) */
 
 typedef struct {
     uint32_t magic;
@@ -99,19 +98,19 @@ static uint32_t st_sector(uint32_t obj, uint32_t copy)  /* flash offset of copy 
 {
     if (obj == OBJ_SETTINGS)
         return 0xFC000u + copy * ST_SECTOR;
-    if (obj >= OBJ_MULTIX0)                              /* M17..M26: 0xEA000..0xF3FFF; b12: OBJ_PATCHY0..+3 right after them, 0xF4000..0xFBFFF */
+    if (obj >= OBJ_MULTIX0)                              /* M17..M26: 0xEA000..0xF3FFF; OBJ_PATCHY0..+3 right after them, 0xF4000..0xFBFFF */
         return 0xEA000u + (obj - OBJ_MULTIX0) * 2u * ST_SECTOR + copy * ST_SECTOR;
-    if (obj >= OBJ_PATCHX0)                              /* DUELL 0.2.15: the PATCH store's chunks 6..15: 0xA6000..0xB9FFF (the old sample region); ids 43..48: chunks 16..21, 0xBA000..0xC5FFF; OBJ_VELO (49): 0xC6000 */
+    if (obj >= OBJ_PATCHX0)                              /* the PATCH store's chunks 6..15: 0xA6000..0xB9FFF (the sample region); ids 43..48: chunks 16..21, 0xBA000..0xC5FFF; OBJ_VELO (49): 0xC6000 */
         return 0xA6000u + (obj - OBJ_PATCHX0) * 2u * ST_SECTOR + copy * ST_SECTOR;
-    if (obj >= OBJ_WTAB0)                                /* the user wavetables USR1..USR3: 0xA0000..0xA5FFF (the old sample region) */
+    if (obj >= OBJ_WTAB0)                                /* the user wavetables USR1..USR3: 0xA0000..0xA5FFF (the sample region) */
         return 0xA0000u + (obj - OBJ_WTAB0) * 2u * ST_SECTOR + copy * ST_SECTOR;
     if (obj >= OBJ_PATCH0) {                             /* (the PATCH store, chunks 0..5: see the flash map) */
         uint32_t c = obj - OBJ_PATCH0;
-        if (c < 3u)                                      /* USR3's old place 0xC8000..0xCDFFF */
+        if (c < 3u)                                      /* USR3's place 0xC8000..0xCDFFF */
             return 0xC8000u + c * 2u * ST_SECTOR + copy * ST_SECTOR;
-        if (c < 5u)                                      /* Felucca's retired user preset banks 0xDC000..0xDFFFF */
+        if (c < 5u)                                      /* Felucca's user preset banks' place 0xDC000..0xDFFFF */
             return 0xDC000u + (c - 3u) * 2u * ST_SECTOR + copy * ST_SECTOR;
-        return copy ? 0xFE000u : 0x9F000u;               /* the retired FM6 patch bank's pair */
+        return copy ? 0xFE000u : 0x9F000u;               /* the FM6 patch bank's pair */
     }
     if (obj >= OBJ_MULTI0)                               /* (before the PATSLOT and UPRESET cases, which take every obj above) */
         return (obj - OBJ_MULTI0 < 4u ? 0x97000u + (obj - OBJ_MULTI0) * 2u * ST_SECTOR
@@ -229,7 +228,7 @@ static int st_save_to_x(uint32_t obj, const void *src, uint32_t len, int to)
     }
     return 0;
 }
-static int st_save_to(uint32_t obj, const void *src, uint32_t len, int to)   /* DUELL 0.2.11: one duck over erase, payload and record */
+static int st_save_to(uint32_t obj, const void *src, uint32_t len, int to)   /* one duck over erase, payload and record */
 {
     int rc;
     ST_DUCK_BEGIN();
@@ -240,11 +239,11 @@ static int st_save_to(uint32_t obj, const void *src, uint32_t len, int to)   /* 
 
 static int st_save(uint32_t obj, const void *src, uint32_t len) { return st_save_to(obj, src, len, -1); }
 
-/* DUELL 0.2.2, MENU > SYSTEM > ERASE DATA (erase_data.c): an object gone, both copies. The copy that is NOT the current one
- * first, then the current one, so a power cut between the two leaves the old object whole (never the older copy
+/* MENU > SYSTEM > ERASE DATA (erase_data.c): an object gone, both copies. The copy that is NOT the current one
+ * first, then the current one, so a power cut between the two leaves the previous object whole (never the older copy
  * coming back in its place); a cut inside an erase leaves a sector with no valid commit record, which reads as empty (or as
  * the other, still whole, copy). A sector that is blank already is not erased again (no wear, no 40 ms of silence).
- * 0 done, else the failing driver code; an unknown or retired object: -1, nothing touched */
+ * 0 done, else the failing driver code; an unknown or reserved object: -1, nothing touched */
 static int st_blank(uint32_t off)
 {
     uint32_t i, j;

@@ -29,7 +29,7 @@
     } while (0)
 /* a reset that was meant (ERASE DATA's restart; the update and UBOOT paths clear pending the same way): not a failed start */
 #define BG_MEANT_RESET(bg) do { (bg).pending = 0; (bg).failed = 0; } while (0)
-/* ERASE DATA (DUELL 1.1, item 92 addendum 2): the guard is wiped whole, the magic too, so the next start finds RAM it does not know and begins
+/* ERASE DATA: the guard is wiped whole, the magic too, so the next start finds RAM it does not know and begins
  * from nothing: no pending start, no failed count (the update-mode counter), nothing carried over */
 #define BG_ERASE_ALL(bg) do { (bg).magic = 0; (bg).pending = 0; (bg).failed = 0; } while (0)
 #endif

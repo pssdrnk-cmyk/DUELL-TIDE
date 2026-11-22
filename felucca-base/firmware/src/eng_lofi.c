@@ -3,7 +3,7 @@
 /* Chip voice: pulse/triangle/saw/noise/wave RAM, quantised amplitude and a held
  * (downsampled) output; SWEEP bends the pitch down after note-on.
  *
- * WAVE is ONE list (DUELL 1.1): PLS TRI SAW NOISE, then 11 wave-RAM tables (SIN .. STAIR), each a 32-sample, 4-bit wave,
+ * WAVE is ONE list: PLS TRI SAW NOISE, then 11 wave-RAM tables (SIN .. STAIR), each a 32-sample, 4-bit wave,
  * read step-wise (no interpolation). K4 (E2, "PULSE WIDTH") is the pulse width and is shown with WAVE = PLS only
  * (ui_draw.c card_hidden_vp); the table is WAVE - RW_SINE.
  * BITS = STEP: a 4-bit stepped volume envelope with a frame-clock divider replaces the
@@ -112,7 +112,7 @@ static int32_t lofi_amp(track_t *t, voice_t *v, int32_t adsr)
 }
 
 /* DUELL MORPH (morph.c, core.h mxf): WAVE PLS / TRI / SAW of the other end (the morph never fades to or from NOISE or a wave-RAM table,
- * which carry state), cross-faded at each held sample before the quantiser. lofi_body with xf 0 is the render as it was
+ * which carry state), cross-faded at each held sample before the quantiser. lofi_body with xf 0 is the plain render
  * (the constant drops the fade); lofi_render_m (xf 1) runs only while a fade is under way */
 static inline int32_t lofi_basic(uint32_t wave, uint32_t ph0, uint32_t duty, uint32_t stepc)
 {
@@ -159,7 +159,7 @@ static inline __attribute__((always_inline)) void lofi_body(track_t *t, voice_t 
     v->s[5]++;
     pitch = m->pitch16 - v->s[3] + ARPS[ar & 3][(v->s[5] / 28) % 3] * 16;   /* ~50 Hz, chip-style */
     inc = pitch_inc(clamp(pitch, 0, 2047));
-    if (v->fine)                                        /* b9: UNISON DETUNE (voice.c mono_play: the voice's own fine offset, 0 in every other mode) was left out here, so DTUNE did nothing on LOFI */
+    if (v->fine)                                        /* UNISON DETUNE (voice.c mono_play: the voice's own fine offset, 0 in every other mode) is applied here, so DTUNE acts on LOFI */
         inc += (uint32_t)((int32_t)(inc >> 12) * v->fine);
     if (p[P_E5])
         inc += (uint32_t)(((int32_t)(inc >> 12) * (((osc_sine(v->ph[1]) >> 8) * p[P_E5]) >> 4)) >> 4);   /* no overflow */
@@ -206,7 +206,7 @@ static inline __attribute__((always_inline)) void lofi_body(track_t *t, voice_t 
             if (xf && MXF(t).w[MX_E0 + 1u] && wave <= RW_SAW)
                 s += (int32_t)(((int64_t)(lofi_basic(MXF(t).b[MX_E0 + 1u], ph0, duty, stepc) - s) * MXF(t).w[MX_E0 + 1u]) >> 15);
                                                         /* (64 bit: a narrow pulse minus its mean against a saw is up to ~90000 apart, x the weight
-                                                         * overflowed 32 bits from a weight of ~0.73: the cliff the owner heard near 80 %) */
+                                                         * overflowed 32 bits from a weight of ~0.73: the cliff near 80 %) */
             if (q)                                      /* rounded, not floored (floor = DC) */
                 s = (int32_t)((uint32_t)((s + (1 << (15 - bits))) >> (16 - bits)) << (16 - bits));
             if (crush > 64)
@@ -270,5 +270,5 @@ static const engine_t ENG_LOFI = {
     .keep = 0x11,                /* the held sample and the low-pass */
     .amp = lofi_amp,
     .desc = lofi_desc,
-    .ufilt = 1,                 /* no filter of its own: the multimode filter (DUELL 0.2.9; voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
+    .ufilt = 1,                 /* no filter of its own: the multimode filter (voice.c uf_run: CUT RES MODE SLOPE, P_FREEA..D) */
 };

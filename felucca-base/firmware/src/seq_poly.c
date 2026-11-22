@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* POLY (TIDE LIST, M7d): in automatic MUSIC WNDR / JRNY one part's loop is now and then a few steps shorter (GENTLE 15 or 14 of 16,
+/* POLY (TIDE LIST): in automatic MUSIC WNDR / JRNY one part's loop is now and then a few steps shorter (GENTLE 15 or 14 of 16,
  * WIDE 12 to 15), so its motif walks against the beat, then plays the full length again. Included by tide_seq.c; the ISR side
  * (tide_slen, tide_seq_next, tide_arp_idx, tide_arp_tick) runs in the audio path, tide_poly_start at PLAY.
  *
@@ -13,7 +13,7 @@
  * hand taking over (the glide stops) or a loop under 8 steps bring the part back at the next full-loop start. ARP SEQ is covered
  * (arp_idx), the peer prediction (M1) is blind to a shortened part. */
 static uint8_t poly_ref[NSHOWN];                         /* sequencer: the full loop's step */
-static uint32_t poly_lc[NSHOWN], poly_end[NSHOWN], poly_free[NSHOWN];   /* full loops since PLAY; the stretch's end; the earliest next start (audit C11: 32 bits, no wrap) */
+static uint32_t poly_lc[NSHOWN], poly_end[NSHOWN], poly_free[NSHOWN];   /* full loops since PLAY; the stretch's end; the earliest next start (32 bits, no wrap) */
 static uint32_t poly_base[NSHOWN];                       /* ARP SEQ: arp_idx at the stretch's start */
 
 static uint32_t tide_poly_full(const track_t *t) { return (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP); }

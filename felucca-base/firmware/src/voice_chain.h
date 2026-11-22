@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* The VOICE CHAIN (cloud job B, docs/design/TWIN_FILTER_DESIGN.md 2.1, SUB_AND_CYCLE_DESIGN.md A1): the per-note path "engine at full level, SUB, filter 1, filter 2 (with DRIVE), then the amp".
- * Job B builds the sequence and the empty places; job E fills chain_f2.c (filter 2 and DRIVE: chain_f2_on, chain_f2), job F chain_sub.c (the SUB LAYER: chain_sub_on, chain_sub; the CYCLE
- * source: cycle_value). voice.c includes these files before track_render, which has ONE branch for the chain (voice.c, "the voice chain"); with both _on functions at 0 (the product, until
- * jobs E and F) a voice never enters it and plays on track_render's plain path, bit for bit as before.
+/* The VOICE CHAIN (docs/design/TWIN_FILTER_DESIGN.md 2.1, SUB_AND_CYCLE_DESIGN.md A1): the per-note path "engine at full level, SUB, filter 1, filter 2 (with DRIVE), then the amp".
+ * chain_f2.c holds filter 2 and DRIVE (chain_f2_on, chain_f2), chain_sub.c the SUB LAYER (chain_sub_on, chain_sub; the CYCLE
+ * source: cycle_value). voice.c includes these files before track_render, which has ONE branch for the chain (voice.c, "the voice chain"); with both _on functions at 0 a voice never enters it
+ * and plays on track_render's plain path.
  *
  * voice_t.chn (core.h) says where a voice was last block: VCH_OFF the plain path; VCH_RUN the chain; VCH_FRESH a note that has not rendered yet (voice_start); VCH_NEW is what the stage hooks see on
  * the first block a voice is in the chain: they start from rest (filter 2's state, the sub's phase). A voice that enters or leaves the chain while it sounds is cross-faded over one block

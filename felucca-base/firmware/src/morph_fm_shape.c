@@ -2,10 +2,10 @@
 /* MUSIC's SHAPE already travels slowly in WNDR. Use its existing decay coordinate
  * for FM6 too: a longer shape decays the modulators faster. The carriers' envelopes
  * (the voice's level) move once, through the roll's ATTACK / DECAY / RELEASE on FM6's
- * AMP ENV knobs (eng_fm6.c fm6_env_apply), as on every engine. b10 (ROADMAP Later 19,
- * tide-morph audit finding 7): this used to move the carriers' rates and L3 as well, on
- * top of the knobs and past the roll's own carrier caps (morph.c fm_tag: L1..L3 +-1);
- * FM6 rolls at AMOUNT 40 moved the level -12 .. +8 dB (69.7 % within +-4.5 dB). Without it
+ * AMP ENV knobs (eng_fm6.c fm6_env_apply), as on every engine.
+ * Moving the carriers' rates and L3 as well, on
+ * top of the knobs and past the roll's own carrier caps (morph.c fm_tag: L1..L3 +-1)
+ * would make FM6 rolls at AMOUNT 40 move the level -12 .. +8 dB (69.7 % within +-4.5 dB). Without it
  * 99.7 %, -4.3 .. +4.5 dB, as the other engines. No algorithm, ratios, output levels or
  * additional synthesis state. */
 static int32_t fm_shape_value(const int8_t *base, int32_t decay)

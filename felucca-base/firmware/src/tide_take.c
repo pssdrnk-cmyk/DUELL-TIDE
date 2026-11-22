@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* TAKE + ANSWER (TIDE, b10 round 8: live performance assist, phase 1; work/b10/specs/PERF_PHASE1.md, work/b10/reports/PERF_ASSIST.md). Main loop only: nothing here runs in the audio interrupt
+/* TAKE + ANSWER (TIDE: live performance assist). Main loop only: nothing here runs in the audio interrupt
  * and the notes of the answer are written with the interrupt off, a whole part's steps at a time.
  *   A TAKE is one pass of the live recorder (seq.c rec_put): the part's REC bit goes up (the pass opens: both parts' steps are kept) and down (it closes). A pass that wrote something is a take:
- *   it goes on a history of the last 2 takes, and ANSWER (TIDE SETTINGS) writes a BASS LINE, a DOUBLE, a REPLY, an ECHO or the CHORDS of the take into the other part's pattern (ANSWER ON). b10 assist2 (work/b10/reports/PERF_ASSIST_REVIEW.md):
+ *   it goes on a history of the last 2 takes, and ANSWER (TIDE SETTINGS) writes a BASS LINE, a DOUBLE, a REPLY, an ECHO or the CHORDS of the take into the other part's pattern (ANSWER ON):
  *   the loop is the part's own LEN (REC arms and waits, the first key starts it: seq.c rec_wait), every answer fits inside that LEN (REPLY: the first half calls, the second answers; ECHO wraps round the loop), the answer is
  *   written in the other part on the next bar line (tk_pend, tk_land), an ARP SEQ part that holds a take or an answer plays single notes. OCT- held + a PRESETS turn goes back (left) and forward (right) along
  *   the history while the newest edit is a take (tk_fresh); a ROLL (morph_do MQ_ROLL, the gesture and word TIDE has) on the answering part writes the answer again with the roll's seed (no history step; also while REC is armed).
@@ -17,7 +17,7 @@ typedef struct {                                         /* the answer that is l
     uint8_t src, mode, key, flags;                       /* the take's part; TA_*; the key's root (0..11); bit 0 minor, bit 1 guessed, bit 2 scale named, bits 3.. the SCL index */
     uint16_t seed, roll;                                 /* the seed it was written with; the rolls since the take (the header says ROLL n) */
     uint32_t sig;                                        /* steps_sig of the answer's part right after it was written: an edit since ends the roll */
-    uint8_t who;                                         /* b11: the newest take's part + 1 (0: none, or both parts); travels with the history state, so an undo can never leave a stale identity */
+    uint8_t who;                                         /* the newest take's part + 1 (0: none, or both parts); travels with the history state, so an undo can never leave a stale identity */
 } tk_meta_t;
 typedef struct {
     step_t s[2][NSTEP];
@@ -40,7 +40,7 @@ static uint16_t tk_total __attribute__((section(".pool")));
 static uint32_t tk_mh __attribute__((section(".pool"))), tk_mu __attribute__((section(".pool"))), tk_lsig __attribute__((section(".pool")));   /* the header message held (its hash, until when: fm1_ms); the part's steps at the last live answer */
 #define tk_who (tk_m.who)
 static uint8_t tk_force __attribute__((section(".pool")));                               /* a SWELL (1) / RIPPLE (2) while REC is armed or waiting: made at the end of the armed pass */
-static uint8_t tk_sw_k __attribute__((section(".pool"))), tk_sw_p __attribute__((section(".pool")));   /* b11 SWELL / RIPPLE waiting for the loop start: 1 SWELL, 2 RIPPLE (0 none); the part it was pressed on + 1 */
+static uint8_t tk_sw_k __attribute__((section(".pool"))), tk_sw_p __attribute__((section(".pool")));   /* SWELL / RIPPLE waiting for the loop start: 1 SWELL, 2 RIPPLE (0 none); the part it was pressed on + 1 */
 static uint16_t tk_sw_seed __attribute__((section(".pool")));                            /* its seed (never 0) */
 static uint8_t tk_wd __attribute__((section(".pool"))), tk_live __attribute__((section(".pool")));            /* this pass's answer is made; an answer was made while the pass was open */
 #define tk_fresh tk_fresh_v
@@ -124,7 +124,7 @@ static int32_t tk_note_of(int32_t d, int32_t o)
 static int32_t tk_triad_pc(int32_t d, int32_t i) { return tk_wrap((int32_t)tk_kr + tk_deg[(d + 2 * i) % (int32_t)tk_nd]); }
 
 /* ---- the take as events ---- */
-/* b10 (rc6.4-test: an answer on an ARP SEQ part played at the wrong speed or not at all): a part's steps sit on its own grid - the sequencer's division, or on an ARP SEQ part the arp's rate (seq.c arp_dur) - so a take is read
+/* a part's steps sit on its own grid - the sequencer's division, or on an ARP SEQ part the arp's rate (seq.c arp_dur) - so a take is read
  * in the grid of the part it was recorded on and the answer is written in the grid of the part that plays it (tk_put converts; equal grids: no change) */
 static uint32_t tk_gi(const track_t *t) { return (uint32_t)(arp_mode(t) == AM_SEQ_ID ? P_ARATE : P_SDIV); }   /* the parameter that sets the part's grid */
 static uint32_t tk_gp(const track_t *t) { return div_samples((uint32_t)t->p[tk_gi(t)]); }
@@ -283,7 +283,7 @@ static int32_t tk_fit(int32_t t, int32_t len, int32_t cand)
     if (!tk_in_key(cand))
         return -1;
     if (tk_sounding(t, &plo))
-        while (cand > plo - 12 && cand > 24)           /* (b10: never lower than C1: a take down in the bass register leaves no room under it, the bass stays audible or is not written) */
+        while (cand > plo - 12 && cand > 24)           /* (never lower than C1: a take down in the bass register leaves no room under it, the bass stays audible or is not written) */
             cand -= 12;
     for (k = 0; k < 2; k++, cand -= 12)
         if (cand >= 24 && !tk_rubs(t, len, cand))
@@ -360,7 +360,7 @@ static __attribute__((noinline)) void tk_bass(uint32_t bars, uint32_t spb, uint3
         }
     }
 }
-/* ---- CHORDS (b13): the bar's triad (tk_chords) as a pad in the middle, C3..C5: 3 notes in the first step of the bar tied for the whole bar, dropped an octave under the take's lowest note when that sits in the range (never under G2),
+/* ---- CHORDS: the bar's triad (tk_chords) as a pad in the middle, C3..C5: 3 notes in the first step of the bar tied for the whole bar, dropped an octave under the take's lowest note when that sits in the range (never under G2),
  * the inversion that moves least from the bar before (bar 1: root position nearest C4), a note that rubs left out. A roll with bit 1 of the seed set plays the chords as short stabs in the genre's rhythm (digits: the length in
  * 16ths, as TK_BL; a genre with none, ACID and AMB, keeps the pad) ---- */
 static const char TK_PT[6][17] = {"......2.........", "..2...2...2...2.", "...2......2.....", "", "2......2........", ""};
@@ -492,8 +492,7 @@ static void tk_land(void)
             td->p[P_AMODE] = 0;
         td->p[P_SDIV] = tk_pg;
     }
-    /* b13 (hunt F1): a new loop length starts the answer where the take part is in its loop, so bar n of the answer plays under bar n of the take (it went on
-     * from its old, shorter loop's step before: a 2-bar answer a bar out of step for good). Same length: the parts keep the phase they had */
+    /* a new loop length starts the answer where the take part is in its loop, so bar n of the answer plays under bar n of the take. Same length: the parts keep the phase they had */
     si = tide_play_idx(ts);
     if (tk_olen != was && si != 0xFFFFFFFFu && arp_mode(td) != AM_SEQ_ID && tk_gp(td)) {
         si = si * tk_gp(ts) / tk_gp(td) % tk_olen;          /* (on the answer's grid; 64 steps x a whole note's samples fit 32 bits) */
@@ -573,7 +572,7 @@ static uint32_t tk_gen(uint32_t src, uint32_t dst, uint32_t seed, uint32_t mode)
 }
 
 /* ---- the header ---- */
-/* b10 (owner: "the text on the top that adding bass only briefly visible"): a take / answer message stays in the header for 4 bars (4 s at least, 8 s at most) unless another message replaces it: take_poll keeps its frames up */
+/* a take / answer message stays in the header for 4 bars (4 s at least, 8 s at most) unless another message replaces it: take_poll keeps its frames up */
 static void tk_hold_ms(uint32_t ms)                       /* (the message shown now stays ms, unless another replaces it) */
 {
     tk_mh = str_hash(7u, ui.msg);
@@ -590,7 +589,7 @@ static void tk_say(const char *pre, uint32_t no)
 {
     char b[48], n[8];
     if (!pre && TIDE_HOME_ANSWER && PAGES[ui.page % NPAGES].graph == GR_TIDE)   /* (the page under a quick layer too: REC is pressed with SEQ held) */
-        return;                                          /* (b12: a take's answer on AUTO TIDE: the title stays, knob 1's line says it, tide_ui.c tide_answer_line; a ROLL, SWELL or RIPPLE still says its own) */
+        return;                                          /* (a take's answer on AUTO TIDE: the title stays, knob 1's line says it, tide_ui.c tide_answer_line; a ROLL, SWELL or RIPPLE still says its own) */
     b[0] = 0;
     if (pre) {
         tk_cat(b, pre);
@@ -604,7 +603,7 @@ static void tk_say(const char *pre, uint32_t no)
     ui_say(b, "");
     tk_hold();
 }
-/* the live answer in words, appended to b (48): "BASS LINE  A MINOR" (b12: AUTO TIDE's knob-1 line says it too, tide_ui.c tide_columns) */
+/* the live answer in words, appended to b (48): "BASS LINE  A MINOR" (AUTO TIDE's knob-1 line says it too, tide_ui.c tide_columns) */
 static __attribute__((noinline)) void tk_words(char *b)
 {
     tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : tk_m.mode == TA_CHORDS ? "CHORDS  " : "BASS LINE  ");
@@ -711,10 +710,10 @@ static __attribute__((noinline)) void take_roll(uint32_t mask, uint32_t seed)
     tk_say("ROLL ", tk_m.roll);
 }
 
-/* ---- SWELL and RIPPLE (b11; SEQ held + C4 / D4, ui_tools.c; were RANDOM and COOK): the player's buttons to make the answer again, never the menu. With an answer on (ANSWER and ANSWER ON set), on the part that holds the answer:
+/* ---- SWELL and RIPPLE (SEQ held + C4 / D4, ui_tools.c): the player's buttons to make the answer again, never the menu. With an answer on (ANSWER and ANSWER ON set), on the part that holds the answer:
  * SWELL makes it again with a fresh seed in the mode ANSWER shows now, RIPPLE moves 15..25 % of its notes inside the key and the rules, its rhythm kept. On the part that holds the take: the take changes (tl_sw_apply) and the answer is
  * made again from it. Both wait for the start of the next loop (the last step of the part's LEN pass; stopped: at once), a second press replaces the waiting one, and they are one history step like a take (OCT- + PRESETS: SWELL / RIPPLE).
- * While REC is armed a SWELL forces the next pass's re-make with a fresh seed. Any other part, and any part with ANSWER OFF or ANSWER ON OFF (B16, owner notes 2026-11-20: RIPPLE did nothing there, SWELL dropped the answer):
+ * While REC is armed a SWELL forces the next pass's re-make with a fresh seed. Any other part, and any part with ANSWER OFF or ANSWER ON OFF:
  * the tool with TIDE's rules on the pressed part only, at once; the other part plays on as it is. The header says how many steps changed ("RIPPLE  3 STEPS"). ---- */
 static int tk_stands(void) { return tk_fresh && tk_cnt && tk_pos == tk_cnt && tk_who; }
 static uint32_t tk_fresh_seed(void) { return (tk_hs(tk_total + 1u + (uint32_t)tk_m.roll, fm1_ms) & 0x7FFFu) | 1u; }
@@ -911,7 +910,7 @@ static const char *tide_tl_swell(track_t *t, uint32_t ripple)
         } else {
             ui_say(ripple ? "RIPPLE  NEXT LOOP" : "SWELL  NEXT LOOP", "");
             tk_hold();
-            tk_mu = fm1_ms + 120000u;                    /* (b11: the line stays until it lands, however long the loop) */
+            tk_mu = fm1_ms + 120000u;                    /* (the line stays until it lands, however long the loop) */
         }
         return "";
     }
@@ -919,12 +918,12 @@ static const char *tide_tl_swell(track_t *t, uint32_t ripple)
     return "";
 }
 
-/* ---- AUTO TIDE's water and knob 1's line while a take records (b10 round 9) ---- */
+/* ---- AUTO TIDE's water and knob 1's line while a take records ---- */
 static uint32_t take_line(uint32_t *prog)                  /* 0 no take, 1 the count-in, 2 recording (prog: how far through the loop, Q16) */
 {
     uint32_t p, len, idx;
     if (!(song.rec & 3u))
-        return tk_sw_k ? 3u : 0u;                        /* (b11: 3, a SWELL / RIPPLE waits for the loop start) */
+        return tk_sw_k ? 3u : 0u;                        /* (3: a SWELL / RIPPLE waits for the loop start) */
     if (cin_left)
         return 1;
     if (!song.playing)
@@ -1008,8 +1007,8 @@ static __attribute__((noinline)) void take_poll(void)                           
         tk_sw_k = 0;
         tk_mu = 0;
         tk_open = (uint8_t)now;
-        if (now) {                                       /* b13 (hunt F2): REC stays armed through a load: the pass starts again on the new music (its copy, its steps), */
-            tk_save(&tk_pre);                            /* so REC off makes no take of the load itself, and an undo never puts the old multi's patterns back */
+        if (now) {                                       /* REC stays armed through a load: the pass starts again on the new music (its copy, its steps), */
+            tk_save(&tk_pre);                            /* so REC off makes no take of the load itself, and an undo never puts the previous multi's patterns back */
             tk_live = tk_wd = 0;
             tk_lsig = steps_sig(&trk[now & 1u ? 0u : 1u]);
         }
@@ -1025,7 +1024,7 @@ static __attribute__((noinline)) void take_poll(void)                           
         else
             tk_mu = 0;
     }
-    if (was && tide_answer && !tide_answer_on && song.playing && !cin_left && (was == 1u || was == 2u)) {   /* (owner: "the response should be generated instantly"): while REC stays armed on one part, the answer is made again in the last step of each loop pass, from the part's steps as they are then, so it lands on the next bar line */
+    if (was && tide_answer && !tide_answer_on && song.playing && !cin_left && (was == 1u || was == 2u)) {   /* while REC stays armed on one part, the answer is made again in the last step of each loop pass, from the part's steps as they are then, so it lands on the next bar line */
         uint32_t q = was & 1u ? 0u : 1u, len = TIDE_PLAY_LEN(&trk[q]), idx = TIDE_PLAY_IDX(&trk[q]);
         if (len < 2u)
             tk_wd = 1;

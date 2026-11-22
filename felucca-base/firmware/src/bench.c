@@ -2,10 +2,10 @@
  * Copyright (C) 2026 OSCILL/R (DUELL). Part of DUELL, a modified version of Felucca. */
 /* DUELL BENCH: what each stage really costs on the unit (developer builds only: DUELL_BENCH=1). The normal build has none of it (core.h
  * DUELL_BENCH 0; felucca.c includes this file only then, in sections of its own placed after everything else: app.ld, app_hot.ld, app_ram.ld).
- * The owner's guide: docs/BENCH_GUIDE.md (and release_drafts/BENCH_STAGE0.md for this line). Its host twin: tests/bench_sim.c (runs this file
+ * The guide: docs/BENCH_GUIDE.md (and release_drafts/BENCH_STAGE0.md for this line). Its host twin: tests/bench_sim.c (runs this file
  * on the Mac: the list, the table, the log, and the host model's figure of every row, firmware/src/bench_model.h).
  *
- * Stage 0 of the automated bench suite (2026-10-19): the bench of wip/bench0226 (BENCH-A2's rows and screen) ported to the two-core line
+ * The automated bench suite: the bench of wip/bench0226 (BENCH-A2's rows and screen) on the two-core line
  * (stage1a: cloud/base's per-part state and NOTES budget, RAMPLACE). BENCH-B1's synthetic core 1 rows are left out (two-core stage 1's
  * twocore.c replaces them with real part 2 jobs); its STRESS 10M row stays, on one core (K3). New in the log: the NOTES budget's numbers of each
  * part and what limits them, whether the row held the budget open, the RAM code check (DUELL_RAMPLACE builds) and the restart counter.
@@ -15,8 +15,8 @@
  *   STOP   STOP ALL (every voice faded, the effect lines flushed), 150 ms
  *   SET    the row's setting, at once (both parts: their sound from INIT and the engine's dearest factory sound, bench_model.h BENCH_DEAR; every
  *          global value at its default; the mode; the master stages; the modules), in the main loop as the UI's own loads. The NOTES budget
- *          (budget.c): the cost rows hold it open (bench_bopen: no numbers, every voice the VOICE CAP and the pool give, as the 0.2.25 bench
- *          measured), the M16 rows play with it as the owner does
+ *          (budget.c): the cost rows hold it open (bench_bopen: no numbers, every voice the VOICE CAP and the pool give),
+ *          the M16 rows play with it as the owner does
  *   SETTLE 700 ms (and until a WAVE table build is done): the engine fades, the mode's dip, the tables
  *   NOTES  the row's notes from an internal generator (USB-MIDI events into the MIDI-in ring, on the parts' own channels; LAYER: part 1's
  *          channel, both parts sound them), 500 ms for the attacks
@@ -207,7 +207,7 @@ static struct {
 static project_t bench_saved __attribute__((section(".pool.zbench")));
 static struct {                                        /* the audio side's words the rows set (the UI's own syncs do not run while the BENCH screen is up) */
     uint32_t cmp;
-    uint8_t wd, bm, mods, mode, xf, split, both;   /* (both: the part selection, 1.0.0-b7; item 160: no BALANCE word: the parts' levels are in the project restored with the session) */
+    uint8_t wd, bm, mods, mode, xf, split, both;   /* (both: the part selection; no BALANCE word: the parts' levels are in the project restored with the session) */
     int8_t space;
 } bench_keep BENCH_BSS;
 
@@ -415,7 +415,7 @@ static BENCH_FN void bench_line(char *b, uint32_t i)            /* one row as CS
 /* ---- core 1 (a DUELL_TWOCORE build): the session's mode and the runner's counters, for the log and the Mac's verdicts (BENCH_TWOCORE1.md).
  * bench_tc_get copies them (tcs: twocore_run.c; tc: twocore.c). The Mac twin has no core 1; bench_sim.c supplies bench_tc_get (BENCH_TC_SIM)
  * so the format and the runner's rules are tested. A build with neither prints "-" for the mode and nothing for the counters. */
-#if !DUELL_TWOCORE   /* (join0233: was also BENCH_TC_SIM only: bench_tc_why needs TCR_NAMES in every bench build, the RAM1 + bench build did not compile) */
+#if !DUELL_TWOCORE   /* (bench_tc_why needs TCR_NAMES in every bench build, also the RAM1 + bench build) */
 #include "twocore_reasons.h"
 #endif
 enum { BTC_BLOCKS, BTC_INTIME, BTC_LATE, BTC_VLATE, BTC_SILENT, BTC_WAIT, BTC_OWN, BTC_REFUSED, BTC_NOANS, BTC_PAUSES, BTC_RESUMES, BTC_TRIMS, BTC_PARKS, BTC_VLOK, BTC_PFAULT, BTC_PRUN, BTC_PWIN, BTC_PLATE, BTC_N };   /* (BENCHT3: the last five: very late blocks that paused nothing; pauses by reason) */
@@ -703,11 +703,11 @@ static BENCH_FN void bench_part(uint32_t p, const bench_scn_t *s)   /* a part fr
         t->p[P_FREEA] = 41, t->p[P_FREEB] = 40, t->p[P_FREEC] = 0, t->p[P_KTRK] = 0, t->p[P_FREED] = s->flt == 24u ? 2 : 1;
 }
 #ifndef BENCH_LOAD_M16
-#define BENCH_LOAD_M16() project_load(21u)             /* (the host twin loads the STRESS TEST scene instead: U2 B, M16 is CELLAR TAPE) */
+#define BENCH_LOAD_M16() project_load(21u)             /* (the host twin loads the STRESS TEST scene instead: M16 is CELLAR TAPE) */
 #endif
 static BENCH_FN void bench_load_m16(void)              /* the "M16" rows: slot 16 as a multi LOAD has it (multi.c project_load: as stored, the factory one unless
-                                                        * the owner saved over it), then LAYER whatever MULTI LOAD says. Until U2 B that was the STRESS TEST; the rows
-                                                        * now measure the factory CELLAR TAPE, and the old record is tests/scenes/M16_STRESS_TEST.bin */
+                                                        * the owner saved over it), then LAYER whatever MULTI LOAD says. The rows
+                                                        * measure the factory CELLAR TAPE; the STRESS TEST record is tests/scenes/M16_STRESS_TEST.bin */
 {
     BENCH_LOAD_M16();
 }
@@ -739,7 +739,7 @@ static BENCH_FN void bench_set(const bench_scn_t *s)            /* the row's who
     bm_sel = s->bm;
     duell_mode_req = s->mode;
 #if TIDE_PLAYSEL
-    song.both = s->mode == DM_LAYER;                    /* (1.0.0-b7: LAYER plays in ALGORITHM's middle only, both parts selected; seq.c MODE_WANT) */
+    song.both = s->mode == DM_LAYER;                    /* (LAYER plays in ALGORITHM's middle only, both parts selected; seq.c MODE_WANT) */
 #endif
     ui.force = 1;
 }
@@ -769,7 +769,7 @@ static BENCH_FN void bench_notes_off(void)
     bench.nnotes = 0;
 }
 
-/* ------------------------------------------------------------------ COST-CAL: what a console test sets beyond `set` and `scene` (DUELL 1.1 item 105, tools/gen_cost_suite.py) --- */
+/* ------------------------------------------------------------------ COST-CAL: what a console test sets beyond `set` and `scene` (tools/gen_cost_suite.py) --- */
 /* A console session runs the UI's frame (ui_input.c: mods_apply, cmp_sync, ms_sync, the sense settings are read every frame), so the audio side's words (mods_off, cmp_cfg, wd_sel,
  * bm_sel, sense_enable) cannot be written here: the settings they come from are. The session's own values are kept at its start and put back by `bench reset` and at its end. The
  * BYPASS switches (byp_m, byp_sh) are plain RAM flags (editor_bypass.c): they start every test at 0. */
@@ -811,8 +811,7 @@ static BENCH_FN void bench_extras_back(void)
 #endif
 }
 /* A console test plays its notes on channels 1 and 2 (`ev .. on 1 ..`, the suites: part 1, part 2) and the unit's MIDI IN listens only to the channels GLO > MIDI gives the parts (ROUT PARTS; in LAYER
- * only part 1's): on a unit whose parts are on other channels (the owner's: 3 and 4) not one note of a test sounded, and every cost, stage timer and PHYS figure of the first measurement
- * (2026-11-05) was the idle unit's. A session (`bench reset`) puts the parts on channels 1 and 2 and MIDI IN on PARTS; the owner's settings come back with bench_extras_back (a
+ * only part 1's): on a unit whose parts are on other channels (the owner's: 3 and 4) no note of a test would sound, and every cost, stage timer and PHYS figure would be the idle unit's. A session (`bench reset`) puts the parts on channels 1 and 2 and MIDI IN on PARTS; the owner's settings come back with bench_extras_back (a
  * session's end, the next `bench reset` first). Nothing here reaches the flash: the settings' save is held while a session runs (bench_tl_tick) */
 static BENCH_FN void bench_midi_std(void)
 {
@@ -855,7 +854,7 @@ static BENCH_FN void bench_restore_session(void)
 static BENCH_FN void bench_start(uint32_t first, uint32_t last)
 {
     uint32_t i;
-    bench_sess_end();                                  /* (stage 1: a console session ends first: the owner's session back, then kept again) */
+    bench_sess_end();                                  /* (a console session ends first: the owner's session back, then kept again) */
     bench_resolve();
     for (i = first; i <= last; i++)
         memset(&bench_res[i], 0, sizeof bench_res[i]);
@@ -1360,7 +1359,7 @@ static BENCH_FN void bench_reset_phases(void)
     formant_used = 0;
     memset(f2s, 0, sizeof f2s);                        /* chain_f2.c: filter 2's state, the TRIO-style cutoff drift and its generator `nst` per voice: seeded once (`if (!s->nst)`) and kept from note to note, so a test started on a
                                                          * voice that had played another patch drifted differently (benchsim: 11 'does not repeat after reset'; WAVE_J item 2 guessed filter 1; it is the chain's filter 2) */
-    memset(cy_lin, 0, sizeof cy_lin);                  /* cycle.c (0.2.31): the CYCLE envelope's progress, value and stage per voice: a new note starts the rise from where the generator stands, so a test after another patch's started elsewhere */
+    memset(cy_lin, 0, sizeof cy_lin);                  /* cycle.c: the CYCLE envelope's progress, value and stage per voice: a new note starts the rise from where the generator stands, so a test after another patch's started elsewhere */
     memset(cy_y, 0, sizeof cy_y);
     memset(cy_st, 0, sizeof cy_st);
     memset(cy_memo, 0, sizeof cy_memo);
@@ -1390,8 +1389,8 @@ static BENCH_FN void bench_reset_phases(void)
     }
     BENCH_RESET_BUS(fx, hl);                           /* the effect buses: the chorus, the delay's modulation, the reverbs' drifts and write points */
     BENCH_RESET_BUS(fx_b, hl_b);
-    fx.lo_lp = fx.lo_k = fx.lo_g = fx_b.lo_lp = fx_b.lo_k = fx_b.lo_g = 0;   /* the reverb's LOW CUT from rest (as snd_lines_clear): in the joined line the owner's M07 (LOW CUT 79) left its low-pass set and
-                                                       * M08 after it did not repeat (benchsim); found by clearing the fx fields one at a time, join0233 */
+    fx.lo_lp = fx.lo_k = fx.lo_g = fx_b.lo_lp = fx_b.lo_k = fx_b.lo_g = 0;   /* the reverb's LOW CUT from rest (as snd_lines_clear): in the joined line M07 (LOW CUT 79) leaves its low-pass set and
+                                                       * M08 after it would not repeat (benchsim) */
     dlyev_clear();                                     /* the delay's RANDOM / OCT UP voices and generator */
     for (p = 0; p < NLIVE; p++)
         memset(&eqs[p], 0, sizeof eqs[p]);             /* the EQ whole, not only its states: a band left 'running' made the next test's first design glide from the test before's coefficients (R15, benchsim) */
@@ -1931,7 +1930,7 @@ static BENCH_FN void bench_con_ev(const char *p)
         bench_say("OK", n, 0);
     }
 }
-/* ---- the COST-CAL words (DUELL 1.1 item 105; tools/gen_cost_suite.py; the kept values and the syncs: bench_extras_keep above) ---- */
+/* ---- the COST-CAL words (tools/gen_cost_suite.py; the kept values and the syncs: bench_extras_keep above) ---- */
 static const char *const BC_MODS[4] BENCH_RO = {"ARP", "SEQ", "SENDS", "PFX"};
 static const char *const BC_BYM[11] BENCH_RO = {"MULTI", "TWIN", "LFO1", "LFO2", "ENV2", "CYC", "SAT", "INS", "EQ", "DUCK", "SEND"};   /* core.h BY_* order */
 static const char *const BC_BYS[5] BENCH_RO = {"CHO", "DLY", "REV", "MST", "CMP"};                                                  /* core.h BYS_* order */
@@ -2465,7 +2464,7 @@ static BENCH_FN void bench_con(const char *p)
                 if (bench_ieq(MN[i], x)) {
                     duell_mode_req = (uint8_t)i;       /* (DM_SPLIT 0, DM_STEREO 1, DM_LAYER 2: the order of the log's MN) */
 #if TIDE_PLAYSEL
-                    song.both = i == DM_LAYER;         /* (1.0.0-b7: LAYER plays with both parts selected, seq.c MODE_WANT) */
+                    song.both = i == DM_LAYER;         /* (LAYER plays with both parts selected, seq.c MODE_WANT) */
 #endif
                     bench_say("OK mode", MN[i], 0);
                     return;

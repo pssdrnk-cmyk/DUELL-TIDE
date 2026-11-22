@@ -10,7 +10,7 @@
 #endif
 #define ICON_CELL 12
 
-/* track k's indicator (1.0.2): not an icon of the font (its numerals alias at 12 to 16 px) but the digit 1..4 in
+/* track k's indicator: not an icon of the font (its numerals alias at 12 to 16 px) but the digit 1..4 in
  * Inter Tight on a cushion, a rounded square in the keycap's language, drawn by cv_icon_on: the cushion in the
  * icon's ink (the selected track's: the accent), the digit in what lies under it; rounded, as the
  * keycaps are. (filled: kept for the callers; every cushion is filled) */
@@ -115,7 +115,7 @@ static int32_t cv_icon_mid(int32_t x, int32_t cy, uint32_t size, uint32_t id, ui
     GFX_HOOK_ALIGN(0, 0, 0, 2 * cy, AL_V | AL_PASS, "header icon on its middle");
     return cv_icon_in(x, 0, 0, 2 * cy, size, id, fg, bg);
 }
-#define ICON_X_QUICK ICON_ACCENT          /* DUELL 0.2.9: the QUICK layers' header mark, a lightning bolt (Fukiai symbol_thunder_f, the ACCENT
+#define ICON_X_QUICK ICON_ACCENT          /* the QUICK layers' header mark, a lightning bolt (Fukiai symbol_thunder_f, the ACCENT
                                            * icon's glyph, drawn at 12 px: no new cell, ui_draw.c head_msg) */
 #define ICON_NONE 0xFFu                   /* no icon (empty column) */
 #define ICON_AUTO 0xFEu                   /* draw_column: look the label up */
@@ -177,7 +177,7 @@ static const icon_map_t ICON_MAP[] = {
     {"NOTE", ICON_PITCH}, {"STEP", ICON_STEPS}, {"FLAG", ICON_ACCENT}, {"ACC", ICON_ACCENT}, {"SLD", ICON_SLIDE},
     {"TRACK", ICON_MIX},                  /* TRACKS page (LEVEL, LEN, PAN: above) */
     {"RLS", ICON_RELEASE}, {"DEPTH", ICON_MIX},                            /* (DUCK, INSERT's DEPTH) */
-    {"KTRK", ICON_KEYTRACK}, {"ENV 2", ICON_ENV}, {"LFO 1", ICON_LFO_WAVE},   /* MULTI FILTER 2/2 (0.2.21) */
+    {"KTRK", ICON_KEYTRACK}, {"ENV 2", ICON_ENV}, {"LFO 1", ICON_LFO_WAVE},   /* MULTI FILTER 2/2 */
 };
 
 static uint32_t icon_for_label(const char *l)
@@ -218,7 +218,7 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
     if (d->names == N_TRIO_MODE)
         return ICON_CUTOFF;                   /* TRIO's MODE is the filter type, not the arp mode */
     if (d == &TP[P_TWTYPE] || d == &TP[P_FREEC] || d == &TP[P_FREED])
-        return ICON_CUTOFF;                   /* ANALOG's filter TYPE (1.5): "TYPE" is also the reverb's; the multimode filter's MODE, SLOPE (0.2.9) */
+        return ICON_CUTOFF;                   /* ANALOG's filter TYPE: "TYPE" is also the reverb's; the multimode filter's MODE, SLOPE */
     if (d == &TP[P_DKRATE])
         return ICON_DIVISION;                 /* DUCK 1: PUMP's RATE, a note division */
     if (d == &TP[P_DKSRC])
@@ -226,7 +226,7 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
     if (d == &TP[P_DKTHR])
         return ICON_GATE;
     if (d == &TP[P_ESYNC])
-        return ICON_TEMPO;                    /* ENV SYNC (1.5): as LFO 2's SYNC */
+        return ICON_TEMPO;                    /* ENV SYNC: as LFO 2's SYNC */
     if (d->names == N_NOISE_MODE)
         return ICON_NOISE;                    /* NOISE's MODE is the source; its CLK the register clock */
     if (d == &NOISE_CLK)
@@ -252,15 +252,15 @@ static uint32_t mod_dst_icon(const track_t *t, int32_t d)
         return ICON_LFO_WAVE;
     if (d == MD_RATE2)
         return ICON_RATE;
-    if (d >= MD_CUT2 && d <= MD_BLEND)                  /* (cloud job B) filter 2's values; the SUB LEVEL below */
+    if (d >= MD_CUT2 && d <= MD_BLEND)                  /* filter 2's values; the SUB LEVEL below */
         return ICON_CUTOFF;
     if (d == MD_SUBLVL)
         return ICON_LEVEL;
     if (d < MD_E1)
         return I[d];
-    if (MD_IS_BUS(d))                                   /* (0.2.7) a bus value: its effect's (0.2.25: FMODE after them is a part value) */
+    if (MD_IS_BUS(d))                                   /* a bus value: its effect's (FMODE after them is a part value) */
         return d <= MD_CDEP ? ICON_CHORUS : d <= MD_DMRATE ? ICON_DELAY : ICON_REVERB;
-    id = mod_param((uint32_t)d);                        /* an engine parameter, (0.2.7) a part's: its own */
+    id = mod_param((uint32_t)d);                        /* an engine parameter, a part's: its own */
     return param_icon(track_desc(t, id), t->p[id]);
 }
 
@@ -289,7 +289,7 @@ static uint32_t motion_icon(void) { return rec_on(TSEL) ? ICON_X_MOTION_REC : IC
 static uint32_t page_icon(const page_t *pg)
 {
     switch (pg->graph) {
-    case GR_GLO: return ICON_X_MIXER;         /* MIXER (GLO's first page, 0.2.25; HOME's before): vertical faders */
+    case GR_GLO: return ICON_X_MIXER;         /* MIXER (GLO's first page): vertical faders */
     case GR_PATS: return ICON_X_PATTERN;      /* SAVE > PATTERNS: the pattern loader */
     case GR_EVENTS: return motion_icon();     /* PARAMETER LOCKS */
     default: return ICON_NONE;

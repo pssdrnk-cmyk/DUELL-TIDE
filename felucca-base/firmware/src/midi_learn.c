@@ -86,7 +86,7 @@ static const char *const MAP_ACT_NAME[MAP_T_ACT_END - MAP_T_MORPH] = {
 static const char *const MAP_X_NAME[NX] = {"ROUTE", "LINK", "TWIN KEY TRK", "ENV TO TWIN CUTOFF", "LFO 1 TO TWIN CUTOFF", "LFO 2 TO TWIN CUTOFF", "SUB LEVEL",
                                            "SUB OCTAVE", "SUB WAVE", "SUB HARMONICS", "CYCLE MODE", "CYCLE RISE", "CYCLE FALL", "CYCLE CURVE",
                                            "CYCLE SYNC", "AMP ENV TO SATURATION", "FILTER ENV TO FILTER BLEND", "FILTER ENV TO FILTER DRIVE", "FILTER ENV TO MULTI RES", "CYCLE TO TWIN CUTOFF", "CYCLE TO PAN", "CYCLE TO PITCH",
-                                           "LFO 2 TO TWIN RES", "LFO 2 TO MULTI MODE", "LFO 2 TO FILTER BLEND", "LFO 1 LEVEL", "LFO 2 LEVEL", "STRUM"};   /* (DUELL 1.1: X15 .. X26; X27 STRUM, item 144) */
+                                           "LFO 2 TO TWIN RES", "LFO 2 TO MULTI MODE", "LFO 2 TO FILTER BLEND", "LFO 1 LEVEL", "LFO 2 LEVEL", "STRUM"};   /* (X15 .. X26; X27 STRUM) */
 /* the name of line l's parameter (b holds 40): "CUTOFF", "MORPH", "PART 2 ATTACK" (a learned line leads with its track) */
 static void map_name(uint32_t l, char *b)
 {
@@ -94,7 +94,7 @@ static void map_name(uint32_t l, char *b)
     const char *s = 0;
     b[0] = 0;
     if (MAP_WHO(l) == MAP_W_LEARNED) {
-        str_cpy(b, "PART 1 ", 8);                  /* (b4, UI audit 5: "PART n" as everywhere else) */
+        str_cpy(b, "PART 1 ", 8);                  /* ("PART n" as everywhere else) */
         b[5] = (char)('1' + k);
     }
     if (code < P_COUNT) {
@@ -118,7 +118,7 @@ static void map_name(uint32_t l, char *b)
 /* 1: a target code the table may hold (a part value, an extension slot, an action, a global value) */
 static int map_code_ok(uint32_t code)
 {
-    return code < P_COUNT || (code >= XW_BASE && code < XW_BASE + NX) || (code >= MAP_T_MORPH && code < MAP_T_ACT_END && code != MAP_T_SPARE_BAL && code != MAP_T_SPARE_UNDO) ||   /* (item 144: every slot, X27 STRUM too, as CHRD / VOIC are; item 157: BALANCE's code is a spare; 1.0.0-b5: UNDO's too) */
+    return code < P_COUNT || (code >= XW_BASE && code < XW_BASE + NX) || (code >= MAP_T_MORPH && code < MAP_T_ACT_END && code != MAP_T_SPARE_BAL && code != MAP_T_SPARE_UNDO) ||   /* (every slot, X27 STRUM too, as CHRD / VOIC are; BALANCE's and UNDO's codes are spares) */
            (code >= MAP_T_G0 && code < MAP_T_G0 + G_COUNT);
 }
 /* the part rules the target may have: the generator's table (tools/gen_midi_map.py) */
@@ -132,7 +132,7 @@ static int map_rule_ok(uint32_t code, uint32_t rule)
 }
 /* kind, where it is saved, whether PARAMETER LOCKS records a CC move of it, whether it does nothing now (for part t, the editor's selected one).
  * A CC on an extension slot is not recorded until the motion escape (id 127) is built */
-static int card_hidden_vp(const int16_t *vp);   /* ui_draw.c: the ONE rule for a control the current setup hides (DUELL 1.1: a hidden control is as inert as an unused one) */
+static int card_hidden_vp(const int16_t *vp);   /* ui_draw.c: the ONE rule for a control the current setup hides (a hidden control is as inert as an unused one) */
 static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
 {
     r->kind = MAP_K_CONTINUOUS;
@@ -144,7 +144,7 @@ static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
         r->saved = code == P_LEVEL || code == P_PAN || code == P_MUTE ? MAP_S_MULTI : MAP_S_PATCH;
         r->automation = (uint8_t)motion_param(code);
         r->inert = d->max <= d->min || !d->label || d->label[0] == '-' || code == P_DKSRC ||
-                   code == P_ED_FLT || code == P_E2SHP || code == P_L2PIT || code == P_L2FLT || code == P_L2SHP ||   /* (b9: the five retired cards, morph.c T_GONE: a map saved with one shows it doing nothing) */
+                   code == P_ED_FLT || code == P_E2SHP || code == P_L2PIT || code == P_L2FLT || code == P_L2SHP ||   /* (the five cards of morph.c T_GONE: a map saved with one shows it doing nothing) */
                    ((code == P_IA || code == P_IB || code == P_IC || code == P_IMIX) && !t->p[P_ITYPE]) || card_hidden_vp(&t->p[code]);   /* (LOFI PULSE WIDTH with WAVE not PLS, UNISON DETUNE in POLY, ...) */
         if (code == P_TWTYPE || code == P_CUT2 || code == P_RES2 || code == P_DRV2 || code == P_BLEND) {   /* (ext.h aliases: the TWIN filter) */
             r->kind = code == P_TWTYPE ? MAP_K_STEPPED : MAP_K_CONTINUOUS;
@@ -153,7 +153,7 @@ static void map_target_info(uint32_t code, const track_t *t, map_info_t *r)
     } else if (code >= XW_BASE && code < XW_BASE + NX) {
         uint32_t k = code - XW_BASE;
         r->kind = k == X_ROUTE || k == X_LINK || k == X_CYMODE || k == X_CYSYNC ? MAP_K_SWITCH : k == X_SUBOCT || k == X_SUBWAVE ? MAP_K_STEPPED : MAP_K_CONTINUOUS;
-        r->inert = k >= NX || k == X_SUBHARM ||                /* (b9: SUB HARMONICS, nothing reads it) */
+        r->inert = k >= NX || k == X_SUBHARM ||                /* (SUB HARMONICS, nothing reads it) */
                     (k <= X_LFO2 && !t->p[P_TWTYPE]) || (k == X_E2BLD || k == X_E2DRV || k == X_CYCUT2 || k == X_L2RES2 || k == X_L2BLD ? !t->p[P_TWTYPE] : 0) || (k >= X_SUBOCT && k <= X_SUBHARM && !XV(t, X_SUBLVL)) || card_hidden_vp(&XV(t, k));
     } else if (code >= MAP_T_G0 && code < MAP_T_G0 + G_COUNT) {
         const param_desc_t *d = &GP[code - MAP_T_G0];

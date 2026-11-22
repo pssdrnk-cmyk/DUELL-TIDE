@@ -11,8 +11,8 @@ static void c0_stack_bounds(uint32_t **b)
     b[0] = (uint32_t *)(uintptr_t)_ustack_lo; b[1] = (uint32_t *)(uintptr_t)_ustack_top;
     b[2] = (uint32_t *)(uintptr_t)_sstack_lo; b[3] = (uint32_t *)(uintptr_t)_sstack_top;
 }
-/* developer builds only: core 0's stack high-water marks (bench.c c0_stack_peak, the BENCH,INFO line's c0stack). fm1_cstart paints both stacks below its own frame; the 32 KB of
- * core 0's stacks were never measured (memory audit, option J). The painted words are the not-yet-used part. */
+/* developer builds only: core 0's stack high-water marks (bench.c c0_stack_peak, the BENCH,INFO line's c0stack). fm1_cstart paints both stacks below its own frame.
+ * The painted words are the not-yet-used part. */
 static void c0_stack_paint(void)
 {
     uint32_t here, *p, *b[4], *e = (uint32_t *)((uintptr_t)&here - 256u);
@@ -76,7 +76,7 @@ static void felucca_init(void)
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         track_defaults(t);
-        init_engine_of(t, TRK_DEF[i][0]);            /* (0.2.24: the full INIT: defaults + the first preset; set_engine_of keeps the common settings now) */
+        init_engine_of(t, TRK_DEF[i][0]);            /* (the full INIT: defaults + the first preset; set_engine_of keeps the common settings) */
         apply_preset_to(t, TRK_DEF[i][1]);    /* with its sends */
         t->engine = t->eng_req;
         eng_mem_claim(t);                     /* (zeros already: no note can come before) */
@@ -122,14 +122,14 @@ static void fm1_main(void)
     settings_init();
     usb_serial_apply();                                 /* (#67: the saved USB SERIAL before usb_start) */
     lcd_init();
-    draw_splash();                                      /* ui_draw.c (1.1.5) */
+    draw_splash();                                      /* ui_draw.c */
     if (felucca_dbg.magic != DBG_MAGIC) {
         memset(&felucca_dbg, 0, sizeof felucca_dbg);
         felucca_dbg.magic = DBG_MAGIC;
     }
     felucca_dbg.boots++;
     felucca_dbg.max_us = 0;
-    felucca_dbg.erase_max_us = felucca_dbg.erase_last_us = felucca_dbg.prog_max_us = felucca_dbg.erases = 0;   /* (0.2.11: since this boot) */
+    felucca_dbg.erase_max_us = felucca_dbg.erase_last_us = felucca_dbg.prog_max_us = felucca_dbg.erases = 0;   /* (since this boot) */
     felucca_dbg.in_audio = 0;                       /* .noinit: a reset inside the audio ISR left it set, and
                                                        TIMER5 would treat every tick as nested (no USB poll) */
     felucca_dbg.prev_stage = felucca_dbg.stage;     /* a WDT reset leaves the last breadcrumb here */
@@ -164,8 +164,8 @@ static void fm1_main(void)
         panel_setup();                        /* OCT- + OCT+ held at power-on */
         settings_save();
     }
-    if (autosave_boot(boot_clean))            /* (1.2) the last session's music, under the splash */
-        first_boot_pending = 0;               /* (DUELL 0.1: a restored session is not a new unit's start) */
+    if (autosave_boot(boot_clean))            /* the last session's music, under the splash */
+        first_boot_pending = 0;               /* (a restored session is not a new unit's start) */
     splash_begin();                           /* DUELL: the splash proper (ui_draw.c): drawn by the main loop, the synth already
                                                * runs, MIDI IN and (after 0.1 s) the keys play through it, any key ends it */
     scrn.idle = fm1_ms;                        /* (MENU > SCREEN OFF: from here) */
@@ -174,12 +174,12 @@ static void fm1_main(void)
         uint32_t m = fm1_ms;
         fm1_wdt_feed();
         usb_retry(fm1_ms);
-        if (erase_restart_due()) {                      /* DUELL 0.2.2: ERASE DATA done (erase_data.c): the first-start path */
-            BG_ERASE_ALL(bootguard);   /* DUELL 1.1 (item 92 addendum 2): ERASE wipes the boot guard whole (pending, failed = the update-mode counter, magic) .. */
+        if (erase_restart_due()) {                      /* ERASE DATA done (erase_data.c): the first-start path */
+            BG_ERASE_ALL(bootguard);   /* ERASE wipes the boot guard whole (pending, failed = the update-mode counter, magic) .. */
 #if DUELL_TWOCORE
             tc_forget();               /* .. and the second-core record (strike, last, SKIPBOOT): a clean start always tries two cores */
 #endif
-            /* (item 92 first fix, now covered by the wipe above:) DUELL 1.1 (item 92): an intended restart, not a failed start. Left set, an erase inside the first 30 s after a start (the installer does exactly that) made the boot guard see "the last start died": tc_boot then skipped core 1 (SKIPBOOT) for that whole session */
+            /* an intended restart, not a failed start. Left set, an erase inside the first 30 s after a start (the installer does exactly that) would make the boot guard see "the last start died": tc_boot would then skip core 1 (SKIPBOOT) for that whole session */
             fm1_reboot();
         }
         if (fm1_ms > 30000u && bootguard.pending) {     /* a crash or hang in the first 30 s counts */
@@ -269,7 +269,7 @@ static void fm1_main(void)
         ui_input();
         wave_service();                               /* DUELL WAVE: a frame of a table build, if one waits (eng_wave.c) */
 #if DUELL_VCAP
-        vcap_poll();                                  /* DUELL 0.2.11: the parts' VOICE CAP (voice.c; bench builds: it holds while the budget is held open) */
+        vcap_poll();                                  /* the parts' VOICE CAP (voice.c; bench builds: it holds while the budget is held open) */
 #endif
         budget_poll();                                /* DUELL: the parts' NOTES budget (budget.c) */
 #if DUELL_TWOCORE
@@ -305,7 +305,7 @@ void fm1_cstart(void)
     uint32_t *s;
 #endif
 #if DUELL_TWOCORE
-    fm1_cpu1_halt();                           /* (after Felucca 1.6.1: a second core still running from before this reset would read the
+    fm1_cpu1_halt();                           /* (a second core still running from before this reset would read the
                                                 * RAM cleared below; hal/fm1_sys.h) */
 #endif
 #if DUELL_BENCH

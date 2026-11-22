@@ -43,7 +43,7 @@
  *   The INSERT, the insert dip (its type or a control differs): its wet mix eases to dry over 25 .. 40 %, back over 60 .. 75 %, the type
  *     and controls switch while it is dry (its own fade, fx.c track_insert, is 2.9 ms, and a control jumped on the old effect
  *     while it still sounded), then the new effect's wet eases in; the dry sound goes on.
- *   Values that only shape the next notes (the arp, voice and glide mode, the chord) switch at the middle as before.
+ *   Values that only shape the next notes (the arp, voice and glide mode, the chord) switch at the middle.
  *
  * Contexts: morph_xplan (the main loop, ~25 times a second, never while a transition runs) works out what differs and, for FM6,
  * each operator's part and the ends' patches; morph_xstep (the audio ISR, morph.c morph_begin, a block) moves tp and sets the
@@ -70,7 +70,7 @@ _Static_assert(XS0 > XLP0 && XS1 < XLP1 && XS0 + XS1 == 2u * XC, "morph_xfer.c: 
 #define XTP_MAX (XZ / 3u)                                /* tp's largest step a block in the arc, whatever drives it: a silent operator's plateau (XZ) is
                                                           * then three blocks at least, and a retune needs two in a row (eng_fm6.c fm6_xtune: mute = now & before).
                                                           * GLIDE's fader moves in steps of 258 (1 / 127) as often as the main loop gets round to it: a step
-                                                          * could skip a plateau, the operator kept its old frequency (the audit's follow-up: two octaves). The
+                                                          * could skip a plateau, the operator kept its old frequency (two octaves). The
                                                           * arc at this pace is ~0.4 s, inside the fastest trip (a bar at 240 BPM, 1 s) */
 #define XN_LP 1u                                         /* need: a voice value switches (the spectral valley) */
 #define XN_FM 2u                                         /* need: the FM6 operator structure differs (the harmonic valley) */
@@ -115,7 +115,7 @@ typedef struct {
     uint32_t esig;                                       /* (.. the ends it was made for: morph_xesig) */
     uint8_t follow;                                      /* GLIDE moves this part's sound (morph_glide.c glide_motion): tp is the fader itself */
 } mxs_t;
-static mxs_t mxs[NLIVE];                                 /* (audit U09: morph_wash and morph_valley are called for every part that renders, NLIVE, not only the shown ones: a host rig built with NPART=4 indexed [3]) */
+static mxs_t mxs[NLIVE];                                 /* (morph_wash and morph_valley are called for every part that renders, NLIVE, not only the shown ones: a host rig built with NPART=4 indexed [3]) */
 _Static_assert(sizeof mxs / sizeof mxs[0] >= NLIVE, "morph_xfer.c: mxs is indexed by part");
 
 /* ---------------------------------------------------------------- the curves (Q15) --- */
@@ -387,12 +387,12 @@ static inline __attribute__((always_inline)) int32_t morph_xdepth(const mxs_t *x
     return x->xe ? morph_xarc(tp, XC - f - r, XC - f, XC + f, XC + f + r) : morph_xarc(tp, XW0, XLP0, XLP1, XW1);
 }
 #define XBR_Q8 4634                                      /* GLIDE's breath at its deepest: two octaves of the dial (2317 Q8 steps an octave) */
-/* WASH (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default since 2026-11-01, owner), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
+/* WASH (TIDE LIST; tide_ui.c keeps it in the settings): 0 OFF (the default), 1 LOW, 2 MID, 3 HIGH. It scales GLIDE's movement
  * (the breath, the swell: XWL, x 0 .. 1.5), a transition's swell, and the wash's fill (15 dB under the part's level at rest at MID,
  * 3 dB a step: XWS). OFF: plain glides, a transition still smoothed (its filter dip, the INSERT's, FM6's valley) */
 static uint8_t morph_wlvl = 0u;
 static const uint16_t XWL[4] = {0u, 16384u, 32768u, 49152u};
-static const uint8_t XWS[4] = {0u, 6u, 5u, 4u};          /* the fill's level: the level at rest >> XWS (18, 15, 12 dB under it; owner, 2026-10-29: 6 dB less, "too much") */
+static const uint8_t XWS[4] = {0u, 6u, 5u, 4u};          /* the fill's level: the level at rest >> XWS (18, 15, 12 dB under it) */
 /* the audio ISR, per voice and block (voice.c track_render, voice_chain.c): the effective cutoff uc (Q8 dial) of part t through
  * GLIDE's breath (down by up to two octaves with the movement, never under the floor: 1.5 times the highest note) and the
  * transition's dip (that share of the way to the floor). The floor in the dial: step 0 is 30 Hz (log2 4.907, Q12 20098), a step
@@ -450,7 +450,7 @@ static __attribute__((noinline)) uint32_t morph_xreg(uint32_t pi, const int16_t 
             ;
         if (j < m) {                                     /* (the blend moves it already: one entry, always kept (chk). Two made the block's
                                                           * cache check fail on the second, its live value already written: the blend again
-                                                          * every block; independent audit 2026-10-29) */
+                                                          * every block) */
             chk[j] = 1;
             continue;
         }
@@ -474,7 +474,7 @@ static __attribute__((noinline)) void morph_xpost(track_t *t, uint32_t pi)
         /* the cutoff down toward 1.5 times the highest note: the effective one (morph_xcut): a filter envelope that opens a dark
          * patch's filter would otherwise keep it open */
         morph_cdd[pi] = (uint16_t)df;
-        if (p[P_FREEB] > 30)                             /* RES held to 30 while it closes (the damping of the old law's half, 64; audit P07): a switch through a resonant filter rings */
+        if (p[P_FREEB] > 30)                             /* RES held to 30 while it closes (damping 64): a switch through a resonant filter rings */
             p[P_FREEB] = (int16_t)(p[P_FREEB] - (((p[P_FREEB] - 30) * df) >> 15));
     }
     if (x->dub) {                                        /* the swell: the delay and reverb sends, up to 3/4 of the way to full */
@@ -542,7 +542,7 @@ static __attribute__((noinline)) int morph_xstep(track_t *t, morph_part_t *mp, u
         uint32_t df = x->need & XN_LP ? k : 0u, dub = x->motion >> 1, di = x->need & XN_INS ? (uint32_t)morph_xarc(tp, XI0, XLP0, XLP1, XI1) : 0u;
         k = (k * 3u / 5u * XWL[morph_wlvl & 3u]) >> 15;
         dub = k > dub ? k : dub;
-        if ((df >> 7) != (x->df >> 7u) || (dub >> 7) != (x->dub >> 7u) || (FELUCCA_MOVECOST ? (di >> 7) != (x->dins >> 7) || !di != !x->dins : di != x->dins))   /* (C1, FELUCCA_MOVECOST: the INSERT dip in 1/256 steps like the others, its end still exactly 0; k was a dead store here) */
+        if ((df >> 7) != (x->df >> 7u) || (dub >> 7) != (x->dub >> 7u) || (FELUCCA_MOVECOST ? (di >> 7) != (x->dins >> 7) || !di != !x->dins : di != x->dins))   /* (FELUCCA_MOVECOST: the INSERT dip in 1/256 steps like the others, its end still exactly 0) */
             side |= 2u;                                  /* (the blend again: a value the arc writes moved; 1/256 steps for the slow ones) */
         x->df = (uint16_t)df, x->dub = (uint16_t)dub, x->dins = (uint16_t)di;
     }
@@ -658,8 +658,8 @@ static __attribute__((noinline)) void MXT_BODY(morph_wash)(uint32_t pp, int32_t 
         int32_t w;
         xs32(&v->wr);
         w = (int32_t)(v->wr >> 16) - 32768;
-        /* (32 bit multiplies, bit for bit the 64 bit ones they were: w and the three states stay in -32768 .. 32767 (a one-pole of such values, the floor of each step keeps it so), so a difference is
-         * at most 65535 in size and a coefficient is under 32768: the product is under 2^31. Wave 16: GLIDE's wash ran six wide multiplies a sample and a part, one now (the power meter); what that saves on the device is not measured, the host does not show it) */
+        /* (32 bit multiplies, bit for bit the 64 bit ones: w and the three states stay in -32768 .. 32767 (a one-pole of such values, the floor of each step keeps it so), so a difference is
+         * at most 65535 in size and a coefficient is under 32768: the product is under 2^31. GLIDE's wash needs one wide multiply a sample and a part (the power meter); what that saves on the device is not measured, the host does not show it) */
         v->wy[0] += (al_s(ah, w - v->wy[0]));
         v->wy[2] += (al_s(ah, v->wy[0] - v->wy[2]));   /* (12 dB / octave above the band: no edge) */
         v->wy[1] += (al_s(al, v->wy[2] - v->wy[1]));

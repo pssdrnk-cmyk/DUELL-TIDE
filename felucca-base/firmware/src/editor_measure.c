@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 DUELL contributors */
-/* MEASURE for a unit CPU run over USB (b14: the owner's "cpu skipping" on M07 TRAVEL 32 measured from the computer, no hands on the unit). Measuring builds ONLY
+/* MEASURE for a unit CPU run over USB (a CPU skip on M07 TRAVEL 32 measured from the computer, no hands on the unit). Measuring builds ONLY
  * (DUELL_MEASURE=1, tools/build.py: env DUELL_MEASURE=1); every other build has none of this, byte for byte. The normal firmware's own numbers (the CPU line of ABOUT, the
  * header of HOME's pages), read over the editor's SysEx: no new counter, nothing in the audio interrupt. jam/measure/travel_watch.py drives it.
  *   MEASURE 91  0              READ: replies 0, then four 32-bit values as 7-bit groups of five (low first): the longest elapsed half since the last READ (us; the budget

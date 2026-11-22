@@ -199,7 +199,7 @@ static void con_status(void)
     con_kv("audio_max_us", (int32_t)felucca_dbg.max_us);
     con_kv("audio_late", (int32_t)felucca_dbg.late);
     con_kv("voices_shed", (int32_t)shed_count);
-    con_kv("fx_light", (int32_t)ovl_lite);             /* (0.2.25: the overload guard engaged now, and how often since power-on) */
+    con_kv("fx_light", (int32_t)ovl_lite);             /* (the overload guard engaged now, and how often since power-on) */
     con_kv("fx_light_count", (int32_t)ovl_count);
     con_kv("voices_given_up", (int32_t)voice_kills);
     con_kv("track", (int32_t)song.sel + 1);
@@ -427,10 +427,10 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
     con_kv("cpu_sum_us", (int32_t)cpu_snap.sum);
     con_kv("cpu_n", (int32_t)cpu_snap.n);
 #if AUDIO_RING
-    con_kv("ring_debt_pk_us", (int32_t)(ring_debt_pk / FM1_TICKS_PER_US));   /* (B15: the latest an interrupt entered since the last `cpu`: the ring's slack used; a whole half is a miss) */
+    con_kv("ring_debt_pk_us", (int32_t)(ring_debt_pk / FM1_TICKS_PER_US));   /* (the latest an interrupt entered since the last `cpu`: the ring's slack used; a whole half is a miss) */
     ring_debt_pk = 0;
 #endif
-    {                                                  /* (K3: the ease ladder's level now, and how often each level was entered since power-on: ease_n1 .. ease_n5; audio.c ease_step) */
+    {                                                  /* (the ease ladder's level now, and how often each level was entered since power-on: ease_n1 .. ease_n5; audio.c ease_step) */
         char k[] = "ease_n1";
         uint32_t l;
         con_kv("ease", (int32_t)ease);
@@ -451,7 +451,7 @@ static void con_cpu(void)                              /* (probe) cpu: the longe
         con_kv("st_part2wait_us", (int32_t)(st[2] / 24u));
         con_kv("st_xblock_us", (int32_t)(st[3] / 24u));
         con_kv("st_voices1_us", (int32_t)(st[4] / 24u));
-        con_kv("st_budget_us", (int32_t)(st[5] / 24u));    /* b10 round 6 (finding 6): the budget's figures the deadline works out at a half's block 0, longest in the interval */
+        con_kv("st_budget_us", (int32_t)(st[5] / 24u));    /* the budget's figures the deadline works out at a half's block 0, longest in the interval */
     }
 #endif
     {                                                  /* (what the glide is doing at this moment, to be sure the probe saw the stages it means to: voices sounding, the FM6 bridge on, the valley's depth, the wash/breath movement) */
@@ -505,7 +505,7 @@ static void con_glide(const char *p)                   /* (probe) glide M [T]: M
     con_kv("playing", song.playing ? 1 : 0);
 }
 /* wroll (test mode, TIDE): a WILD roll of End B of the selected part at AMOUNT 100, so a following `glide 1` moves the part EQ's gains (the EQ is a WILD-only
- * morph target) and eq_design runs from the flash during the glide: the b5 sweep's EQ scene. SMART is set back on after the roll (the setting is as before) */
+ * morph target) and eq_design runs from the flash during the glide: the sweep's EQ scene. SMART is set back on after the roll */
 static void con_wroll(void)
 {
     uint32_t m = 1u << song.sel, smart = !(morph.cfg & MC_WILD);

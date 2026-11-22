@@ -8,7 +8,7 @@
  * while the last strip of a frame goes out. */
 /* pins and SPI1: hal/fm1_lcd_hw.h */
 #ifndef LCD_BAUD
-#define LCD_BAUD 2u                /* lsb/(BAUD+1): 2 = 20 MHz (TIDE 1.0.0-b6, from 4 = 12 MHz; the ST7789V is rated to about 62 MHz; 30 MHz tried on the unit, 9 November, no faster) */
+#define LCD_BAUD 2u                /* lsb/(BAUD+1): 2 = 20 MHz (the ST7789V is rated to about 62 MHz; 30 MHz tried on the unit, no faster) */
 #endif
 
 static uint8_t lcd_small[64];
@@ -64,7 +64,7 @@ static void lcd_window(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
     lcd_cmd(0x2C);
 }
 
-static uint16_t lcd_fillbuf[240] __attribute__((section(".pool")));   /* (b10: the pool, not .bss: written before every use) */
+static uint16_t lcd_fillbuf[240] __attribute__((section(".pool")));   /* (the pool, not .bss: written before every use) */
 
 static void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 {
@@ -129,8 +129,8 @@ static void lcd_init(void)
     lcd_fill(0, 0, 240, 240, 0);
     lcd_cmd(0x29);
 #if defined(FM1_LCD_BL_LATE) && FM1_LCD_BL_LATE
-    fm1_lcd_backlight(1);          /* item 163 (main firmware only, hal/fm1_lcd_hw.h): the backlight (and the key matrix 595's
-                                    * /OE, the same PA2) on only now, over the black frame: no old panel memory before the splash.
+    fm1_lcd_backlight(1);          /* (main firmware only, hal/fm1_lcd_hw.h): the backlight (and the key matrix 595's
+                                    * /OE, the same PA2) on only now, over the black frame: no stale panel memory before the splash.
                                     * IRQs are still off here (main.c: fm1_irq_enable_all later), so the port A write needs no guard */
 #endif
 }
@@ -139,7 +139,7 @@ static void lcd_init(void)
  * panel wants 120 ms after it, and 120 ms after SLPIN before it: ui.c waits, a frame at a time, never here); 2: DISPON
  * (after the frame that redrew it all). The panel keeps its RAM asleep, but the UI redraws everything before it shows
  * (ui.force). The backlight stays on: PA2 is also the key matrix 595's /OE, so with it
- * high no button, key or knob reads and nothing could wake the screen (#157 follow-up, found on 1.1.5) */
+ * high no button, key or knob reads and nothing could wake the screen (#157) */
 static void lcd_power(uint32_t s)
 {
     if (s == 1u)

@@ -11,8 +11,8 @@ typedef struct {
 #define FAV_USER_WORD(k) ((k) < 32u ? &favorites.user : &favorites.user_hi[(k) / 32u - 1u])
 static favorites_t favorites __attribute__((section(".pool")));
 /* the byte holding factory sound `preset` of `engine`'s flag, 0 = none. Row e is engine e's, except: row 14 is the MIDI LEARN map
- * (midi_learn.c) and row 15 the settings bytes, so WAVE (engine 14, DUELL) keeps its flags in bytes 16..31 of row 1, DIGITAL's
- * retired row (DIGITAL, engine 1, is gone: its byte 0 is cleared on import, settings_persist.c; its bytes 16..31 were never written, so every older
+ * (midi_learn.c) and row 15 the settings bytes, so WAVE (engine 14, DUELL) keeps its flags in bytes 16..31 of row 1, the
+ * row of engine 1 (its byte 0 is cleared on import, settings_persist.c; its bytes 16..31 are never written, so every older
  * setting holds no WAVE flag there (128 sounds)) */
 #define FAV_WAVE_ROW 1u
 #define FAV_WAVE_AT 16u

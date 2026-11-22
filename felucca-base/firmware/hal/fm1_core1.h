@@ -2,10 +2,9 @@
  * Copyright (C) 2026 OSCILL/R (DUELL). Part of DUELL, a modified version of Felucca. */
 /* DUELL TWO-CORE, stage 1 (DUELL_TWOCORE=1 only: a normal build includes this file but compiles none of it): the chip's second core, the
  * DEVICE half of the hal of src/twocore.h (its computer half: tests/twocore_hal_host.h). docs/TWOCORE_STAGE1.md.
- * From DUELL's bench (wip/bench0226 hal/fm1_core1.h: ran clean on the owner's unit in BENCH-B3, 2026-10-18): the start, the entry, core 1's
- * own stack limit, the waiting loop in RAM. Changed for stage 1: the bench's mailbox (a function pointer, a job word and a check word) is
- * replaced by the stage-1 words (src/twocore.h tc_mb: separate 32-bit words, one writer each, a sequence number); the loop runs
- * tc_c1_step (core 1 answers every job once: claim + done, yld, or refused); the B1 interference loads (fm1_k_*) are left in the bench.
+ * From DUELL's bench (wip/bench0226 hal/fm1_core1.h): the start, the entry, core 1's
+ * own stack limit, the waiting loop in RAM. The mailbox is the stage-1 words (src/twocore.h tc_mb: separate 32-bit words, one writer each, a sequence number); the loop runs
+ * tc_c1_step (core 1 answers every job once: claim + done, yld, or refused); the B1 interference loads (fm1_k_*) stay in the bench.
  *
  * Written for DUELL (no file copied). The register facts and the method come from these GPL-3.0-only firmwares and documents, credited
  * in NOTICE.md:
@@ -15,7 +14,7 @@
  *     bit 3 of 0x10008 held while it starts, C1_CON 0x1EEE004 bit 3 set and bit 1 cleared, 20 ms for an "alive" word; the PC limits open
  *     meanwhile because core 1 boots through the chip ROM), the hold (hal/fm1_sys.h fm1_cpu1_halt), the mailbox with one writer per cache
  *     line, the check word of every job (a misreading core 1 runs nothing it read wrong), core 1's own stack limit (its EMU bank at 0x1EEF2D0).
- *   - DUELL's own earlier probe (wip/core1probe, 2026-10-14: read from M-VAVE's fm1_open runtime with objdump) and docs/CPU_PLAN.md.
+ *   - DUELL's own probe (wip/core1probe: read from M-VAVE's fm1_open runtime with objdump) and docs/CPU_PLAN.md.
  *
  * PLACEMENT (local stage 1 work, docs/TWOCORE_STAGE1.md "what the local build needs"; NOT in this repo's linker scripts yet, so a
  * DUELL_TWOCORE=1 link is not ready): core 1's loop and entry go to the section .c1_text, which must be KEEP'd inside the PC limit's RAM window
@@ -35,7 +34,7 @@
 #define FM1_C1_ENTRY (*(volatile uint32_t *)0x01C7FFF8u)
 #define FM1_C1_ICFG(i) (*(volatile uint32_t *)(0x1EEF300u + 4u * (i)))
 #define FM1_C1_EMU(off) (*(volatile uint32_t *)(0x1EEF2D0u + (off)))   /* core 1's EMU bank: CON +0, SSP H/L +8/+C, USP H/L +10/+14 */
-#define FM1_C1_USER_BYTES 3072                                         /* core 1's user stack: 3 KB (memory trim 1; was 4 KB). Its lowest 256 B are the limit's margin (fm1_c1_main), so 2,816 B are usable;
+#define FM1_C1_USER_BYTES 3072                                         /* core 1's user stack: 3 KB. Its lowest 256 B are the limit's margin (fm1_c1_main), so 2,816 B are usable;
                                                                         * the deepest use measured is 1,744 B in the bench runs BENCHM1 / BENCHT1 (tc_stack_peak counts the 256 B supervisor stack above it, so 1,488 B of user stack)
                                                                         * (a margin of 1.9 x); the plan's new code (chain, SUB, CYCLE) is expected to add one or two small frames */
 #define FM1_C1_TOP_BYTES 3328                                          /* .. plus its supervisor stack (256 B): the whole array */
@@ -44,9 +43,9 @@
 #define FM1_STR(x) FM1_STR_(x)
 
 FM1_INLINE void fm1_c1_sync(void) { __asm__ volatile("csync" ::: "memory"); }
-/* THE WAITING LOOP'S PAUSE (b11, ported from DUELL 1.2 by OSCILL/R, GPL-3.0: hal/fm1_core1.h fm1_c1_pause). 1.2's bench, the WHEEL crash (2026-11-06): core 1 polling the job word
+/* THE WAITING LOOP'S PAUSE (from DUELL 1.2 by OSCILL/R, GPL-3.0: hal/fm1_core1.h fm1_c1_pause). 1.2's bench, the WHEEL crash: core 1 polling the job word
  * in a loop of a few instructions (tens of millions of loads a second) made core 0 lose register writes: 4 crashes in 5 runs of WHEEL-LONG with core 1 idling, 0 in 10 with core 1 held
- * (1.2's bench builds BENCHVI / BENCHVJ). TIDE ran the same bare loop. So between two looks at the job word core 1 counts FM1_C1_PAUSE_N passes in a register: no load, no store.
+ * (1.2's bench builds BENCHVI / BENCHVJ). So between two looks at the job word core 1 counts FM1_C1_PAUSE_N passes in a register: no load, no store.
  * A job is seen that much later (about 3 cycles a pass: ~400 cycles, a few us at most, against a half's 2,902 us) */
 #ifndef FM1_C1_PAUSE_N
 #define FM1_C1_PAUSE_N 128
@@ -102,7 +101,7 @@ void __attribute__((section(".c1_text"), noreturn, used, noinline)) fm1_c1_main(
     fm1_c1_sync();
     for (;;) {
         tc_c1_step(&c);
-        fm1_c1_pause();                                 /* b11 (from DUELL 1.2): no load or store for FM1_C1_PAUSE_N passes between two looks (above) */
+        fm1_c1_pause();                                 /* (from DUELL 1.2) no load or store for FM1_C1_PAUSE_N passes between two looks (above) */
     }
 }
 /* core 1's entry (as the SDK's startup and Felucca's fm1_cpu1.S): interrupts off, no interrupt configuration, its stacks, then rti into its loop */

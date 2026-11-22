@@ -10,7 +10,7 @@
 #define FELUCCA_CATEGORY 1
 enum { CAT_NONE, CAT_BASS, CAT_LEAD, CAT_PAD, CAT_PLUCK, CAT_KEYS, CAT_PERC, CAT_FX, CAT_OTHER, CAT_N };
 static const char *const CAT_NAME[CAT_N] = {"-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER"};
-/* the category a sound without one is listed under: a kit (the retired DRUM and SLICE, engines 10, 13; their stored records keep them)
+/* the category a sound without one is listed under: a kit (DRUM and SLICE, engines 10, 13, no longer in the engine list; their stored records keep them)
  * PERC, any other OTHER */
 static uint32_t cat_of_engine(uint32_t e) { return e == 10u || e == 13u ? CAT_PERC : CAT_OTHER; }
 
