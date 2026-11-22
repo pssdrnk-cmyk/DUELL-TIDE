@@ -195,7 +195,6 @@ static void tide_save_note(int32_t w);                      /* (tide_ui.c) */
 #define TIDE_SAVE_NOTE(w) tide_save_note(w)               /* the SAVE dialog says what it saves when the sound is not the loaded one */
 static void tl_undo_take(track_t *t);                    /* (ui_tools.c, compiled after tide_ui.c) */
 static void tl_unlock(track_t *t, uint64_t was, uint32_t len);
-#define TIDE_TL_KEEP , TL_KEEP                           /* SEQ held + G4; labelled below the tools grid */
 #define TIDE_SAVE_ERROR(rc) ((rc) == PT_FULL ? "STORE FULL" : "SAVE ERROR")
 #define TIDE_THEME_F(f) ((f) >= 120u ? 127u : (f) & ~7u)
 static int tide_foot_parts(void);
@@ -213,7 +212,6 @@ static const char *tide_tl_swell(track_t *t, uint32_t ripple);   /* (tide_take.c
 static uint32_t tide_sw_pending(void);                    /* (tide_take.c: 1 a SWELL waits for the loop start, 2 a RIPPLE, 0 none) */
 static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t live);   /* (ui_tools.c; live: the part is playing, the result is built in a scratch copy and written with the interrupt off) */
 static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a step note of the part sounds at) */
-#define TIDE_TL_DO(t, p, was, len) do { if ((p) == TL_KEEP) return tide_tl_keep((t), (was), (len)); if ((p) == TL_RANDOM || (p) == TL_COOK) return tide_tl_swell((t), (p) == TL_COOK); } while (0)
 #define OBJ_TIDE (OBJ_PATCHX0 + 15u)                     /* patch chunk 21's object: where earlier TIDE builds kept the settings (read once, never written: tide_store.c) */
 #define TIDE_PT_NCH 25u                                  /* the patch store's chunks with TIDE: 0..20 and 21..24 (objects 55..58 at 0xF4000): 150 saved patches at most (126 + 24: TIDE_PT_NOLD) */
 #define TIDE_PT_NEXT(k) ((k) + 1u == TIDE_PT_NOLD * 6u ? UP_BANK : (k) + 1u)   /* (the tests: the slots a full store holds, in order: 1..126, then 129..152) */
@@ -225,9 +223,6 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
 #define TIDE_WAVE_PAGE(pg) ((pg)->graph == GR_MORPH)      /* the MORPH page is a template 9 page: MORPH on one line, the part's real sound in the big area (ui_scope.c), FILTER / RESONANCE / ECHO on the slim row */
 #define TIDE_LINK(kind, mask, v) do { if ((kind) == MQ_FADER) tide_link((mask), (v)); } while (0)   /* LINK: the SEQ fader follows */
 #define TIDE_MQ_ROUTE(kind, mask, v, pi) ((kind) >= MQ_GLIDE ? (tide_midi((kind), (mask), (v), (pi)), 1) : 0)   /* GLIDE, the SEQ fader */
-#define TIDE_MQ_KINDS , MQ_GLIDE, MQ_SEQF
-#define TIDE_MQ_MERGE(kind) || (kind) == MQ_SEQF
-#define TIDE_SCOPE_OPS {SC_TIDE, 0x0Fu, 0, tide_knob, tide_reset},   /* (ui.c SCOPE_OPS) */
 #define TIDE_LIST_ON() tide_list_on()
 #define TIDE_LIST_OCT(oct) tide_list_oct(oct)
 #define TIDE_GRAPH_CASES
@@ -235,12 +230,10 @@ static int32_t tk_poff(const track_t *t);                /* (tide_take.c: what a
  * their own body (ui_graph.c draw_graph, before the area's canvas), and the card row sits TIDE_LIFT rows higher so that the footer keeps its
  * two rows (tide_foot_two: part 1 and part 2) */
 #define TIDE_LIFT 8
-#define TIDE_GRAPH_OWN(pg) do { if (TIDE_PAGE(pg)) { if ((pg)->graph == GR_TIDE) graph_tide(); else graph_tidelist(); return; } } while (0)
+static void tide_graph(uint32_t graph);                 /* (tide_ui.c) ui_graph.c draw_graph on a TIDE page: TIDE draws the page's body (GR_TIDE, GR_TIDELIST) */
 #define TIDE_CARD_LIFT() (tide_foot_two() ? TIDE_LIFT : 0)
 #define TIDE_FOOT_FULL() tide_foot_two()
-#define TIDE_GRAPH_SIG(pg, h) do { if ((pg)->graph == GR_TIDELIST) return ((h) ^ tide_list_sig()) * 16777619u; \
-                                   if (TIDE_PAGE(pg)) (h) = ((h) ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u ^ (uint32_t)duell_mode_req * 0x9E3779B1u) * 16777619u; } while (0)   /* (the MODE, AUTO TIDE names the play mode) */
-#define TIDE_COLUMNS() do { if (TIDE_PAGE(cur_page())) { tide_columns(); return; } } while (0)
+static uint32_t tide_page_sig(uint32_t h);             /* (tide_ui.c) ui_graph.c graph_sig: what the TIDE page's picture shows, folded into h */
 #ifndef TIDE_HOME_ANSWER
 #define TIDE_HOME_ANSWER 1                               /* .. the answer on knob 1's line (tide_ui.c tide_answer_line; the take's header message is not repeated there, tide_take.c); 0 drops it */
 #endif

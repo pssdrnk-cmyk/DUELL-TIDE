@@ -230,6 +230,8 @@ static int at_home(void) { return cur_page()->fam == FAM_TRK; }   /* HOME's roun
 #include "../firmware/src/ui_draw.c"
 #include "../firmware/src/ui_menu.c"
 #include "../firmware/src/ui_input.c"
+#include "../firmware/src/tide_ui.c"
+#include "../firmware/src/ui_tools.c"
 #include "../firmware/src/ui_layer.c"
 #if FELUCCA_FLASH
 #include "../firmware/src/storage.c"

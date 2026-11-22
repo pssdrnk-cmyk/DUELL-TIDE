@@ -2633,4 +2633,3 @@ timeout:
     ui_redraw();
     ui_message("SETUP CANCELLED");
 }
-#include "tide_ui.c"           /* TIDE hook: TIDE's UI side */

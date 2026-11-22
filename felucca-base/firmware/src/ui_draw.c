@@ -3135,7 +3135,10 @@ static void draw_columns(void)
         cols_perf();
         return;
     }
-    TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
+    if (TIDE_PAGE(cur_page())) {                       /* TIDE hook (TIDE, TIDE LIST; tide_ui.c) */
+        tide_columns();
+        return;
+    }
     if (cur_page()->scope == SC_MORPH) {
         cols_morph(val);
         return;

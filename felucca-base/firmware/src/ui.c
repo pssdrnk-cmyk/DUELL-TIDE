@@ -762,7 +762,7 @@ static const scope_ops_t SCOPE_OPS[] = {
     {SC_MODS, 0x0Fu, 12, mods_knob, reset_mods},
     {SC_GMIX, 0x0Fu, 0, glo_knob, reset_glo},          /* GLO's MIXER: LEVEL 1, LEVEL 2, PAN 1, PAN 2 */
     {SC_STEP, 0x0Fu, 0, step_edit, 0},
-    TIDE_SCOPE_OPS                                     /* TIDE hook (TIDE, TIDE LIST) */
+    {SC_TIDE, 0x0Fu, 0, tide_knob, tide_reset},        /* TIDE hook (TIDE, TIDE LIST; tide_ui.c) */
 };
 static const scope_ops_t *scope_ops(uint32_t scope)
 {
