@@ -609,7 +609,7 @@ static __attribute__((noinline)) void tk_words(char *b)
 {
     tk_cat(b, tk_m.mode == TA_DOUBLE ? "DOUBLE  " : tk_m.mode == TA_REPLY ? "REPLY  " : tk_m.mode == TA_ECHO ? "ECHO  " : tk_m.mode == TA_CHORDS ? "CHORDS  " : "BASS LINE  ");
     tk_cat(b, N_NOTE[tk_m.key % 12u]);
-    tk_cat(b, (tk_m.flags & 4u) ? " " : tk_m.flags & 1u ? " MINOR" : " MAJOR");
+    tk_cat(b, (tk_m.flags & 4u) ? " " : (tk_m.flags & 2u) ? (tk_m.flags & 1u ? " MIN" : " MAJ") : tk_m.flags & 1u ? " MINOR" : " MAJOR");   /* (guessed: MIN / MAJ, so "BASS LINE  A MIN GUESSED" stays one header line) */
     if (tk_m.flags & 4u)
         tk_cat(b, N_SCALE[(tk_m.flags >> 3) & 15u]);
     if (tk_m.flags & 2u)                                 /* (no SCL, no key in the multi: the take's own notes chose it) */

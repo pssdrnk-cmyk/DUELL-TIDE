@@ -262,7 +262,7 @@ static void guess_case(void)
     b[0] = 0;
     tk_words(b);
     SCHECK("the answer's key was guessed from the take", (tk_m.flags & 2u) != 0u);
-    SCHECK("... its words end in GUESSED, no question mark", strstr(b, " GUESSED") && !strchr(b, '?'));
+    SCHECK("... its words end in GUESSED, no question mark, the mode short (MIN / MAJ) so it stays one line", strstr(b, " GUESSED") && !strchr(b, '?') && (strstr(b, " MIN GUESSED") || strstr(b, " MAJ GUESSED")));
     printf("seqtools: the guessed key's words: \"%s\"\n", b);
     stop();
 }

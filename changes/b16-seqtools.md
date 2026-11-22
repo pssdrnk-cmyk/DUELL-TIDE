@@ -6,4 +6,4 @@
  RIPPLE on the answer's part used to say NEXT LOOP and then do nothing; SWELL used to put the other part's pattern from before the take back, dropping the answer.
 - **Changed:** SWELL and RIPPLE say how many steps they changed (RIPPLE  3 STEPS), then the answer's words; KEEP's SEQ KEPT / SOUND KEPT / NOTHING TO KEEP
  stays 3 s; QUICK SEQ's header names the part the tools act on (QUICK SEQ  PART 1) and the line under the tools shows the undo; a key guessed from a take
- says GUESSED instead of a bare ?. 640 B of RAM freed.
+ says GUESSED instead of a bare ? (BASS LINE  A MIN GUESSED, one line). 640 B of RAM freed.
