@@ -2004,7 +2004,7 @@ static int32_t foot_scroll(const char *s, int32_t w)
  * redraw of its own). Not on the one-row footers (the tempo has no row of its own there) */
 /* THE TRANSPORT SIGN takes the beat dot's place and stands on EVERY page, before the tempo
  * (row 1 of HOME's two-row footer, row 2 elsewhere; where the tempo gives way to the REC mark, before the REC mark): a square stopped (grey), a triangle playing (white;
- * an external clock's: the theme colour), two waves while AUTO TIDE moves (the selected part's own colour). Steady, no beat: it is drawn again only when the state changes. REC armed
+ * an external clock's: the theme colour), two waves while AUTO TIDE moves (the selected part's own colour). While the music runs it blinks on the beat (full colour in each beat's first quarter, dim between); it is drawn again only when that state changes. REC armed
  * is the REC mark's job (foot_rec_mark): the sign shows the transport only */
 #define TB_DOT_W 10                                     /* the room it takes from part 1's name: the 7 px sign and its gap to the tempo */
 static int32_t tide_dot_x = -1;                         /* its left edge on the screen, -1: not shown (draw_foot sets it) */
@@ -2031,8 +2031,11 @@ static int32_t foot_row1(const char *en1, const char *tp1, int32_t *x16)
 static uint32_t tide_dot_now(uint16_t *col)              /* its state now (and colour) */
 {
     uint32_t ext = clock_src() != 0u, rs = run_state();
+    uint32_t lit = rs && beat_pos < beat_samples() / 4u;  /* (owner 22 Nov: it blinks on the beat again, as the old beat dot did: full colour in each beat's first quarter, dim between) */
     *col = rs == 2u ? part_col(song.sel) : rs ? (ext ? T_THEME : T_TEXT) : T_MID;   /* (the waves: the selected part's own colour, the same on a global page and at any fader) */
-    return rs | ext << 2 | ux.pal << 3;
+    if (rs && !lit)
+        *col = ux_mix(T_BG, *col, 40);
+    return rs | ext << 2 | ux.pal << 3 | lit << 16;
 }
 static void run_mark(int32_t x, int32_t y, uint16_t c)  /* the sign in its 7 x 7 box at x, y - 1 (canvas; y: the beat dot's top row, so it stays centred on the capitals) */
 {
