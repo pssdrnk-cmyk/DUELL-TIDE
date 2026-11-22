@@ -266,11 +266,11 @@ static void layer_lock(uint32_t l, uint32_t now)
             transport_req = 0;
         else if (lys.nv.go && (song.playing || seq_counting()))
             transport_req = 2;
-        ui.force = 1;
+        ui_redraw();
     }
     ui.lock = (uint8_t)l;
     ui.ly_t0 = (now & ~15u) | 1u | LY_OPEN;
-    ui.force = 1;
+    ui_redraw();
     layer_opened(l);
 }
 
@@ -349,7 +349,7 @@ static void layer_show(void)
     uint32_t show = layer_allowed() ? (layer_open() ? layer_open() : kb_layer ? ui.layer : 0u) : 0u;
     if (show != ui.layer) {
         ui.layer = (uint8_t)show;
-        ui.force = 1;
+        ui_redraw();
     }
 }
 
@@ -411,7 +411,7 @@ static void tools_key(uint32_t p)
     if (*m)                                              /* ("": SWELL / RIPPLE said it themselves, tide_take.c) */
         ui_message(m);
     lys.loaded = 1;
-    ui.force = 1;
+    ui_redraw();
 }
 
 /* REC's settings, KNOB 1..3: CLICK, COUNT-IN, CLICK LEVEL as MENU > AUDIO steps them (ui.c rp_*) */
@@ -550,7 +550,7 @@ static int layer_glo_oct(uint32_t b)
     ml_knob(&trk[k], P_MUTE);
     trk[k].p[P_MUTE] = m;
     ui_say(k ? "PART 2: " : "PART 1: ", m ? "MUTE" : "UNMUTE");   /* (the action's word; no MUTED / LIVE state words) */
-    ui.force = 1;
+    ui_redraw();
     return 1;
 }
 

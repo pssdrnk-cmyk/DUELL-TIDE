@@ -459,7 +459,7 @@ static void rec_hold_tap(void)
         ui_message(off ? "HOLD OFF: SEQ+REC=REC" : "HOLD ON: SEQ+REC=REC");
     else
     ui_message(off ? "HOLD OFF" : "HOLD ON");
-    ui.force = 1;
+    ui_redraw();
 }
 static int rec_tap(uint32_t seq)                        /* 1: the arming changed. seq: SEQ was down with REC (SEQ + REC: never HOLD) */
 {
@@ -469,7 +469,7 @@ static int rec_tap(uint32_t seq)                        /* 1: the arming changed
         return 1;
     }
     song.rec ^= bit;
-    ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
+    ui_redraw();                                     /* also refresh the status on MENU / ABOUT */
     if (!(song.rec & bit))
         ui_message("REC OFF");                          /* (said on every page, HOME included, where the header ring is small) */
     if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
@@ -502,7 +502,7 @@ static void confirm_open(uint32_t kind, uint32_t trk)
     ui.confirm = (uint8_t)kind;
     ui.confirm_trk = (uint8_t)trk;
     ui.act = 0;
-    ui.force = 1;
+    ui_redraw();
 }
 
 /* MENU > CONTROL > STEP PREVIEW ON: on SEQ > STEP (the roll) with the transport
@@ -642,7 +642,7 @@ static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2
     if (pos < 2u)
         track_select(pos);
     song.both = (uint8_t)(pos >= 2u);
-    ui.force = 1;
+    ui_redraw();
 }
 #if TIDE_PLAYSEL
 /* docs/design/PLAY_MODE_SELECT.md: on the BOTH pages ALGORITHM is PART 1, the middle, PART 2 (part_select's three positions); the middle
@@ -1376,7 +1376,7 @@ static void edit_param(uint32_t slot, int32_t steps)
     }
     if (pg->scope != SC_GLOBAL && vp >= TSEL->p && vp < TSEL->p + P_COUNT && mod_is_src((uint32_t)(vp - TSEL->p)) && !*vp) {   /* a matrix SRC set to OFF: the slots after it move up (mod.c mod_compact); the cursor stays: it shows the slot that moved in */
         mod_compact(TSEL);
-        ui.force = 1;
+        ui_redraw();
     }
     if (pg->scope != SC_GLOBAL && vp >= TSEL->p && vp < TSEL->p + EXT_P_LEN) {   /* (a global's: no automation or learn) */
         motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);   /* (record on: a lock, motion.c motion_knob_lock; the extension
@@ -1612,12 +1612,12 @@ static void oct_rel(int blocked)
         if ((rel & 1u) && !(oct_mod & 1u)) {
             song.octave += song.octave > -3 ? -1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;                  /* (the OCTAVE page, ui_draw.c) */
-            ui.force = 1;
+            ui_redraw();
         }
         if ((rel & 2u) && !(oct_mod & 2u)) {
             song.octave += song.octave < 3 ? 1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;
-            ui.force = 1;
+            ui_redraw();
         }
         oct_pend &= (uint8_t)now;
     }
@@ -1689,7 +1689,7 @@ static void act_do(void)
     default:                                              /* G_INITSND */
         init_sound();                                     /* engine defaults + its first preset (the steps stay), KEY TRK at its new-sound default */
         ui_message("SOUND INIT");
-        ui.force = 1;
+        ui_redraw();
         break;
     }
 }
@@ -1895,7 +1895,7 @@ __attribute__((noinline)) static void dlg_cancel(void)
     ui_message(name_on() || ((CF_SAVES >> ui.confirm) & 1u) ? "NOT SAVED" : "CANCELLED");
     name_close();
     ui.confirm = 0;
-    ui.force = 1;
+    ui_redraw();
 }
 
 static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
@@ -2090,17 +2090,9 @@ static void first_boot_poll(void)
 }
 
 static uint32_t pu_t;                                  /* fm1_ms of the last PRESETS detent swallowed after a load undo, 0 = none (load_undo_gate) */
-static void ui_input(void)
+/* each pass first: the polls (FM6, MORPH, TIDE, PROGRAM CHANGE, PATCHES) and the settings that follow their bytes */
+static void in_sync(void)
 {
-    uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
-    uint32_t home, rec, save, rseq;
-    uint32_t oct;
-    uint32_t lay, combo = 0, lytap, lkeys, kq = 0;
-    int32_t s, ks[4] = {0, 0, 0, 0};
-#if DUELL_BENCH
-    if (bench_input(pressed, notes))                    /* (bench builds: the BENCH screen takes the frame, its keys and knobs; src/bench.c) */
-        return;
-#endif
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
     morph_poll();                                       /* DUELL 4b: MIDI's MORPH actions, AMOUNT / TARGET's settings */
     TIDE_POLL();                                         /* TIDE hook */
@@ -2127,6 +2119,283 @@ static void ui_input(void)
     mods_apply();                                       /* (GLO > MODULES: the four switches to the audio side, core.h mods_off) */
     if (!ui.menu)
         usb_serial_apply();                             /* (MENU > USB SERIAL: when the menu has closed) */
+}
+/* the MENU is open: SAVE / REC taps do nothing, ERASE DATA's dialog over it takes OCT+ / OCT-, else menu_input */
+static void in_menu(uint32_t pressed, uint32_t oct)
+{
+    if (ui.save_t0)
+        ui.save_t0 |= 2u;
+    ui.pg_down = 0;
+    if (ui.confirm == CF_ERASE_ALL) {               /* MENU > SYSTEM > ERASE DATA's dialog, over the menu: OCT+ YES erases and */
+        if (oct & 2u) {                             /* restarts the unit as new; OCT- NO and any page button cancel, nothing erased */
+            int rc = erase_data_run();
+            ui.confirm = 0;
+            ui_redraw();
+            ui_message(rc == 0 ? "ERASED, RESTARTING" : rc == 3 ? "STOP TO ERASE" : "ERASE FAILED");
+        } else if ((oct & 1u) || leave_pressed(pressed)) {
+            ui.confirm = 0;
+            ui_redraw();
+            ui_message("NOTHING ERASED");
+        }
+        enc_drop();
+        return;
+    }
+    if (!ui.home_t0)
+        menu_input(oct);
+}
+/* NAME: the keys type, KNOB 1 / 2 and OCT+ / OCT- edit (ui_name.c); SAVE does nothing, PLAY only stops */
+static void in_name(uint32_t pressed, uint32_t notes, uint32_t oct)
+{
+    if (ui.save_t0)                                 /* SAVE does nothing */
+        ui.save_t0 |= 2u;
+    if (((pressed >> panel.btn[B_PLAY]) & 1u) && (song.playing || seq_counting()))
+        transport_req = 2;                          /* PLAY stops a transport started meanwhile (MIDI Start, the
+                                                     * editor) so the name can be saved; it never starts one */
+    ui.pg_down = 0;
+    name_input(notes, oct);
+}
+/* a dialog's OCT+: what it asked for (kind: ui.confirm before it closed) */
+static void confirm_do(uint32_t kind)
+{
+    if (kind == CF_OVR_PROJ) {                  /* overwrite: the NAME screen writes it */
+        name_open(NK_PROJ_SAVE, ui.confirm_trk % MU_SHOWN);
+    } else if (kind == CF_HOLD_PSLOT) {         /* SAVE held on PATTERNS: straight into the slot, its name kept */
+        char tag[4], pn[13];
+        pat_label(ui.confirm_trk % PS_SLOTS, tag, pn);
+        if (ui.confirm_trk % PS_SLOTS >= PS_USER0 && !ps_changed(ui.confirm_trk % PS_SLOTS))
+            pn[0] = 0;                          /* (an empty USER slot has no name to keep) */
+        pslot_save_ui(ui.confirm_trk % PS_SLOTS, pn);
+    } else if (kind == CF_HOLD_MULTI) {         /* SAVE held on MULTIS: straight into the slot, its name kept */
+        char pn[13];
+        project_name(ui.confirm_trk % MU_SHOWN, pn);
+        project_save_as(ui.confirm_trk % MU_SHOWN, pn);
+    } else if (kind == CF_RESTORE_ALL) {
+        patch_restore_all_do();
+    } else if (kind == CF_LOAD_PAT) {
+        pat_load_ui(&trk[ui.confirm_trk % NTRK], pat_pick());
+    } else if (kind == CF_CLEAR_MOTION) {
+        track_t *t = &trk[ui.confirm_trk % NTRK];
+        load_begin(t, UNDO_PAT); motion_clear(t); load_end(t); ui_message("PARAMETER LOCKS CLEARED");
+    } else if (kind == CF_OVR_PSLOT) {
+        name_open(NK_PATTERN, ui.confirm_trk % PS_SLOTS);
+    } else if (kind == CF_SAVE_OVER) {
+        patch_save_do(ui.confirm_trk >= 2u);
+    } else if (kind == CF_INIT_SOUND) {
+        init_sound(); ui_message("SOUND INIT");
+    } else {
+        track_t *t = &trk[ui.confirm_trk % NTRK];
+        load_begin(t, UNDO_PAT);
+        track_defaults_steps(t);
+        load_end(t);
+        t->nheld = 0;                           /* and the latched arp chord */
+        t->arp_phys = 0;
+        if (kind != CF_CLEAR_TRK)
+            ui_message("PATTERN CLEARED");
+    }
+}
+/* a dialog is open: OCT+ does it, OCT- cancels, nothing else reacts; SAVE held picks the slot with K1, K2 RENAME */
+static void in_confirm(uint32_t oct)
+{
+    if (oct & 2u) {
+        uint32_t kind = ui.confirm;
+        ui.confirm = 0;
+        ui_redraw();
+        confirm_do(kind);
+    } else if (oct & 1u) {
+        ui.confirm = 0;
+        ui_redraw();
+    }
+    if (ui.confirm == CF_SAVE_OVER && ui.confirm_trk < 2u) {   /* SAVE held: K1 picks the slot the sound goes to (round the ends) */
+        int32_t st = panel_enc(EN_K1);
+        if (st) {
+            int32_t d = (ui_prefs & PREF_ACCEL) ? accel(EN_K1, st, (int32_t)UP_SLOTS) : st > 0 ? 1 : -1;
+            ui.svs = (uint8_t)((((int32_t)ui.svs + d) % (int32_t)UP_SLOTS + (int32_t)UP_SLOTS) % (int32_t)UP_SLOTS);
+            ui_redraw();
+        }
+        if (panel_enc(EN_K2)) {                     /* K2 RENAME - the NAME screen for the sound's name, back here after it */
+            name_open(NK_SAVE_NAME, ui.confirm_trk);
+            ui.confirm = 0;
+            kr_on[1] = 1;                           /* the rest of that twist is not typed into the name (kr_quiet in name_input) */
+            kr_t[1] = fm1_ms;
+        }
+    }
+    ui.pg_down = 0;
+    enc_drop();
+}
+/* the buttons pressed this pass (PLAY, the octaves; the page buttons act when let go: page_tap) */
+static void in_buttons(uint32_t pressed, uint32_t now, uint32_t lay)
+{
+    uint32_t id, b;
+    for (id = 0; id < 14u; id++) {
+        if (!((pressed >> id) & 1u))
+            continue;
+        b = panel_btn_of(id);
+        switch (b) {
+        case B_PLAY:
+            play_press(now);
+            break;
+        case B_SEQ:
+        case B_REC:                                     /* tap: above; held, its layer (ui_layer.c) */
+        case B_SAVE:
+        case B_GLO:                                     /* (QUICK GLO; a tap is layer_tap's) */
+        case B_EDIT:
+        case B_LFO:                                     /* (the QUICK EDIT layers; a tap is layer_tap's, as EDIT's) */
+        case B_ENV:
+        case B_ARP:
+        case B_HOME:
+            break;
+        case B_OCTDN:
+        case B_OCTUP: {
+            uint32_t both = (1u << panel.btn[B_OCTDN]) | (1u << panel.btn[B_OCTUP]);
+            if (layer_glo_oct(b))                       /* (GLO held: OCT- mutes part 1, OCT+ part 2; no octave, no pending tap) */
+                break;
+            if (act_cols() || layer_set_open() || ui.ml.on)   /* action pages: enter / back (below); SET layers: OCT-; */
+                break;                                  /* MIDI LEARN: clear / done (below) */
+            if ((fm1_in.buttons & both) == both) {      /* both together: the octave to 0 now, no tap after it */
+                song.octave = 0;
+                oct_show_t0 = fm1_ms ? fm1_ms : 1u;
+                ui_redraw();
+                oct_pend = 0;
+            } else {                                    /* one: the octave moves when it is let go (oct_rel), unless OCT- */
+                oct_press_t0 = oct_pend ? oct_press_t0 : (fm1_ms ? fm1_ms : 1u);
+                oct_pend |= (uint8_t)(b == B_OCTDN ? 1u : 2u);   /* was used as a modifier (knob_reset) */
+            }
+            break;
+        }
+        case B_FX:                                      /* FX: its page when let go; held 0.7 s, PERFORM (ui_perform.c perf_input); */
+            if (ui.perf || (ui.fx_t0 & 2u))             /* in PERFORM a tap goes back (perf_input), no FX page */
+                break;
+            /* fall through */
+        default:                                        /* page buttons (GLO): when let go */
+            if (!lay)                                   /* (with a layer held: swallowed) */
+                ui.pg_down |= (uint16_t)(1u << id);
+            break;
+        }
+    }
+    b = ui.pg_down & ~fm1_in.buttons;
+    ui.pg_down &= (uint16_t)~b;
+    for (id = 0; b; id++, b >>= 1)
+        if (b & 1u)
+            page_tap(panel_btn_of(id));
+}
+/* an OCT tap on the action pages (OCT+ does the picked action, OCT- drops it or goes HOME), MIDI LEARN, TIDE LIST */
+static void in_oct(uint32_t oct)
+{
+    if (act_cols() && (oct & 2u)) {                     /* action pages: OCT+ does the picked action, */
+        act_do();
+    } else if (act_cols() && (oct & 1u)) {              /* OCT- drops it, or (none picked) goes HOME */
+        if (cur_page()->graph != GR_PATS && cur_page()->graph != GR_SLOTS && ui.act)   /* (PATTERNS, MULTIS: LOAD is always picked: OCT- goes HOME) */
+            ui.act = 0;
+        else
+            go_main();
+    } else if (ui.ml.on && oct) {                          /* MIDI LEARN: OCT- clears the picked CC, OCT+ done */
+        ml_oct(oct);
+    } else if (oct && TIDE_LIST_ON()) {                    /* TIDE hook (TIDE LIST: the row's value one on / back) */
+        TIDE_LIST_OCT(oct);
+    }
+}
+/* PRESETS turned s detents: the load undo with OCT- held, PERFORM's sounds, else the next / previous sound */
+static void in_presets(int32_t s)
+{
+    oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (OCT- held + PRESETS: a modifier, no octave or tap on its release) */
+    if (pu_t && fm1_ms - pu_t >= KR_QUIET_MS)
+        pu_t = 0;
+    if (pu_t) {                                     /* after an undo: still turning, ignored until still */
+        pu_t = fm1_ms ? fm1_ms : 1u;
+    } else if (load_undo_gate()) {                  /* OCT- held: the load undo, once (ui.c undo_swap) */
+        pl_pend_on = 0;                             /* (a fast turn's waiting place does not load after it) */
+        if (!TIDE_TAKE_UNDO(s))                     /* TIDE hook: the newest edit a take or a roll: back (left) or forward (right) along them */
+            undo_swap();
+        oct_mod |= 1u;
+        pu_t = fm1_ms ? fm1_ms : 1u;
+    } else if (ui.perf) {                           /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */
+        perf_presets(s);
+    } else {
+        presets_turn(s);
+    }
+}
+/* SELECT turned: the sub-page (PERFORM: BALANCE) */
+static void in_select(int32_t s)
+{
+    if (ui.perf)                                    /* PERFORM: one page, nothing to select: SELECT is BALANCE (the two MIXER LEVELs, perf_balance) */
+        perf_balance(s);
+    else
+        page_select(s);
+    if (ui.msg_t && ui.msg[0] == 'H' && ui.msg[5] == '[')   /* the tap's "HOLD [..] QUICK" goes with the first SELECT step, so the page's own name shows (ui_layer.c says it) */
+        ui.msg_t = 0;
+}
+/* KNOB k turned s detents: OCT- held resets its card, OCT+ + K1 on MORPH rolls End B, else the page's edit */
+static void in_knob(uint32_t k, int32_t s)
+{
+    const page_t *pg = cur_page();
+    int16_t *hv;
+    if (kr_quiet(k))                                /* a reset's knob still turning: ignored until it has been still (no creeping) */
+        return;
+    oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (OCT- held + a knob, TIDE SETTINGS too: OCT- is a modifier) */
+    if (off_module(pg)) {                           /* its module is OFF: any knob jumps to MODULES */
+        off_knob(k, s);
+        return;
+    }
+    if ((oct_pend & 1u) && ((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u)) {
+        /* OCT- held + a knob: that card to its default (once; the turn is not applied). No reset for that knob / page (0): the turn is
+         * swallowed all the same: the value stays, and OCT- is a modifier, so its release moves no octave. 2: inapplicable */
+        knob_rec_begin(k);                          /* (record on: the reset value of a lockable parameter is recorded as its lock) */
+        knob_reset(k);
+        knob_rec_end();
+        oct_mod |= 1u;
+        kr_on[k] = 1;
+        kr_t[k] = fm1_ms;
+        ui.hot_col = (uint8_t)k;
+        ui.hot_t = 40;
+        return;
+    }
+    if (!k && pg->graph == GR_MORPH && (oct_pend & 2u) && ((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u)) {
+        /* the MORPH page: OCT+ held + a click of K1, either way: End B a new roll (once a twist; the fader stays), OCT+ a modifier (no octave on its release) */
+        morph_act(MQ_ROLL, morph_mask(song.sel), 1u, song.sel);
+        oct_mod |= 2u;
+        kr_on[k] = 1;
+        kr_t[k] = fm1_ms;
+        return;
+    }
+    if (k == 0u && pg->graph == GR_SLOTS) {         /* MULTIS knob 1 wraps (M27 EMPTY is one step from M01) */
+        mu_slot_turn(s);
+        ui.hot_col = 0u;
+        ui.hot_t = 40;
+        return;
+    }
+    if (k == 3u && pg->graph == GR_SLOTS) {         /* SAVE > MULTIS, knob 4: the next / previous genre's first multi (ui_draw.c mu_genre_jump) */
+        mu_genre_jump(s);
+        ui.hot_col = 3u;
+        ui.hot_t = 40;
+        return;
+    }
+    const scope_ops_t *op = scope_ops(pg->scope);
+    if ((op && ((op->hot >> k) & 1u) && !(pg->graph == GR_MORPHSET && k == 3u)) || page_desc(pg, k, &hv) ||
+        (k == 3u && duck_midi_page(pg)) ||
+        (pg->graph == GR_TEMPO && k == TEMPO_TAP_SLOT) ||
+        ((pg->graph == GR_MOD || pg->graph == GR_PATS) && k == 0u)
+        || fop_page(pg->graph)) {   /* (not an empty
+                                                                                                      * column) */
+        ui.hot_col = (uint8_t)k;
+        ui.hot_t = 40;
+    }
+    knob_rec_begin(k);                              /* (record on: a lockable parameter's turn records a lock, motion.c) */
+    edit_param(k, s);                               /* (song.sel's part only: the edit pages are single-part, part_select) */
+    knob_rec_end();
+}
+/* one pass of the panel: the polls, then the layers' combos, dialogs and NAME, the buttons, the encoders and knobs (in_*) */
+static void ui_input(void)
+{
+    uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), k;
+    uint32_t home, rec, save, rseq;
+    uint32_t oct;
+    uint32_t lay, combo = 0, lytap, lkeys, kq = 0;
+    int32_t s, ks[4] = {0, 0, 0, 0};
+#if DUELL_BENCH
+    if (bench_input(pressed, notes))                    /* (bench builds: the BENCH screen takes the frame, its keys and knobs; src/bench.c) */
+        return;
+#endif
+    in_sync();
     if (scr_input(pressed, notes))                      /* MENU > SCREEN OFF: dark, or the wake gesture: swallowed */
         return;                                         /* (before the buttons' timers: no tap or hold after it) */
     if (splash_on) {                                    /* the power-on splash: its key ends it, nothing else sees it */
@@ -2213,32 +2482,14 @@ static void ui_input(void)
             ui.menu = 1;                                /* (at the tab and row it was left at) */
             ui.confirm = 0;                             /* (a clear dialog is cancelled, NAME too) */
             name_close();
-            ui.force = 1;
+            ui_redraw();
             song.seq_mode = 0;
         }
     }
     if (rec == BT_TAP && !ui.menu && !ui.confirm && !name_on())   /* REC pressed in another layer (REC alone: */
         rec_tap(rseq);                                  /* its layer's tap); nothing in the menu, a dialog or NAME */
     if (ui.menu) {                                      /* SAVE / REC taps do nothing here (HOME: above) */
-        if (ui.save_t0)
-            ui.save_t0 |= 2u;
-        ui.pg_down = 0;
-        if (ui.confirm == CF_ERASE_ALL) {               /* MENU > SYSTEM > ERASE DATA's dialog, over the menu: OCT+ YES erases and */
-            if (oct & 2u) {                             /* restarts the unit as new; OCT- NO and any page button cancel, nothing erased */
-                int rc = erase_data_run();
-                ui.confirm = 0;
-                ui.force = 1;
-                ui_message(rc == 0 ? "ERASED, RESTARTING" : rc == 3 ? "STOP TO ERASE" : "ERASE FAILED");
-            } else if ((oct & 1u) || leave_pressed(pressed)) {
-                ui.confirm = 0;
-                ui.force = 1;
-                ui_message("NOTHING ERASED");
-            }
-            enc_drop();
-            return;
-        }
-        if (!ui.home_t0)
-            menu_input(oct);
+        in_menu(pressed, oct);
         return;
     }
     if ((ui.confirm || name_on()) && home == BT_TAP) {  /* HOME in a dialog / NAME: cancelled, nothing written, then HOME's page */
@@ -2247,13 +2498,7 @@ static void ui_input(void)
         home = BT_NONE;
     }
     if (name_on() && !ui.confirm) {                     /* NAME: the keys type, KNOB 1 / 2, OCT+ / OCT- (ui_name.c); */
-        if (ui.save_t0)                                 /* SAVE does nothing */
-            ui.save_t0 |= 2u;
-        if (((pressed >> panel.btn[B_PLAY]) & 1u) && (song.playing || seq_counting()))
-            transport_req = 2;                          /* PLAY stops a transport started meanwhile (MIDI Start, the
-                                                         * editor) so the name can be saved; it never starts one */
-        ui.pg_down = 0;
-        name_input(notes, oct);
+        in_name(pressed, notes, oct);
         return;
     }
     if (save == BT_HOLD && !ui.confirm)                 /* SAVE held: the patch saved over itself, after its dialog */
@@ -2261,65 +2506,7 @@ static void ui_input(void)
     else if (save == BT_TAP && !ui.confirm)             /* SAVE acts on release (a hold is SAVE OVER): the SAVE pages, */
         open_family(FAM_SAVE);                          /* from every page (it saves nothing by itself) */
     if (ui.confirm) {                                   /* OCT- cancels, OCT+ does it; nothing else reacts */
-        if (oct & 2u) {
-            uint32_t kind = ui.confirm;
-            ui.confirm = 0;
-            ui.force = 1;
-            if (kind == CF_OVR_PROJ) {                  /* overwrite: the NAME screen writes it */
-                name_open(NK_PROJ_SAVE, ui.confirm_trk % MU_SHOWN);
-            } else if (kind == CF_HOLD_PSLOT) {         /* SAVE held on PATTERNS: straight into the slot, its name kept */
-                char tag[4], pn[13];
-                pat_label(ui.confirm_trk % PS_SLOTS, tag, pn);
-                if (ui.confirm_trk % PS_SLOTS >= PS_USER0 && !ps_changed(ui.confirm_trk % PS_SLOTS))
-                    pn[0] = 0;                          /* (an empty USER slot has no name to keep) */
-                pslot_save_ui(ui.confirm_trk % PS_SLOTS, pn);
-            } else if (kind == CF_HOLD_MULTI) {         /* SAVE held on MULTIS: straight into the slot, its name kept */
-                char pn[13];
-                project_name(ui.confirm_trk % MU_SHOWN, pn);
-                project_save_as(ui.confirm_trk % MU_SHOWN, pn);
-            } else if (kind == CF_RESTORE_ALL) {
-                patch_restore_all_do();
-            } else if (kind == CF_LOAD_PAT) {
-                pat_load_ui(&trk[ui.confirm_trk % NTRK], pat_pick());
-            } else if (kind == CF_CLEAR_MOTION) {
-                track_t *t = &trk[ui.confirm_trk % NTRK];
-                load_begin(t, UNDO_PAT); motion_clear(t); load_end(t); ui_message("PARAMETER LOCKS CLEARED");
-            } else if (kind == CF_OVR_PSLOT) {
-                name_open(NK_PATTERN, ui.confirm_trk % PS_SLOTS);
-            } else if (kind == CF_SAVE_OVER) {
-                patch_save_do(ui.confirm_trk >= 2u);
-            } else if (kind == CF_INIT_SOUND) {
-                init_sound(); ui_message("SOUND INIT");
-            } else {
-                track_t *t = &trk[ui.confirm_trk % NTRK];
-                load_begin(t, UNDO_PAT);
-                track_defaults_steps(t);
-                load_end(t);
-                t->nheld = 0;                           /* and the latched arp chord */
-                t->arp_phys = 0;
-                if (kind != CF_CLEAR_TRK)
-                    ui_message("PATTERN CLEARED");
-            }
-        } else if (oct & 1u) {
-            ui.confirm = 0;
-            ui.force = 1;
-        }
-        if (ui.confirm == CF_SAVE_OVER && ui.confirm_trk < 2u) {   /* SAVE held: K1 picks the slot the sound goes to (round the ends) */
-            int32_t st = panel_enc(EN_K1);
-            if (st) {
-                int32_t d = (ui_prefs & PREF_ACCEL) ? accel(EN_K1, st, (int32_t)UP_SLOTS) : st > 0 ? 1 : -1;
-                ui.svs = (uint8_t)((((int32_t)ui.svs + d) % (int32_t)UP_SLOTS + (int32_t)UP_SLOTS) % (int32_t)UP_SLOTS);
-                ui.force = 1;
-            }
-            if (panel_enc(EN_K2)) {                     /* K2 RENAME - the NAME screen for the sound's name, back here after it */
-                name_open(NK_SAVE_NAME, ui.confirm_trk);
-                ui.confirm = 0;
-                kr_on[1] = 1;                           /* the rest of that twist is not typed into the name (kr_quiet in name_input) */
-                kr_t[1] = fm1_ms;
-            }
-        }
-        ui.pg_down = 0;
-        enc_drop();
+        in_confirm(oct);
         return;
     }
     if (lytap)                                          /* a layer's button acts on release (held: the layer; SEQ's */
@@ -2327,69 +2514,9 @@ static void ui_input(void)
     if (home == BT_TAP)                                 /* HOME acts on release: a hold opens the menu */
         home_tap();
     cursor_fix();                                       /* LEN may have changed (knob, editor, load) */
-    for (id = 0; id < 14u; id++) {
-        if (!((pressed >> id) & 1u))
-            continue;
-        b = panel_btn_of(id);
-        switch (b) {
-        case B_PLAY:
-            play_press(now);
-            break;
-        case B_SEQ:
-        case B_REC:                                     /* tap: above; held, its layer (ui_layer.c) */
-        case B_SAVE:
-        case B_GLO:                                     /* (QUICK GLO; a tap is layer_tap's) */
-        case B_EDIT:
-        case B_LFO:                                     /* (the QUICK EDIT layers; a tap is layer_tap's, as EDIT's) */
-        case B_ENV:
-        case B_ARP:
-        case B_HOME:
-            break;
-        case B_OCTDN:
-        case B_OCTUP: {
-            uint32_t both = (1u << panel.btn[B_OCTDN]) | (1u << panel.btn[B_OCTUP]);
-            if (layer_glo_oct(b))                       /* (GLO held: OCT- mutes part 1, OCT+ part 2; no octave, no pending tap) */
-                break;
-            if (act_cols() || layer_set_open() || ui.ml.on)   /* action pages: enter / back (below); SET layers: OCT-; */
-                break;                                  /* MIDI LEARN: clear / done (below) */
-            if ((fm1_in.buttons & both) == both) {      /* both together: the octave to 0 now, no tap after it */
-                song.octave = 0;
-                oct_show_t0 = fm1_ms ? fm1_ms : 1u;
-                ui.force = 1;
-                oct_pend = 0;
-            } else {                                    /* one: the octave moves when it is let go (oct_rel), unless OCT- */
-                oct_press_t0 = oct_pend ? oct_press_t0 : (fm1_ms ? fm1_ms : 1u);
-                oct_pend |= (uint8_t)(b == B_OCTDN ? 1u : 2u);   /* was used as a modifier (knob_reset) */
-            }
-            break;
-        }
-        case B_FX:                                      /* FX: its page when let go; held 0.7 s, PERFORM (ui_perform.c perf_input); */
-            if (ui.perf || (ui.fx_t0 & 2u))             /* in PERFORM a tap goes back (perf_input), no FX page */
-                break;
-            /* fall through */
-        default:                                        /* page buttons (GLO): when let go */
-            if (!lay)                                   /* (with a layer held: swallowed) */
-                ui.pg_down |= (uint16_t)(1u << id);
-            break;
-        }
-    }
-    b = ui.pg_down & ~fm1_in.buttons;
-    ui.pg_down &= (uint16_t)~b;
-    for (id = 0; b; id++, b >>= 1)
-        if (b & 1u)
-            page_tap(panel_btn_of(id));
-    if (act_cols() && (oct & 2u)) {                     /* action pages: OCT+ does the picked action, */
-        act_do();
-    } else if (act_cols() && (oct & 1u)) {              /* OCT- drops it, or (none picked) goes HOME */
-        if (cur_page()->graph != GR_PATS && cur_page()->graph != GR_SLOTS && ui.act)   /* (PATTERNS, MULTIS: LOAD is always picked: OCT- goes HOME) */
-            ui.act = 0;
-        else
-            go_main();
-    } else if (ui.ml.on && oct) {                          /* MIDI LEARN: OCT- clears the picked CC, OCT+ done */
-        ml_oct(oct);
-    } else if (oct && TIDE_LIST_ON()) {                    /* TIDE hook (TIDE LIST: the row's value one on / back) */
-        TIDE_LIST_OCT(oct);
-    }
+    in_buttons(pressed, now, lay);
+    if (oct)
+        in_oct(oct);
     song.grid = (uint8_t)keys_mode();                 /* (seq.c: NAME's keys are silent) */
     if (song.seq_mode && cur_page()->graph == GR_ROLL) {   /* STEP */
         if (live_rec_sel() || !((song.rec >> song.sel) & 1u))   /* armed and playing: the keys record live, not
@@ -2405,92 +2532,16 @@ static void ui_input(void)
      * and the page under it (HOME's sound, motion recorded), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
     if (!lay && (s = panel_enc(EN_PRESET)) != 0) {
-        oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (OCT- held + PRESETS: a modifier, no octave or tap on its release) */
-        if (pu_t && fm1_ms - pu_t >= KR_QUIET_MS)
-            pu_t = 0;
-        if (pu_t) {                                     /* after an undo: still turning, ignored until still */
-            pu_t = fm1_ms ? fm1_ms : 1u;
-        } else if (load_undo_gate()) {                  /* OCT- held: the load undo, once (ui.c undo_swap) */
-            pl_pend_on = 0;                             /* (a fast turn's waiting place does not load after it) */
-            if (!TIDE_TAKE_UNDO(s))                     /* TIDE hook: the newest edit a take or a roll: back (left) or forward (right) along them */
-                undo_swap();
-            oct_mod |= 1u;
-            pu_t = fm1_ms ? fm1_ms : 1u;
-        } else if (ui.perf) {                           /* PERFORM: the sound of the part(s) ALGORITHM chose (BOTH: each part its own step) */
-            perf_presets(s);
-        } else {
-            presets_turn(s);
-        }
+        in_presets(s);
     }
     if (!lay && (s = panel_enc(EN_ALGO)) != 0)        /* ALGORITHM: the part on every page; MORPH, PERFORM: PART 1 / BOTH / PART 2 */
         algo_input(s);
     if ((s = panel_enc(EN_SELECT)) != 0 && !lay) {      /* SELECT: the previous / next sub-page of the screen (SPEC 1.2); never the tempo */
-        if (ui.perf)                                    /* PERFORM: one page, nothing to select: SELECT is BALANCE (the two MIXER LEVELs, perf_balance) */
-            perf_balance(s);
-        else
-            page_select(s);
-        if (ui.msg_t && ui.msg[0] == 'H' && ui.msg[5] == '[')   /* the tap's "HOLD [..] QUICK" goes with the first SELECT step, so the page's own name shows (ui_layer.c says it) */
-            ui.msg_t = 0;
+        in_select(s);
     }
-    for (k = 0; k < 4u && !kq; k++) {
-        const page_t *pg = cur_page();
-        int16_t *hv;
-        if ((s = panel_enc(EN_K1 + k)) == 0)
-            continue;
-        if (kr_quiet(k))                                /* a reset's knob still turning: ignored until it has been still (no creeping) */
-            continue;
-        oct_mod |= (uint8_t)((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u);   /* (OCT- held + a knob, TIDE SETTINGS too: OCT- is a modifier) */
-        if (off_module(pg)) {                           /* its module is OFF: any knob jumps to MODULES */
-            off_knob(k, s);
-            continue;
-        }
-        if ((oct_pend & 1u) && ((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u)) {
-            /* OCT- held + a knob: that card to its default (once; the turn is not applied). No reset for that knob / page (0): the turn is
-             * swallowed all the same: the value stays, and OCT- is a modifier, so its release moves no octave. 2: inapplicable */
-            knob_rec_begin(k);                          /* (record on: the reset value of a lockable parameter is recorded as its lock) */
-            knob_reset(k);
-            knob_rec_end();
-            oct_mod |= 1u;
-            kr_on[k] = 1;
-            kr_t[k] = fm1_ms;
-            ui.hot_col = (uint8_t)k;
-            ui.hot_t = 40;
-            continue;
-        }
-        if (!k && pg->graph == GR_MORPH && (oct_pend & 2u) && ((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u) && !((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u)) {
-            /* the MORPH page: OCT+ held + a click of K1, either way: End B a new roll (once a twist; the fader stays), OCT+ a modifier (no octave on its release) */
-            morph_act(MQ_ROLL, morph_mask(song.sel), 1u, song.sel);
-            oct_mod |= 2u;
-            kr_on[k] = 1;
-            kr_t[k] = fm1_ms;
-            continue;
-        }
-        if (k == 0u && pg->graph == GR_SLOTS) {         /* MULTIS knob 1 wraps (M27 EMPTY is one step from M01) */
-            mu_slot_turn(s);
-            ui.hot_col = 0u;
-            ui.hot_t = 40;
-            continue;
-        }
-        if (k == 3u && pg->graph == GR_SLOTS) {         /* SAVE > MULTIS, knob 4: the next / previous genre's first multi (ui_draw.c mu_genre_jump) */
-            mu_genre_jump(s);
-            ui.hot_col = 3u;
-            ui.hot_t = 40;
-            continue;
-        }
-        const scope_ops_t *op = scope_ops(pg->scope);
-        if ((op && ((op->hot >> k) & 1u) && !(pg->graph == GR_MORPHSET && k == 3u)) || page_desc(pg, k, &hv) ||
-            (k == 3u && duck_midi_page(pg)) ||
-            (pg->graph == GR_TEMPO && k == TEMPO_TAP_SLOT) ||
-            ((pg->graph == GR_MOD || pg->graph == GR_PATS) && k == 0u)
-            || fop_page(pg->graph)) {   /* (not an empty
-                                                                                                          * column) */
-            ui.hot_col = (uint8_t)k;
-            ui.hot_t = 40;
-        }
-        knob_rec_begin(k);                              /* (record on: a lockable parameter's turn records a lock, motion.c) */
-        edit_param(k, s);                               /* (song.sel's part only: the edit pages are single-part, part_select) */
-        knob_rec_end();
-    }
+    for (k = 0; k < 4u && !kq; k++)
+        if ((s = panel_enc(EN_K1 + k)) != 0)
+            in_knob(k, s);
     ui_notices();
 }
 
@@ -2574,12 +2625,12 @@ static void panel_setup(void)
     }
     panel.magic = PANEL_MAGIC;
     lcd_fill(0, 0, 240, 240, T_BG);
-    ui.force = 1;
+    ui_redraw();
     return;
 timeout:
     panel = old;
     lcd_fill(0, 0, 240, 240, T_BG);
-    ui.force = 1;
+    ui_redraw();
     ui_message("SETUP CANCELLED");
 }
 #include "tide_ui.c"           /* TIDE hook: TIDE's UI side */

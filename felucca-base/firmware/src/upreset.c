@@ -1339,7 +1339,7 @@ static int up_load(uint32_t k)
         morph_ldv = 0;
     }
     sync_reload = 1;
-    ui.force = 1;
+    ui_redraw();
     return 0;
 }
 
@@ -1549,7 +1549,7 @@ static void sl_reload_parts(uint32_t mask)       /* bit i: part i played a slot 
     }
     song.sel = (uint8_t)was;
     sync_reload = 1;
-    ui.force = 1;
+    ui_redraw();
 }
 /* RESTORE: slot k's record removed, its factory sound is back (the parts that played the record play the factory sound). 0 ok (also: it was
  * the factory sound already), 1 bad slot, 2 flash error / transport, 3 no flash (kept in RAM) */
@@ -1715,7 +1715,7 @@ static void patch_save_do(uint32_t both)
     else
         ui_say("SAVED ", l);
     up_gen++;
-    ui.force = 1;
+    ui_redraw();
 }
 
 /* ---- RESTORE (SAVE > TOOLS: RESTORE ALL; patch_restore_do is called by the host tests) ---- */
@@ -1733,7 +1733,7 @@ static void patch_restore_do(uint32_t k)
     up_slot_label(l, k);
     sl_load(k);
     ui_say("RESTORED ", l);
-    ui.force = 1;
+    ui_redraw();
 }
 static void patch_restore_all_do(void)
 {
@@ -1746,7 +1746,7 @@ static void patch_restore_all_do(void)
         ui_message("RESTORE ERROR");
     else if (!transport_busy())
         ui_message("RESTORE ERROR");
-    ui.force = 1;
+    ui_redraw();
 }
 
 /* SAVE > USER-style actions with the message in the top bar (the NAME screen's ops, ui_name.c): 0 load, 1 restore, 2 save, 3 rename */
@@ -1775,7 +1775,7 @@ static void up_ui_named(uint32_t op, uint32_t k, const char *name, uint32_t cat)
         ui_message(op == 1u ? "RESTORE ERROR" : TIDE_SAVE_ERROR(rc));
     else
         ui_say(op == 1u ? "RESTORED " : op == 3u ? "RENAMED " : "SAVED ", l);
-    ui.force = 1;
+    ui_redraw();
 }
 static void up_ui(uint32_t op, uint32_t k) { up_ui_named(op, k, 0, 0); }
 #endif

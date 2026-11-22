@@ -66,7 +66,7 @@ static void perf_enter(void)
     ui.perf_seen = 0;
     perf_fading = 0;                                    /* (back in PERFORM while a fade runs: it stops where it is; the cards show the live values) */
     perf_nw_said = 0;
-    ui.force = 1;
+    ui_redraw();
 }
 /* a tap of FX (or FX held again): back to the page PERFORM was shown over */
 static void perf_leave(void)
@@ -181,7 +181,7 @@ static void perf_presets(int32_t s)
     song.sel = (uint8_t)was;
     preset_step(s);
     sync_reload = 1;
-    ui.force = 1;
+    ui_redraw();
 }
 /* -------------------------------------------------------------- the page --- */
 static void perf_signed(char *v, int32_t x)              /* "+40", "-40", "0" */
