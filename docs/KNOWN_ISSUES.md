@@ -1,6 +1,6 @@
-# Known issues: TIDE 1.2.0-b1
+# Known issues: TIDE 1.2.0-b2
 
-What is still open on the beta 1.2.0-b1. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists the design limits. Report anything else on this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose).
+What is still open on the beta 1.2.0-b2. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) lists the design limits. Report anything else on this fork's [issues](https://github.com/pssdrnk-cmyk/DUELL-TIDE/issues/new/choose).
 
 Fixed in earlier builds: see [CHANGELOG-TIDE](../CHANGELOG-TIDE.md) (every beta's fixes) and [the builds page](BUILDS.md) (which build is which).
 
