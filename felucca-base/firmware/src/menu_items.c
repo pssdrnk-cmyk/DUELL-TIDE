@@ -8,7 +8,7 @@
  * and ABOUT, the rows with no value (menu_valued).
  * MENU holds no MIDI setting: MIDI IN (OWN CH / SELECTED, the project's G_ROUTE) and LEARN CLEAR are on GLO's MIDI pages (MIDI,
  * SIDECHAIN, MIDI LEARN); there is no MIDI tab. HOME OPENS is the page the HOME
- * button, power-on and leaving the menu open (CONTROL tab).
+ * button and leaving the menu open (CONTROL tab).
  * TUNE is not a setting: it edits the project's G_TUNE, the value the project holds and saves (no format change;
  * a project load brings its own); nothing of its is in the settings record (MI_PROJECT: menu_get / menu_put read and write song.g) */
 /* Row names: ANIMATION, BUTTON HOLD, MULTI LOAD (KEEPS MODE / SETS MODE), STEP KEYS (REPLACE / ADD), BUTTON MAP; SCALE LEDS is in DISPLAY.
@@ -186,9 +186,9 @@ static const char *const SCROFF_N[5] = {"NEVER", "5 MIN", "15 MIN", "30 MIN", "6
 static const char *const ANIM_N[3] = {"ON", "OFF", "IDLE"};
 static const uint8_t ANIM_ORD[3] = {1, 0, 2};          /* (a value's place in the menu's order, and back: its own inverse) */
 /* (the settings byte [15][26], once OVERVIEW, is kept as stored) */
-/* HOME OPENS (DUELL): the page the HOME button opens from another page, power-on and leaving the menu (ui.c go_main): MORPH (the
- * default, stored 0), MODE; ui_home_pg (ui.c), an unknown stored code reads as MORPH (OVERVIEW's 3 too) */
-static const char *const HOMEPG_N[HP_COUNT] = {TIDE_HOME_NAME, TIDE_HOME_MODE_NAME};   /* TIDE hooks */   /* (a stored MIXER reads MORPH) */
+/* HOME OPENS (DUELL): the page the HOME button opens from another page and leaving the menu (ui.c go_main): LAST (the
+ * default, stored 0: the HOME page shown last), MODE, MORPH (stored 2, the old MIXER's code); ui_home_pg (ui.c), an unknown stored code reads as LAST (OVERVIEW's 3 too) */
+static const char *const HOMEPG_N[HP_COUNT] = {"LAST", TIDE_HOME_MODE_NAME, TIDE_HOME_NAME};   /* TIDE hooks */
 
 /* MENU > USB SERIAL. The serial console is a developer tool (README: FELUCCA_CDC): only developer builds (DUELL_BENCH / DUELL_TEST_MODE) have it, and the row. The product never has it: usb_serial_apply is empty there, and the saved PREF_SERIAL_OFF bit is read by nobody. OFF is the default (a new unit,
  * ERASE DATA, and once on a unit saved with default ON: settings_persist.c settings_defaults). ON presents it,
@@ -255,7 +255,7 @@ static uint32_t menu_get(uint32_t row)
     case MI_HOLD: return settings_hold % 4u;
     case MI_SCROFF: return scr_get();
     case MI_ANIM: return ui_prefs & PREF_ANIM_OFF ? 1u : (ui_idle & 1u) ? 2u : 0u;
-    case MI_HOMEPG: return ui_home_pg < HP_COUNT ? ui_home_pg : HP_MORPH;
+    case MI_HOMEPG: return ui_home_pg < HP_COUNT ? ui_home_pg : HP_LAST;
     case MI_PERFLEAVE: return perf_keep();
     case MI_NOTESLEFT: return notes_show_on();         /* 1 = ON (the stored bit is OFF: set = OFF, clear = ON, the default) */
     case MI_USBAUDIO: return usb_audio_get();          /* 1 = ON (tag + bit; anything else OFF, the default) */
@@ -331,7 +331,7 @@ static void menu_put(uint32_t row, uint32_t v)
         ui_prefs = (uint8_t)(v == 1u ? ui_prefs | PREF_ANIM_OFF : ui_prefs & ~PREF_ANIM_OFF);
         ui_idle = (uint8_t)(v == 2u ? ui_idle | 1u : ui_idle & ~1u);
         break;
-    case MI_HOMEPG: ui_home_pg = (uint8_t)(v < HP_COUNT ? v : HP_MORPH); break;   /* (read where HOME opens: go_main) */
+    case MI_HOMEPG: ui_home_pg = (uint8_t)(v < HP_COUNT ? v : HP_LAST); break;   /* (read where HOME opens: go_main) */
     case MI_LEDS: settings_leds = LEDS_MENU[v]; break;
 #if DUELL_VELO
     case MI_KEYVEL:                                    /* (v 0 OFF, 1..5 a type; ON = the bit set; sense.c takes it at once, ui_input.c again every frame) */

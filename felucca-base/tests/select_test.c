@@ -832,20 +832,27 @@ static void sweep_readonly(void)
     ui.menu = 0; frames(8);
 }
 
-/* DUELL 0.1: MENU > CONTROL > HOME OPENS: the page HOME opens from another page, at power-on and when the menu closes.
- * 0.2.14: MORPH, MODE, MIXER (OVERVIEW is gone with its page; a stored 3, OVERVIEW up to 0.2.13, reads as MORPH) */
+/* DUELL 0.1: MENU > CONTROL > HOME OPENS: the page HOME opens from another page and when the menu closes.
+ * 0.2.14: MORPH, MODE, MIXER (OVERVIEW is gone with its page). B16 (owner 2026-11-22): LAST, the default (stored 0), the HOME page
+ * shown last (MORPH at power-on); MODE (1); MORPH (2, the old MIXER's code, which read as MORPH before too); a stored 3 (OVERVIEW
+ * up to 0.2.13) or any unknown code reads as LAST */
+static void tap(uint32_t b) { frames(500); press(b); frames(48); }   /* (apart: never a double tap, which locks a layer) */
 static void sweep_homepg(void)
 {
-    static const char *const T[3] = {"MORPH", "TIDE SETTINGS", "MIXER"};
+    static const char *const T[HP_COUNT] = {"", "TIDE SETTINGS", "MORPH"};
     uint32_t v, ok;
-    expect("HOME OPENS: two values, MORPH SETTINGS (0.2.25 layout round: the MIXER is GLO's)", HP_COUNT == 2 && menu_n(MI_HOMEPG) == 2u && str_eq(menu_vname(MI_HOMEPG, 1), TIDE_HOME_MODE_NAME));
-    for (v = 0; v < HP_COUNT; v++) {
+    expect("HOME OPENS: three values, LAST SETTINGS MORPH (B16: LAST first, the default)", HP_COUNT == 3 && menu_n(MI_HOMEPG) == 3u &&
+           str_eq(menu_vname(MI_HOMEPG, HP_LAST), "LAST") && str_eq(menu_vname(MI_HOMEPG, HP_MODE), TIDE_HOME_MODE_NAME) && str_eq(menu_vname(MI_HOMEPG, HP_MORPH), TIDE_HOME_NAME));
+    ui_power_on();
+    expect("  a new unit, every older setting (the byte 0): LAST", menu_get(MI_HOMEPG) == HP_LAST);
+    for (v = HP_MODE; v < HP_COUNT; v++) {
         ui_power_on();
         menu_put(MI_HOMEPG, v);
         go_main(); frames(32);
         ok = str_eq(cur_page()->title, T[v]);
+        tap(B_HOME);                                      /* (on HOME's round: the next page; from another page the fixed one again) */
         go_title("AMP ENV"); frames(16);
-        press(B_HOME); frames(32);
+        tap(B_HOME);
         ok &= str_eq(cur_page()->title, T[v]);
         hold(B_HOME); frames(16);                         /* the menu, then HOME closes it: the same page */
         press(B_HOME); frames(32);
@@ -853,15 +860,128 @@ static void sweep_homepg(void)
         if (v == HP_MODE) { jl_sel = JL_STYLE; go_main(); frames(8); ok &= jl_sel == JL_MODE; }
         expect(T[v], ok);
     }
+    {   /* LAST: the HOME page shown last, from another page and leaving the menu; MORPH at power-on; TIDE SETTINGS keeps its row */
+        static const char *const R[3] = {"MORPH", "AUTO TIDE", "TIDE SETTINGS"};
+        uint32_t k;
+        ok = 1;
+        for (k = 0; k < 3u; k++) {
+            uint32_t n, o = 1;
+            ui_power_on();
+            menu_put(MI_HOMEPG, HP_LAST);
+            memset(ui.fam_last, 0, sizeof ui.fam_last);   /* (power-on: the RAM is clear, main.c go_main) */
+            go_main(); frames(32);
+            o &= str_eq(cur_page()->title, "MORPH");
+            for (n = 0; n < k; n++)
+                tap(B_HOME);                              /* HOME on HOME: the next page */
+            o &= str_eq(cur_page()->title, R[k]);
+            jl_sel = JL_ARC;
+            tap(B_SAVE);
+            tap(B_HOME);
+            o &= str_eq(cur_page()->title, R[k]);
+            tap(B_ENV);
+            hold(B_HOME); frames(16);                     /* the menu over ENV's page, then HOME closes it */
+            press(B_HOME); frames(32);
+            o &= !ui.menu && str_eq(cur_page()->title, R[k]) && jl_sel == JL_ARC;
+            tap(B_HOME);                                  /* a tap on HOME's page still turns it */
+            o &= str_eq(cur_page()->title, R[(k + 1u) % 3u]);
+            if (!o) { printf("  LAST: HOME %u/3 not kept\n", k + 1u); ok = 0; }
+        }
+        expect("LAST: HOME and leaving the menu open the HOME page shown last (1/3, 2/3, 3/3; TIDE SETTINGS on its row), power-on MORPH, a tap on HOME's page the next", ok);
+    }
     ui_power_on();
-    ui_home_pg = 3;                                       /* OVERVIEW stored by 0.2.13: MORPH, never the old page */
-    go_main(); frames(16);
-    ok = str_eq(cur_page()->title, "MORPH") && menu_get(MI_HOMEPG) == 0u && ui_home_pg == 3u;
+    ui_home_pg = 3;                                       /* OVERVIEW stored by 0.2.13: LAST, never the old page */
+    tap(B_HOME);                                          /* (AUTO TIDE) */
     go_title("AMP ENV"); frames(16);
-    press(B_HOME); frames(16);
-    expect("HOME OPENS stored OVERVIEW (0.2.13): MORPH, the byte kept as stored", ok && str_eq(cur_page()->title, "MORPH"));
+    tap(B_HOME);
+    ok = str_eq(cur_page()->title, "AUTO TIDE") && menu_get(MI_HOMEPG) == HP_LAST && ui_home_pg == 3u;
+    expect("HOME OPENS stored OVERVIEW (0.2.13): LAST, the byte kept as stored", ok);
     ui_home_pg = 77;
-    expect("  an unknown stored code reads as MORPH", menu_get(MI_HOMEPG) == 0u);
+    expect("  an unknown stored code reads as LAST", menu_get(MI_HOMEPG) == HP_LAST);
+    ui_home_pg = 2;
+    go_main(); frames(16);
+    expect("  a stored 2 (the old MIXER, read as MORPH since 0.2.25) is MORPH", str_eq(cur_page()->title, "MORPH") && menu_get(MI_HOMEPG) == HP_MORPH);
+    ui_power_on();
+}
+
+/* B16 (owner 2026-11-22): a page button opens its family's page shown last, SAVE too: "on HOME 2/3, open SAVE > MULTIS, pick a multi,
+ * go back to HOME: HOME 2/3; SAVE again: MULTIS with that multi under the cursor". SAVE from a SEQ page opens PATTERNS, the first SAVE
+ * after power-on the page the output MODE fits (LAYER MULTIS, SPLIT and STEREO PATCHES) */
+static void sweep_page_memory(void)
+{
+    static const uint8_t BTN[] = {B_ENV, B_LFO, B_FX, B_SCL, B_EDIT, B_GLO, B_SAVE, B_ARP, B_SEQ};
+    uint32_t ok, b, i, slot, pp, seen = 0;
+    ui_power_on();                                        /* the owner's example: LAYER, HOME 1/3 -> 2/3, SAVE > MULTIS, a multi, HOME, SAVE */
+    duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
+    tap(B_HOME);
+    ok = str_eq(cur_page()->title, "AUTO TIDE");
+    tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "MULTIS");            /* (the first SAVE after power-on: LAYER's pick) */
+    slot = (uint32_t)song.g[G_SLOT];
+    turn(EN_K1, 3); frames(48);
+    ok &= (uint32_t)song.g[G_SLOT] == slot + 3u;
+    slot = (uint32_t)song.g[G_SLOT];
+    tap(B_HOME);
+    ok &= str_eq(cur_page()->title, "AUTO TIDE");
+    tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "MULTIS") && (uint32_t)song.g[G_SLOT] == slot;
+    expect("the owner's example: HOME 2/3, SAVE > MULTIS, a multi picked, HOME: 2/3 again; SAVE: MULTIS, that multi under the cursor", ok);
+    ui_power_on();                                        /* SPLIT: the first SAVE PATCHES; SELECT to TOOLS; HOME; SAVE: TOOLS */
+    tap(B_SAVE);
+    ok = str_eq(cur_page()->title, "PATCHES");
+    for (i = 0; i < 4u && ok && !str_eq(cur_page()->title, "TOOLS"); i++) { turn(EN_SELECT, 1); frames(48); ok &= cur_page()->fam == FAM_SAVE; }
+    tap(B_HOME); tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "TOOLS");
+    duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
+    tap(B_HOME); tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "TOOLS");             /* (a MODE change after it: still the page shown last) */
+    expect("SAVE: the first after power-on fits the MODE (SPLIT: PATCHES), then the page shown last (TOOLS), whatever the MODE", ok);
+    ui_power_on();                                        /* SAVE from SEQ: PATTERNS, its pick kept; from HOME then PATTERNS (shown last) */
+    duell_mode_force(DM_LAYER); ui_mode_set = ui.mode_seen = DM_LAYER;
+    tap(B_SAVE);
+    ok = str_eq(cur_page()->title, "MULTIS");
+    tap(B_SEQ);
+    ok &= cur_page()->fam == FAM_SEQ;
+    tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "PATTERNS");
+    pp = ui.ppick;
+    turn(EN_K1, 2); frames(48);
+    ok &= ui.ppick != pp;
+    pp = ui.ppick;
+    tap(B_SEQ); tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "PATTERNS") && ui.ppick == pp;
+    tap(B_HOME); tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "PATTERNS") && ui.ppick == pp;
+    turn(EN_SELECT, 1); frames(48);                       /* (PATTERNS -> MULTIS) */
+    ok &= str_eq(cur_page()->title, "MULTIS");
+    tap(B_SEQ); tap(B_SAVE);
+    ok &= str_eq(cur_page()->title, "PATTERNS");
+    expect("SAVE from a SEQ page: PATTERNS, whatever was shown last; its pattern pick kept", ok);
+    ok = 1;                                               /* every family: its page shown last, from HOME and from another family */
+    for (b = 0; b < sizeof BTN; b++)
+        for (i = 0; i < NPAGES; i++) {
+            uint32_t n;
+            if (!page_visible(i) || FAM_BTN[PAGES[i].fam] != BTN[b] || i == page_first(PAGES[i].fam))
+                continue;
+            ui_power_on();
+            tap(BTN[b]);
+            for (n = 0; ui.page != i && n < 12u; n++) { turn(EN_SELECT, 1); frames(48); }
+            if (ui.page != i)
+                continue;                                 /* (a page SELECT does not reach on this track) */
+            seen++;
+            tap(B_HOME); tap(BTN[b]);
+            n = ui.page == i;
+            tap(BTN[b] == B_ENV ? B_LFO : B_ENV); tap(BTN[b]);
+            n &= ui.page == i;
+            if (!n) { printf("  family memory: %s not kept\n", PAGES[i].title); ok = 0; }
+        }
+    printf("page memory: %u pages, each a family's not-first page\n", seen);
+    expect("every page button: its family's page shown last, from HOME and from another family", ok && seen >= 10u);
+    ui_power_on();                                        /* PERFORM over another page, then HOME: PERFORM ends, the HOME page shown last */
+    tap(B_HOME);
+    tap(B_ENV);
+    ui.perf = 1; frames(48);
+    tap(B_HOME);
+    expect("PERFORM on another page, then HOME: PERFORM off, HOME 2/3 (LAST)", !ui.perf && str_eq(cur_page()->title, "AUTO TIDE"));
     ui_power_on();
 }
 
@@ -1734,6 +1854,7 @@ int main(void)
     setvbuf(stdout, NULL, _IONBF, 0);
     test_keys_both();
     sweep_homepg();
+    sweep_page_memory();
     sweep_readonly();
     sweep_pages();
     sweep_buttons();

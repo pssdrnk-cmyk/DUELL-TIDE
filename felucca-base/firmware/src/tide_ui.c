@@ -1155,8 +1155,36 @@ static void tide_water(int whole)
 }
 /* TIDE SETTINGS: the settings as the list pages' rows (PATCHES, template 9: UT_L5_*), from row UT_L5_Y0, 20 apart: the name (M) at the left,
  * the value (M, the part's colour; a switch for ON / OFF) at the right, the picked row filled in the part's colour with dark text.
- * Knob 1 picks the row (knob 1's line names it), OCT+ the next value, OCT- the one before */
-#define JL_VIS 6u                                        /* rows shown: the list scrolls to keep the picked one in view */
+ * Knob 1 picks the row (knob 1's line names it), OCT+ the next value, OCT- the one before. Under the rows, as SAVE > MULTIS
+ * makes room under its four, what the picked row does to the music (B16, owner 2026-11-22): two lines at most (M, the GUIDE's
+ * sentences: ui_guide.c guide_wrap; tests/ui_render.c checks each fits), one text per row in JL_* order */
+#define JL_VIS 4u                                        /* rows shown: the list scrolls to keep the picked one in view */
+#define JL_HELP_Y (UT_L5_Y0 + UT_L5_PITCH * (int32_t)JL_VIS + 4)   /* the help's first line (cell top; 17 apart: UT_T6_G_LINE + 1) */
+#define JL_HELP_W 212                                    /* .. wrapped to (UT_L5_TAG_X .. 226: clear of the scroll mark) */
+#if DUELL_MEASURE                                        /* (a measuring build has no room for the texts: the rows only) */
+#define jl_help(r) ""
+#else
+static const char JL_HELP[] =
+    "The tide's character. One pick sets its mode, pace and arc.\0"
+    "EVOLVE reshapes your sound. TRAVEL visits similar sounds.\0"
+    "What the tide changes: the sound, the pattern, or both.\0"
+    "A long build: rise, peak, breakdown. DROP adds a sudden cut.\0"
+    "Which sound controls knobs 2 to 4 play on the MORPH page.\0"
+    "How far a new End B strays from your sound. Low: close, high: far.\0"
+    "ADD keeps the old notes and adds yours. REPLACE swaps them out.\0"
+    "What the other part plays back after you record a take.\0"
+    "OTHER: the other part answers your take. OFF: no answer.\0"
+    "LAYER: both on the keys. STEREO: one mix. DUEL: 1 left, 2 right.\0"
+    "Blends the parts by how hard you play. LAYER only.\0"
+    "Splits the keys: part 1 below the point, part 2 from it.";
+static const char *jl_help(uint32_t r)                   /* row r's text */
+{
+    const char *s = JL_HELP;
+    for (r %= JL_N; r; r--)
+        s += str_len(s) + 1u;
+    return s;
+}
+#endif
 static void graph_tidelist(void)
 {
     uint32_t r, top = jl_sel % JL_N >= JL_VIS ? jl_sel % JL_N - (JL_VIS - 1u) : 0u;
@@ -1185,8 +1213,14 @@ static void graph_tidelist(void)
         cv_oy = 0;
         cv_blit(0, (uint32_t)y0);
     }
-    {   /* how a value changes: the keycaps under the list, S, the hints' colour (the list's own strip: the canvas holds 124 rows) */
-        int32_t hy = UT_L5_Y0 + UT_L5_PITCH * (int32_t)JL_VIS + 4, x;
+    cv_begin(240, 2 * (UT_T6_G_LINE + 1) + 4, T_BG);       /* the picked row's help (+4: the second line's descenders; the keycaps start at row 174) */
+    cv_bg = T_BG;
+    cv_oy = -JL_HELP_Y;
+    guide_wrap(UT_L5_TAG_X, JL_HELP_Y, JL_HELP_W, &AF_M, jl_help(jl_sel), T_TEXT, UT_T6_G_LINE + 1);
+    cv_oy = 0;
+    cv_blit(0, (uint32_t)JL_HELP_Y);
+    {   /* how a value changes: the keycaps under the help, S, the hints' colour (their own strip: the canvas holds 124 rows) */
+        int32_t hy = UT_L5_Y0 + UT_L5_PITCH * 6 + 4, x;
         cv_begin(240, 20, T_BG);
         cv_bg = T_BG;
         cv_oy = -hy;

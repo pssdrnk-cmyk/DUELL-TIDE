@@ -10,7 +10,7 @@ Values marked *start* are suggestions for dub and house techno backgrounds, not 
 
 Every sound has two ends, **A** (your sound) and **B** (a variation of it), and a fader between them. TIDE moves that fader by itself, bar by bar, while the music plays, and also moves the pattern the same way. Over minutes the part evolves; nothing needs your hands. You can touch it whenever you like.
 
-HOME's round, one tap of **HOME** each: **MORPH → AUTO TIDE → TIDE SETTINGS** (HOME opens MORPH). **ALGORITHM** picks PART 1, both parts or PART 2 on all of them.
+HOME's round, one tap of **HOME** each: **MORPH → AUTO TIDE → TIDE SETTINGS** (a tap of **HOME** from another page brings back the HOME page you were last on; after power-on that is MORPH). **ALGORITHM** picks PART 1, both parts or PART 2 on all of them.
 
 **Header and footer.** Each HOME page is titled by its name (MORPH, TIDE SETTINGS, AUTO TIDE). A part's capsule shows its number and its letter, `1 A`, with no voices count. The tempo is on the footer's first line, `117 BPM`, right-aligned above the page number and the battery; the second line holds part 2's name, whole.
 
@@ -67,6 +67,7 @@ These are the sound's own settings: they record into the pattern with REC armed,
   - the older ones fainter behind it;
   - at rest the lines lie flat.
 - ALGORITHM picks whose: PART 1, PART 2, or both (the middle: one above the other).
+- A tap of **SAVE** opens the SAVE page you used last (PATCHES, PATTERNS, MULTIS or TOOLS), with its list where you left it.
 - **Hold SAVE** saves the patch; with both parts selected each part goes over its own slot.
 
 ## 2. AUTO TIDE (the page you live on)
@@ -123,7 +124,8 @@ Twelve rows: STYLE, MODE, TARGET, ARC, KNOBS and AMOUNT for the tide, then REC, 
 - On AMOUNT, PLAY MODE, XFADE and SPLIT a knob moves by the clicks you turn.
 - OCT+ and OCT- step AMOUNT by 5 %, XFADE by 10 % and SPLIT by an octave.
 - Out of SPLIT OFF the first **OCT+** lands on MIDDLE, the next on the middle key's note.
-- Six rows show at a time; a mark at the right edge shows where they are in the list.
+- Four rows show at a time; a mark at the right edge shows where they are in the list.
+- Under the rows, one or two lines say in plain words what the picked row does to the music.
 - A value that does nothing in the present setup is dim, and knob 1's line says why.
 - Saved over a power cycle (about 2 s after the change while stopped).
 - Changes made during a running set are written at its next STOP, so switching the unit off mid-set loses them.
@@ -254,6 +256,7 @@ DUEL (part 1 left, part 2 right, effects separate), STEREO, LAYER. This is stock
 - SPLIT (**OFF**, **MIDDLE**, then a note) acts in ALGORITHM's middle in any PLAY MODE. With one part selected XFADE and SPLIT say **2 PARTS ONLY**.
 - PLAY MODE is what ALGORITHM's middle plays (section 1).
 - They are not part of STYLE (changing them does not turn it into **CUSTOM**). They are kept as before (settings and multis).
+- **MENU > CONTROL > HOME OPENS** = **LAST** (the default) opens the HOME page you were last on (MORPH after power-on); **MORPH** always opens MORPH.
 - **MENU > CONTROL > HOME OPENS = SETTINGS** opens TIDE SETTINGS with the PLAY MODE row picked.
 - **MULTI LOAD KEEPS PLAY MODE** (or **SETS PLAY MODE**) says whether a multi load changes these three rows.
 - The MODE row near the top of TIDE SETTINGS and the AUTO TIDE page's K2 (**EVOLVE**, **TRAVEL**) are the tide's mode, a different setting.

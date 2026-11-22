@@ -38,7 +38,7 @@ Turn **SELECT** (or press **OCT+** / **OCT-**) to go through it; on the two ques
   - A sound brings its own loudness (its **PATCH LEVEL**, saved with the patch, on EDIT > VOICE 2/2 knob 4).
   - Your volume on the mixer (the **LEVEL** cards of the GLO MIXER page, and MIDI CC7) is yours: loading a sound never changes it, and a multi remembers it.
   - The part plays at the patch level and the level together.
-- **HOME** opens the MORPH page; each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, AUTO TIDE, TIDE SETTINGS). Hold HOME for the menu (ABOUT shows the version and credits).
+- **HOME** opens the HOME page you were last on (MORPH after power-on; MENU > CONTROL > HOME OPENS can fix it to MORPH or SETTINGS); each tap goes on to the next page of HOME's round (MORPH, MORPH SET, MODE; with TIDE MORPH, AUTO TIDE, TIDE SETTINGS). Hold HOME for the menu (ABOUT shows the version and credits).
 - **MIXER** (GLO's first page since the 0.2.25 layout round):
   - Both parts are side by side, part 1 left and part 2 right, with the level meters between them.
   - Knob 1 is LEVEL 1, knob 2 LEVEL 2, knob 3 PAN 1, knob 4 PAN 2 (in DUEL the pans are fixed and not shown).
@@ -100,7 +100,7 @@ It works in STEREO and LAYER, and in DUEL its card is not shown.
    - Whatever was in that slot is replaced.
    - With TIDE, if TRAVEL has moved the part to another sound, the dialog adds "SAVES THE LOADED SOUND / KEEP FIRST = AS HEARD": SAVE stores the sound as loaded, so do KEEP first to save what you hear (TIDE guide, KEEP).
    - Knob 4 **RESTORE** takes your sound out of the slot again and the factory sound comes back.
-   **Tip:** a short press of SAVE opens the page that fits where you are: PATTERNS when you are on a sequencer page (STEP, PARAMETER LOCKS), otherwise MULTIS in LAYER and PATCHES in DUEL and STEREO. SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Hold SAVE on PATTERNS or MULTIS saves over the slot you picked ("SAVE OVER <name>?", OCT+ yes); an empty multi slot asks for a name first.
+   **Tip:** a short press of SAVE opens the SAVE page you used last, with its list where you left it. From a sequencer page (STEP, PARAMETER LOCKS) it opens PATTERNS; the first press after power-on opens MULTIS in LAYER and PATCHES in DUEL and STEREO. SELECT moves between PATCHES, PATTERNS, MULTIS and TOOLS. Hold SAVE on PATTERNS or MULTIS saves over the slot you picked ("SAVE OVER <name>?", OCT+ yes); an empty multi slot asks for a name first.
 
 ## Saving things
 - **PATCHES**: one list of 175 slots. With TIDE four of them (U1 to U4, after #124) are USER slots, shown as USER EMPTY until you save into them; the four factory sounds they stand in for (#125 to #128) and 43 more (#129 to #171, the last eight are drones: [PATCH_NUMBERS](PATCH_NUMBERS.md)) follow them. Since `1.0.0-b12` every slot loads and saves (up to 150 of your own versions at once: 126 among #1 to #128 and 24 among #125 to #171), and any can be marked FAV.
