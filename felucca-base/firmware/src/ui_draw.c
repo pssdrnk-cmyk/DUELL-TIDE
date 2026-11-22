@@ -2582,453 +2582,477 @@ static void morph_row(void)
         }
     cv_blit(0, MROW_Y);
 }
-static void draw_columns(void)
+/* PARAMETER LOCKS (ui_events.c): ROW STEP PARAM VALUE */
+static void cols_events(void)
 {
-    uint32_t c, nvis;
+    char val[PV_LEN];
+    const char *unit;
+    const track_t *t = TSEL;
+    uint16_t rw[EV_ROWS];
+    uint32_t n, c = ev_cur(rw, &n), r = ev_row(n), k = c >> 8, step, id;
+    int16_t v;
+    char nm[32];
+    const param_desc_t *d;
+    if (k == EVK_TOP) {                            /* PLAY: the counts, PLAY ON / OFF (OCT+: CLEAR) */
+        draw_column(0, "ROW", "ALL", "", VAL(0u), -1, ICON_AUTO);
+        fmt_int(val, (int32_t)(motion_count(t) - motion_lock_count(t)));
+        draw_column(1, "EVENT", val, "", T_MID, -1, ICON_NONE);
+        fmt_int(val, (int32_t)motion_lock_count(t));   /* parameter locks (SEQ > STEP: a step held, a knob) */
+        draw_column(2, "LOCK", val, "", T_MID, -1, ICON_NONE);
+        if (mods_off & MODS_SEQ)                   /* (GLO > MODULES SEQ OFF: no automation plays; the switch is kept, the card is not shown) */
+            draw_column_hide(3);
+        else {
+            if (CARD_SEG_ON) {                     /* (TEMPLATE 9: a switch, the segment line: OFF the left half, ON the right) */
+                cell_seg_n = 2;
+                cell_seg_i = (uint8_t)(motion_enabled(t) != 0);
+            }
+            draw_column(3, "PLAY", motion_enabled(t) ? "ON" : "OFF", "", VAL(3u), -1, motion_icon());
+            cell_seg_n = cell_seg_i = 0;
+        }
+        return;
+    }
+    if (k == EVK_QNT) {                            /* QUANTIZE (1.2): the steps with a NUDGE, QNTZ ON / OFF */
+        draw_column(0, "ROW", "ALL", "", VAL(0u), -1, ICON_AUTO);
+        fmt_int(val, (int32_t)ev_nudged(t));
+        draw_column(1, "NUDGED", val, "", T_MID, -1, ICON_NONE);
+        draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);
+        draw_column(3, "QNTZ", t->p[P_SQNT] ? "ON" : "OFF", "", VAL(3u), -1, ICON_QUANTIZE);
+        return;
+    }
+    if (k == EVK_ADD) {
+        ev_fix();
+        str_cpy(val, "ADD", sizeof val);
+    } else {                                       /* "3/7": the rows between QUANTIZE and + ADD */
+        fmt_int(val, (int32_t)r - 1);
+        str_cpy(val + str_len(val), "/", 4);
+        fmt_int(val + str_len(val), (int32_t)n - 3);
+    }
+    step = ev_step_of(c);
+    id = k == EVK_REC ? MOTION_TID(&motion.event[c & 0xFFu]) : k == EVK_ADD ? ui.ev_id :
+         k == EVK_CHANCE ? EV_CHANCE : k == EVK_RATCH ? EV_RATCH : k == EVK_VEL ? EV_VEL : EV_NUDGE;
+    draw_column(0, "ROW", val, "", VAL(0u), -1, ICON_AUTO);
+    fmt_int(val, (int32_t)step + 1);
+    draw_column(1, "STEP", val, "", k != EVK_ADD || step < (uint32_t)t->p[P_SLEN] ? VAL(1u) : T_DIM, -1, ICON_AUTO);
+    if (!ev_id_ok(t, id)) {
+        draw_column(2, "PARAM", "--", "", T_DIM, -1, ICON_AUTO);
+        draw_column(3, "VALUE", "--", "", T_DIM, -1, ICON_AUTO);
+        return;
+    }
+    ev_dest_name(t, id, nm, 1);                    /* (1.1: the matrix's DEST card name, the same list and the same names as the MATRIX page; the card cuts what does not fit, nothing is shortened) */
+    draw_column(2, "PARAM", nm, "", k == EVK_REC || k == EVK_ADD ? VAL(2u) : T_MID, -1, ICON_AUTO);
+    if (id == EV_NUDGE) {                          /* a step's NUDGE (1.2): "+3 /16", DIM where it does not play */
+        const step_t *cs = &t->step[step % NSTEP];
+        int32_t sv = k == EVK_ADD ? ev_sadd(EVK_NUDGE) : step_nudge(cs);
+        ev_nudge_fmt(val, sv);
+        draw_column(3, "VALUE", val, "/16", k != EVK_ADD && ev_nudge_plays(t, cs) ? VAL(3u) : T_DIM, (sv + 8) * 66,
+                    ICON_AUTO);
+        return;
+    }
+    if (id == EV_VEL) {                            /* a step's VEL (1.5): 1..127, DIM where it does not play; */
+        const step_t *cs = &t->step[step % NSTEP];  /* + ADD: the rows shown or not */
+        int32_t sv = ev_sval(cs, EVK_VEL);
+        if (k == EVK_ADD) {
+            draw_column(3, "ROWS", ui.ev_vel ? "SHOWN" : "HIDDEN", "", T_DIM, -1, ICON_AUTO);
+            return;
+        }
+        fmt_int(val, sv);
+        draw_column(3, "VALUE", val, "", ev_vel_plays(cs) ? VAL(3u) : T_DIM, sv * 1000 / 127, ICON_LEVEL);
+        return;
+    }
+    if (id == EV_CHANCE || id == EV_RATCH) {       /* a step's CHANCE (the die) / RATCH; + ADD: what it adds */
+        const step_t *cs = &t->step[step % NSTEP];
+        uint32_t sk = ev_skind(id), sv = (uint32_t)(k == EVK_ADD ? ev_sadd(sk) : ev_sval(cs, sk));
+        int plays = sk == EVK_CHANCE || (cs->time == ST_NOTE && cs->n);   /* (RATCH does nothing on a
+                                                                                        * REST, a TIE, empty: DIM) */
+        if (sk == EVK_CHANCE) {
+            fmt_int(val, (int32_t)sv);
+        } else {
+            val[0] = 'x';                          /* x1 .. x4 */
+            val[1] = (char)('0' + sv);
+            val[2] = 0;
+        }
+        draw_column(3, "VALUE", val, sk == EVK_CHANCE ? "%" : "", k != EVK_ADD && plays ? VAL(3u) : T_DIM,
+                    sk == EVK_CHANCE ? (int32_t)sv * 10 : ((int32_t)sv - 1) * 333, sk == EVK_CHANCE ? ICON_PROB : ICON_X_REPEAT);
+        return;
+    }
+    v = k == EVK_REC ? motion.event[c & 0xFFu].value : motion_base_value(t, id);
+    d = lock_desc(t, id);
+    param_format(d, v, val, &unit);
+    draw_column(3, k == EVK_ADD ? "VALUE" : (motion.event[c & 0xFFu].param & MOTION_LOCK) ? "LOCK" : "AUTO", val, unit,
+                k != EVK_ADD ? VAL(3u) : T_DIM, RATIO(d, enum_rank(d, v)), param_icon(d, v));
+}
+/* PERFORM (ui_perform.c): MORPH SPACE FILTER DEPTH */
+static void cols_perf(void)
+{
+    if (AREA_ON) {                                 /* TEMPLATE 9 (PERFORM_NEW_LAYOUT_V4): what SELECT does here, after MORPH's value on knob 1's line */
+        k1_after_next = "SELECT = BALANCE";
+        k1_after_col = ux_mix(T_BASE_P1, T_TEXT, UT_GREY_PCT);
+        k1_after_r = 0;
+    }
+    perf_cards();
+    k1_after_next = 0;
+}
+/* MORPH (fader, ROLL, -, AMOUNT), MORPH SET (SMART ARP PITCH; TARGET is ALGORITHM's BOTH) */
+static void cols_morph(const page_t *pg)
+{
+    char val[PV_LEN];
+    uint32_t pi = song.sel, f = morph_fader_of(pi);
+    if (pg->graph == GR_MORPHSET) {
+        draw_column(0, "SMART", morph.cfg & MC_WILD ? "WILD" : "ON", "", VAL(0u), -1, ICON_NONE);
+        draw_column(1, "ARP", morph.cfg & MC_ARP ? "ON" : "OFF", "", VAL(1u), -1, ICON_NONE);
+        draw_column(2, "PITCH", morph.cfg & MC_PIT ? "ON" : "OFF", "", VAL(2u), -1, ICON_NONE);
+        draw_column(3, "", "", "", T_THEME, -1, ICON_NONE);   /* (an empty column: KNOB 4 does nothing here) */
+        return;
+    }
+    if (f == 0u || f == 127u)                      /* the fader: its ends by their letters, between them 1..126 */
+        str_cpy(val, f ? "B" : "A", sizeof val);
+    else
+        fmt_int(val, (int32_t)f);
+    const char *why = h1_echo_why();
+    k1_rail = AREA_ON ? (song.both ? 3u : (uint8_t)(1u << pi)) : 0u;   /* the fader(s) as the A-B rail */
+    k1_rail_to = AREA_ON && tide_moves(pi) ? tide_rail_to() : 0u;
+    static char trip[40];                          /* (static: k1_after_next keeps the pointer past this block; a stack array would be gone by the time the line is drawn) */
+    if (AREA_ON && tide_moves(pi) && !(ui.hot_t && ui.hot_col)) {   /* I4: AUTO TIDE moves this part: what it does, at the line's right end (a knob 2..4 just turned keeps its own words) */
+        tide_trip_short(trip);
+        k1_after_next = trip;
+        k1_after_col = T_ACCENT;
+        k1_after_r = 1;
+    } else
+    if (AREA_ON && why) {                            /* ECHO dim, why (at the line's right end; with BOTH the rail shows both parts' faders, no other value here) */
+        k1_after_next = why;
+        k1_after_col = T_MID;
+        k1_after_r = 1;
+    } else if (AREA_ON && k1_home_hint()) {          /* away from the Original: how to get back */
+        k1_after_next = K1_HOME_HINT;
+        k1_after_col = T_DIM;
+        k1_after_r = 1;
+    } else if (AREA_ON) {                            /* the play position (PART 1, LAYER, STEREO, DUEL, PART 2) */
+        k1_after_next = PLS_NAME[play_pos()];
+        k1_after_col = T_MID;
+        k1_after_r = 1;
+    }
+    draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (a plain card, its label, value and bar as every K1 card) */
+    k1_after_next = 0;
+    k1_rail = 0;
+    morph_row();                                   /* (FILTER, RESONANCE, ECHO on one compact row, the waves take the rest) */
+}
+#if DUELL_TEST_MODE
+/* MENU > SYSTEM > TEST: MORPH and ROLL as the MORPH page's, LOAD MULTI, RESET */
+static void cols_test(void)
+{
+    char val[PV_LEN];
+    uint32_t pi = song.sel, f = morph_fader_of(pi), mk = test_slot();
+    int32_t g;
+    if (f == 0u || f == 127u)
+        str_cpy(val, f ? "B" : "A", sizeof val);
+    else
+        fmt_int(val, (int32_t)f);
+    draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);
+    g = morph_pending(0);
+    draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
+    if (mk < MU_SHOWN)
+        mu_label(val, mk);
+    else
+        str_cpy(val, "--", sizeof val);
+    draw_column(2, "LOAD", val, "", mk < MU_SHOWN ? VAL(2u) : T_DIM, -1, ICON_AUTO);
+    draw_column(3, "RESET", "--", "", VAL(3u), -1, ICON_AUTO);
+}
+#endif
+/* GLO's MODULES (PROPOSAL_MODULES_PAGE.png): TEMPLATE 8, a 2 x 2 of choice cells ARP, SEQ, SENDS, PART FX with the segment line; ARP and SEQ OFF / ON / KEEPS RUNNING (mods_run_get), SENDS and PART FX OFF / ON */
+static void cols_mods(void)
+{
+    uint32_t c;
+    static const char *const L[4] = {"ARP", "SEQ", "SENDS", "PART FX"};
+    for (c = 0; c < 4u; c++) {
+        uint32_t rv = c < 2u ? mods_run_get(c) : ((mods_off >> c) & 1u) ? 0u : 1u;
+        cell_seg_n = c < 2u ? 3u : 2u;
+        cell_seg_i = (uint8_t)rv;
+        draw_column(c, L[c], rv == 0u ? "OFF" : rv == 1u ? "ON" : "KEEPS RUNNING", "", VAL(c), -1, ICON_AUTO);
+        cell_seg_n = cell_seg_i = 0;
+    }
+}
+/* GLO's MIDI pages: MIDI (P1 CH, P2 CH, MIDI IN; CLK is on TEMPO), SIDECHAIN (SC SRC, SC NOTE), MIDI LEARN (LEARN, CLEAR) */
+static void cols_midi(const page_t *pg)
+{
+    uint32_t c;
+    uint8_t vis[4];
+    char val[PV_LEN];
+    const char *unit;
+    if (pg->graph == GR_MLEARN) {
+        char n[10] = "NONE";
+        draw_column(0, "LEARN", ui.ml.on ? "ON" : "OFF", "", ui.ml.on ? T_ACCENT : VAL(0u), -1, ICON_MIDI);
+        if (ml_count()) {                          /* CLEAR: right clears every learned CC; the card says how many there are */
+            fmt_int(n, (int32_t)ml_count());
+            str_cpy(n + str_len(n), " CC", 4);
+        }
+        draw_column(1, "CLEAR", n, "", ml_count() ? VAL(1u) : T_DIM, -1, ICON_MIDI);
+        for (c = 2; c < 4u; c++)
+            draw_column(c, "", "", "", T_THEME, -1, ICON_NONE);
+        return;
+    }
+    if (pg->graph == GR_SCHAIN) {          /* the sidechain's MIDI setup, a device setting: K1 P1 CH, K2 P1 NOTE, K3 P2 CH, K4 P2 NOTE (shown whatever the DUCK SRC is) */
+        static const char *const SL[4] = {"PART 1\nCHANNEL", "PART 1\nNOTE", "PART 2\nCHANNEL", "PART 2\nNOTE"};   /* (PART 1 / PART 2, not P1 CH; two lines: CHANNEL does not fit) */
+        for (c = 0; c < 4u; c++) {
+            uint32_t n = sc_midi[c];
+            if (mods_off & MODS_PFX) {             /* (GLO > MODULES PART FX OFF: the DUCK is skipped; the footer says it in full) */
+                draw_column_hide(c);
+                continue;
+            }
+            if (c & 1u) {
+                param_format(&SC_NOTE_D, (int16_t)n, val, &unit);
+            } else {
+                fmt_int(val, (int32_t)n + 1);
+                unit = "";
+            }
+            if (!(c & 1u)) {                       /* (DUELL 1.1: the duck source under the part's channel) */
+                static char ds[24];
+                str_cpy(ds, "DUCK SOURCE: ", sizeof ds);
+                str_cpy(ds + str_len(ds), val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[c >> 1].p[P_DKSRC], 0, 3)]), (uint32_t)sizeof ds - str_len(ds));
+                for (n = 13; ds[n]; n++)
+                    if (ds[n] == '\n')                   /* (the value in its own capitals, as the card shows it; no lower-casing) */
+                        ds[n] = ' ';
+                grid_d = ds;
+                n = sc_midi[c];
+            }
+            draw_column(c, SL[c], val, unit, VAL(c), (int32_t)n * 1000 / ((c & 1u) ? 127 : 15), ICON_MIDI);
+        }
+        return;
+    }
+    {
+        uint32_t sel = song.g[G_ROUTE] == 1, k, n = midi_cards(vis), mm = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
+        static const char *const WH[3][2] = {{"DUEL: LEFT OUTPUT", "DUEL: RIGHT OUTPUT"}, {"STEREO OUTPUT", "STEREO OUTPUT"}, {"LAYER: PLAYS BOTH PARTS", "LAYER: NOT HEARD"}};
+        grid_wide = 1;
+        for (c = 0; c < 4u; c++) {                 /* the parts' channels (not shown when SELECTED listens on one channel; part 2 in LAYER), MIDI IN; moved left */
+            k = c < n ? vis[c] : 0xFFu;
+            if (k < 2u) {
+                fmt_int(val, (int32_t)midi_ch_get(k) + 1);
+                grid_d = WH[mm][k];
+                draw_column(c, k ? "PART 2\nCHANNEL" : "PART 1\nCHANNEL", val, "", VAL(c), (int32_t)midi_ch_get(k) * 1000 / 15, ICON_MIDI);   /* (never faded) */
+            } else if (k == 2u) {
+                grid_d = sel ? "ANY CHANNEL PLAYS THE SELECTED PART" : mm == DM_LAYER ? "LAYER: PART 1 CHANNEL COUNTS" : "EACH PART ON ITS OWN CHANNEL";
+                draw_column(c, "MIDI IN", sel ? "ANY\nCHANNEL" : "PART\nCHANNEL", "", VAL(c), -1, ICON_MIDI);
+            } else if (n < 3u) {
+                draw_column_hide(c);
+            } else {
+                draw_column(c, "", "", "", T_THEME, -1, ICON_NONE);   /* (CLK moved to TEMPO) */
+            }
+        }
+    }
+}
+/* GLOBAL (core.h): K1 SCALE, K2 ROOT, K3 OFF-SCALE SNAP / PLAY, K4 none */
+static void cols_scale(void)
+{
+    char val[PV_LEN];
+    const char *unit;
+    const param_desc_t *ds = &SCALE_D, *dr = &ROOT_D;
+    int16_t sv = (int16_t)clamp(scale_g, 0, ds->max), rv = (int16_t)clamp(root_g, 0, dr->max);
+    param_format(ds, sv, val, &unit);
+    if ((page_over || ui.layer) && text_w(&AF_S, val) > room_scale_card) {   /* QUICK SCALE: a name too wide for the card is whole in the list under it; the card says which one, "3/16" */
+        fmt_int(val, sv + 1);
+        str_cpy(val + str_len(val), "/", 8u);
+        fmt_int(val + str_len(val), (int32_t)ds->max + 1);
+    }
+    draw_column(0, "SCALE", val, unit, VAL(0u), RATIO(ds, enum_rank(ds, sv)), param_icon(ds, sv));
+    param_format(dr, rv, val, &unit);
+    if (CARD_SEG_ON && dr->fmt == F_ENUM && dr->max > dr->min) {   /* (TEMPLATE 9: ROOT is a CHOICE of the twelve notes: the segment line) */
+        cell_seg_n = (uint8_t)(dr->max - dr->min + 1);
+        cell_seg_i = (uint8_t)clamp(enum_rank(dr, rv) - dr->min, 0, dr->max - dr->min);
+    }
+    draw_column(1, "ROOT", val, unit, VAL(1u), RATIO(dr, enum_rank(dr, rv)), param_icon(dr, rv));
+    cell_seg_n = cell_seg_i = 0;
+    if (!sv)                                       /* CHROMATIC: every note is in the scale, nothing to snap: no card */
+        draw_column_hide(2);
+    else {
+        if (CARD_SEG_ON) {                         /* (TEMPLATE 9: OFF-SCALE is a CHOICE: the segment line) */
+            cell_seg_n = OS_N;
+            cell_seg_i = (uint8_t)(offscale_g % OS_N);
+        }
+        draw_column(2, "OFF-\nSCALE", N_OFFSCALE[offscale_g % OS_N], "", VAL(2u), -1, ICON_AUTO);   /* (OFF-SCALE in two lines, at its hyphen; TEMPLATE 9: one line where it fits, as the picture) */
+        cell_seg_n = cell_seg_i = 0;
+    }
+    draw_column(3, "", "", "", T_THEME, -1, ICON_NONE);
+}
+/* PATCHES (change list A.9, PATCHES_MULTIS_NEW_LAYOUT_V3): K1 PATCH (the slot's number), K2 TYPE, K3 SAVE (the save window), K4 FAV */
+static void cols_browse(void)
+{
+    uint32_t total, cur = pl_cursor(&total), k = pl_cursor_slot();
+    char sl[6];
+    up_slot_label(sl, k < UP_VSLOTS ? k : 0u);
+    draw_column(0, "PATCH", k < UP_VSLOTS ? sl : "--", "", VAL(0u), cur < total && total > 1u ? (int32_t)(cur * 1000u / (total - 1u)) : -1, ICON_NONE);
+    if (CARD_SEG_ON) {                             /* (TEMPLATE 9: TYPE is a CHOICE of the list's kinds: the segment line) */
+        cell_seg_n = (uint8_t)LIST_N;
+        cell_seg_i = (uint8_t)list_mode();
+    }
+    draw_column(1, "TYPE", list_name(list_mode()), "", VAL(1u), -1, ICON_X_FOLDER);
+    cell_seg_n = cell_seg_i = 0;
+    draw_column(2, "SAVE", "TURN >", "", T_THEME, -1, ICON_AUTO);   /* (K3 turned right opens the save window; OCT+ here is the octave, so no OCT+ pill) */
+    if (k < UP_VSLOTS) {
+        if (CARD_SEG_ON) {                         /* (TEMPLATE 9: a switch: OFF the left half, ON the right) */
+            cell_seg_n = 2;
+            cell_seg_i = (uint8_t)(list_fav(k) != 0);
+        }
+        draw_column(3, "FAV", list_fav(k) ? "ON" : "OFF", "", VAL(3u), -1, ICON_X_STAR);   /* (the picture's head label) */
+        cell_seg_n = cell_seg_i = 0;
+    } else
+        draw_column_hide(3);
+}
+/* SLOT, then LOAD SAVE (GO buttons) */
+static void cols_pats(void)
+{
+    uint32_t n = pat_count(), k = pat_pick();
+    char tag[4], nm[13];
+    pat_label(k, tag, nm);
+    {                                              /* U3: the pattern the selected part plays from a slot, on knob 1's line, when the list does not show its star (the picked one is the list's) */
+        static char cur_txt[16];
+        uint32_t pl = pat_last[song.sel % NTRK], wf = list_first(k, n);
+        if (pl && (pl - 1u < wf || pl - 1u >= wf + LR_ROWS)) {
+            char t2[4], n2[13];
+            pat_label(pl - 1u, t2, n2);
+            str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
+            str_cpy(cur_txt + 7, t2, sizeof cur_txt - 7);
+            k1_after_next = cur_txt;
+            k1_after_col = T_ACCENT;
+            k1_after_r = 1;
+        }
+    }
+    draw_column(0, "SLOT", tag, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(n > 1u ? n - 1u : 1u), ICON_X_PATTERN);
+    draw_act_column(1, "LOAD", T_THEME, ICON_AUTO);
+    draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (SAVE is knob 3) */
+    draw_column_hide(3);
+}
+/* MULTI: SLOT M01..M16, then LOAD SAVE (GO buttons) */
+static void cols_slots(void)
+{
+    char val[PV_LEN];
+    uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
+    int used = project_used(k);
+    mu_label(val, k);
+    {                                              /* U3: the multi loaded now, on knob 1's line, when the list does not show its star (the picked one is the list's) */
+        static char cur_txt[16];
+        uint32_t wf = list_first(k, MU_SHOWN), cs = project_cur_slot();
+        if (cs >= MU_SHOWN || cs < wf || cs >= wf + LR_ROWS) {
+            if (cs < MU_SHOWN) {
+                str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
+                mu_label(cur_txt + 7, cs);
+            } else
+                str_cpy(cur_txt, "NOTHING LOADED", sizeof cur_txt);
+            k1_after_next = cur_txt;
+            k1_after_col = T_ACCENT;
+            k1_after_r = 1;
+        } else {                                   /* the multi's genre and its place in it ("DUB 2/3"; knob 4 jumps genre: mu_genre_jump) */
+            uint32_t f, n, g = mu_group(k, &f, &n);
+            str_cpy(cur_txt, g < 6u ? KN_TAG[g] : g == 6u ? "OTHER" : "EMPTY", sizeof cur_txt);
+            str_cpy(cur_txt + str_len(cur_txt), " ", 2);
+            fmt_int(cur_txt + str_len(cur_txt), (int32_t)(k - f + 1u));
+            str_cpy(cur_txt + str_len(cur_txt), "/", 2);
+            fmt_int(cur_txt + str_len(cur_txt), (int32_t)n);
+            k1_after_next = cur_txt;
+            k1_after_col = T_MID;
+            k1_after_r = 1;
+        }
+    }
+    draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SHOWN - 1u), ICON_AUTO);
+    draw_act_column(1, "LOAD", used ? T_THEME : T_DIM, ICON_AUTO);
+    draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (SAVE is knob 3) */
+    draw_column_hide(3);
+}
+/* FM6: OP, then three of its bytes (ui_fm6op.c) */
+static void cols_fop(void)
+{
+    uint32_t c;
+    char val[PV_LEN];
+    for (c = 0; c < 4u; c++) {
+        const char *lb, *u;
+        int32_t r;
+        uint32_t ic;
+        int on;
+        if (!fop_ok()) {                             /* (the engine changed before ui_draw left the page) */
+            draw_column(c, "", "", "", T_THEME, -1, ICON_NONE);
+            continue;
+        }
+        on = fop_card(c, &lb, val, &u, &r, &ic);
+        draw_column(c, label_shown(lb), val, u, on ? VAL(c) : T_DIM, r, ic);   /* (COARSE, STAGE, DETUNE) */
+    }
+}
+/* SLOT, then that slot's SRC DST AMT */
+static void cols_mod(const page_t *pg)
+{
+    char val[PV_LEN];
+    const char *unit;
+    const track_t *t = TSEL;
+    uint32_t base = mod_page_base(pg), id = MSLOT_ID(base + mod_ui_slot);   /* (MOD: 1..4, MOD 2: 5..8) */
+    int32_t s = morph_view(song.sel, id), d = morph_view(song.sel, id + 1u), a = morph_view(song.sel, id + 2u);
+    uint8_t mks = s != t->p[id], mkd = d != t->p[id + 1u], mka = a != t->p[id + 2u];   /* (MORPH: the route the fader has,
+                                                                                        * the dominant end's; marks) */
+    fmt_int(val, (int32_t)(base + mod_ui_slot) + 1);
+    draw_column(0, "SLOT", val, "/8", VAL(0u), (int32_t)(base + mod_ui_slot) * 1000 / (NMSLOT - 1u),
+                mod_src_icon(MS_OFF));   /* (the mod icon) */
+    card_mk_next = mks;
+    draw_column(1, "SOURCE", msrc_shown(s), "", s ? VAL(1u) : T_DIM, -1, mod_src_icon(s));
+    card_mk_next = mkd;
+    /* (a destination this part cannot move now: the DEST card is the selector that changes it, so it stays; the panel's DEST line says it in
+     * words. The one card that is not hidden for an inapplicable state: hiding it would lock the slot) */
+    draw_column(2, "DEST", mod_dst_name(t, d), "", d && !mod_dst_why(t, d) ? VAL(2u) : T_DIM, -1, mod_dst_icon(t, d));
+    param_format(&TP[id + 2u], a, val, &unit);
+    card_mk_next = mka;
+    draw_column(3, "AMOUNT", val, unit, a ? VAL(3u) : T_DIM, RATIO(&TP[id + 2u], a), mod_src_icon(MS_OFF));
+}
+static void cols_step(void)
+{
+    char val[PV_LEN];
+    static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
+    const step_t *st = &seq_steps(TSEL)[ui.cursor];
+    char u[8];
+    uint32_t cnt = st->n, first = st->note[0];
+    if (cnt) {
+        note_name(val, first);
+        u[0] = 0;
+        if (cnt > 1) {
+            str_cpy(u, "+", 8);
+            fmt_int(u + 1, (int32_t)cnt - 1);
+        }
+    } else {
+        str_cpy(val, "--", 12);
+        u[0] = 0;
+    }
+    {
+        static const char *const FLAG_N[4] = {"-", "ACCENT", "SLIDE", "ACCENT\nSLIDE"};
+        char sn[8], sl[8];
+        fmt_int(sn, (int32_t)ui.cursor + 1);
+        str_cpy(sl, "/", 8);
+        fmt_int(sl + 1, TSEL->p[P_SLEN]);
+        draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
+        draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : T_DIM, -1, ICON_AUTO);
+        if (step_on(st)) {                            /* a note: its LEN (1.5, KNOB 3: the TIEs after it) */
+            fmt_int(sn, (int32_t)note_len(TSEL, ui.cursor));
+            draw_column(2, "LENGTH", sn, "", VAL(2u), -1, icon_for_label("LEN"));   /* (LENGTH; the icon of LEN) */
+        } else {
+            if (CARD_SEG_ON) {                        /* (TEMPLATE 9: TIME is a CHOICE of three: the segment line) */
+                cell_seg_n = 3;
+                cell_seg_i = (uint8_t)(st->time % 3u);
+            }
+            draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
+            cell_seg_n = cell_seg_i = 0;
+        }
+        if (CARD_SEG_ON) {                            /* (TEMPLATE 9: FLAG is a CHOICE of four, -, ACCENT, SLIDE, ACCENT SLIDE: the segment line, as the picture) */
+            cell_seg_n = 4;
+            cell_seg_i = (uint8_t)((st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u));
+        }
+        draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], "",
+                    VAL(3u), -1, ICON_AUTO);
+        cell_seg_n = cell_seg_i = 0;
+    }
+}
+/* every other page: its cards K1..K4 (page_cards), the columns after them empty */
+static void cols_cards(const page_t *pg)
+{
+    uint32_t c;
+    uint32_t nvis;
     uint8_t vis[4];
     char val[PV_LEN];
     const char *unit;
     int32_t twin_rt;
-    grid_wide = 0;
-    (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
-    if (off_module(cur_page()))                        /* its module is OFF in GLO > MODULES: no cards, only the notice (ui_graph.c graph_off) */
-        return;
-    if (cur_page()->graph == GR_EVENTS) {              /* PARAMETER LOCKS (ui_events.c): ROW STEP PARAM VALUE */
-        const track_t *t = TSEL;
-        uint16_t rw[EV_ROWS];
-        uint32_t n, c = ev_cur(rw, &n), r = ev_row(n), k = c >> 8, step, id;
-        int16_t v;
-        char nm[32];
-        const param_desc_t *d;
-        if (k == EVK_TOP) {                            /* PLAY: the counts, PLAY ON / OFF (OCT+: CLEAR) */
-            draw_column(0, "ROW", "ALL", "", VAL(0u), -1, ICON_AUTO);
-            fmt_int(val, (int32_t)(motion_count(t) - motion_lock_count(t)));
-            draw_column(1, "EVENT", val, "", T_MID, -1, ICON_NONE);
-            fmt_int(val, (int32_t)motion_lock_count(t));   /* parameter locks (SEQ > STEP: a step held, a knob) */
-            draw_column(2, "LOCK", val, "", T_MID, -1, ICON_NONE);
-            if (mods_off & MODS_SEQ)                   /* (GLO > MODULES SEQ OFF: no automation plays; the switch is kept, the card is not shown) */
-                draw_column_hide(3);
-            else {
-                if (CARD_SEG_ON) {                     /* (TEMPLATE 9: a switch, the segment line: OFF the left half, ON the right) */
-                    cell_seg_n = 2;
-                    cell_seg_i = (uint8_t)(motion_enabled(t) != 0);
-                }
-                draw_column(3, "PLAY", motion_enabled(t) ? "ON" : "OFF", "", VAL(3u), -1, motion_icon());
-                cell_seg_n = cell_seg_i = 0;
-            }
-            return;
-        }
-        if (k == EVK_QNT) {                            /* QUANTIZE (1.2): the steps with a NUDGE, QNTZ ON / OFF */
-            draw_column(0, "ROW", "ALL", "", VAL(0u), -1, ICON_AUTO);
-            fmt_int(val, (int32_t)ev_nudged(t));
-            draw_column(1, "NUDGED", val, "", T_MID, -1, ICON_NONE);
-            draw_column(2, "", "", "", T_THEME, -1, ICON_NONE);
-            draw_column(3, "QNTZ", t->p[P_SQNT] ? "ON" : "OFF", "", VAL(3u), -1, ICON_QUANTIZE);
-            return;
-        }
-        if (k == EVK_ADD) {
-            ev_fix();
-            str_cpy(val, "ADD", sizeof val);
-        } else {                                       /* "3/7": the rows between QUANTIZE and + ADD */
-            fmt_int(val, (int32_t)r - 1);
-            str_cpy(val + str_len(val), "/", 4);
-            fmt_int(val + str_len(val), (int32_t)n - 3);
-        }
-        step = ev_step_of(c);
-        id = k == EVK_REC ? MOTION_TID(&motion.event[c & 0xFFu]) : k == EVK_ADD ? ui.ev_id :
-             k == EVK_CHANCE ? EV_CHANCE : k == EVK_RATCH ? EV_RATCH : k == EVK_VEL ? EV_VEL : EV_NUDGE;
-        draw_column(0, "ROW", val, "", VAL(0u), -1, ICON_AUTO);
-        fmt_int(val, (int32_t)step + 1);
-        draw_column(1, "STEP", val, "", k != EVK_ADD || step < (uint32_t)t->p[P_SLEN] ? VAL(1u) : T_DIM, -1, ICON_AUTO);
-        if (!ev_id_ok(t, id)) {
-            draw_column(2, "PARAM", "--", "", T_DIM, -1, ICON_AUTO);
-            draw_column(3, "VALUE", "--", "", T_DIM, -1, ICON_AUTO);
-            return;
-        }
-        ev_dest_name(t, id, nm, 1);                    /* (1.1: the matrix's DEST card name, the same list and the same names as the MATRIX page; the card cuts what does not fit, nothing is shortened) */
-        draw_column(2, "PARAM", nm, "", k == EVK_REC || k == EVK_ADD ? VAL(2u) : T_MID, -1, ICON_AUTO);
-        if (id == EV_NUDGE) {                          /* a step's NUDGE (1.2): "+3 /16", DIM where it does not play */
-            const step_t *cs = &t->step[step % NSTEP];
-            int32_t sv = k == EVK_ADD ? ev_sadd(EVK_NUDGE) : step_nudge(cs);
-            ev_nudge_fmt(val, sv);
-            draw_column(3, "VALUE", val, "/16", k != EVK_ADD && ev_nudge_plays(t, cs) ? VAL(3u) : T_DIM, (sv + 8) * 66,
-                        ICON_AUTO);
-            return;
-        }
-        if (id == EV_VEL) {                            /* a step's VEL (1.5): 1..127, DIM where it does not play; */
-            const step_t *cs = &t->step[step % NSTEP];  /* + ADD: the rows shown or not */
-            int32_t sv = ev_sval(cs, EVK_VEL);
-            if (k == EVK_ADD) {
-                draw_column(3, "ROWS", ui.ev_vel ? "SHOWN" : "HIDDEN", "", T_DIM, -1, ICON_AUTO);
-                return;
-            }
-            fmt_int(val, sv);
-            draw_column(3, "VALUE", val, "", ev_vel_plays(cs) ? VAL(3u) : T_DIM, sv * 1000 / 127, ICON_LEVEL);
-            return;
-        }
-        if (id == EV_CHANCE || id == EV_RATCH) {       /* a step's CHANCE (the die) / RATCH; + ADD: what it adds */
-            const step_t *cs = &t->step[step % NSTEP];
-            uint32_t sk = ev_skind(id), sv = (uint32_t)(k == EVK_ADD ? ev_sadd(sk) : ev_sval(cs, sk));
-            int plays = sk == EVK_CHANCE || (cs->time == ST_NOTE && cs->n);   /* (RATCH does nothing on a
-                                                                                            * REST, a TIE, empty: DIM) */
-            if (sk == EVK_CHANCE) {
-                fmt_int(val, (int32_t)sv);
-            } else {
-                val[0] = 'x';                          /* x1 .. x4 */
-                val[1] = (char)('0' + sv);
-                val[2] = 0;
-            }
-            draw_column(3, "VALUE", val, sk == EVK_CHANCE ? "%" : "", k != EVK_ADD && plays ? VAL(3u) : T_DIM,
-                        sk == EVK_CHANCE ? (int32_t)sv * 10 : ((int32_t)sv - 1) * 333, sk == EVK_CHANCE ? ICON_PROB : ICON_X_REPEAT);
-            return;
-        }
-        v = k == EVK_REC ? motion.event[c & 0xFFu].value : motion_base_value(t, id);
-        d = lock_desc(t, id);
-        param_format(d, v, val, &unit);
-        draw_column(3, k == EVK_ADD ? "VALUE" : (motion.event[c & 0xFFu].param & MOTION_LOCK) ? "LOCK" : "AUTO", val, unit,
-                    k != EVK_ADD ? VAL(3u) : T_DIM, RATIO(d, enum_rank(d, v)), param_icon(d, v));
-        return;
-    }
-    if (cur_page()->graph == GR_TOOLS)                 /* TOOLS (grid_on 17): no cards, the three rows are the page (ui_graph.c graph_tools); the knob actions stay in ui.c */
-        return;
-    if (cur_page()->scope == SC_PERF) {                /* PERFORM (ui_perform.c): MORPH SPACE FILTER DEPTH */
-        if (AREA_ON) {                                 /* TEMPLATE 9 (PERFORM_NEW_LAYOUT_V4): what SELECT does here, after MORPH's value on knob 1's line */
-            k1_after_next = "SELECT = BALANCE";
-            k1_after_col = ux_mix(T_BASE_P1, T_TEXT, UT_GREY_PCT);
-            k1_after_r = 0;
-        }
-        perf_cards();
-        k1_after_next = 0;
-        return;
-    }
-    TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
-    if (cur_page()->scope == SC_MORPH) {               /* MORPH (fader, ROLL, -, AMOUNT), MORPH SET (SMART ARP PITCH; TARGET is ALGORITHM's BOTH) */
-        uint32_t pi = song.sel, f = morph_fader_of(pi);
-        if (cur_page()->graph == GR_MORPHSET) {
-            draw_column(0, "SMART", morph.cfg & MC_WILD ? "WILD" : "ON", "", VAL(0u), -1, ICON_NONE);
-            draw_column(1, "ARP", morph.cfg & MC_ARP ? "ON" : "OFF", "", VAL(1u), -1, ICON_NONE);
-            draw_column(2, "PITCH", morph.cfg & MC_PIT ? "ON" : "OFF", "", VAL(2u), -1, ICON_NONE);
-            draw_column(3, "", "", "", T_THEME, -1, ICON_NONE);   /* (an empty column: KNOB 4 does nothing here) */
-            return;
-        }
-        if (f == 0u || f == 127u)                      /* the fader: its ends by their letters, between them 1..126 */
-            str_cpy(val, f ? "B" : "A", sizeof val);
-        else
-            fmt_int(val, (int32_t)f);
-        const char *why = h1_echo_why();
-        k1_rail = AREA_ON ? (song.both ? 3u : (uint8_t)(1u << pi)) : 0u;   /* the fader(s) as the A-B rail */
-        k1_rail_to = AREA_ON && tide_moves(pi) ? tide_rail_to() : 0u;
-        static char trip[40];                          /* (static: k1_after_next keeps the pointer past this block; a stack array would be gone by the time the line is drawn) */
-        if (AREA_ON && tide_moves(pi) && !(ui.hot_t && ui.hot_col)) {   /* I4: AUTO TIDE moves this part: what it does, at the line's right end (a knob 2..4 just turned keeps its own words) */
-            tide_trip_short(trip);
-            k1_after_next = trip;
-            k1_after_col = T_ACCENT;
-            k1_after_r = 1;
-        } else
-        if (AREA_ON && why) {                            /* ECHO dim, why (at the line's right end; with BOTH the rail shows both parts' faders, no other value here) */
-            k1_after_next = why;
-            k1_after_col = T_MID;
-            k1_after_r = 1;
-        } else if (AREA_ON && k1_home_hint()) {          /* away from the Original: how to get back */
-            k1_after_next = K1_HOME_HINT;
-            k1_after_col = T_DIM;
-            k1_after_r = 1;
-        } else if (AREA_ON) {                            /* the play position (PART 1, LAYER, STEREO, DUEL, PART 2) */
-            k1_after_next = PLS_NAME[play_pos()];
-            k1_after_col = T_MID;
-            k1_after_r = 1;
-        }
-        draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (a plain card, its label, value and bar as every K1 card) */
-        k1_after_next = 0;
-        k1_rail = 0;
-        morph_row();                                   /* (FILTER, RESONANCE, ECHO on one compact row, the waves take the rest) */
-        return;
-    }
-#if DUELL_TEST_MODE
-    if (cur_page()->scope == SC_TEST) {                /* MENU > SYSTEM > TEST: MORPH and ROLL as the MORPH page's, LOAD MULTI, RESET */
-        uint32_t pi = song.sel, f = morph_fader_of(pi), mk = test_slot();
-        int32_t g;
-        if (f == 0u || f == 127u)
-            str_cpy(val, f ? "B" : "A", sizeof val);
-        else
-            fmt_int(val, (int32_t)f);
-        draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);
-        g = morph_pending(0);
-        draw_column(1, "ROLL", g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", "", g ? T_ACCENT : VAL(1u), -1, ICON_NONE);
-        if (mk < MU_SHOWN)
-            mu_label(val, mk);
-        else
-            str_cpy(val, "--", sizeof val);
-        draw_column(2, "LOAD", val, "", mk < MU_SHOWN ? VAL(2u) : T_DIM, -1, ICON_AUTO);
-        draw_column(3, "RESET", "--", "", VAL(3u), -1, ICON_AUTO);
-        return;
-    }
-#endif
-    if (cur_page()->scope == SC_MODS) {                /* GLO's MODULES (PROPOSAL_MODULES_PAGE.png): TEMPLATE 8, a 2 x 2 of choice cells ARP, SEQ, SENDS, PART FX with the segment line; ARP and SEQ OFF / ON / KEEPS RUNNING (mods_run_get), SENDS and PART FX OFF / ON */
-        static const char *const L[4] = {"ARP", "SEQ", "SENDS", "PART FX"};
-        for (c = 0; c < 4u; c++) {
-            uint32_t rv = c < 2u ? mods_run_get(c) : ((mods_off >> c) & 1u) ? 0u : 1u;
-            cell_seg_n = c < 2u ? 3u : 2u;
-            cell_seg_i = (uint8_t)rv;
-            draw_column(c, L[c], rv == 0u ? "OFF" : rv == 1u ? "ON" : "KEEPS RUNNING", "", VAL(c), -1, ICON_AUTO);
-            cell_seg_n = cell_seg_i = 0;
-        }
-        return;
-    }
-    if (cur_page()->scope == SC_MIDI) {                /* GLO's MIDI pages: MIDI (P1 CH, P2 CH, MIDI IN; CLK is on TEMPO), SIDECHAIN (SC SRC, SC NOTE), MIDI LEARN (LEARN, CLEAR) */
-        if (cur_page()->graph == GR_MLEARN) {
-            char n[10] = "NONE";
-            draw_column(0, "LEARN", ui.ml.on ? "ON" : "OFF", "", ui.ml.on ? T_ACCENT : VAL(0u), -1, ICON_MIDI);
-            if (ml_count()) {                          /* CLEAR: right clears every learned CC; the card says how many there are */
-                fmt_int(n, (int32_t)ml_count());
-                str_cpy(n + str_len(n), " CC", 4);
-            }
-            draw_column(1, "CLEAR", n, "", ml_count() ? VAL(1u) : T_DIM, -1, ICON_MIDI);
-            for (c = 2; c < 4u; c++)
-                draw_column(c, "", "", "", T_THEME, -1, ICON_NONE);
-            return;
-        }
-        if (cur_page()->graph == GR_SCHAIN) {          /* the sidechain's MIDI setup, a device setting: K1 P1 CH, K2 P1 NOTE, K3 P2 CH, K4 P2 NOTE (shown whatever the DUCK SRC is) */
-            static const char *const SL[4] = {"PART 1\nCHANNEL", "PART 1\nNOTE", "PART 2\nCHANNEL", "PART 2\nNOTE"};   /* (PART 1 / PART 2, not P1 CH; two lines: CHANNEL does not fit) */
-            for (c = 0; c < 4u; c++) {
-                uint32_t n = sc_midi[c];
-                if (mods_off & MODS_PFX) {             /* (GLO > MODULES PART FX OFF: the DUCK is skipped; the footer says it in full) */
-                    draw_column_hide(c);
-                    continue;
-                }
-                if (c & 1u) {
-                    param_format(&SC_NOTE_D, (int16_t)n, val, &unit);
-                } else {
-                    fmt_int(val, (int32_t)n + 1);
-                    unit = "";
-                }
-                if (!(c & 1u)) {                       /* (DUELL 1.1: the duck source under the part's channel) */
-                    static char ds[24];
-                    str_cpy(ds, "DUCK SOURCE: ", sizeof ds);
-                    str_cpy(ds + str_len(ds), val_shown(&TP[P_DKSRC], N_DKSRC[(uint32_t)clamp(trk[c >> 1].p[P_DKSRC], 0, 3)]), (uint32_t)sizeof ds - str_len(ds));
-                    for (n = 13; ds[n]; n++)
-                        if (ds[n] == '\n')                   /* (the value in its own capitals, as the card shows it; no lower-casing) */
-                            ds[n] = ' ';
-                    grid_d = ds;
-                    n = sc_midi[c];
-                }
-                draw_column(c, SL[c], val, unit, VAL(c), (int32_t)n * 1000 / ((c & 1u) ? 127 : 15), ICON_MIDI);
-            }
-            return;
-        }
-        {
-            uint32_t sel = song.g[G_ROUTE] == 1, k, n = midi_cards(vis), mm = duell_mode_req < DM_N ? duell_mode_req : DM_SPLIT;
-            static const char *const WH[3][2] = {{"DUEL: LEFT OUTPUT", "DUEL: RIGHT OUTPUT"}, {"STEREO OUTPUT", "STEREO OUTPUT"}, {"LAYER: PLAYS BOTH PARTS", "LAYER: NOT HEARD"}};
-            grid_wide = 1;
-            for (c = 0; c < 4u; c++) {                 /* the parts' channels (not shown when SELECTED listens on one channel; part 2 in LAYER), MIDI IN; moved left */
-                k = c < n ? vis[c] : 0xFFu;
-                if (k < 2u) {
-                    fmt_int(val, (int32_t)midi_ch_get(k) + 1);
-                    grid_d = WH[mm][k];
-                    draw_column(c, k ? "PART 2\nCHANNEL" : "PART 1\nCHANNEL", val, "", VAL(c), (int32_t)midi_ch_get(k) * 1000 / 15, ICON_MIDI);   /* (never faded) */
-                } else if (k == 2u) {
-                    grid_d = sel ? "ANY CHANNEL PLAYS THE SELECTED PART" : mm == DM_LAYER ? "LAYER: PART 1 CHANNEL COUNTS" : "EACH PART ON ITS OWN CHANNEL";
-                    draw_column(c, "MIDI IN", sel ? "ANY\nCHANNEL" : "PART\nCHANNEL", "", VAL(c), -1, ICON_MIDI);
-                } else if (n < 3u) {
-                    draw_column_hide(c);
-                } else {
-                    draw_column(c, "", "", "", T_THEME, -1, ICON_NONE);   /* (CLK moved to TEMPO) */
-                }
-            }
-        }
-        return;
-    }
-    if (cur_page()->scope == SC_SCALE) {               /* GLOBAL (core.h): K1 SCALE, K2 ROOT, K3 OFF-SCALE SNAP / PLAY, K4 none */
-        const param_desc_t *ds = &SCALE_D, *dr = &ROOT_D;
-        int16_t sv = (int16_t)clamp(scale_g, 0, ds->max), rv = (int16_t)clamp(root_g, 0, dr->max);
-        param_format(ds, sv, val, &unit);
-        if ((page_over || ui.layer) && text_w(&AF_S, val) > room_scale_card) {   /* QUICK SCALE: a name too wide for the card is whole in the list under it; the card says which one, "3/16" */
-            fmt_int(val, sv + 1);
-            str_cpy(val + str_len(val), "/", 8u);
-            fmt_int(val + str_len(val), (int32_t)ds->max + 1);
-        }
-        draw_column(0, "SCALE", val, unit, VAL(0u), RATIO(ds, enum_rank(ds, sv)), param_icon(ds, sv));
-        param_format(dr, rv, val, &unit);
-        if (CARD_SEG_ON && dr->fmt == F_ENUM && dr->max > dr->min) {   /* (TEMPLATE 9: ROOT is a CHOICE of the twelve notes: the segment line) */
-            cell_seg_n = (uint8_t)(dr->max - dr->min + 1);
-            cell_seg_i = (uint8_t)clamp(enum_rank(dr, rv) - dr->min, 0, dr->max - dr->min);
-        }
-        draw_column(1, "ROOT", val, unit, VAL(1u), RATIO(dr, enum_rank(dr, rv)), param_icon(dr, rv));
-        cell_seg_n = cell_seg_i = 0;
-        if (!sv)                                       /* CHROMATIC: every note is in the scale, nothing to snap: no card */
-            draw_column_hide(2);
-        else {
-            if (CARD_SEG_ON) {                         /* (TEMPLATE 9: OFF-SCALE is a CHOICE: the segment line) */
-                cell_seg_n = OS_N;
-                cell_seg_i = (uint8_t)(offscale_g % OS_N);
-            }
-            draw_column(2, "OFF-\nSCALE", N_OFFSCALE[offscale_g % OS_N], "", VAL(2u), -1, ICON_AUTO);   /* (OFF-SCALE in two lines, at its hyphen; TEMPLATE 9: one line where it fits, as the picture) */
-            cell_seg_n = cell_seg_i = 0;
-        }
-        draw_column(3, "", "", "", T_THEME, -1, ICON_NONE);
-        return;
-    }
-    if (cur_page()->graph == GR_BROWSE) {              /* PATCHES (change list A.9, PATCHES_MULTIS_NEW_LAYOUT_V3): K1 PATCH (the slot's number), K2 TYPE, K3 SAVE (the save window), K4 FAV */
-        uint32_t total, cur = pl_cursor(&total), k = pl_cursor_slot();
-        char sl[6];
-        up_slot_label(sl, k < UP_VSLOTS ? k : 0u);
-        draw_column(0, "PATCH", k < UP_VSLOTS ? sl : "--", "", VAL(0u), cur < total && total > 1u ? (int32_t)(cur * 1000u / (total - 1u)) : -1, ICON_NONE);
-        if (CARD_SEG_ON) {                             /* (TEMPLATE 9: TYPE is a CHOICE of the list's kinds: the segment line) */
-            cell_seg_n = (uint8_t)LIST_N;
-            cell_seg_i = (uint8_t)list_mode();
-        }
-        draw_column(1, "TYPE", list_name(list_mode()), "", VAL(1u), -1, ICON_X_FOLDER);
-        cell_seg_n = cell_seg_i = 0;
-        draw_column(2, "SAVE", "TURN >", "", T_THEME, -1, ICON_AUTO);   /* (K3 turned right opens the save window; OCT+ here is the octave, so no OCT+ pill) */
-        if (k < UP_VSLOTS) {
-            if (CARD_SEG_ON) {                         /* (TEMPLATE 9: a switch: OFF the left half, ON the right) */
-                cell_seg_n = 2;
-                cell_seg_i = (uint8_t)(list_fav(k) != 0);
-            }
-            draw_column(3, "FAV", list_fav(k) ? "ON" : "OFF", "", VAL(3u), -1, ICON_X_STAR);   /* (the picture's head label) */
-            cell_seg_n = cell_seg_i = 0;
-        } else
-            draw_column_hide(3);
-        return;
-    }
-    if (cur_page()->graph == GR_PATS) {                  /* SLOT, then LOAD SAVE (GO buttons) */
-        uint32_t n = pat_count(), k = pat_pick();
-        char tag[4], nm[13];
-        pat_label(k, tag, nm);
-        {                                              /* U3: the pattern the selected part plays from a slot, on knob 1's line, when the list does not show its star (the picked one is the list's) */
-            static char cur_txt[16];
-            uint32_t pl = pat_last[song.sel % NTRK], wf = list_first(k, n);
-            if (pl && (pl - 1u < wf || pl - 1u >= wf + LR_ROWS)) {
-                char t2[4], n2[13];
-                pat_label(pl - 1u, t2, n2);
-                str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
-                str_cpy(cur_txt + 7, t2, sizeof cur_txt - 7);
-                k1_after_next = cur_txt;
-                k1_after_col = T_ACCENT;
-                k1_after_r = 1;
-            }
-        }
-        draw_column(0, "SLOT", tag, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(n > 1u ? n - 1u : 1u), ICON_X_PATTERN);
-        draw_act_column(1, "LOAD", T_THEME, ICON_AUTO);
-        draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (SAVE is knob 3) */
-        draw_column_hide(3);
-        return;
-    }
-    if (cur_page()->graph == GR_SLOTS) {                 /* MULTI: SLOT M01..M16, then LOAD SAVE (GO buttons) */
-        uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
-        int used = project_used(k);
-        mu_label(val, k);
-        {                                              /* U3: the multi loaded now, on knob 1's line, when the list does not show its star (the picked one is the list's) */
-            static char cur_txt[16];
-            uint32_t wf = list_first(k, MU_SHOWN), cs = project_cur_slot();
-            if (cs >= MU_SHOWN || cs < wf || cs >= wf + LR_ROWS) {
-                if (cs < MU_SHOWN) {
-                    str_cpy(cur_txt, "LOADED ", sizeof cur_txt);
-                    mu_label(cur_txt + 7, cs);
-                } else
-                    str_cpy(cur_txt, "NOTHING LOADED", sizeof cur_txt);
-                k1_after_next = cur_txt;
-                k1_after_col = T_ACCENT;
-                k1_after_r = 1;
-            } else {                                   /* the multi's genre and its place in it ("DUB 2/3"; knob 4 jumps genre: mu_genre_jump) */
-                uint32_t f, n, g = mu_group(k, &f, &n);
-                str_cpy(cur_txt, g < 6u ? KN_TAG[g] : g == 6u ? "OTHER" : "EMPTY", sizeof cur_txt);
-                str_cpy(cur_txt + str_len(cur_txt), " ", 2);
-                fmt_int(cur_txt + str_len(cur_txt), (int32_t)(k - f + 1u));
-                str_cpy(cur_txt + str_len(cur_txt), "/", 2);
-                fmt_int(cur_txt + str_len(cur_txt), (int32_t)n);
-                k1_after_next = cur_txt;
-                k1_after_col = T_MID;
-                k1_after_r = 1;
-            }
-        }
-        draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)k * 1000 / (int32_t)(MU_SHOWN - 1u), ICON_AUTO);
-        draw_act_column(1, "LOAD", used ? T_THEME : T_DIM, ICON_AUTO);
-        draw_act_column(2, "SAVE", T_THEME, ICON_AUTO);   /* (SAVE is knob 3) */
-        draw_column_hide(3);
-        return;
-    }
-    if (fop_page(cur_page()->graph)) {                   /* FM6: OP, then three of its bytes (ui_fm6op.c) */
-        for (c = 0; c < 4u; c++) {
-            const char *lb, *u;
-            int32_t r;
-            uint32_t ic;
-            int on;
-            if (!fop_ok()) {                             /* (the engine changed before ui_draw left the page) */
-                draw_column(c, "", "", "", T_THEME, -1, ICON_NONE);
-                continue;
-            }
-            on = fop_card(c, &lb, val, &u, &r, &ic);
-            draw_column(c, label_shown(lb), val, u, on ? VAL(c) : T_DIM, r, ic);   /* (COARSE, STAGE, DETUNE) */
-        }
-        return;
-    }
-    if (cur_page()->graph == GR_MOD) {                   /* SLOT, then that slot's SRC DST AMT */
-        const track_t *t = TSEL;
-        uint32_t base = mod_page_base(cur_page()), id = MSLOT_ID(base + mod_ui_slot);   /* (MOD: 1..4, MOD 2: 5..8) */
-        int32_t s = morph_view(song.sel, id), d = morph_view(song.sel, id + 1u), a = morph_view(song.sel, id + 2u);
-        uint8_t mks = s != t->p[id], mkd = d != t->p[id + 1u], mka = a != t->p[id + 2u];   /* (MORPH: the route the fader has,
-                                                                                            * the dominant end's; marks) */
-        fmt_int(val, (int32_t)(base + mod_ui_slot) + 1);
-        draw_column(0, "SLOT", val, "/8", VAL(0u), (int32_t)(base + mod_ui_slot) * 1000 / (NMSLOT - 1u),
-                    mod_src_icon(MS_OFF));   /* (the mod icon) */
-        card_mk_next = mks;
-        draw_column(1, "SOURCE", msrc_shown(s), "", s ? VAL(1u) : T_DIM, -1, mod_src_icon(s));
-        card_mk_next = mkd;
-        /* (a destination this part cannot move now: the DEST card is the selector that changes it, so it stays; the panel's DEST line says it in
-         * words. The one card that is not hidden for an inapplicable state: hiding it would lock the slot) */
-        draw_column(2, "DEST", mod_dst_name(t, d), "", d && !mod_dst_why(t, d) ? VAL(2u) : T_DIM, -1, mod_dst_icon(t, d));
-        param_format(&TP[id + 2u], a, val, &unit);
-        card_mk_next = mka;
-        draw_column(3, "AMOUNT", val, unit, a ? VAL(3u) : T_DIM, RATIO(&TP[id + 2u], a), mod_src_icon(MS_OFF));
-        return;
-    }
-    if (cur_page()->scope == SC_STEP) {
-        static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
-        const step_t *st = &seq_steps(TSEL)[ui.cursor];
-        char u[8];
-        uint32_t cnt = st->n, first = st->note[0];
-        if (cnt) {
-            note_name(val, first);
-            u[0] = 0;
-            if (cnt > 1) {
-                str_cpy(u, "+", 8);
-                fmt_int(u + 1, (int32_t)cnt - 1);
-            }
-        } else {
-            str_cpy(val, "--", 12);
-            u[0] = 0;
-        }
-        {
-            static const char *const FLAG_N[4] = {"-", "ACCENT", "SLIDE", "ACCENT\nSLIDE"};
-            char sn[8], sl[8];
-            fmt_int(sn, (int32_t)ui.cursor + 1);
-            str_cpy(sl, "/", 8);
-            fmt_int(sl + 1, TSEL->p[P_SLEN]);
-            draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
-            draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : T_DIM, -1, ICON_AUTO);
-            if (step_on(st)) {                            /* a note: its LEN (1.5, KNOB 3: the TIEs after it) */
-                fmt_int(sn, (int32_t)note_len(TSEL, ui.cursor));
-                draw_column(2, "LENGTH", sn, "", VAL(2u), -1, icon_for_label("LEN"));   /* (LENGTH; the icon of LEN) */
-            } else {
-                if (CARD_SEG_ON) {                        /* (TEMPLATE 9: TIME is a CHOICE of three: the segment line) */
-                    cell_seg_n = 3;
-                    cell_seg_i = (uint8_t)(st->time % 3u);
-                }
-                draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
-                cell_seg_n = cell_seg_i = 0;
-            }
-            if (CARD_SEG_ON) {                            /* (TEMPLATE 9: FLAG is a CHOICE of four, -, ACCENT, SLIDE, ACCENT SLIDE: the segment line, as the picture) */
-                cell_seg_n = 4;
-                cell_seg_i = (uint8_t)((st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u));
-            }
-            draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], "",
-                        VAL(3u), -1, ICON_AUTO);
-            cell_seg_n = cell_seg_i = 0;
-        }
-        return;
-    }
-    nvis = page_cards(cur_page(), vis);                 /* the cards that show, moved left (K1..Kn); the columns after them stay empty */
+    nvis = page_cards(pg, vis);                 /* the cards that show, moved left (K1..Kn); the columns after them stay empty */
     for (c = 0; c < 4u; c++) {
         int16_t *vp;
         int32_t vv;
@@ -3038,12 +3062,12 @@ static void draw_columns(void)
             draw_column_hide(c);
             continue;
         }
-        d = page_desc(cur_page(), s, &vp);
-        if (cur_page()->graph == GR_ENGINE && s == 0u) {   /* ENGINE: K1 the engine, then its own controls */
+        d = page_desc(pg, s, &vp);
+        if (pg->graph == GR_ENGINE && s == 0u) {   /* ENGINE: K1 the engine, then its own controls */
             engine_card(c);
             continue;
         }
-        if (cur_page()->graph == GR_TEMPO && s == TEMPO_TAP_SLOT) { /* TAP: the tempo of the taps for 2 s after the last, else TAP (EXT clock: no card) */
+        if (pg->graph == GR_TEMPO && s == TEMPO_TAP_SLOT) { /* TAP: the tempo of the taps for 2 s after the last, else TAP (EXT clock: no card) */
             uint32_t n = tempo_tapping();
             if (clock_src()) {
                 draw_column_hide(c);
@@ -3056,11 +3080,11 @@ static void draw_columns(void)
             draw_column(c, "TAP", val, n >= 2u ? "BPM" : "", n ? T_ACCENT : VAL(c), -1, ICON_TEMPO);
             continue;
         }
-        if (cur_page()->id[s] == P_DKRATE && duck_ctx_id(TSEL) == 0xFFu) {   /* DUCK 1/2 K2 with SRC MIDI / OFF: no card (hidden, as the hide rule) */
+        if (pg->id[s] == P_DKRATE && duck_ctx_id(TSEL) == 0xFFu) {   /* DUCK 1/2 K2 with SRC MIDI / OFF: no card (hidden, as the hide rule) */
             draw_column_hide(c);
             continue;
         }
-        if (s == 3u && duck_midi_page(cur_page())) {    /* DUCK 1/2, SRC MIDI: the notes come from GLO > SIDECHAIN; K4 jumps there */
+        if (s == 3u && duck_midi_page(pg)) {    /* DUCK 1/2, SRC MIDI: the notes come from GLO > SIDECHAIN; K4 jumps there */
             draw_column(c, "SETUP", "GLO", "", VAL(c), -1, ICON_MIDI);   /* (the link card says SETUP, its value GLO: the page it jumps to) */
             continue;
         }
@@ -3072,14 +3096,14 @@ static void draw_columns(void)
             draw_column(c, "", "", "", T_THEME, -1, ICON_AUTO);
             continue;
         }
-        if (cur_page()->graph == GR_TEMPO && s == 0u)  /* CLK: an external clock's state under the source (EXT / NO CLOCK; AUTO: the source) */
+        if (pg->graph == GR_TEMPO && s == 0u)  /* CLK: an external clock's state under the source (EXT / NO CLOCK; AUTO: the source) */
             card_why_next = clock_why(1);
         if ((act_cols() >> s) & 1u) {
             draw_act_column(c, d->label, T_THEME, ICON_AUTO);
             continue;
         }
-        if (vp && byp_card(cur_page(), vp)) {           /* DUELL 1.1 BYPASS: the word in place of the value, dim */
-            draw_column(c, quick_label(cur_page(), s) ? quick_label(cur_page(), s) : desc_shown(d), "BYPASS", "", T_DIM, -1, param_icon(d, *vp));
+        if (vp && byp_card(pg, vp)) {           /* DUELL 1.1 BYPASS: the word in place of the value, dim */
+            draw_column(c, quick_label(pg, s) ? quick_label(pg, s) : desc_shown(d), "BYPASS", "", T_DIM, -1, param_icon(d, *vp));
             continue;
         }
         vv = card_vv(vp);                               /* (MORPH: the blended value; the mark) */
@@ -3089,8 +3113,8 @@ static void draw_columns(void)
             unit = "";
         }
         card_mot_of(vp);                                /* (a global: never) */
-        if (cur_page()->scope == SC_TRACK && cur_page()->graph != GR_MOD && (twin_rt = twin_card(TSEL, vp, d, vv, val, &unit)) != -2) {   /* cloud job H: the TWIN FILTER's own texts and gauges */
-            draw_column(c, quick_label(cur_page(), s) ? quick_label(cur_page(), s) : desc_shown(d), val, unit, VAL(c), twin_rt, param_icon(d, (int16_t)vv));
+        if (pg->scope == SC_TRACK && pg->graph != GR_MOD && (twin_rt = twin_card(TSEL, vp, d, vv, val, &unit)) != -2) {   /* cloud job H: the TWIN FILTER's own texts and gauges */
+            draw_column(c, quick_label(pg, s) ? quick_label(pg, s) : desc_shown(d), val, unit, VAL(c), twin_rt, param_icon(d, (int16_t)vv));
             continue;
         }
         /* (faded ONLY what a selection makes impossible. A value of 0 is not a reason: CUT's RES and the FLT depths of the
@@ -3099,10 +3123,77 @@ static void draw_columns(void)
             cell_seg_n = (uint8_t)(d->max - d->min + 1);
             cell_seg_i = (uint8_t)clamp(enum_rank(d, vv) - d->min, 0, d->max - d->min);
         }
-        draw_column(c, quick_label(cur_page(), s) ? quick_label(cur_page(), s) : desc_shown(d), val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, enum_rank(d, (int16_t)vv)),
+        draw_column(c, quick_label(pg, s) ? quick_label(pg, s) : desc_shown(d), val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, enum_rank(d, (int16_t)vv)),
                     param_icon(d, (int16_t)vv));   /* (the card's display name; the icon by the stored label) */
         cell_seg_n = cell_seg_i = 0;
     }
+}
+/* the four columns under the header: the page's own layout (cols_*), else its cards */
+static void draw_columns(void)
+{
+    const page_t *pg = cur_page();
+    grid_wide = 0;
+    (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
+    if (off_module(pg))                        /* its module is OFF in GLO > MODULES: no cards, only the notice (ui_graph.c graph_off) */
+        return;
+    if (pg->graph == GR_EVENTS) {
+        cols_events();
+        return;
+    }
+    if (pg->graph == GR_TOOLS)                 /* TOOLS (grid_on 17): no cards, the three rows are the page (ui_graph.c graph_tools); the knob actions stay in ui.c */
+        return;
+    if (pg->scope == SC_PERF) {
+        cols_perf();
+        return;
+    }
+    TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
+    if (pg->scope == SC_MORPH) {
+        cols_morph(pg);
+        return;
+    }
+#if DUELL_TEST_MODE
+    if (pg->scope == SC_TEST) {
+        cols_test();
+        return;
+    }
+#endif
+    if (pg->scope == SC_MODS) {
+        cols_mods();
+        return;
+    }
+    if (pg->scope == SC_MIDI) {
+        cols_midi(pg);
+        return;
+    }
+    if (pg->scope == SC_SCALE) {
+        cols_scale();
+        return;
+    }
+    if (pg->graph == GR_BROWSE) {
+        cols_browse();
+        return;
+    }
+    if (pg->graph == GR_PATS) {
+        cols_pats();
+        return;
+    }
+    if (pg->graph == GR_SLOTS) {
+        cols_slots();
+        return;
+    }
+    if (fop_page(pg->graph)) {
+        cols_fop();
+        return;
+    }
+    if (pg->graph == GR_MOD) {
+        cols_mod(pg);
+        return;
+    }
+    if (pg->scope == SC_STEP) {
+        cols_step();
+        return;
+    }
+    cols_cards(pg);
 }
 
 
