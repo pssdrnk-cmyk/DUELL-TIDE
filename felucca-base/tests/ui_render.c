@@ -2760,6 +2760,35 @@ int main(int argc, char **argv)
         }
         song.playing = 0; gl.on = 0; gl.armed = 0; gl.hold = 0; sqm_arc = 0; tarc.run = 0; tarc.hand = 0; poly_len[0] = 0; jl_sel = 0; morph_musical = 1; sqm_auto = 0; tide_style = STY_DUB;
     }
+    {   /* B16 (owner 2026-11-22): TIDE SETTINGS' help under its four rows, every row picked, in every palette: the lint over each, and each
+         * text two lines at most (M, 212 px: tide_ui.c JL_HELP_W), clear of the keycap line under it */
+        uint32_t pg, r, p, bad = 0;
+        for (pg = 0; pg < NPAGES && strcmp(PAGES[pg].title, "TIDE SETTINGS"); pg++) ;
+        for (r = 0; r < JL_N; r++) {
+            int32_t y;
+            cv_begin(240, 60, T_BG);
+            y = guide_wrap(0, 0, JL_HELP_W, &AF_M, jl_help(r), T_TEXT, UT_T6_G_LINE + 1);
+            if (y > 2 * (UT_T6_G_LINE + 1) || !jl_help(r)[0]) {
+                fprintf(stderr, "TIDE SETTINGS help, row %s: %d lines\n", JL_NAME[r], (int)(y / (UT_T6_G_LINE + 1)));
+                bad++;
+            }
+            for (p = 0; p < NPALETTES; p++) {
+                char nm[48];
+                setup(S_HOME);
+                pal(p);
+                song.playing = 0; gl.on = 0;
+                ui.page = (uint8_t)pg; jl_sel = (uint8_t)r;
+                snprintf(nm, sizeof nm, "ts_help_%s", JL_NAME[r]);
+                cur_name = nm;
+                ui.force = 1; draw(-1); lint();
+                if (p == UI_DEFAULT_INDEX)
+                    write_ppm(out, "VIOLET", nm);
+            }
+        }
+        jl_sel = 0;
+        if (bad) { printf("FAIL  TIDE SETTINGS help: %u texts longer than two lines\n", bad); nfind += bad; }
+        else printf("ok    TIDE SETTINGS help: %u rows, each two lines at most, linted in %u palettes\n", (unsigned)JL_N, (unsigned)NPALETTES);
+    }
     if (audf) fprintf(audf, "screen\ttexts\ttext_px\ticons\ticon_px\tkeycaps\tkeycap_px\tellipsised\ttight\twords\ttight_list\n");
     {   /* the lint itself: an overlap, a value too wide for its column, a text past its canvas, one past its cell */
         state(); pal(0); cur_name = "self-test";

@@ -926,7 +926,7 @@ static int menu_protocol(void)
         {"SCREEN OFF", "NEVER,5 MIN,15 MIN,30 MIN,60 MIN"},
         {"STEP PREVIEW", "OFF,ON"}, {"STEP KEYS", "REPLACE,ADD"},                                        /* (1.2; 0.2.14: SCOPE retired) */
         {"TUNE", 0},   /* (1.2: the project's TUNE, a number; DUELL 0.1: MIDI IN, id 21, left MENU for GLO > CHANNELS) */
-        {"HOME OPENS", "MORPH,SETTINGS"},                                                                /* (DUELL 0.1, id 25; 0.2.14: no OVERVIEW; 0.2.25: no MIXER, GLO's first page now) */
+        {"HOME OPENS", "LAST,SETTINGS,MORPH"},                                                           /* (DUELL 0.1, id 25; 0.2.14: no OVERVIEW; 0.2.25: no MIXER, GLO's first page now; B16: LAST, 0, the default) */
         /* (CPU METER, id 26, retired in 1.1 with the CPU bar: no row) */
         {"MULTI LOAD", "KEEPS PLAY MODE,SETS PLAY MODE"},                                                      /* (DUELL 0.2.11, id 27) */
         {"ARP", "OFF,FOLLOWS PATCH,KEEPS RUNNING"}, {"SEQ", "OFF,FOLLOWS PATCH,KEEPS RUNNING"},   /* (DUELL 1.1: ARP_SEQ_RUN_SWITCH) */
@@ -1125,7 +1125,7 @@ static int menu_protocol(void)
     ok &= menu_set(6, 7) == 3 && ed_rv(host_wire + 7) == 1 && (ui_prefs & PREF_ACCEL);
     ok &= menu_set(14, 9) == 3 && ed_rv(host_wire + 7) == 2 && cin_bars == 2u;
     ok &= menu_set(12, -1) == 3 && ed_rv(host_wire + 7) == 0 && click_mode == CLICK_OFF;
-    ok &= menu_set(25, 99) == 3 && ed_rv(host_wire + 7) == 1 && ui_home_pg == HP_MODE;   /* (0.2.25: MODE the last; an old editor's 2, MIXER, or 3, OVERVIEW: MODE) */
+    ok &= menu_set(25, 99) == 3 && ed_rv(host_wire + 7) == 2 && ui_home_pg == HP_MORPH;   /* (B16: MORPH the last, 2; an old editor's 3, OVERVIEW: MORPH) */
     ok &= menu_set(22, -99) == 0 && ed_rv(host_wire + 7) == 4153 && song.g[G_TUNE] == 4153;
     ok &= menu_set(22, 4663) == 0 && ed_rv(host_wire + 7) == 4662 && song.g[G_TUNE] == 4662;
     ok &= menu_set(22, 8000) == 0 && ed_rv(host_wire + 7) == 4662 && song.g[G_TUNE] == 4662;

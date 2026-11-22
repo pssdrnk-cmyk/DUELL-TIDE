@@ -148,19 +148,18 @@ static void patch_restore_all_do(void);      /* SAVE > TOOLS: RESTORE ALL */
 #define PREF_GUIDE_SEEN (0x20u << 16)          /* the first-start GUIDE was left (ui_guide.c); clear on a new unit and in every older setting (never
                                                 * written by older builds): the guide shows once after the splash. Not a MENU_FLAGS row: MENU > SYSTEM > GUIDE only replays it */
 #define GUIDE_N 5u                             /* .. its pages: SETUP 1/5, GUIDE 2/5 to 4/5, SETUP 5/5 (ui_guide.c) */
-/* MENU > CONTROL > HOME OPENS, the page the HOME button opens from another page, power-on and leaving the menu (go_main):
- * 0 MORPH (the default, every older setting), 1 MODE, 2 MIXER; [15][2], a byte no engine uses, saved with the settings;
- * an unknown code reads as MORPH. HOME tapped on HOME's own pages goes round them from MORPH as ever (home_tap).
- * HOME OPENS' value 3 is unused: a stored 3 reads as
- * MORPH (the unknown-code rule), kept as stored until HOME OPENS is changed. The
- * settings byte [15][26] is kept as stored, read by nothing */
+/* MENU > CONTROL > HOME OPENS, the page the HOME button opens from another page and leaving the menu (go_main):
+ * 0 LAST (the default, every older setting: B16, owner 2026-11-22), the HOME page shown last (MORPH at power-on), 1 MODE, 2 MORPH
+ * (a stored 2, the old MIXER, read as MORPH before too); [15][2], a byte no engine uses, saved with the settings;
+ * an unknown code (3, the old OVERVIEW) reads as LAST, kept as stored until HOME OPENS is changed. HOME tapped on HOME's
+ * own pages goes round them as ever (home_tap). The settings byte [15][26] is kept as stored, read by nothing */
 #define ui_home_pg (favorites.factory[15][2])
 /* DUELL: the global SCALE, ROOT and OFF-SCALE KEYS (core.h): [15][3] bit 7 the format flag (0: an older blob or a new unit = CHROMATIC, SNAP: its
  * other bits, an older SCALE LINK and global scale, are not read), bit 6 PLAY (0 SNAP), bits 0-3 the scale (0 = CHROMATIC);
  * [15][4] the global root 0..11 (0 = C) */
 #define ui_scale_set (favorites.factory[15][3])
 #define ui_root_set (favorites.factory[15][4])
-enum { HP_MORPH, HP_MODE, HP_COUNT };   /* (a stored 3 and 2 (the MIXER is GLO's first page, not HOME's) read as MORPH) */
+enum { HP_LAST, HP_MODE, HP_MORPH, HP_COUNT };   /* (a stored 3 reads as LAST) */
 /* the very first start. project.c persist_boot raises it when the flash holds no valid settings (a new unit, stock firmware's
  * data or garbage in the sector, a flash erase) and main.c drops it again when an autosave was restored; ui_input.c first_boot_poll then
  * makes the start state: MODE LAYER and factory multi M01 loaded (VIOLET is the theme of a settings record that is not valid:
@@ -929,27 +928,25 @@ static void open_family(uint32_t fam)
 {
     if (cur_page()->fam == fam) {          /* same button again: next page */
         ui.page = (uint8_t)page_next(1);
-    } else if (fam == FAM_SAVE) {
-        /* SAVE opens the page that fits: PATTERNS from the sequencer (SEQ's pages), else by the output MODE:
-         * LAYER the MULTIS, SPLIT and STEREO the PATCHES; TOOLS never. SELECT moves between the four */
-        uint32_t i, want = cur_page()->fam == FAM_SEQ ? GR_PATS : duell_mode_req == DM_LAYER ? GR_SLOTS : GR_BROWSE;
-        for (i = 0; i < NPAGES; i++)
-            if (PAGES[i].graph == want) break;
-        ui.page = (uint8_t)i;
     } else {
-        uint32_t i = ui.fam_last[fam];
+        /* the family's page shown last (B16: SAVE too, its list where it was: the cursors are kept). SAVE from the sequencer (SEQ's
+         * pages) opens PATTERNS, and the first SAVE after power-on the page that fits the output MODE: LAYER the MULTIS, SPLIT and
+         * STEREO the PATCHES. SELECT moves between the four */
+        uint32_t i = ui.fam_last[fam], want = cur_page()->fam == FAM_SEQ ? GR_PATS : duell_mode_req == DM_LAYER ? GR_SLOTS : GR_BROWSE;
+        if (fam == FAM_SAVE && (want == GR_PATS || !i))
+            for (i = 0; i < NPAGES && PAGES[i].graph != want; i++) ;
         ui.page = (uint8_t)(i && i < NPAGES && PAGES[i].fam == fam && page_visible(i) ? i : page_first(fam));
     }
     ui.fam_last[fam] = ui.page;
     page_entered();
 }
 
-/* The main page. HOME's round is MORPH, MORPH SET, MODE (FAM_TRK's pages, in PAGES order; the MIXER is GLO's); power-on, a tap of HOME from another page and leaving the menu open the page
- * MENU > CONTROL > HOME OPENS says (ui_home_pg; MORPH unless changed) */
+/* The main page. HOME's round is MORPH, MORPH SET, MODE (FAM_TRK's pages, in PAGES order; the MIXER is GLO's); a tap of HOME from another page and leaving the menu open the page
+ * MENU > CONTROL > HOME OPENS says (ui_home_pg: LAST, the HOME page shown last, unless changed); power-on MORPH (none shown yet) */
 static void go_main_to(uint32_t want)
 {
-    uint32_t i;
-    ui.page = (uint8_t)page_first(FAM_TRK);
+    uint32_t i = ui.fam_last[FAM_TRK];
+    ui.page = (uint8_t)(want == HP_LAST && i && i < NPAGES && PAGES[i].fam == FAM_TRK && page_visible(i) ? i : page_first(FAM_TRK));
     for (i = 0; want == HP_MODE && i < NPAGES; i++)
         if (PAGES[i].fam == FAM_TRK && page_visible(i) && TIDE_HOME_MODE(&PAGES[i])) {   /* TIDE hook */
             ui.page = (uint8_t)i;
@@ -962,7 +959,7 @@ static void go_main_to(uint32_t want)
     song.seq_mode = 0;
     page_entered();
 }
-static void go_main(void) { go_main_to(ui_home_pg < HP_COUNT ? ui_home_pg : HP_MORPH); }
+static void go_main(void) { go_main_to(ui_home_pg < HP_COUNT ? ui_home_pg : HP_LAST); }
 
 /* The SELECT knob (SPEC 1.2): the previous / next sub-page of the screen shown, wrapping: the family's pages, the order
  * its button's taps go round (open_family). HOME's round: its pages, round (SELECT right from MODE goes to MORPH, left from MORPH to MODE) */
@@ -996,8 +993,8 @@ static void page_select(int32_t dir)
     }
 }
 
-/* HOME tapped: from another page MORPH; then MORPH SET, MODE, MIXER, and MORPH again. HOME's
- * pages are FAM_TRK's, in PAGES order, always from the first (none remembered). Held: the menu (ui_input) */
+/* HOME tapped: from another page the one HOME OPENS says (go_main: LAST, the HOME page shown last); on HOME's pages the next one,
+ * FAM_TRK's in PAGES order, and from the last MORPH again. Held: the menu (ui_input) */
 static void home_tap(void)
 {
     uint32_t i = ui.page + 1u;
