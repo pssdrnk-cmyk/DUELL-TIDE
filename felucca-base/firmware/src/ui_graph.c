@@ -1974,7 +1974,10 @@ static uint32_t graph_signature(void)
     if (off_module(pg))                              /* (the notice: nothing else on the page is drawn) */
         return (h ^ off_module(pg)) * 16777619u + grid_on;
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u + ui.page * 1291u;
-    TIDE_GRAPH_SIG(pg, h);                           /* TIDE hook (TIDE: the faders, the glide, the steps; TIDE LIST: its rows only) */
+    if (pg->graph == GR_TIDELIST)                    /* TIDE hook: TIDE LIST, its rows only */
+        return (h ^ tide_list_sig()) * 16777619u;
+    if (TIDE_PAGE(pg))                               /* TIDE hook: TIDE, the faders, the glide, the steps, the MODE (tide_ui.c) */
+        h = tide_page_sig(h);
     if (pg->graph == GR_NONE || pg->graph == GR_TEMPO || 0) h ^= ui.frame / 2u;   /* (the scope; ARP's pattern and STEREO MASTER's picture are static; TEMPLATE 9: ARP without a pattern shows the calm flat baseline, static too) */
     if (pg->graph == GR_MSTG || pg->graph == GR_COMP)   /* (DUEL's note; STEREO MASTER's picture, COMPRESSOR's curve: the settings, the mode) */
         h = (h ^ ((duell_mode == DM_SPLIT) * 0x2545F491u + (uint32_t)song.bm * 977u + (uint32_t)song.ms[0] * 7919u + (uint32_t)song.cp[0] * 31u + (uint32_t)song.cp[1] * 104729u)) * 16777619u;
@@ -2864,7 +2867,10 @@ static void draw_graph(void)
         graph_mod_new(t);
         return;
     }
-    TIDE_GRAPH_OWN(pg);                              /* TIDE hook: TIDE and TIDE SET draw their own body (template 9's knob-1 line and cards are draw_columns') */
+    if (TIDE_PAGE(pg)) {                             /* TIDE hook: TIDE and TIDE SET draw their own body (template 9's knob-1 line and cards are draw_columns') */
+        tide_graph(pg->graph);
+        return;
+    }
     if (AREA_PIC && pg->graph != GR_PERF) {          /* TEMPLATE 9 (LAYOUT_IMPLEMENTATION_PLAN.md J7): the page's picture into the big area, one canvas of the area's rows blitted at its first row;
                                                       * every picture here draws in SCREEN rows (cv_oy = minus the area's first row). PERFORM keeps its own path below (ui_perform.c) */
         int32_t ay, ah;

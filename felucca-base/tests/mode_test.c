@@ -1186,7 +1186,7 @@ static void t_mode_rows(void)
         tide_style_apply(STY_DUB);
     }
     /* the page redraws when any of the three changes from outside the panel: a MIDI CC (the learned MODE CC; XFADE and SPLIT lines) as midi_control.c sets them in the ISR, or a multi load.
-     * The signature checked is graph_signature(), the one draw_graph compares frame to frame (not only tide_list_sig, which loops jl_get); TIDE_GRAPH_SIG returns tide_list_sig()
+     * The signature checked is graph_signature(), the one draw_graph compares frame to frame (not only tide_list_sig, which loops jl_get); graph_sig returns tide_list_sig()
      * for this page, so the three values are in it by way of jl_get (they are read from the live bytes, not a copy) */
     mode_page();
     frames(32);
