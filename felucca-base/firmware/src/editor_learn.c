@@ -47,7 +47,7 @@ static int ed_learn_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         ch = (uint32_t)ml_clear_all();
     }
     if (ch) {
-        ui.force = 1;
+        ui_redraw();
         ui.foot_sig = 0;
     }
     ed_b(rc ? rc : ed_map_save());                     /* rc as UI_SET: 0 saved, 3 RAM only, 4 queued until STOP */

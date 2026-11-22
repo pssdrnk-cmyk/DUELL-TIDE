@@ -2583,9 +2583,8 @@ static void morph_row(void)
     cv_blit(0, MROW_Y);
 }
 /* PARAMETER LOCKS (ui_events.c): ROW STEP PARAM VALUE */
-static void cols_events(void)
+static void cols_events(char *val)
 {
-    char val[PV_LEN];
     const char *unit;
     const track_t *t = TSEL;
     uint16_t rw[EV_ROWS];
@@ -2621,7 +2620,7 @@ static void cols_events(void)
     }
     if (k == EVK_ADD) {
         ev_fix();
-        str_cpy(val, "ADD", sizeof val);
+        str_cpy(val, "ADD", PV_LEN);
     } else {                                       /* "3/7": the rows between QUANTIZE and + ADD */
         fmt_int(val, (int32_t)r - 1);
         str_cpy(val + str_len(val), "/", 4);
@@ -2693,11 +2692,10 @@ static void cols_perf(void)
     k1_after_next = 0;
 }
 /* MORPH (fader, ROLL, -, AMOUNT), MORPH SET (SMART ARP PITCH; TARGET is ALGORITHM's BOTH) */
-static void cols_morph(const page_t *pg)
+static void cols_morph(char *val)
 {
-    char val[PV_LEN];
     uint32_t pi = song.sel, f = morph_fader_of(pi);
-    if (pg->graph == GR_MORPHSET) {
+    if (cur_page()->graph == GR_MORPHSET) {
         draw_column(0, "SMART", morph.cfg & MC_WILD ? "WILD" : "ON", "", VAL(0u), -1, ICON_NONE);
         draw_column(1, "ARP", morph.cfg & MC_ARP ? "ON" : "OFF", "", VAL(1u), -1, ICON_NONE);
         draw_column(2, "PITCH", morph.cfg & MC_PIT ? "ON" : "OFF", "", VAL(2u), -1, ICON_NONE);
@@ -2705,7 +2703,7 @@ static void cols_morph(const page_t *pg)
         return;
     }
     if (f == 0u || f == 127u)                      /* the fader: its ends by their letters, between them 1..126 */
-        str_cpy(val, f ? "B" : "A", sizeof val);
+        str_cpy(val, f ? "B" : "A", PV_LEN);
     else
         fmt_int(val, (int32_t)f);
     const char *why = h1_echo_why();
@@ -2738,13 +2736,12 @@ static void cols_morph(const page_t *pg)
 }
 #if DUELL_TEST_MODE
 /* MENU > SYSTEM > TEST: MORPH and ROLL as the MORPH page's, LOAD MULTI, RESET */
-static void cols_test(void)
+static void cols_test(char *val)
 {
-    char val[PV_LEN];
     uint32_t pi = song.sel, f = morph_fader_of(pi), mk = test_slot();
     int32_t g;
     if (f == 0u || f == 127u)
-        str_cpy(val, f ? "B" : "A", sizeof val);
+        str_cpy(val, f ? "B" : "A", PV_LEN);
     else
         fmt_int(val, (int32_t)f);
     draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);
@@ -2753,7 +2750,7 @@ static void cols_test(void)
     if (mk < MU_SHOWN)
         mu_label(val, mk);
     else
-        str_cpy(val, "--", sizeof val);
+        str_cpy(val, "--", PV_LEN);
     draw_column(2, "LOAD", val, "", mk < MU_SHOWN ? VAL(2u) : T_DIM, -1, ICON_AUTO);
     draw_column(3, "RESET", "--", "", VAL(3u), -1, ICON_AUTO);
 }
@@ -2772,13 +2769,11 @@ static void cols_mods(void)
     }
 }
 /* GLO's MIDI pages: MIDI (P1 CH, P2 CH, MIDI IN; CLK is on TEMPO), SIDECHAIN (SC SRC, SC NOTE), MIDI LEARN (LEARN, CLEAR) */
-static void cols_midi(const page_t *pg)
+static void cols_midi(char *val, uint8_t *vis)
 {
     uint32_t c;
-    uint8_t vis[4];
-    char val[PV_LEN];
     const char *unit;
-    if (pg->graph == GR_MLEARN) {
+    if (cur_page()->graph == GR_MLEARN) {
         char n[10] = "NONE";
         draw_column(0, "LEARN", ui.ml.on ? "ON" : "OFF", "", ui.ml.on ? T_ACCENT : VAL(0u), -1, ICON_MIDI);
         if (ml_count()) {                          /* CLEAR: right clears every learned CC; the card says how many there are */
@@ -2790,7 +2785,7 @@ static void cols_midi(const page_t *pg)
             draw_column(c, "", "", "", T_THEME, -1, ICON_NONE);
         return;
     }
-    if (pg->graph == GR_SCHAIN) {          /* the sidechain's MIDI setup, a device setting: K1 P1 CH, K2 P1 NOTE, K3 P2 CH, K4 P2 NOTE (shown whatever the DUCK SRC is) */
+    if (cur_page()->graph == GR_SCHAIN) {          /* the sidechain's MIDI setup, a device setting: K1 P1 CH, K2 P1 NOTE, K3 P2 CH, K4 P2 NOTE (shown whatever the DUCK SRC is) */
         static const char *const SL[4] = {"PART 1\nCHANNEL", "PART 1\nNOTE", "PART 2\nCHANNEL", "PART 2\nNOTE"};   /* (PART 1 / PART 2, not P1 CH; two lines: CHANNEL does not fit) */
         for (c = 0; c < 4u; c++) {
             uint32_t n = sc_midi[c];
@@ -2840,9 +2835,8 @@ static void cols_midi(const page_t *pg)
     }
 }
 /* GLOBAL (core.h): K1 SCALE, K2 ROOT, K3 OFF-SCALE SNAP / PLAY, K4 none */
-static void cols_scale(void)
+static void cols_scale(char *val)
 {
-    char val[PV_LEN];
     const char *unit;
     const param_desc_t *ds = &SCALE_D, *dr = &ROOT_D;
     int16_t sv = (int16_t)clamp(scale_g, 0, ds->max), rv = (int16_t)clamp(root_g, 0, dr->max);
@@ -2921,9 +2915,8 @@ static void cols_pats(void)
     draw_column_hide(3);
 }
 /* MULTI: SLOT M01..M16, then LOAD SAVE (GO buttons) */
-static void cols_slots(void)
+static void cols_slots(char *val)
 {
-    char val[PV_LEN];
     uint32_t k = (uint32_t)(song.g[G_SLOT] - 1) % MU_SHOWN;
     int used = project_used(k);
     mu_label(val, k);
@@ -2957,10 +2950,9 @@ static void cols_slots(void)
     draw_column_hide(3);
 }
 /* FM6: OP, then three of its bytes (ui_fm6op.c) */
-static void cols_fop(void)
+static void cols_fop(char *val)
 {
     uint32_t c;
-    char val[PV_LEN];
     for (c = 0; c < 4u; c++) {
         const char *lb, *u;
         int32_t r;
@@ -2975,12 +2967,11 @@ static void cols_fop(void)
     }
 }
 /* SLOT, then that slot's SRC DST AMT */
-static void cols_mod(const page_t *pg)
+static void cols_mod(char *val)
 {
-    char val[PV_LEN];
     const char *unit;
     const track_t *t = TSEL;
-    uint32_t base = mod_page_base(pg), id = MSLOT_ID(base + mod_ui_slot);   /* (MOD: 1..4, MOD 2: 5..8) */
+    uint32_t base = mod_page_base(cur_page()), id = MSLOT_ID(base + mod_ui_slot);   /* (MOD: 1..4, MOD 2: 5..8) */
     int32_t s = morph_view(song.sel, id), d = morph_view(song.sel, id + 1u), a = morph_view(song.sel, id + 2u);
     uint8_t mks = s != t->p[id], mkd = d != t->p[id + 1u], mka = a != t->p[id + 2u];   /* (MORPH: the route the fader has,
                                                                                         * the dominant end's; marks) */
@@ -2997,9 +2988,8 @@ static void cols_mod(const page_t *pg)
     card_mk_next = mka;
     draw_column(3, "AMOUNT", val, unit, a ? VAL(3u) : T_DIM, RATIO(&TP[id + 2u], a), mod_src_icon(MS_OFF));
 }
-static void cols_step(void)
+static void cols_step(char *val)
 {
-    char val[PV_LEN];
     static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
     const step_t *st = &seq_steps(TSEL)[ui.cursor];
     char u[8];
@@ -3044,15 +3034,13 @@ static void cols_step(void)
     }
 }
 /* every other page: its cards K1..K4 (page_cards), the columns after them empty */
-static void cols_cards(const page_t *pg)
+static void cols_cards(char *val, uint8_t *vis)
 {
     uint32_t c;
     uint32_t nvis;
-    uint8_t vis[4];
-    char val[PV_LEN];
     const char *unit;
     int32_t twin_rt;
-    nvis = page_cards(pg, vis);                 /* the cards that show, moved left (K1..Kn); the columns after them stay empty */
+    nvis = page_cards(cur_page(), vis);                 /* the cards that show, moved left (K1..Kn); the columns after them stay empty */
     for (c = 0; c < 4u; c++) {
         int16_t *vp;
         int32_t vv;
@@ -3062,12 +3050,12 @@ static void cols_cards(const page_t *pg)
             draw_column_hide(c);
             continue;
         }
-        d = page_desc(pg, s, &vp);
-        if (pg->graph == GR_ENGINE && s == 0u) {   /* ENGINE: K1 the engine, then its own controls */
+        d = page_desc(cur_page(), s, &vp);
+        if (cur_page()->graph == GR_ENGINE && s == 0u) {   /* ENGINE: K1 the engine, then its own controls */
             engine_card(c);
             continue;
         }
-        if (pg->graph == GR_TEMPO && s == TEMPO_TAP_SLOT) { /* TAP: the tempo of the taps for 2 s after the last, else TAP (EXT clock: no card) */
+        if (cur_page()->graph == GR_TEMPO && s == TEMPO_TAP_SLOT) { /* TAP: the tempo of the taps for 2 s after the last, else TAP (EXT clock: no card) */
             uint32_t n = tempo_tapping();
             if (clock_src()) {
                 draw_column_hide(c);
@@ -3076,15 +3064,15 @@ static void cols_cards(const page_t *pg)
             if (n >= 2u)
                 fmt_int(val, song.g[G_BPM]);
             else
-                str_cpy(val, n ? "1" : "TAP", sizeof val);
+                str_cpy(val, n ? "1" : "TAP", PV_LEN);
             draw_column(c, "TAP", val, n >= 2u ? "BPM" : "", n ? T_ACCENT : VAL(c), -1, ICON_TEMPO);
             continue;
         }
-        if (pg->id[s] == P_DKRATE && duck_ctx_id(TSEL) == 0xFFu) {   /* DUCK 1/2 K2 with SRC MIDI / OFF: no card (hidden, as the hide rule) */
+        if (cur_page()->id[s] == P_DKRATE && duck_ctx_id(TSEL) == 0xFFu) {   /* DUCK 1/2 K2 with SRC MIDI / OFF: no card (hidden, as the hide rule) */
             draw_column_hide(c);
             continue;
         }
-        if (s == 3u && duck_midi_page(pg)) {    /* DUCK 1/2, SRC MIDI: the notes come from GLO > SIDECHAIN; K4 jumps there */
+        if (s == 3u && duck_midi_page(cur_page())) {    /* DUCK 1/2, SRC MIDI: the notes come from GLO > SIDECHAIN; K4 jumps there */
             draw_column(c, "SETUP", "GLO", "", VAL(c), -1, ICON_MIDI);   /* (the link card says SETUP, its value GLO: the page it jumps to) */
             continue;
         }
@@ -3096,14 +3084,14 @@ static void cols_cards(const page_t *pg)
             draw_column(c, "", "", "", T_THEME, -1, ICON_AUTO);
             continue;
         }
-        if (pg->graph == GR_TEMPO && s == 0u)  /* CLK: an external clock's state under the source (EXT / NO CLOCK; AUTO: the source) */
+        if (cur_page()->graph == GR_TEMPO && s == 0u)  /* CLK: an external clock's state under the source (EXT / NO CLOCK; AUTO: the source) */
             card_why_next = clock_why(1);
         if ((act_cols() >> s) & 1u) {
             draw_act_column(c, d->label, T_THEME, ICON_AUTO);
             continue;
         }
-        if (vp && byp_card(pg, vp)) {           /* DUELL 1.1 BYPASS: the word in place of the value, dim */
-            draw_column(c, quick_label(pg, s) ? quick_label(pg, s) : desc_shown(d), "BYPASS", "", T_DIM, -1, param_icon(d, *vp));
+        if (vp && byp_card(cur_page(), vp)) {           /* DUELL 1.1 BYPASS: the word in place of the value, dim */
+            draw_column(c, quick_label(cur_page(), s) ? quick_label(cur_page(), s) : desc_shown(d), "BYPASS", "", T_DIM, -1, param_icon(d, *vp));
             continue;
         }
         vv = card_vv(vp);                               /* (MORPH: the blended value; the mark) */
@@ -3113,8 +3101,8 @@ static void cols_cards(const page_t *pg)
             unit = "";
         }
         card_mot_of(vp);                                /* (a global: never) */
-        if (pg->scope == SC_TRACK && pg->graph != GR_MOD && (twin_rt = twin_card(TSEL, vp, d, vv, val, &unit)) != -2) {   /* cloud job H: the TWIN FILTER's own texts and gauges */
-            draw_column(c, quick_label(pg, s) ? quick_label(pg, s) : desc_shown(d), val, unit, VAL(c), twin_rt, param_icon(d, (int16_t)vv));
+        if (cur_page()->scope == SC_TRACK && cur_page()->graph != GR_MOD && (twin_rt = twin_card(TSEL, vp, d, vv, val, &unit)) != -2) {   /* cloud job H: the TWIN FILTER's own texts and gauges */
+            draw_column(c, quick_label(cur_page(), s) ? quick_label(cur_page(), s) : desc_shown(d), val, unit, VAL(c), twin_rt, param_icon(d, (int16_t)vv));
             continue;
         }
         /* (faded ONLY what a selection makes impossible. A value of 0 is not a reason: CUT's RES and the FLT depths of the
@@ -3123,7 +3111,7 @@ static void cols_cards(const page_t *pg)
             cell_seg_n = (uint8_t)(d->max - d->min + 1);
             cell_seg_i = (uint8_t)clamp(enum_rank(d, vv) - d->min, 0, d->max - d->min);
         }
-        draw_column(c, quick_label(pg, s) ? quick_label(pg, s) : desc_shown(d), val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, enum_rank(d, (int16_t)vv)),
+        draw_column(c, quick_label(cur_page(), s) ? quick_label(cur_page(), s) : desc_shown(d), val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, enum_rank(d, (int16_t)vv)),
                     param_icon(d, (int16_t)vv));   /* (the card's display name; the icon by the stored label) */
         cell_seg_n = cell_seg_i = 0;
     }
@@ -3131,69 +3119,70 @@ static void cols_cards(const page_t *pg)
 /* the four columns under the header: the page's own layout (cols_*), else its cards */
 static void draw_columns(void)
 {
-    const page_t *pg = cur_page();
+    char val[PV_LEN];                                  /* the pieces' value text and visible cards: one buffer each, passed down */
+    uint8_t vis[4];
     grid_wide = 0;
     (void)motion_mask(song.sel, card_mot_mask);       /* (PLAY OFF: no scan) */
-    if (off_module(pg))                        /* its module is OFF in GLO > MODULES: no cards, only the notice (ui_graph.c graph_off) */
+    if (off_module(cur_page()))                        /* its module is OFF in GLO > MODULES: no cards, only the notice (ui_graph.c graph_off) */
         return;
-    if (pg->graph == GR_EVENTS) {
-        cols_events();
+    if (cur_page()->graph == GR_EVENTS) {
+        cols_events(val);
         return;
     }
-    if (pg->graph == GR_TOOLS)                 /* TOOLS (grid_on 17): no cards, the three rows are the page (ui_graph.c graph_tools); the knob actions stay in ui.c */
+    if (cur_page()->graph == GR_TOOLS)                 /* TOOLS (grid_on 17): no cards, the three rows are the page (ui_graph.c graph_tools); the knob actions stay in ui.c */
         return;
-    if (pg->scope == SC_PERF) {
+    if (cur_page()->scope == SC_PERF) {
         cols_perf();
         return;
     }
     TIDE_COLUMNS();                                    /* TIDE hook (TIDE, TIDE LIST) */
-    if (pg->scope == SC_MORPH) {
-        cols_morph(pg);
+    if (cur_page()->scope == SC_MORPH) {
+        cols_morph(val);
         return;
     }
 #if DUELL_TEST_MODE
-    if (pg->scope == SC_TEST) {
-        cols_test();
+    if (cur_page()->scope == SC_TEST) {
+        cols_test(val);
         return;
     }
 #endif
-    if (pg->scope == SC_MODS) {
+    if (cur_page()->scope == SC_MODS) {
         cols_mods();
         return;
     }
-    if (pg->scope == SC_MIDI) {
-        cols_midi(pg);
+    if (cur_page()->scope == SC_MIDI) {
+        cols_midi(val, vis);
         return;
     }
-    if (pg->scope == SC_SCALE) {
-        cols_scale();
+    if (cur_page()->scope == SC_SCALE) {
+        cols_scale(val);
         return;
     }
-    if (pg->graph == GR_BROWSE) {
+    if (cur_page()->graph == GR_BROWSE) {
         cols_browse();
         return;
     }
-    if (pg->graph == GR_PATS) {
+    if (cur_page()->graph == GR_PATS) {
         cols_pats();
         return;
     }
-    if (pg->graph == GR_SLOTS) {
-        cols_slots();
+    if (cur_page()->graph == GR_SLOTS) {
+        cols_slots(val);
         return;
     }
-    if (fop_page(pg->graph)) {
-        cols_fop();
+    if (fop_page(cur_page()->graph)) {
+        cols_fop(val);
         return;
     }
-    if (pg->graph == GR_MOD) {
-        cols_mod(pg);
+    if (cur_page()->graph == GR_MOD) {
+        cols_mod(val);
         return;
     }
-    if (pg->scope == SC_STEP) {
-        cols_step();
+    if (cur_page()->scope == SC_STEP) {
+        cols_step(val);
         return;
     }
-    cols_cards(pg);
+    cols_cards(val, vis);
 }
 
 
@@ -3394,7 +3383,7 @@ static void splash_end(void)                        /* the UI takes the screen: 
      * the splash in the same frame (ui_draw below): the header and footer strips land straight on it, the body is filled once by draw_frame (ui.force 1) */
     splash_on = 0;
     kb_boot_hold = 0;
-    ui.force = 1;
+    ui_redraw();
     if (splash_guide) {                             /* the first-start GUIDE */
         splash_guide = 0;
         guide_open(0);
@@ -3733,7 +3722,7 @@ static void ui_draw(void)
         pal_q.due = 0;
         pal_q.t = fm1_ms;
         palette_set(settings.palette % NPALETTES);
-        ui.force = 1;
+        ui_redraw();
     }
     /* the theme follows the selected part (SPEC 5a), its MORPH fader (colour A -> B), LAYER mode and a GLOBAL page: the third colour (cheap: only on a change). A quick layer over
      * a global page and PERFORM are per part: the part's colours */
@@ -3751,7 +3740,7 @@ static void ui_draw(void)
             if (keep && bg0 == ux.bg)
                 ui_refresh();
             else
-                ui.force = 1;
+                ui_redraw();
         }
     }
     ui.frame++;
@@ -3761,12 +3750,12 @@ static void ui_draw(void)
         uint8_t on = (uint8_t)oct_show_on();
         if (on != oct_was) {
             oct_was = on;
-            ui.force = 1;
+            ui_redraw();
         }
     }
     if (counting != (uint8_t)seq_counting()) {          /* a count-in began or ended: the page drawn again after it */
         counting = (uint8_t)seq_counting();
-        ui.force = 1;
+        ui_redraw();
     }
     if (!scr_frame())                                   /* MENU > SCREEN OFF: dark (or waking), nothing drawn */
         return;
@@ -3785,7 +3774,7 @@ static void ui_draw_page(uint32_t counting)
         uint8_t pp = (uint8_t)(ui.perf && cur_page()->scope == SC_PERF && !(ui.layer || ui.menu || ui.guide || ui.uboot || ui.confirm || name_on() || counting || oct_show_on() || glo_pg()));
         if (pp != perf_pg) {
             perf_pg = pp;
-            ui.force = 1;
+            ui_redraw();
         }
     }
     {   /* the MIXER (GLO's page, and QUICK GLO over any page) is a grid screen (7): PAGES_V2_glo-a.png; every other layer and screen uses the plain layout */
@@ -3799,22 +3788,22 @@ static void ui_draw_page(uint32_t counting)
         if (want == 16u && (area_cols != 3u || area_two)) {   /* (QUICK SEQ: three one-line cards, DIVISION, SWING, GATE) */
             area_cols = 3u;
             area_two = 0;
-            ui.force = 1;
+            ui_redraw();
         }
         if (want == 14u && ui.layer == LAYER_REC && cell_n != 4u) {   /* (QUICK REC: the four cells always show, knob c in cell c) */
             uint32_t c;
             cell_n = 4u;
             for (c = 0; c < 4u; c++)
                 cell_at[c] = (uint8_t)c;
-            ui.force = 1;
+            ui_redraw();
         }
         if (grid_on && grid_on != want && (ui.layer || ui.menu || ui.guide || ui.uboot || ui.confirm || name_on() || counting || ui.perf || oct_show_on() || glo_pg())) {
             grid_on = 0;                                /* (the other screens use the plain layout) */
-            ui.force = 1;
+            ui_redraw();
         }
         if (want && grid_on != want) {
             grid_on = want;
-            ui.force = 1;
+            ui_redraw();
         }
     }
     if (ui.uboot) {
@@ -3924,9 +3913,9 @@ static void ui_draw_page(uint32_t counting)
                     eng_gaps();
                     ui_refresh();
                 } else
-                    ui.force = 1;
+                    ui_redraw();
             } else if (moved)                           /* (a card shows or hides, the cells move: the page drawn whole) */
-                ui.force = 1;
+                ui_redraw();
             if (g == 15 && !lst && list_was)            /* (the engine list over the top cell ended: the cells drawn again, no fill) */
                 ui_refresh();
             list_was = (uint8_t)lst;

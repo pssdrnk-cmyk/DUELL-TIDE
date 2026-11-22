@@ -459,7 +459,7 @@ static void rec_hold_tap(void)
         ui_message(off ? "HOLD OFF: SEQ+REC=REC" : "HOLD ON: SEQ+REC=REC");
     else
     ui_message(off ? "HOLD OFF" : "HOLD ON");
-    ui.force = 1;
+    ui_redraw();
 }
 static int rec_tap(uint32_t seq)                        /* 1: the arming changed. seq: SEQ was down with REC (SEQ + REC: never HOLD) */
 {
@@ -469,7 +469,7 @@ static int rec_tap(uint32_t seq)                        /* 1: the arming changed
         return 1;
     }
     song.rec ^= bit;
-    ui.force = 1;                                     /* also refresh the status on MENU / ABOUT */
+    ui_redraw();                                     /* also refresh the status on MENU / ABOUT */
     if (!(song.rec & bit))
         ui_message("REC OFF");                          /* (said on every page, HOME included, where the header ring is small) */
     if ((song.rec & bit) && !song.playing && !seq_counting() && roll_on()) {
@@ -502,7 +502,7 @@ static void confirm_open(uint32_t kind, uint32_t trk)
     ui.confirm = (uint8_t)kind;
     ui.confirm_trk = (uint8_t)trk;
     ui.act = 0;
-    ui.force = 1;
+    ui_redraw();
 }
 
 /* MENU > CONTROL > STEP PREVIEW ON: on SEQ > STEP (the roll) with the transport
@@ -642,7 +642,7 @@ static void part_select(uint32_t pos)                   /* 0 PART 1, 1 PART 2, 2
     if (pos < 2u)
         track_select(pos);
     song.both = (uint8_t)(pos >= 2u);
-    ui.force = 1;
+    ui_redraw();
 }
 #if TIDE_PLAYSEL
 /* docs/design/PLAY_MODE_SELECT.md: on the BOTH pages ALGORITHM is PART 1, the middle, PART 2 (part_select's three positions); the middle
@@ -1376,7 +1376,7 @@ static void edit_param(uint32_t slot, int32_t steps)
     }
     if (pg->scope != SC_GLOBAL && vp >= TSEL->p && vp < TSEL->p + P_COUNT && mod_is_src((uint32_t)(vp - TSEL->p)) && !*vp) {   /* a matrix SRC set to OFF: the slots after it move up (mod.c mod_compact); the cursor stays: it shows the slot that moved in */
         mod_compact(TSEL);
-        ui.force = 1;
+        ui_redraw();
     }
     if (pg->scope != SC_GLOBAL && vp >= TSEL->p && vp < TSEL->p + EXT_P_LEN) {   /* (a global's: no automation or learn) */
         motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);   /* (record on: a lock, motion.c motion_knob_lock; the extension
@@ -1612,12 +1612,12 @@ static void oct_rel(int blocked)
         if ((rel & 1u) && !(oct_mod & 1u)) {
             song.octave += song.octave > -3 ? -1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;                  /* (the OCTAVE page, ui_draw.c) */
-            ui.force = 1;
+            ui_redraw();
         }
         if ((rel & 2u) && !(oct_mod & 2u)) {
             song.octave += song.octave < 3 ? 1 : 0;
             oct_show_t0 = fm1_ms ? fm1_ms : 1u;
-            ui.force = 1;
+            ui_redraw();
         }
         oct_pend &= (uint8_t)now;
     }
@@ -1689,7 +1689,7 @@ static void act_do(void)
     default:                                              /* G_INITSND */
         init_sound();                                     /* engine defaults + its first preset (the steps stay), KEY TRK at its new-sound default */
         ui_message("SOUND INIT");
-        ui.force = 1;
+        ui_redraw();
         break;
     }
 }
@@ -1895,7 +1895,7 @@ __attribute__((noinline)) static void dlg_cancel(void)
     ui_message(name_on() || ((CF_SAVES >> ui.confirm) & 1u) ? "NOT SAVED" : "CANCELLED");
     name_close();
     ui.confirm = 0;
-    ui.force = 1;
+    ui_redraw();
 }
 
 static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
@@ -2130,11 +2130,11 @@ static void in_menu(uint32_t pressed, uint32_t oct)
         if (oct & 2u) {                             /* restarts the unit as new; OCT- NO and any page button cancel, nothing erased */
             int rc = erase_data_run();
             ui.confirm = 0;
-            ui.force = 1;
+            ui_redraw();
             ui_message(rc == 0 ? "ERASED, RESTARTING" : rc == 3 ? "STOP TO ERASE" : "ERASE FAILED");
         } else if ((oct & 1u) || leave_pressed(pressed)) {
             ui.confirm = 0;
-            ui.force = 1;
+            ui_redraw();
             ui_message("NOTHING ERASED");
         }
         enc_drop();
@@ -2199,18 +2199,18 @@ static void in_confirm(uint32_t oct)
     if (oct & 2u) {
         uint32_t kind = ui.confirm;
         ui.confirm = 0;
-        ui.force = 1;
+        ui_redraw();
         confirm_do(kind);
     } else if (oct & 1u) {
         ui.confirm = 0;
-        ui.force = 1;
+        ui_redraw();
     }
     if (ui.confirm == CF_SAVE_OVER && ui.confirm_trk < 2u) {   /* SAVE held: K1 picks the slot the sound goes to (round the ends) */
         int32_t st = panel_enc(EN_K1);
         if (st) {
             int32_t d = (ui_prefs & PREF_ACCEL) ? accel(EN_K1, st, (int32_t)UP_SLOTS) : st > 0 ? 1 : -1;
             ui.svs = (uint8_t)((((int32_t)ui.svs + d) % (int32_t)UP_SLOTS + (int32_t)UP_SLOTS) % (int32_t)UP_SLOTS);
-            ui.force = 1;
+            ui_redraw();
         }
         if (panel_enc(EN_K2)) {                     /* K2 RENAME - the NAME screen for the sound's name, back here after it */
             name_open(NK_SAVE_NAME, ui.confirm_trk);
@@ -2254,7 +2254,7 @@ static void in_buttons(uint32_t pressed, uint32_t now, uint32_t lay)
             if ((fm1_in.buttons & both) == both) {      /* both together: the octave to 0 now, no tap after it */
                 song.octave = 0;
                 oct_show_t0 = fm1_ms ? fm1_ms : 1u;
-                ui.force = 1;
+                ui_redraw();
                 oct_pend = 0;
             } else {                                    /* one: the octave moves when it is let go (oct_rel), unless OCT- */
                 oct_press_t0 = oct_pend ? oct_press_t0 : (fm1_ms ? fm1_ms : 1u);
@@ -2482,7 +2482,7 @@ static void ui_input(void)
             ui.menu = 1;                                /* (at the tab and row it was left at) */
             ui.confirm = 0;                             /* (a clear dialog is cancelled, NAME too) */
             name_close();
-            ui.force = 1;
+            ui_redraw();
             song.seq_mode = 0;
         }
     }
@@ -2625,12 +2625,12 @@ static void panel_setup(void)
     }
     panel.magic = PANEL_MAGIC;
     lcd_fill(0, 0, 240, 240, T_BG);
-    ui.force = 1;
+    ui_redraw();
     return;
 timeout:
     panel = old;
     lcd_fill(0, 0, 240, 240, T_BG);
-    ui.force = 1;
+    ui_redraw();
     ui_message("SETUP CANCELLED");
 }
 #include "tide_ui.c"           /* TIDE hook: TIDE's UI side */

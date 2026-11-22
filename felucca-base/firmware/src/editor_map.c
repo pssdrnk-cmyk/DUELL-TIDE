@@ -68,7 +68,7 @@ static int ed_map_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         else if (n == 2u && a[0] == 1u)
             rc = map_clear(cc);
         if (!rc) {
-            ui.force = 1;
+            ui_redraw();
             ui.foot_sig = 0;
         }
         ed_b(rc);
@@ -97,7 +97,7 @@ static int ed_map_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
         ed_b(3);                                           /* MAP_RESET takes no argument */
     else {
         map_reset();
-        ui.force = 1;
+        ui_redraw();
         ui.foot_sig = 0;
         ed_b(0);
         ed_b(ed_map_save());

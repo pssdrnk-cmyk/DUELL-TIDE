@@ -61,7 +61,7 @@ static int name_on(void) { return nm.kind != NK_NONE; }
 static void name_close(void)
 {
     if (nm.kind)
-        ui.force = 1;
+        ui_redraw();
     nm.kind = NK_NONE;
 }
 /* the keys: 2 = NAME's (silent), 0 = notes (seq.c keyboard_block
@@ -130,7 +130,7 @@ static void name_open(uint32_t kind, uint32_t slot)
     nm.len = nm.cur = (uint8_t)str_len(nm.s);
     if (!nm.len)                                       /* nothing to keep (a new sound, an unnamed multi): a random name */
         nm_random();
-    ui.force = 1;
+    ui_redraw();
 }
 
 static void nm_commit(void)                            /* the letter being cycled is kept: the cursor past it */

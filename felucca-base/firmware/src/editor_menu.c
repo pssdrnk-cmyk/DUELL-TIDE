@@ -310,7 +310,7 @@ static int ed_menu_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
     if (row == MI_USBAUDIO)
         usb.set_at = (uint16_t)(fm1_ms | 1u);          /* (the same: the reply leaves before the device drops off the bus) */
 #endif
-    ui.force = 1;                                      /* (the MENU page, if shown, redraws) */
+    ui_redraw();                                      /* (the MENU page, if shown, redraws) */
     ed_b(MI_PROJECT(row) ? 0u : menu_n(row) == 2u || ED_ROW_SERIAL(row) ? ed_menu_save() : ed_menu_defer());   /* (the project's: in the music, no settings to save;
                                                          * T0227: as the menu's knob, a two-value switch saved at once, the others once they rest) */
     ed_b(a[0]);

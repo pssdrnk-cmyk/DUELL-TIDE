@@ -313,6 +313,7 @@ static struct {
         volatile uint8_t io[2];  /* midi_control.c ml_arm, ml_heard */
     } ml;
 } ui;
+static __attribute__((noinline)) void ui_redraw(void) { ui.force = 1; }   /* the next frame redraws the whole screen (one call: smaller than the store written out at ~100 places) */
 
 enum { CF_NONE, CF_CLEAR_SEQ, CF_CLEAR_TRK, CF_OVR_PROJ, CF_OVR_USER, CF_LOAD_PAT,
        CF_INIT_SOUND, CF_CLEAR_MOTION, CF_RESTORE_ALL, CF_OVR_PSLOT,
@@ -404,7 +405,7 @@ static void mods_put(uint32_t bit, uint32_t off)       /* bit: MODS_*; off 1 / 0
     mods_apply();
     ui.mset_dirty = 1;
     ui.mset_t = fm1_ms;
-    ui.force = 1;
+    ui_redraw();
 }
 static void mods_run_put(uint32_t k, uint32_t v)       /* k 0 ARP, 1 SEQ; v as mods_run_get */
 {
@@ -416,7 +417,7 @@ static void mods_run_put(uint32_t k, uint32_t v)       /* k 0 ARP, 1 SEQ; v as m
     }
     mods_put(1u << k, v == 0u);
     mods_apply();
-    ui.force = 1;
+    ui_redraw();
 }
 /* the page's cards, K1..K4 = bits 0..3 (MODS_ARP SEQ SENDS PFX): names, icons. A module OFF hides its cards (ui_draw.c card_hidden_vp); MODS_FULL
  * is the header's line for the PLAY button, which still runs the clock */
@@ -586,7 +587,7 @@ static int scr_frame(void)
     case SCR_SLPOUT:
         if (fm1_ms - scrn.t >= 120u) {
             scrn.st = SCR_SHOW;
-            ui.force = 1;
+            ui_redraw();
             return 1;
         }
         break;
@@ -664,7 +665,7 @@ static void perf_off(void)
         return;
     ui.perf = 0;
     perf_fade_begin(0);                                /* (FADE: SPACE, if PERFORM moved it, and KILL glide to neutral; KEEP: they stay) */
-    ui.force = 1;
+    ui_redraw();
 }
 static void perf_cards(void);                         /* (ui_perform.c: the PERFORM page's parts, drawn by ui_draw.c and ui_graph.c) */
 static void graph_perf(void);
@@ -853,7 +854,7 @@ static void page_entered(void)
     ui.hot_t = 0;                                /* clear the previous page's emphasis */
     ui.act = 0;
     pl_pend_on = 0;
-    ui.force = 1;
+    ui_redraw();
 }
 
 static int step_on(const step_t *st) { return st->time == ST_NOTE && st->n; }
@@ -1429,7 +1430,7 @@ static __attribute__((noinline)) void undo_swap(void)
         sync_reload = 1;
     b[1] = (char)('1' + trk_index(t));
     ui_say("UNDO/REDO ", b);
-    ui.force = 1;
+    ui_redraw();
 }
 
 /* one step of the pattern tables' format (a note 0 = rest; flags 1 accent, 2 slide, 4 tie): PATTERNS[] (the slots' defaults, patslot.c), user presets */
@@ -1512,7 +1513,7 @@ static void pat_load(track_t *t, uint32_t n)
     pat_from[trk_index(t)] = 0;                     /* (a phrase: no PROJECT slot) */
     load_end(t);
     TIDE_LOADED(1u << trk_index(t));                /* TIDE hook (H18): the part starts as written, the arc at RISE */
-    ui.force = 1;
+    ui_redraw();
 }
 
 /* a pattern load would throw away steps of the user's (recorded, edited, from a project): ask first */
@@ -1568,7 +1569,7 @@ static void pslot_save_ui(uint32_t k, const char *name)
     pat_last[song.sel] = (uint8_t)(pat_pick() + 1u);   /* (the part now plays what the slot holds) */
     pat_sig[song.sel] = steps_sig(TSEL);
     ui_say("SAVED ", l);
-    ui.force = 1;
+    ui_redraw();
 }
 /* the track's settings, not the sound's: what a sound load (factory or user preset, an engine jump,
  * TOOLS INIT) leaves alone. The mix (LEVEL, PAN, MUTE: the MIXER; LEVEL is the player's mixer level, the sound's loudness is P_TRIM, which a load sets), the arpeggiator (ARP, ARP 2),
@@ -2070,7 +2071,7 @@ static void track_select(uint32_t i)
     ui.cursor = 0;
     ui.bank = 0;
     sync_reload = 1;
-    ui.force = 1;
+    ui_redraw();
 }
 
 #include "ui_events.c"                            /* SEQ > PARAMETER LOCKS: locks, events, CHANCE, RATCH as a list (an action page) */
