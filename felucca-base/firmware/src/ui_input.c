@@ -1957,16 +1957,42 @@ static int leave_pressed(uint32_t pressed)
     return (pressed & m) != 0u;
 }
 
+static void tl_undo_take(track_t *t);                  /* (ui_tools.c: the undo copy of a SEQ tool) */
+#define STEP_UNDO_HINT "[OCT-] + PRESETS: UNDO"         /* (the STEP clear's second message and QUICK SEQ's line: hold OCT-, turn PRESETS) */
+/* step c of t holds something EDIT's clear would take: notes, a tie, a step setting, or a lock (a NOTE step with no notes, as a fresh pattern's, is empty) */
+static int step_full(const track_t *t, uint32_t c)
+{
+    const step_t *s = &t->step[c];
+    uint32_t i, k = trk_index(t);
+    if (s->n || s->time == ST_TIE || s->flags || s->vel || s->probability)
+        return 1;
+    for (i = 0; i < motion.count; i++)
+        if (MOTION_TRK(&motion.event[i]) == k && (motion.event[i].param & MOTION_LOCK) && (motion.event[i].place & 63u) == c)
+            return 1;
+    return 0;
+}
+
 /* a page button let go (they act on release; a layer's own button: layer_gesture). 1: it acted (EDIT on STEP, USER,
  * PROJECT, PARAMETER LOCKS) instead of opening a page */
 static int page_tap(uint32_t b)
 {
     uint32_t f;
-    if (b == B_EDIT && song.seq_mode && cur_page()->graph == GR_ROLL) {   /* STEP: EDIT clears the step (its locks with it) */
-        step_clear(&TSEL->step[ui.cursor]);
-        (void)motion_clear_locks(TSEL, ui.cursor);
+    if (b == B_EDIT && song.seq_mode && cur_page()->graph == GR_ROLL) {   /* STEP: EDIT clears the step (its locks with it), one undo (OCT- + PRESETS: tl_undo_take, as the SEQ tools) */
+        char m[20];
+        uint32_t c = ui.cursor % NSTEP;
+        if (step_full(TSEL, c)) {                       /* (an empty step: nothing to clear, the last edit's undo stays) */
+            tl_undo_take(TSEL);
+            step_clear(&TSEL->step[c]);
+            (void)motion_clear_locks(TSEL, c);
+            fmt_int(m, (int32_t)c + 1);
+            ui_say("STEP ", m);
+            str_cpy(ui.msg + str_len(ui.msg), " CLEARED", sizeof ui.msg - str_len(ui.msg));
+            ui.msg_t = 100;                             /* (B16: long enough to read before the hint replaces it) */
+            str_cpy(ui.msg2, STEP_UNDO_HINT, sizeof ui.msg2);   /* (then the gesture that brings it back) */
+        } else {
+            ui_message("STEP EMPTY");
+        }
         cursor_set(ui.cursor + 1);
-        ui_message("STEP CLEARED");
         return 1;
     }
     if (b == B_EDIT && cur_page()->graph == GR_EVENTS) {   /* PARAMETER LOCKS: EDIT deletes the row's record */

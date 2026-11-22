@@ -301,11 +301,13 @@ static void tl_trans(track_t *t, uint32_t len, int32_t d)
                 t->step[i].note[k] = (uint8_t)((int32_t)t->step[i].note[k] + d);
 }
 
-/* SWELL (a whole new wave: C4, was RANDOM) or RIPPLE (a few notes move: D4, was COOK) of t with the press's seed: 1 when the steps changed, 0 nothing (RIPPLE with no notes says so) */
+/* SWELL (a whole new wave: C4, was RANDOM) or RIPPLE (a few notes move: D4, was COOK) of t with the press's seed: the steps it changed (the header says how many), 0 nothing (RIPPLE with no notes says so) */
 static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t live)
 {
-    uint32_t len = tl_len(t), i, n = 0, sig = steps_sig(t);
+    uint32_t len = tl_len(t), i, n = 0, h[NSTEP];
     uint64_t was = tl_used(t, len);
+    for (i = 0; i < NSTEP; i++)
+        h[i] = fnv(2166136261u, &t->step[i], sizeof t->step[i]);
     tl_rules(t);
     for (i = 0; i < len; i++)
         n += (uint32_t)tl_gate(&t->step[i]);
@@ -332,7 +334,9 @@ static uint32_t tl_sw_apply(track_t *t, uint32_t ripple, uint32_t seed, uint32_t
     }
     tl_dst = 0;
     tl_unlock(t, was, len);
-    return steps_sig(t) != sig;
+    for (i = 0, n = 0; i < NSTEP; i++)
+        n += fnv(2166136261u, &t->step[i], sizeof t->step[i]) != h[i];
+    return n;
 }
 
 /* ------------------------------------------------------------ actions --- */

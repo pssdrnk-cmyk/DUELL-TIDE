@@ -116,13 +116,16 @@ static void tide_keep_sound(uint32_t pi)
 }
 /* KEEP (SEQ TOOLS, G4: ui_tools.c TL_KEEP; plan H14): what part pi plays now becomes its own, one undo for both halves (OCT- + a PRESETS turn:
  * the pattern and, when the sound was kept, the sound). The pattern half: the SEQ MORPH's variation as it plays (seqm_keep, 1.1's
- * ties); steps it empties lose their locks (tl_unlock). The message; 0 = nothing to keep (said) */
+ * ties); steps it empties lose their locks (tl_unlock). What it kept, or NOTHING TO KEEP, stays in the header 3 s (B16: it was gone before it could be read); "" said, 0 = nothing kept */
+static void tk_hold_ms(uint32_t ms);                     /* (tide_take.c) */
+#define KEEP_SAY_MS 3000u
 static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
 {
     uint32_t pi = trk_index(t);
     int sq = pi < NSHOWN && seqm_active(pi), snd = tide_sound_moved(pi);
     if (!sq && !snd) {
         ui_message("NOTHING TO KEEP");
+        tk_hold_ms(KEEP_SAY_MS);
         return 0;
     }
     tl_undo_take(t);
@@ -134,7 +137,9 @@ static const char *tide_tl_keep(track_t *t, uint64_t was, uint32_t len)
     }
     if (snd)
         tide_keep_sound(pi);
-    return sq && snd ? "KEPT" : sq ? "SEQ KEPT" : "SOUND KEPT";
+    ui_message(sq && snd ? "SEQ + SOUND KEPT" : sq ? "SEQ KEPT" : "SOUND KEPT");
+    tk_hold_ms(KEEP_SAY_MS);
+    return "";
 }
 
 /* the SAVE dialog (ui_draw.c draw_confirm; trk2 2 = both parts): SAVE stores the sound as loaded, not what JOURNEY moved the heard end to (KEEP freezes what is

@@ -2706,7 +2706,8 @@ int main(int argc, char **argv)
     }
     {   /* TIDE's header messages: each must fit the title room (a long one wrapped onto a second line and overlapped the first) */
         static const char *const M[] = {"BACK TO ORIGINAL", "PARTS LEAD IN TURNS", "PARTS VARY TOGETHER", "TARGET BOTH", "DROP NEEDS EVOLVE/TRAVEL",
-            "DROP CANCELLED", "VARY EVERY 4TH", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT"};
+            "DROP CANCELLED", "VARY EVERY 4TH", "VARY EVERY BAR", "STYLE AMBIENT", "STYLE MINIMAL", "GLIDE STOPPED", "NOTHING TO KEEP", "PARTS TAKE TURNS", "GLIDE TO B", "WASH HIGH", "SEQ KEPT", "SOUND KEPT",
+            "SEQ + SOUND KEPT", "STEP 64 CLEARED", "STEP EMPTY", "SWELL  64 STEPS", "RIPPLE  64 STEPS", "NOTHING CHANGED", "TOO FEW NOTES TO ANSWER", "NO NOTE TO MOVE", "BASS LINE  C# MAJ GUESSED", "CHORDS  F# MIN GUESSED"};   /* (B16 lane A: the SEQ tools' words) */
         uint32_t m;
         for (m = 0; m < sizeof M / sizeof M[0]; m++) {
             setup(S_HOME); pal(UI_DEFAULT_INDEX); song.rec = 0; usb.config = 0;

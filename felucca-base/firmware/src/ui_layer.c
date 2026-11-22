@@ -159,7 +159,17 @@ static uint32_t layer_bits(void)
     return m;
 }
 static uint32_t layer_btn(void) { return LAYERS[ui.layer % LAYER_N].btn; }
-static const char *layer_head(void) { return LAYERS[ui.layer % LAYER_N].head; }
+/* the layer's header; QUICK SEQ names the part its tools act on (TSEL: with ALGORITHM in the middle, the last single part picked): "QUICK SEQ  PART 1" */
+static const char *layer_head(void)
+{
+    static char h[20];
+    const char *s = LAYERS[ui.layer % LAYER_N].head;
+    if (ui.layer % LAYER_N != LAYER_SEQ)
+        return s;
+    str_cpy(h, s, sizeof h);
+    str_cpy(h + str_len(h), song.sel ? "  PART 2" : "  PART 1", sizeof h - str_len(h));
+    return h;
+}
 /* the footer's page place for the layer shown ("GLO" | "SET") */
 static void layer_foot_title(char *nm, char *ct)
 {
@@ -925,7 +935,11 @@ static void layer_seq(void)
     box_grid(UT_BOX_QS_Y0, 2u, 4u, UT_BOX_QS_DY, UT_BOX_QS_H, b);
     int32_t ay, ah;
     area_rect(&ay, &ah);
-    cv_text_in(8, UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 2 - ay, 224, &AF_M, "G4 KEEP", T_ACCENT, T_BG);
+    {   /* under the grid (the line top as before; M and S share the capitals' rows): G4 KEEP at the boxes' left edge, the undo gesture (every tool here is one undo) at their right */
+        int32_t y = UT_BOX_QS_Y0 + UT_BOX_QS_DY + UT_BOX_QS_H + 2 - ay;
+        cv_text_on(10, y, &AF_M, "G4 KEEP", T_ACCENT, T_BG);
+        cv_free_hint(230 - head_hint_w(STEP_UNDO_HINT, 220), y, STEP_UNDO_HINT, T_MID, T_BG, 220);
+    }
 }
 
 /* QUICK GLO's and the MIXER's four cards (item 117, TEMPLATE 4): KNOB 1 LEVEL 1, KNOB 2 LEVEL 2, KNOB 3 PAN 1, KNOB 4 PAN 2 (the part's colour; DIM when it is muted; PAN not drawn in DUEL; PAN shows its own signed
