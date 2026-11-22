@@ -11,6 +11,23 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
 
+## 1.2.0-b1
+
+The owner's notes of 19-20 November: one step can be cleared and undone, SWELL / RIPPLE work with ANSWER OFF and say what they changed, a guessed key says GUESSED, a running sign on every page, the A-B rail on MORPH and AUTO TIDE, back to the original keeps the multi's End B, and End B rolls can be undone.
+- **New (back to the original, owner note N5):** an undo for End B rolls: after OCT+ and a K1 click rolled a new End B, hold OCT- and turn PRESETS left (UNDO ROLL B) to get the last End B back, right to redo it (REDO ROLL B). One step; it ends with the next take, sound load, lock edit, SEQ tool, hand on End B, KEEP or OCT- + K1.
+- **Fixed:** OCT- + K1 (MORPH, AUTO TIDE) brings back the multi's own End B, not the sound's factory End B; it also holds after a power-on (the music comes back from the autosave).
+- **Fixed:** OCT- + K2 / K3 / K4 on MORPH after a multi load go back to the multi's values, not to the sound from before the load.
+- **New (running sign, owner note N3):** every page shows whether the music runs, just before the tempo in the old beat dot's place: a grey square stopped, a white triangle playing, two waves in the part's accent while AUTO TIDE moves. Steady, no blinking; the red REC mark is unchanged.
+- **New (the A-B rail, owner 2026-11-22):** knob 1's line on MORPH and AUTO TIDE shows the fader as a rail, A, a track filled in the part's colour, B, one track per part (two with ALGORITHM in the middle); the end the glide goes to is lit. It replaces the bare `A` / number / `A<>B`.
+- **New (back to the original, N5):** while a part sounds other than its original and nothing more important is on knob 1's line, MORPH and AUTO TIDE say `OCT- + K1: ORIGINAL` there.
+- **Changed (owner notes 19-20 November, the SEQ tools):** SEQ > STEP, a tap of EDIT clears the step under the cursor and its locks with an undo now:
+ the header says STEP 3 CLEARED and then [OCT-] + PRESETS: UNDO, and that gesture brings the step back (it used to undo an older edit). An empty step says STEP EMPTY.
+- **Fixed:** with ANSWER OFF or ANSWER ON OFF, SWELL and RIPPLE (SEQ held + C4 / D4) change the part you press them on, at once, and the other part plays on.
+ RIPPLE on the answer's part used to say NEXT LOOP and then do nothing; SWELL used to put the other part's pattern from before the take back, dropping the answer.
+- **Changed:** SWELL and RIPPLE say how many steps they changed (RIPPLE  3 STEPS), then the answer's words; KEEP's SEQ KEPT / SOUND KEPT / NOTHING TO KEEP
+ stays 3 s; QUICK SEQ's header names the part the tools act on (QUICK SEQ  PART 1) and the line under the tools shows the undo; a key guessed from a take
+ says GUESSED instead of a bare ? (BASS LINE  A MIN GUESSED, one line). 640 B of RAM freed.
+
 ## 1.1.0
 
 The second stable TIDE: 1.1.0-b3 as the fork owner played it on 17 November 2026, with no further changes. Against 1.0.0: AUTO TIDE TRAVEL no longer skips or fades notes (the second core is no longer switched off for 10 seconds when it is late once; one buffer ahead, +2.9 ms; the master on the second core; faster effects, bit for bit), TRAVEL sounds as in 1.0.0, loop dots on every part page, the tide line is gone, USB audio is 44.1 kHz only.
