@@ -1,14 +1,12 @@
 # TIDE roadmap
 
-Updated 16 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
+Updated 22 November 2026. What is already built is in the [CHANGELOG-TIDE](../CHANGELOG-TIDE.md). Older roadmaps are in [history/](history/); the audits of 8 November in [audits/2026-11-08/](audits/2026-11-08/); the firmware review of 9 November in [audits/2026-11-09/firmware-review/](audits/2026-11-09/firmware-review/REPORT.md); the musical review of TIDE and the multis in [audits/2026-11-09/musical-review/](audits/2026-11-09/musical-review/REPORT.md).
 
 State words on this page: Released in bN, Ready (built and tested, waiting for a release), Built (waits for the FM-1 test), In progress, Planned (brief written, not built), Next, Later, Waiting on you.
 
-## Now: 1.0.0, the first stable (B14)
+## Now: 1.2.0, the third stable (B16, B17)
 
-The unit runs **TIDE 1.0.0** since 16 November (flashed 06:50, jam11 `5a6d223c`). The owner played it and called it stable: it is published as `tide-1.0.0` (the Latest release), the `stable` branch points at it, and the install page offers it as the stable. No beta is newer, so the site's beta slot is empty. The last TIDE backup in the workspace is `TIDE-backup-2026-11-16-0650` (taken before the 1.0.0 flash; the owner chose a fresh start, no restore).
-
-Nothing is required for B14. New features need flash room: 1.0.0 left 196 B free. B14 core2 switches USB 48 kHz audio off (owner, 16 November; 44.1 kHz stays) and moves the reverb to the second core: about 3.7 KB free after both and the loop dots.
+The unit runs **TIDE 1.2.0** since 22 November (jam11 `a6ca3858`): the owner's notes N1 to N3, N5 and N7, and the code cleanup N6. It is published as `tide-1.2.0` (the Latest release) and the `stable` branch points at it. Open: N4 (the "EGM" prefix, not reproduced) and N8 (the clearer "OCT- + K1" hint), both for the next beta. The full Host tests run is the gate before any beta (`python work/tools/ci_full.py <sha>`); PR CI does not run all groups.
 
 On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step history is kept in the tag `backup/jam11-history-2026-11-13`, and the commit ids quoted on this page (`54f0516`, `98c8a38` and others) are from that history.
 
