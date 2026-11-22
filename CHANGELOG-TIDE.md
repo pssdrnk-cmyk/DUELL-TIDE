@@ -11,6 +11,12 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
 
+## 1.2.0-b2
+
+Pages remember where you were: HOME brings back the HOME page you were last on, SAVE the SAVE page and list place you used last. TIDE SETTINGS shows four rows with a line or two under them about the picked row. Behind the scenes the code was tidied without changing what you hear or see, which won back 2 KB of firmware space.
+- **Changed (owner, 2026-11-22):** HOME OPENS (MENU > CONTROL) has a new value, LAST, and it is the new default: a tap of HOME from another page, and leaving the menu, brings back the HOME page you were last on (MORPH after power-on). SETTINGS and MORPH work as before. A tap of SAVE now opens the SAVE page you used last, with its list where you left it (from STEP or PARAMETER LOCKS it still opens PATTERNS; the first SAVE after power-on picks the page that fits the play mode). TIDE SETTINGS shows four rows at a time instead of six, with one or two lines under them that say what the picked row does to the music.
+- **Changed (owner note N6):** the code was tidied with no change to what the unit does: version history out of the comments, the two largest functions split into named pieces, the TIDE hooks as plain functions, the selected-part lookup as one shared call. The firmware slot went from 860 to 2,860 B free.
+
 ## 1.2.0-b1
 
 The owner's notes of 19-20 November: one step can be cleared and undone, SWELL / RIPPLE work with ANSWER OFF and say what they changed, a guessed key says GUESSED, a running sign on every page, the A-B rail on MORPH and AUTO TIDE, back to the original keeps the multi's End B, and End B rolls can be undone.

@@ -1,3 +1,0 @@
-## changelog
-### Next (in progress)
-- **Changed (owner, 2026-11-22):** HOME OPENS (MENU > CONTROL) has a new value, LAST, and it is the new default: a tap of HOME from another page, and leaving the menu, brings back the HOME page you were last on (MORPH after power-on). SETTINGS and MORPH work as before. A tap of SAVE now opens the SAVE page you used last, with its list where you left it (from STEP or PARAMETER LOCKS it still opens PATTERNS; the first SAVE after power-on picks the page that fits the play mode). TIDE SETTINGS shows four rows at a time instead of six, with one or two lines under them that say what the picked row does to the music.
