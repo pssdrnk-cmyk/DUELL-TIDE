@@ -198,7 +198,7 @@ static void t_round(void)
     const uint32_t NT = sizeof T / sizeof T[0];
     uint32_t k, ok = 1;
     fresh();
-    go_title("AMP ENV");                                 /* (from another page HOME opens MORPH) */
+    go_title("AMP ENV");                                 /* (fresh: the HOME page shown last is MORPH) */
     for (k = 0; k < NT; k++) {
         press(B_HOME);
         frames(64);
@@ -209,10 +209,15 @@ static void t_round(void)
     expect("HOME tapped: MORPH, MORPH SET (TIDE: AUTO TIDE, TIDE SETTINGS), MODE (plain DUELL), then MORPH again (0.2.14: no OVERVIEW; 0.2.25: no MIXER)", ok && str_eq(PAGES[ui.page].title, "MORPH"));
     press(B_HOME);
     frames(64);
-    expect("  .. and MORPH SET; from another page HOME opens MORPH", str_eq(PAGES[ui.page].title, T[1]));
+    expect("  .. and MORPH SET (TIDE: AUTO TIDE): HOME on a HOME page goes on round", str_eq(PAGES[ui.page].title, T[1]));
     go_title("AMP ENV");
     press(B_HOME);
     frames(64);
+    expect("  .. from another page HOME brings back the HOME page shown last (HOME OPENS LAST, the default since B16)", str_eq(PAGES[ui.page].title, T[1]));
+    for (k = 2; k <= NT; k++) {                          /* (HOME on HOME: on round to MORPH) */
+        press(B_HOME);
+        frames(64);
+    }
     ok = str_eq(PAGES[ui.page].title, "MORPH");
     for (k = 1; k <= NT; k++) {
         turn(EN_SELECT, 1);

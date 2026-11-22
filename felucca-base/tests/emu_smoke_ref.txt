@@ -1,4 +1,4 @@
-tide_settings 42e99c7a
+tide_settings 6577bdfd
 knobs_row 029e3bcf
 multis_m03 40ade996
 glo 69672e90

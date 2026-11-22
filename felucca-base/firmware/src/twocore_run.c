@@ -938,7 +938,7 @@ static void tcr_part2(const blockstate_t *bs, uint32_t n)
                 /* a pause only for a core 1 that gave no answer to the take (a real fault). A late but answering core 1 is not paused: the job stays open, part 2 stays
                  * silent until it is done (tcr_settle closes it at a block's start), then the jobs go on at once; a hung core 1 stops beating and tc_watch stops it after
                  * TC_HANG_MS. (A TCR_CALM_MS pause would put both parts on core 0 and trim the notes) */
-                if (noans)
+                if (noans) /* [silent b15] */
                     tcr_pause(TC_TICKS(), TCR_PW_FAULT);
                 tcs.silent++;
                 tcr.skip2 = 1;
@@ -1117,7 +1117,7 @@ static void tcb_rev(const int32_t *rev_in, int32_t *wet, uint32_t n)
                     break;
             if (a == TCA_CLAIMED || a == TCA_NONE) {    /* not done by the wait limit: silent this block, the job stays open (a pause only if the take had no answer, as tcr_part2) */
                 tcbs.silent++;
-                if (noans)
+                if (noans) /* [k4 silent b15] */
                     tcr_pause(TC_TICKS(), TCR_PW_FAULT);
                 tcb_silent(wet, n);
                 return;

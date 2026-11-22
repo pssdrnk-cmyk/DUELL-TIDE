@@ -151,11 +151,14 @@ static void test_style_custom(void)
 }
 
 /* ---- TIDE SETTINGS: rows that do nothing (1.0.0-b7, MR8: ARC needs WNDR / JRNY and the SEQ, not ROLL TYPE MUSIC; ROLL TYPE does nothing under JOURNEY) ---- */
-static int inert_look(uint32_t row, uint32_t line)       /* row's value with STYLE picked: 1 theme colour, 2 dim (0 neither); then row `line` picked for knob 1's line */
+static int inert_look(uint32_t row, uint32_t line)       /* row's value, the row in view but not picked: 1 theme colour, 2 dim (0 neither); then row `line` picked for knob 1's line */
 {
-    int32_t y = UT_L5_Y0 + (int32_t)row * UT_L5_PITCH, x1 = UT_L5_X + UT_L5_W - 4, x0 = x1 - 90;   /* (the list's top: STYLE .. REC) */
+    /* the list shows JL_VIS rows and scrolls to keep the picked one in view (tide_ui.c graph_tidelist): pick STYLE for a row in the
+     * first window, else the row after it (the window's top is then pick - (JL_VIS - 1)) */
+    uint32_t pick = row < JL_VIS ? (uint32_t)JL_STYLE : row + 1u, top = pick >= JL_VIS ? pick - (JL_VIS - 1u) : 0u;
+    int32_t y = UT_L5_Y0 + (int32_t)(row - top) * UT_L5_PITCH, x1 = UT_L5_X + UT_L5_W - 4, x0 = x1 - 90;
     int r;
-    jl_sel = JL_STYLE;
+    jl_sel = (uint8_t)pick;
     ui.force = 1; ui_draw();
     r = dots(x0, x1, y, y + UT_L5_H, T_DIM) > 0 ? (dots(x0, x1, y, y + UT_L5_H, T_THEME) == 0 ? 2 : 0) : dots(x0, x1, y, y + UT_L5_H, T_THEME) > 0;
     jl_sel = (uint8_t)line;
@@ -207,10 +210,10 @@ static void test_list_knobs(void)
     sqm_arc = 0;
     jl_sel = JL_STYLE;
     ui.force = 1; ui_draw();
-    CHECK("LIST: the scroll mark is at the top with the first row picked", px_is(236, UT_L5_Y0 + 2, T_MID) && px_is(236, UT_L5_Y0 + 6 * UT_L5_PITCH - 2, T_RAISE));
+    CHECK("LIST: the scroll mark is at the top with the first row picked", px_is(236, UT_L5_Y0 + 2, T_MID) && px_is(236, UT_L5_Y0 + (int32_t)JL_VIS * UT_L5_PITCH - 2, T_RAISE));
     jl_sel = JL_N - 1;
     ui.force = 1; ui_draw();
-    CHECK("LIST:   and at the bottom with the last", px_is(236, UT_L5_Y0 + 6 * UT_L5_PITCH - 2, T_MID) && px_is(236, UT_L5_Y0 + 2, T_RAISE));
+    CHECK("LIST:   and at the bottom with the last", px_is(236, UT_L5_Y0 + (int32_t)JL_VIS * UT_L5_PITCH - 2, T_MID) && px_is(236, UT_L5_Y0 + 2, T_RAISE));   /* (the window is JL_VIS rows since B16 lane E) */
 }
 
 /* ---- AUTO TIDE: the ARC line keeps the trip ---- */
