@@ -11,7 +11,7 @@
  * A step that held something and is empty after loses its locks (as EDIT's step clear); REVERSE and SHIFT move the
  * steps' automation and locks with them. SWELL and RIPPLE have a seed a press (tl_sd; same seed, same notes), the key of the multi when SCL is off
  * and no rubs against the other part. A sequence of ties reversed keeps its note first: N T T -> N T T at the mirrored place */
-enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_TUP, TL_TDN TIDE_TL_KEEP, TL_N };   /* TIDE hook (H14: G4 KEEP) */
+enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_TUP, TL_TDN, TL_KEEP, TL_N };   /* TL_KEEP: TIDE hook (G4 KEEP, tide_ui.c tide_tl_keep) */
 
 /* the track as the layer opened (OCT-): in the pool (RAM's .bss is tight), taken by layer_opened */
 static struct { step_t step[NSTEP]; motion_store_t mo; } tl_open __attribute__((section(".pool")));
@@ -345,7 +345,10 @@ static const char *tl_do(track_t *t, uint32_t p)
     uint32_t len = tl_len(t), i, n = 0;
     uint64_t was = tl_used(t, len);
     const char *msg = 0;
-    TIDE_TL_DO(t, p, was, len);                          /* TIDE hook (H14; SWELL / RIPPLE) */
+    if (p == TL_KEEP)                                    /* TIDE hook: KEEP (tide_ui.c) */
+        return tide_tl_keep(t, was, len);
+    if (p == TL_RANDOM || p == TL_COOK)                  /* TIDE hook: SWELL / RIPPLE (tide_take.c) */
+        return tide_tl_swell(t, p == TL_COOK);
     tl_rules(t);
     tl_dst = t->step;
     if (p == TL_TUP || p == TL_TDN) {                   /* (no note in 1..LEN: nothing to transpose, no undo copy) */

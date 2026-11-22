@@ -1247,6 +1247,19 @@ static uint32_t tide_sig(void)
            ((uint32_t)(sqm_bar & 7u) | (uint32_t)tarc.next << 3 | (uint32_t)tarc.run << 6 | (uint32_t)sqm_auto << 7 | (uint32_t)tarc.cnt << 9) * 0x61C88647u ^   /* (the ARC's phase and bar on knob 1's line, and its fall) */
            ((uint32_t)tk_m.ans | (uint32_t)tk_pend << 2 | (uint32_t)tk_m.mode << 4 | (uint32_t)tk_m.key << 8 | (uint32_t)tk_m.flags << 12) * 0x7FEB352Du;   /* (the answer on knob 1's line) */
 }
+/* the TIDE hook of ui_graph.c graph_sig on the AUTO TIDE and TIDE SETTINGS pages: tide_sig, the parts selected and the play mode (AUTO TIDE names it), folded into h */
+static uint32_t tide_page_sig(uint32_t h)
+{
+    return (h ^ tide_sig() ^ (uint32_t)song.both * 0x85EBCA77u ^ (uint32_t)duell_mode_req * 0x9E3779B1u) * 16777619u;
+}
+/* the TIDE hook of ui_graph.c draw_graph: AUTO TIDE (GR_TIDE) and TIDE SETTINGS draw their own body (template 9's knob-1 line and cards are draw_columns') */
+static void tide_graph(uint32_t graph)
+{
+    if (graph == GR_TIDE)
+        graph_tide();
+    else
+        graph_tidelist();
+}
 
 /* ---------------------------------------------------------------- kept over a power cycle --- */
 /* MODE, TIME, WAIT, TARGET, VARY BARS, the ROLL's MUSIC and WASH LEVEL and the rest (TS_*) in TIDE's own record (tide_store.c: the settings record's reserved tail, so

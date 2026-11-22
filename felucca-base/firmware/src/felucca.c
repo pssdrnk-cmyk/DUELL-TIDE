@@ -109,6 +109,7 @@
 #include "midi_uart.c"
 #endif
 #include "seq.c"
+#include "tide_seq.c"             /* TIDE hook: TIDE's sequencer side (seq.c's steps call it) */
 #include "audio.c"
 
 /* -------------------------------------------------------------- UI --- */
@@ -121,6 +122,8 @@
 #include "ui_draw.c"
 #include "ui_menu.c"
 #include "ui_input.c"
+#include "tide_ui.c"              /* TIDE hook: TIDE's UI side (pages, knobs, takes) */
+#include "ui_tools.c"             /* SEQ TOOLS' actions (ui_layer.c's SEQ layer) */
 #include "ui_layer.c"              /* the quick layers (FX GLO SCL EDIT REC held; SEQ TOOLS: ui_tools.c) */
 
 /* --------------------------------------------- storage, update, editor --- */
