@@ -691,6 +691,7 @@ static void tide_answer_line(char *st, int glide)
     (void)st, (void)glide;
 #endif
 }
+static uint8_t tide_rail_to(void) { return glide_running() ? (uint8_t)(gl.to ? 2u : 1u) : 0u; }   /* B16: the A-B rail's lit letter (ui_draw.c k1_rail_draw): the end the glide goes to */
 static void tide_columns(void)
 {
     static char st[40];
@@ -706,6 +707,8 @@ static void tide_columns(void)
         return;                                          /* (no cards: the list and its hint own the card row; hiding them cleared it under the list on every redraw, a flicker while the colour follows a glide) */
     }
     g = morph_pending(TIDE_G_GLIDE);
+    k1_rail = song.both ? 3u : (uint8_t)(1u << song.sel);   /* B16: knob 1's line shows the faders as the A-B rail (as MORPH's), the end it goes to lit */
+    k1_rail_to = g < 0 ? 1u : g > 0 ? 2u : tide_rail_to();
     if (glide_running()) {                               /* (I5: running, knob 1's line is the gesture as at rest and the ARC's words and the trip at its right; the water shows how far, graph_tide) */
         char dn[16];
         str_cpy(val, g < 0 ? "<A" : g > 0 ? "B>" : "A<>B", sizeof val);
@@ -724,6 +727,7 @@ static void tide_columns(void)
         k1_after_r = 1;
         tide_answer_line(st, 1);
         draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
+        k1_rail = 0;
         goto cards;
     }
     tide_status(st);
@@ -734,9 +738,14 @@ static void tide_columns(void)
         k1_after_next = st;                              /* (PART 1, PART 2, BOTH PARTS at the line's right end) */
         k1_after_col = T_MID;
         k1_after_r = 1;
+        if (k1_home_hint()) {                            /* B16: away from the Original (paused glide, a hand, a roll): how to get back (an answer's words go over it) */
+            str_cpy(st, K1_HOME_HINT, sizeof st);
+            k1_after_col = T_DIM;
+        }
         tide_answer_line(st, 0);
         draw_column(0, "GLIDE", val, "", g ? T_ACCENT : VAL(0u), -1, ICON_NONE);
     }
+    k1_rail = 0;
 cards:
     draw_column(1, "MODE", GL_MODE_NAME[gl.mode % 5u], "", VAL(1u), -1, ICON_NONE);
     fmt_int(val, (int32_t)glide_bars());

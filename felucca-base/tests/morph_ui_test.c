@@ -56,6 +56,23 @@ static int card_is(uint32_t c, const char *label, const char *val)   /* the card
         return 1;
     return 0;                                 /* (TIDE 1.0.0-b4: MORPH's K1 is a labelled card, "MORPH|A"; no big-value fallback) */
 }
+static int rail_is(void)                                /* B16: knob 1's line is the A-B rail: the letters A and B drawn, no label MORPH (the fader's place: mph[].fader) */
+{
+    return card_is(0, "A", "B") && !card_match(0, "MORPH");
+}
+static int32_t rail_fill_pct(uint32_t k)                /* B16: part k's track on knob 1's line as drawn: its fill (part_col) of fill + track, in %, on the row with the most of both (-1: no track) */
+{
+    const uint16_t fc = swap16(part_col(k)), tc = swap16(ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT));
+    int32_t y, x, best = -1, bf = 0;
+    for (y = UT_A_K1_Y; y < UT_A_K1_Y + UT_A_K1_H; y++) {
+        int32_t nf = 0, nt = 0;
+        for (x = UT_A_K1_LBL_X; x < UT_A_K1_LBL_X + 100; x++)   /* (the rail's columns: A, the track (56 px at most), B; not the text at the right end) */
+            nf += host_screen[y * 240 + x] == fc, nt += host_screen[y * 240 + x] == tc;
+        if (nf + nt > best)
+            best = nf + nt, bf = nf;
+    }
+    return best > 0 ? bf * 100 / best : -1;
+}
 /* TIDE b6: the MORPH page has no card row; KNOB 2 and KNOB 4 are one slim row above the footer (ui_draw.c morph_row, rows MROW_Y .. + MROW_H - 1), the waves above it.
  * mrow_at: the text s drawn in that row (its box, after screen_read); mrow_only: every text drawn in the row is one of ok[] (the knob dots "2" and "4", ROLL and its way,
  * AMOUNT and its value: no KNOB 3 dot, no UNDO or any other control); mrow_bar: ink between AMOUNT and the value (b6: AMOUNT has no bar any more, owner 2026-11-09); no_k3: no "3" knob dot and no UNDO anywhere
@@ -439,10 +456,24 @@ static void t_knobs(void)
     turn(EN_K1, -100);
     expect("KNOB 1 clamps at 0 (A)", mph[0].fader == 0u);
     frame();
-    expect("the MORPH card at 0 shows A", card_is(0, "MORPH", "A"));
+    expect("knob 1's line is the A-B rail at A (B16: A, the track, B; no MORPH word, no bare letter)", rail_is());
     turn(EN_K1, 200);
     frame();
-    expect("KNOB 1 clamps at 127 (B), the card shows B", mph[0].fader == 127u && card_is(0, "MORPH", "B"));
+    expect("KNOB 1 clamps at 127 (B), the card shows B", mph[0].fader == 127u && rail_is());
+    {   /* B16: the rail's fill follows the fader: B full, 64 about half, A empty */
+        int32_t fb = rail_fill_pct(0), fm, fa;
+        mph[0].fader = 64u;
+        frame();
+        fm = rail_fill_pct(0);
+        mph[0].fader = 0u;
+        frame();
+        fa = rail_fill_pct(0);
+        mph[0].fader = 127u;
+        frame();
+        char rw[112];
+        snprintf(rw, sizeof rw, "the A-B rail's fill follows the fader: B full, 64 about half, A empty (%d%%, %d%%, %d%%)", (int)fb, (int)fm, (int)fa);
+        expect(rw, fb >= 95 && fm >= 40 && fm <= 60 && fa == 0);
+    }
     turn(EN_K1, -127);
     a0 = mph[0].amount;
     a1 = mph[1].amount;
@@ -455,8 +486,8 @@ static void t_knobs(void)
         char pc[12];
         snprintf(pc, sizeof pc, "%s%%", amt_txt);
         (void)pc;
-        expect("  .. 1.0.0-b7: MORPH A on the knob-1 line, then the row: FLT, RSN, ECH; no ROLL, no AMOUNT (a TIDE SETTINGS row now)",
-               card_is(0, "MORPH", "A") && mrow_has("FLT") && mrow_has("RSN") && mrow_has("ECH") && !mrow_has("ROLL") && !mrow_has("AMOUNT"));
+        expect("  .. 1.0.0-b7: the fader on the knob-1 line (B16: the A-B rail), then the row: FLT, RSN, ECH; no ROLL, no AMOUNT (a TIDE SETTINGS row now)",
+               rail_is() && mrow_has("FLT") && mrow_has("RSN") && mrow_has("ECH") && !mrow_has("ROLL") && !mrow_has("AMOUNT"));
     }
     {   /* the picture (TIDE: the part's real sound, ui_scope.c): a new one every MV_MS by fm1_ms (b6: mv_clock), not before; none with MENU > ANIM OFF */
         uint32_t s0, s1, s2;

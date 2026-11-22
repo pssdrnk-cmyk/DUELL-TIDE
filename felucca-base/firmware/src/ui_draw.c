@@ -848,6 +848,58 @@ static uint8_t area_cols = 3u, area_two;
 static const char *k1_after_next;
 static uint16_t k1_after_col;
 static uint8_t k1_after_r;
+/* B16 (owner 2026-11-22: MORPH's bare "A" and AUTO TIDE's "A<>B" were lame and hard to read): THE A-B RAIL. Knob 1's line on MORPH and AUTO TIDE shows the fader as a rail
+ * instead of a word: the letter A, a 4 px track, the letter B. Each part knob 1 moves has its own track (two stacked, part 1 above, when ALGORITHM is in the middle),
+ * filled in its one colour (part_col: its A end's, never drifting with the fader) from A to where its fader is (the card bars' track colour under it). A letter is white while the parts shown sit at that end, the selected part's colour while
+ * the glide goes there (AUTO TIDE running or a twist building up), else grey. The track is 56 px; only a text at the line's right end too long for that makes it shorter (down to 40 px).
+ * Set by draw_columns (MORPH) and tide_columns (AUTO TIDE) for the next knob-1 line only: k1_rail the parts (bit k), k1_rail_to 1 A, 2 B, 0 neither */
+static uint8_t k1_rail, k1_rail_to;
+static uint16_t part_col(uint32_t k)                    /* B16: part k's ONE colour (its A end's, as the capsule at A), whatever the fader: the rail's fill, its lit letter and the waves sign never drift toward B's colour */
+{
+    return ux_stroke(T_PEND(k, 0u), T_BG, T_BASE, T_TEXT);
+}
+#define RAIL_T 4                                        /* a track's rows */
+#define RAIL_GAP 2                                      /* between two tracks */
+#define RAIL_LG 5                                       /* a letter -> the track */
+#define RAIL_MAX 56                                     /* (fixed, so B never moves with the text's bar count) */
+#define RAIL_MIN 40
+static uint32_t k1_rail_key(void)
+{
+    return k1_rail ? k1_rail * 7u + k1_rail_to * 131u + song.sel * 65537u + morph_fader_of(0) * 257u + morph_fader_of(1) * 33023u + 0x5A11u : 0u;
+}
+static uint16_t rail_letter(uint32_t end)               /* end 0 A, 127 B */
+{
+    uint32_t k, all = 1;
+    if (k1_rail_to == (end ? 2u : 1u))
+        return part_col(song.sel);
+    for (k = 0; k < 2u; k++)
+        if ((k1_rail >> k) & 1u)
+            all &= morph_fader_of(k) == end;
+    return all ? T_TEXT : T_MID;
+}
+/* the rail from pen x on the line's canvas (base: the capitals' last row), its room to `right` (the right text's left edge, minus the gap) -> the pen after B */
+static int32_t k1_rail_draw(int32_t x, int32_t base, int32_t right)
+{
+    const int32_t ty = UT_TY(S, base), mid = base - (AF_S_CAP_H - 1) / 2, wb = text_w(&AF_S, "B");
+    const uint16_t track = ux_mix(T_BASE_P1, T_TEXT, UT_T4_TRACK_PCT);
+    int32_t x0, w, y, n = (k1_rail & 1u) + (k1_rail >> 1 & 1u), i = 0;
+    uint32_t k;
+    x0 = cv_text_on(x, ty, &AF_S, "A", rail_letter(0), T_BG) + RAIL_LG;
+    w = right - RAIL_LG - wb - x0;
+    w = w >= RAIL_MAX || w < RAIL_MIN ? RAIL_MAX : w;   /* (a text that does not fit even then is not drawn: the rail keeps its length) */
+    y = mid - (n * RAIL_T + (n - 1) * RAIL_GAP) / 2;
+    for (k = 0; k < 2u; k++) {
+        int32_t f;
+        if (!((k1_rail >> k) & 1u))
+            continue;
+        f = (int32_t)morph_fader_of(k) * w / 127;
+        cv_rrect(x0, y + i * (RAIL_T + RAIL_GAP), w, RAIL_T, RAIL_T / 2, track, T_BG);
+        if (f > 0)
+            cv_rrect(x0, y + i * (RAIL_T + RAIL_GAP), f < RAIL_T ? RAIL_T : f, RAIL_T, RAIL_T / 2, part_col(k), track);
+        i++;
+    }
+    return cv_text_on(x0 + w + RAIL_LG, ty, &AF_S, "B", rail_letter(127), T_BG);
+}
 /* the big area of an area page now (screen rows): the picture code of the page draws into rows *y .. *y + *h - 1 (x 0 .. 239). A page with a two-line card label leaves its last UT_A_LBL2_PITCH rows to the cards */
 #define AREA_LIST_PG() (grid_on == 16 && (cur_page()->graph == GR_PATS || cur_page()->graph == GR_SLOTS))   /* SAVE > PATTERNS / MULTIS: the cards are one short row (label and key pill on one line) and the picked entry's panel sits under them (ui_graph.c list_panel) */
 #define MROW_Y 189                                      /* b6 (owner 2026-11-09): the MORPH page's slim row (1.0.0-b7: FILTER, RESONANCE, ECHO; b6: ROLL / AMOUNT), a 13-row canvas 189 .. 201 just above the footer (Y_FOOT 202) that holds the */
@@ -1209,6 +1261,11 @@ static void k1_line(const char *label, const char *value, const char *unit, cons
 {
     int32_t base = UT_A_K1_BASE - UT_A_K1_Y, ty = UT_TY(S, base), x = UT_A_K1_LBL_X;
     uint16_t lc = hot ? T_ACCENT : grid_mot ? T_THEME : T_MID;
+    if (k1_rail) {                                       /* B16: the A-B rail in the label's and the value's place (the dot keeps the knob's number) */
+        dot_label(0, UT_A_K1_DOT_X, UT_A_K1_LBL_X, base, "", lc, lc, 240 - UT_A_K1_LBL_X, T_BG);
+        x = k1_rail_draw(x, base, after && after[0] && after_r ? UT_A_K1_R - text_w(&AF_S, after) - UT_A_K1_AFTER_GAP : UT_A_K1_R);
+        label = value = unit = "";
+    }
     if (label[0]) {
         dot_label(0, UT_A_K1_DOT_X, UT_A_K1_LBL_X, base, label, lc, lc, 240 - UT_A_K1_LBL_X, T_BG);
         x += text_w(&AF_S, label) + UT_A_K1_VAL_GAP;
@@ -1312,6 +1369,8 @@ static void draw_card_grid(uint32_t c, const char *label, const char *val, const
         h += (uint32_t)gx * 101u + (uint32_t)gy * 7919u + (uint32_t)cell_seg_n * 977u + (uint32_t)cell_seg_i * 31u + (uint32_t)AREA_TWO * 3331u;
     if (after)
         h = str_hash(h + (uint32_t)acol * 13u + (uint32_t)aright * 7u, after);
+    if (AREA_ON && c == 0u)
+        h += k1_rail_key();
     for (i = 0; i < 8u; i++)
         key[i] = (char)('A' + ((h >> (4u * i)) & 15u));
     key[8] = 0;
@@ -1945,10 +2004,25 @@ static int32_t foot_scroll(const char *s, int32_t w)
  * (the first quarter of it), brighter on the bar's first; dark when nothing plays. With MIDI clock in, the tempo's unit says EXT and the dot takes the
  * selected part's colour (the clock is locked). Its own 5 x 5 blit, a beat; the footer's signature does not hold it (draw_foot re-draws it after a
  * redraw of its own). Not on the one-row footers (the tempo has no row of its own there) */
-#define TB_DOT_W 8                                      /* the room it takes from part 1's name: 5 px and its gap to the tempo */
+/* B16 (owner note N3, 2026-11-22: "running state not clear on every screen"): THE TRANSPORT SIGN takes the beat dot's place and stands on EVERY page, before the tempo
+ * (row 1 of HOME's two-row footer, row 2 elsewhere; where the tempo gives way to the REC mark, before the REC mark): a square stopped (grey), a triangle playing (white;
+ * an external clock's: the theme colour), two waves while AUTO TIDE moves (the selected part's own colour). Steady, no beat: it is drawn again only when the state changes. REC armed
+ * is the REC mark's job, as before (foot_rec_mark): the sign shows the transport only */
+#define TB_DOT_W 10                                     /* the room it takes from part 1's name: the 7 px sign and its gap to the tempo */
 static int32_t tide_dot_x = -1;                         /* its left edge on the screen, -1: not shown (draw_foot sets it) */
 static uint32_t tide_dot_st = 0xFFFFFFFFu;
 #define TB_DOT_Y (UT_FOOT_BASE - 15 - AF_S_CAP_H / 2 - 2)   /* its top row on the screen (centred on row 1's capitals) */
+#define TB_DOT_Y2 (UT_FOOT_BASE - AF_S_CAP_H / 2 - 2)        /* .. on row 2 */
+static int32_t tide_dot_y = TB_DOT_Y;
+static int glide_running(void);                         /* (morph_glide.c) */
+static uint32_t run_on(void)                            /* the music runs: PLAY, or an external clock running */
+{
+    return song.playing || (clock_src() && clock_state() == 1u && !midi_clock.stopped);
+}
+static uint32_t run_state(void)                         /* 0 stopped, 1 playing, 2 AUTO TIDE moving */
+{
+    return run_on() && glide_running() ? 2u : run_on();
+}
 /* row 1 of the two-row footer: part 1's name's pen (1/16 px, after its engine) and room (px: to 4 px before the beat dot, or the edge without a tempo) */
 static int32_t foot_row1(const char *en1, const char *tp1, int32_t *x16)
 {
@@ -1958,11 +2032,27 @@ static int32_t foot_row1(const char *en1, const char *tp1, int32_t *x16)
 }
 static uint32_t tide_dot_now(uint16_t *col)              /* its state now (and colour) */
 {
-    uint32_t b = beat_samples(), ext = clock_src() != 0u, run = song.playing || (ext && clock_state() == 1u && !midi_clock.stopped);
-    uint32_t lit = run && beat_pos < b / 4u;
-    uint16_t cb = ext ? T_THEME : T_TEXT;
-    *col = !lit ? ux_mix(T_BG, T_MID, 30) : beat_n ? ux_mix(T_BG, cb, 60) : cb;
-    return (lit ? (beat_n ? 1u : 2u) : 0u) | ext << 2 | ux.pal << 3;
+    uint32_t ext = clock_src() != 0u, rs = run_state();
+    *col = rs == 2u ? part_col(song.sel) : rs ? (ext ? T_THEME : T_TEXT) : T_MID;   /* (the waves: the selected part's own colour, the same on a global page and at any fader) */
+    return rs | ext << 2 | ux.pal << 3;
+}
+static void run_mark(int32_t x, int32_t y, uint16_t c)  /* the sign in its 7 x 7 box at x, y - 1 (canvas; y: the old dot's top row, so it stays centred on the capitals) */
+{
+    static const uint8_t TRI[5] = {7, 7, 5, 3, 1};      /* the triangle's columns, 5 px wide */
+    static const uint8_t WV[7] = {1, 0, 0, 1, 2, 2, 1}; /* a wave's rows: 1 px lines, two of them 4 rows apart */
+    const uint32_t rs = run_state();
+    int32_t i;
+    y--;
+    if (rs == 0u)
+        cv_rect(x, y, 7, 7, c);
+    else if (rs == 1u)
+        for (i = 0; i < 5; i++)
+            cv_rect(x + 1 + i, y + (7 - TRI[i]) / 2, 1, TRI[i], c);
+    else
+        for (i = 0; i < 7; i++) {
+            cv_rect(x + i, y + WV[i], 1, 1, c);
+            cv_rect(x + i, y + 4 + WV[i], 1, 1, c);
+        }
 }
 static void tide_beat_dot(void)                         /* between footer redraws: the dot alone when its state changed (draw_foot draws it in its own canvas) */
 {
@@ -1971,9 +2061,9 @@ static void tide_beat_dot(void)                         /* between footer redraw
     if (tide_dot_x < 0 || (st = tide_dot_now(&c)) == tide_dot_st)
         return;
     tide_dot_st = st;
-    cv_begin(5, 5, T_BG);
-    cv_rrect(0, 0, 5, 5, 2, c, T_BG);
-    cv_blit((uint32_t)tide_dot_x, (uint32_t)TB_DOT_Y);
+    cv_begin(7, 7, T_BG);
+    run_mark(0, 1, c);
+    cv_blit((uint32_t)tide_dot_x, (uint32_t)(tide_dot_y - 1));
 }
 /* b10 TIDE identity (item 7): GENRE on SAVE > MULTIS (b12: knobs 1 and 4 wrap, M27 EMPTY next to M01). The list runs genre by genre (tools/factory_multis.py DISPLAY_ORDER); a multi's genre is the first word
  * of its name (knob_sets.h KN_TAG: DUB HSE TECH ACID ELEC AMB; another word, or an empty slot: a group of its own). Knob 4's card says the genre of the
@@ -2093,6 +2183,8 @@ static void draw_foot(void)
     if (rdot)
         tp[0] = 0;
     tpen = tp[0] ? ctp - FT_GAP * 16 - text_w16(&AF_S, tp) : rdot ? rdot * 16 : ctp;
+    const int32_t mk2 = tp[0] || (rdot && !tp1[0]) ? (tpen >> 4) - TB_DOT_W : -1;   /* B16 N3: the sign before row 2's tempo (or the REC mark in its place; not where row 1 holds the tempo and the sign); the patch name ends 4 px before it */
+    const int32_t nr16 = mk2 >= 0 ? (mk2 - 4 + UT_FOOT_WORD_GAP) * 16 : tpen;
     sig += clock_src() * 7351u;                          /* (BPM or EXT) */
     sig += (uint32_t)song.g[G_BPM] * 4003u;
     if (pn1[0] && !ui.ml.on && !pfl[0] && !save_hint) {   /* (row 1's part-1 name scrolls the same way: its offset is part of the picture) */
@@ -2101,7 +2193,7 @@ static void draw_foot(void)
     }
     {   /* a patch name wider than its room scrolls: the offset it has now is part of the picture */
         int32_t pen = UT_FOOT_X * 16 + ((fnm & 1u) ? text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16 : 0);
-        int32_t nw = (tpen >> 4) - UT_FOOT_WORD_GAP - (pen >> 4);
+        int32_t nw = (nr16 >> 4) - UT_FOOT_WORD_GAP - (pen >> 4);
         sig += (uint32_t)foot_scroll(pn, nw) * 131u;
     }
     if (!ui.force && sig == ui.foot_sig) {
@@ -2109,7 +2201,8 @@ static void draw_foot(void)
         return;
     }
     ui.foot_sig = sig;
-    tide_dot_x = -1;                                     /* (row 1's tempo places it, below) */
+    tide_dot_x = -1;                                     /* (row 1's tempo places it, below; or row 2's) */
+    tide_dot_y = TB_DOT_Y;
     foot_short = (grid_on == 1 || TIDE_GRID3 || grid_on == 4 || grid_on == 5 || grid_on == 7 || grid_on == 9 || grid_on == 12 || grid_on == 13 || grid_on == 14 || grid_on == 15 || grid_on == 16 || grid_on == 17 || ui.guide) && !ui.ml.on && !pfl[0] && !save_hint && !foot_steps() && !TIDE_FOOT_FULL();   /* TIDE hook: TIDE / TIDE SET keep both rows */   /* (DUELL 1.1 grid pages: row 1 is empty, the cards use its rows) */
     cv_begin(240, foot_short ? H_FOOT - 15 : pfl[0] ? H_FOOT + 15 : H_FOOT, T_BG);   /* (item 120: PERFORM's footer is 15 rows taller, its two hint lines on top) */
     cv_oy = foot_short ? -15 : pfl[0] ? 15 : 0;
@@ -2156,7 +2249,7 @@ static void draw_foot(void)
     {   /* row 2 (item 111, FINAL_V1 pictures; ui_tokens.h UT_FOOT_*): face F, the capitals' last row UT_FOOT_BASE on every page. The engine's name in the part colour at x UT_FOOT_X, the patch's name
          * UT_FOOT_WORD_GAP after it (alone at x UT_FOOT_X where the engine's is left out: foot_names), the page's number ending UT_FOOT_CT_R, the tempo (or REC) before it, the battery (draw_battery) at the
          * right; a patch name that does not fit SCROLLS (the REC mark, the number and the battery stay still on top of it) */
-        int32_t fy = UT_FOOT_BASE - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, pen = UT_FOOT_X * 16, nr = tpen >> 4, nx, nw;
+        int32_t fy = UT_FOOT_BASE - Y_FOOT - AF_S_CAP_Y - AF_S_CAP_H + 1, pen = UT_FOOT_X * 16, nr = nr16 >> 4, nx, nw;
         nr -= UT_FOOT_WORD_GAP;                        /* the patch name ends here (before the REC mark or the number) */
         if (fnm & 1u)
             pen += text_w16(&AF_S, eng_shown(ename)) + UT_FOOT_WORD_GAP * 16;   /* the patch name's pen: after the engine's name */
@@ -2173,6 +2266,10 @@ static void draw_foot(void)
             cv_text_x16(UT_FOOT_X * 16, fy, &AF_S, eng_shown(ename), vt(T_PTHEME(TIDE_FOOT_PART(song.sel)), T_BG), T_BG);   /* (the selected part's colour on a global page too, not the global gradient's; TIDE hook: on TIDE / TIDE SET part 2's) */
         foot_rec_mark(ctp);
         cv_text_x16(tpen, fy, &AF_S, tp, T_MID, T_BG);
+        if (mk2 >= 0) {                                  /* B16 N3: the sign before row 2's tempo or REC mark */
+            tide_dot_x = mk2;
+            tide_dot_y = TB_DOT_Y2;
+        }
         if (ct[0])
             cv_text_x16(ctp, fy, &AF_S, ct, T_MID, T_BG);
         draw_battery();
@@ -2180,7 +2277,7 @@ static void draw_foot(void)
     if (tide_dot_x >= 0) {                               /* (the beat dot in the footer's own canvas: one write a pixel, no flash) */
         uint16_t c;
         tide_dot_st = tide_dot_now(&c);
-        cv_rrect(tide_dot_x, TB_DOT_Y - Y_FOOT, 5, 5, 2, c, T_BG);
+        run_mark(tide_dot_x, tide_dot_y - Y_FOOT, c);
     }
     cv_oy = 0;
     cv_blit(0, foot_short ? Y_FOOT + 15 : pfl[0] ? Y_FOOT - 15 : Y_FOOT);
@@ -2430,6 +2527,15 @@ static const char *h1_echo_why(void)
 static uint32_t kn_cur(void);                           /* (tide_ui.c: the set the KNOBS row and the multi's name pick) */
 static int tide_moves(uint32_t pi);                     /* (tide_ui.c, I4: AUTO TIDE moves part pi's sound now; its trip in words) */
 static void tide_trip_short(char *l);
+static uint8_t tide_rail_to(void);                      /* (tide_ui.c, B16: the end the running glide goes to, for the rail: 1 A, 2 B) */
+static int tide_sound_moved(uint32_t pi);               /* (tide_ui.c: part pi sounds other than its Original) */
+/* B16 (lane C, N5: back to the original made easier to find): knob 1's line on MORPH and AUTO TIDE says how to get back while a part the rail shows sounds other than its
+ * Original and nothing more important has the line's end (the trip, the echo's reason, an answer): in the hint colour, as a held SAVE's hint */
+#define K1_HOME_HINT "OCT- + K1: ORIGINAL"
+static int k1_home_hint(void)
+{
+    return ((k1_rail & 1u) && tide_sound_moved(0)) || ((k1_rail & 2u) && tide_sound_moved(1));
+}
 /* the value v of the macro parameter ix (knob_sets.h KN_ID's place) as part t shows it (its card's form; a global as its page shows it), the cutoff's unit short ("2.4k", "880") */
 static void h1_val(uint32_t ix, const track_t *t, int32_t v, char *out)
 {
@@ -2613,7 +2719,8 @@ static void draw_columns(void)
         else
             fmt_int(val, (int32_t)f);
         const char *why = h1_echo_why();
-        const int apart = song.both && morph_fader_of(1u - pi) != f;
+        k1_rail = AREA_ON ? (song.both ? 3u : (uint8_t)(1u << pi)) : 0u;   /* B16: the fader(s) as the A-B rail */
+        k1_rail_to = AREA_ON && tide_moves(pi) ? tide_rail_to() : 0u;
         static char trip[40];                          /* (static: k1_after_next keeps the pointer past this block; a stack array was gone by the time the line was drawn) */
         if (AREA_ON && tide_moves(pi) && !(ui.hot_t && ui.hot_col)) {   /* I4: AUTO TIDE moves this part: what it does, at the line's right end (a knob 2..4 just turned keeps its own words) */
             tide_trip_short(trip);
@@ -2621,25 +2728,14 @@ static void draw_columns(void)
             k1_after_col = T_ACCENT;
             k1_after_r = 1;
         } else
-        if (AREA_ON && why && (!apart || (ui.hot_t && ui.hot_col == 3u))) {   /* 1.0.0-b7: ECHO dim, why (at the line's right end; with BOTH and the faders apart while knob 4 turns) */
+        if (AREA_ON && why) {                            /* 1.0.0-b7: ECHO dim, why (at the line's right end; B16: with BOTH the rail shows both parts' faders, no other value here) */
             k1_after_next = why;
             k1_after_col = T_MID;
             k1_after_r = 1;
-        } else if (AREA_ON && apart) {   /* the page shows both parts: with ALGORITHM on BOTH and the faders apart, the other part's value after this one's (the old track's tick) */
-            static char other[8];
-            uint32_t of = morph_fader_of(1u - pi);
-            other[0] = 'P';
-            other[1] = (char)('1' + (1u - pi));
-            other[2] = ' ';
-            if (of == 0u || of == 127u) {
-                other[3] = of ? 'B' : 'A';
-                other[4] = 0;
-            } else {
-                fmt_int(other + 3, (int32_t)of);
-            }
-            k1_after_next = other;
-            k1_after_col = T_PFILL(1u - pi);
-            k1_after_r = 0;
+        } else if (AREA_ON && k1_home_hint()) {          /* B16: away from the Original: how to get back */
+            k1_after_next = K1_HOME_HINT;
+            k1_after_col = T_DIM;
+            k1_after_r = 1;
         } else if (AREA_ON) {                            /* b10 (owner 2026-11-12): the play position, which the title showed before (PART 1, LAYER, STEREO, DUEL, PART 2) */
             k1_after_next = PLS_NAME[play_pos()];
             k1_after_col = T_MID;
@@ -2647,6 +2743,7 @@ static void draw_columns(void)
         }
         draw_column(0, "MORPH", val, "", VAL(0u), (int32_t)f * 1000 / 127, ICON_MIX);   /* (TIDE 1.0.0-b4: a plain card, its label, value and bar as every K1 card) */
         k1_after_next = 0;
+        k1_rail = 0;
         morph_row();                                   /* (1.0.0-b7: FILTER, RESONANCE, ECHO on one compact row, the waves take the rest) */
         return;
     }
