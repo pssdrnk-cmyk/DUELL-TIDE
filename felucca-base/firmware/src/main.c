@@ -209,7 +209,7 @@ static void fm1_main(void)
             if ((fm1_in.buttons & both) != both) {
                 if (ui.uboot) {
                     ui.uboot = 0;
-                    ui.force = 1;                       /* what the countdown covered */
+                    ui_redraw();                       /* what the countdown covered */
                     ui_message("UPDATE CANCELLED");
                 }
                 t0 = fm1_ms;
@@ -217,7 +217,7 @@ static void fm1_main(void)
                 uint32_t left = (5000u - (fm1_ms - t0) + 999u) / 1000u;
                 if (left != ui.uboot) {
                     ui.uboot = (uint8_t)left;
-                    ui.force = 1;
+                    ui_redraw();
                 }
             } else if (fm1_ms - t0 > 5000u) {
                 fm1_audio_stop();
@@ -243,7 +243,7 @@ static void fm1_main(void)
             if (flash_ok)
                 ota_session();                          /* returns only if nothing was committed */
             lcd_fill(0, 0, 240, 240, T_BG);
-            ui.force = 1;
+            ui_redraw();
         }
 #endif
         if (usb.uboot_req) {                            /* SysEx F0 22 24 35 7D F7 from the host */

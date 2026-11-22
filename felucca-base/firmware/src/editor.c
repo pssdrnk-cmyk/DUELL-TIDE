@@ -386,7 +386,7 @@ static void ed_step_put(step_t *st, const uint8_t *a, uint32_t na)
     if (na >= 12u) step_set_chance(st, a[11] <= 100u ? a[11] : 100u);
     if (na >= 13u) step_set_ratchet(st, a[12]);
     if (na >= 14u) step_set_nudge(st, (int32_t)(a[13] & 15u) - 8);
-    ui.force = 1;
+    ui_redraw();
 }
 static void ed_step_reply(const step_t *st)              /* the same 14 bytes */
 {
@@ -560,7 +560,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                 rc = a[1] == 9u ? motion_set_event(t, a[2], tid, (int16_t)ed_rv(a + 5)) : motion_set_lock(t, a[2], tid, (int16_t)ed_rv(a + 5));
             } else if (a[1] == 10u && a[2] < NSTEP && motion_param(a[3] | (uint32_t)(a[4] & 1u) << 7)) motion_delete_event(t, a[2], a[3] | (uint32_t)(a[4] & 1u) << 7);
             else rc = 1;
-            ui.force = 1;
+            ui_redraw();
         }
         ed_motion_reply(a[0], rc, na > 1u && a[1] >= 5u, na > 1u && a[1] == 8u);
         break;
@@ -632,7 +632,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                         mod_compact(TSEL);                  /* (a matrix SRC set to OFF: the slots after it move up) */
                 }
             }
-            ui.force = 1;
+            ui_redraw();
             ed_w.v[ed_idx(a[0], a[1])] = a[0] == 1 ? *vp : (int16_t)ed_vw(song.sel, a[0] == 2 ? XW_BASE + a[1] : a[1]);   /* the editor's own change: no push (a value the setter moved besides it, CUTOFF 2 by LINK, is pushed) */
         }
         ed_b(a[0]);
@@ -692,7 +692,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             apply_preset(a[1]);
         }
         ed_load_after(&b);
-        ui.force = 1;
+        ui_redraw();
         ed_b(ed_eng(TSEL));
         ed_b(TSEL->preset);
         break;
@@ -919,7 +919,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             t->p[P_MUTE] = (int16_t)(a[3] ? 1 : 0);
             ed_known(a[0], P_LEVEL);                       /* the editor's own change: no push */
             ed_known(a[0], P_MUTE);
-            ui.force = 1;
+            ui_redraw();
         }
         ed_b(a[0]);
         ed_v(*lv);
@@ -978,7 +978,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
                     (void)motion_capture(t, a[1], t->p[a[1]]);
                 ed_known(a[0], a[1]);
             }
-            ui.force = 1;
+            ui_redraw();
         }
         ed_b(a[0]);
         ed_b(a[1]);

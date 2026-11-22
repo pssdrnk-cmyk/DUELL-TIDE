@@ -43,7 +43,7 @@ static void guide_open(uint32_t from_menu)
                                                          * the first start's guide opens as ever) */
         ui.menu = 5;
         bench_open();
-        ui.force = 1;
+        ui_redraw();
         return;
     }
 #endif
@@ -52,7 +52,7 @@ static void guide_open(uint32_t from_menu)
     guide_pick[0] = 0;
     guide_pick[1] = 0;
     guide_sig = 0;
-    ui.force = 1;
+    ui_redraw();
     if (!from_menu) {                                   /* (a fresh unit's "LOADED" of M01, made under the splash: not over the first page) */
         ui.msg_t = 0;
         ui.msg2[0] = 0;
@@ -65,7 +65,7 @@ static void guide_close(void)
     uint32_t first = !ui.guide_menu;
     ui.guide = 0;
     ui.guide_menu = 0;
-    ui.force = 1;
+    ui_redraw();
     if (first && !guide_seen()) {
         ui_prefs2 |= (uint8_t)(PREF_GUIDE_SEEN >> 16);
         settings_save();

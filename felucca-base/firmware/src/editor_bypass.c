@@ -23,13 +23,13 @@ static int ed_byp_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
     }
     if (n == 4u && a[0] == 1u && a[1] < 2u) {
         byp_m[a[1]] = (uint16_t)((a[2] | (uint32_t)a[3] << 7) & BY_ALL);
-        ui.force = 1;                                   /* (the pages draw BYPASS in place of the values) */
+        ui_redraw();                                   /* (the pages draw BYPASS in place of the values) */
         ed_b(1); ed_b(a[1]); ed_b(byp_m[a[1]]); ed_b(byp_m[a[1]] >> 7);
         return 1;
     }
     if (n == 2u && a[0] == 2u) {
         byp_sh = (uint8_t)(a[1] & BYS_ALL);
-        ui.force = 1;
+        ui_redraw();
         ed_b(2); ed_b(byp_sh);
         return 1;
     }

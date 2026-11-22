@@ -396,7 +396,7 @@ static int project_restore_runtime(const project_t *input)
             if (p->bvn[k])
                 morph_load_part_v(k, p->bv[k]);
     sync_reload = 1;
-    ui.force = 1;
+    ui_redraw();
     ui_message("LOADED");
     memset(snd_said, 0, sizeof snd_said);               /* a part on a removed engine is said again (NO ENGINE), after LOADED */
     return 0;

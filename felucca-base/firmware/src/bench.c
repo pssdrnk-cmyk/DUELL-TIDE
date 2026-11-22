@@ -741,7 +741,7 @@ static BENCH_FN void bench_set(const bench_scn_t *s)            /* the row's who
 #if TIDE_PLAYSEL
     song.both = s->mode == DM_LAYER;                    /* (LAYER plays in ALGORITHM's middle only, both parts selected; seq.c MODE_WANT) */
 #endif
-    ui.force = 1;
+    ui_redraw();
 }
 static BENCH_FN void bench_notes_on(const bench_scn_t *s)
 {
@@ -849,7 +849,7 @@ static BENCH_FN void bench_restore_session(void)
     perf_space = bench_keep.space;
     bench_extras_back();
     bench_bopen = 0;                                   /* (the NOTES budget as before the run) */
-    ui.force = 1;
+    ui_redraw();
 }
 static BENCH_FN void bench_start(uint32_t first, uint32_t last)
 {
@@ -875,7 +875,7 @@ static BENCH_FN void bench_start(uint32_t first, uint32_t last)
         bench_line_head(b);
         BENCH_OUT(b);
     }
-    ui.force = 1;
+    ui_redraw();
 }
 static BENCH_FN void bench_finish(void)
 {
@@ -894,7 +894,7 @@ static BENCH_FN void bench_finish(void)
     bench_line_end(b);
     BENCH_OUT(b);
     ui_message(bench.aborted ? "BENCH STOPPED" : "BENCH DONE");
-    ui.force = 1;
+    ui_redraw();
 }
 static BENCH_FN int bench_skip(const bench_scn_t *s)            /* a row that cannot run now */
 {
@@ -1209,7 +1209,7 @@ static BENCH_FN void bench_page_step(int32_t s)
     int32_t p = (int32_t)bench.page + (s > 0 ? 1 : -1);
     uint32_t n = bench_pages();
     bench.page = (uint8_t)(p < 0 ? 0 : p >= (int32_t)n ? (int32_t)n - 1 : p);
-    ui.force = 1;
+    ui_redraw();
 }
 /* every ui_input pass, first (ui_input.c): the run's clock; on the BENCH screen (ui.menu 5) it takes the frame: the UI's own syncs, keys
  * and knobs wait. Not running: OCT+ or K4 right start; K1 the pages; OCT- back to the menu's tabs; HOME and the page buttons do nothing
@@ -1232,7 +1232,7 @@ static BENCH_FN int bench_input(uint32_t pressed, uint32_t notes)
             bench_finish();
         }
     } else if (dn) {
-        ui.menu = 1, ui.force = 1;
+        ui.menu = 1, ui_redraw();
     } else if (up || panel_enc(EN_K4) > 0) {
         bench_start(0, BENCH_NAUTO - 1u);
     } else if (panel_enc(EN_K2) > 0) {
@@ -1837,7 +1837,7 @@ static BENCH_FN void bench_con_set(const char *p)
         trk[part - 1].p[id] = (int16_t)v;
     else
         song.g[id] = (int16_t)v;
-    ui.force = 1;
+    ui_redraw();
     bench_say("OK set", 0, 0);
 }
 static BENCH_FN void bench_con_ev(const char *p)
@@ -1999,7 +1999,7 @@ static BENCH_FN void bench_con_sound(const char *p)    /* sound PART ENGINE DEAR
     t->p[P_EQLG] = t->p[P_EQMG] = t->p[P_EQHG] = 0;
     t->p[P_DKDEP] = 0;
     bench_morph_flat((uint32_t)part - 1u);
-    ui.force = 1;
+    ui_redraw();
     bench_say("OK sound", ENGINES[e]->name, ds_name(e, (uint32_t)k));
 }
 static BENCH_FN void bench_con_cal(const char *w, const char *p)   /* mods, bypass, master, morph, keysense */
@@ -2042,7 +2042,7 @@ static BENCH_FN void bench_con_cal(const char *w, const char *p)   /* mods, bypa
             byp_sh = (uint8_t)(on ? byp_sh | bit : byp_sh & ~bit);
         else
             byp_m[part - 1] = (uint16_t)(on ? byp_m[part - 1] | bit : byp_m[part - 1] & ~bit);
-        ui.force = 1;
+        ui_redraw();
         bench_say("OK bypass", y, z);
     } else if (bench_ieq(w, "master")) {               /* master COMP 0..8 | WIDTH 0..200 | BM 0..BM_N: the master compressor's RATIO (0 off), WIDTH (100 off), BASS MONO (0 off) */
         if (!bench_tok(&p, x, sizeof x) || !bench_arg(&p, &n)) {
@@ -2306,7 +2306,7 @@ static BENCH_FN void bench_con(const char *p)
         btl.ms0 = 0, btl.ms1 = 0xFFFFFFFFu;
         bench_sess_begin();
         if (ui.menu == 5u)                             /* (the BENCH screen left, as OCT- does: it takes the UI's frame, so MORPH, program changes and the syncs would not run) */
-            ui.menu = 1, ui.force = 1;
+            ui.menu = 1, ui_redraw();
         transport_req = 4;                             /* STOP ALL; then every value from INIT (IDLE ST: STEREO, both parts' power-on sounds) */
         bench_set(&BENCH_SCN[0]);
         bench_bopen = 0;                               /* (the NOTES budget as the owner plays it; `scene` and `budget` hold it open) */

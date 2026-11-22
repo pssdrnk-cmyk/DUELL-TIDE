@@ -940,7 +940,7 @@ static void menu_close(void)
         ui.confirm = 0;
     settings_save();                                   /* palette / panel table, if changed */
     ui.menu = 0;
-    ui.force = 1;
+    ui_redraw();
     go_main();
 }
 
@@ -978,7 +978,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
                                                         * tabs, HOME and a page button close the menu; SELECT and OCT+ do nothing here */
         uint8_t layer = ui.layer;
         if (dn) {
-            ui.menu = 1, ui.force = 1;
+            ui.menu = 1, ui_redraw();
             enc_drop();
             return;
         }
@@ -1000,7 +1000,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
                                                         * jumps to the next / previous section (about_section); OCT- back to the tabs,
                                                         * HOME closes; KNOB 2..4, PRESETS, ALGORITHM nothing */
         if (dn) {
-            ui.menu = 1, ui.force = 1;
+            ui.menu = 1, ui_redraw();
             enc_drop();
             return;
         }
@@ -1036,16 +1036,16 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
         if (ui.menu_sel == MI_PANEL) {
             panel_setup();
             scrn.idle = fm1_ms;                         /* (SCREEN OFF: its own loop had the input) */
-            ui.force = 1;
+            ui_redraw();
         } else if (ui.menu_sel == MI_ERASE) {           /* the dialog over the menu (ui_input.c: OCT+ YES, OCT- NO) */
             ui.confirm = CF_ERASE_ALL;
             ui.confirm_trk = 0;
-            ui.force = 1;
+            ui_redraw();
 #if DUELL_TEST_MODE
         } else if (ui.menu_sel == MI_TEST) {
             ui.menu = 3;
             cpu_meter_open();                           /* (the CPU meter's window begins) */
-            ui.force = 1;
+            ui_redraw();
 #endif
         } else if (ui.menu_sel == MI_GUIDE) {           /* the first-start GUIDE's pages, over the menu (ui_guide.c); the bit untouched */
             guide_open(1);
@@ -1054,7 +1054,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
             about_t0 = fm1_ms;
             cpu_meter_open();
             ui.menu_scroll = 0;
-            ui.force = 1;
+            ui_redraw();
         }
     }
     enc_drop();                                        /* swallow the rest while the menu is up */

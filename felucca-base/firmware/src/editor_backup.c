@@ -235,7 +235,7 @@ static uint32_t ed_bk_commit(void)
         mu_obj_read(o);                             /* what the unit holds now (flash, checked); its names and used mask */
         if (o < MU_NOBJ)                            /* (the objects past the slots in use hold what the archive carried) */
             mu_note(o);
-        sync_reload = 1; ui.force = 1;
+        sync_reload = 1; ui_redraw();
         return 0;
     } else if (ed_bk_wt(ed_bk_id) >= 0) {      /* a user wavetable; length 0 = EMPTY */
         uint32_t u = (uint32_t)ed_bk_wt(ed_bk_id);
@@ -247,7 +247,7 @@ static uint32_t ed_bk_commit(void)
         if (!ed_bk_len) {
             if (ps_take(o)) return 4;               /* (S0a: the object into RAM first) */
             ps_reset_obj(o);                        /* (marks the object dirty: the flash follows; a failed write is retried) */
-            sync_reload = 1; ui.force = 1;
+            sync_reload = 1; ui_redraw();
             return 0;
         }
         if (!ed_bk_pat_ok(o, raw, ed_bk_len)) return 2;
@@ -255,11 +255,11 @@ static uint32_t ed_bk_commit(void)
         if (!flash_ok || st_save(OBJ_PATSLOT0 + o, raw, ed_bk_len)) return 4;
 #endif
         ps_restored(o, raw, ed_bk_len);             /* RAM is the restored object; no write of the old one is pending */
-        sync_reload = 1; ui.force = 1;
+        sync_reload = 1; ui_redraw();
         return 0;
     } else if (ED_BK_ISP(ed_bk_id)) {         /* one patch record into its slot (the store places it); length 0: the slot's record removed */
         int r = ed_bk_len ? up_put_raw(ed_bk_slot, raw, ed_bk_len) : sl_restore(ed_bk_slot);
-        sync_reload = 1; ui.force = 1;
+        sync_reload = 1; ui_redraw();
         return r == 0 || r == 3 ? 0u : r == 1 ? 2u : r == PT_FULL ? 6u : song.playing ? 3u : 4u;   /* (3: no flash, kept in RAM; 1: no record the store would read; 2: the flash failed; 6: STORE FULL, TIDE's 150 records) */
     } else return 1;
 #if FELUCCA_FLASH
@@ -276,7 +276,7 @@ static uint32_t ed_bk_commit(void)
         persist_note(q); persist_pending = 1;   /* (TIDE: a backup without its fields keeps the unit's; the settings are saved again so the flash holds them too) */
 #endif
     }
-    sync_reload = 1; ui.force = 1;
+    sync_reload = 1; ui_redraw();
     return 0;
 }
 /* a project object's length: FUN11's (the older lengths, FUN7 .. FUN9, are no project) */
