@@ -198,6 +198,7 @@ static void t_round(void)
     const uint32_t NT = sizeof T / sizeof T[0];
     uint32_t k, ok = 1;
     fresh();
+    ui_home_pg = HP_MORPH;                               /* (B16: HOME OPENS is LAST by default; this test is about MORPH, the round's first page) */
     go_title("AMP ENV");                                 /* (from another page HOME opens MORPH) */
     for (k = 0; k < NT; k++) {
         press(B_HOME);
