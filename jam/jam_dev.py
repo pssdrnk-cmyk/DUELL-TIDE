@@ -54,10 +54,10 @@ T_INFO, T_LIST, T_GET, T_PUT = 2.0, 4.0, 1.5, 6.0         # seconds, as the web 
 CHUNK = 256
 MAX_OBJ = 3840
 PATCH_ID, PATCH_KEY0, PATCH_PAGE = 40, 1000, 32
-PATCH_ID2 = 47                                                   # b12: the wire id of the patch records of slots 128..174 (the byte after it is slot - 128)
-CAPS_SLOTS175 = 4                                                # INFO tag 44 01 bit 2: 175 patch slots
-PATCH_CAP_BANK, PATCH_CAP_HI = 126, 24                           # b12: the records slots 1..128 and slots 129..175 take, apart
-PATCH_SLOTS_OLD, PATCH_SLOTS, PATCH_PAGES_OLD, PATCH_PAGES = 128, 175, 4, 6   # (a unit without the bit has 128 slots and LIST pages 1..4)
+PATCH_ID2 = 47                                                   # b12: the wire id of the patch records of slots 128..177 (the byte after it is slot - 128)
+CAPS_SLOTS175 = 4                                                # INFO tag 44 01 bit 2: the wide patch list (175 slots in b12, 178 since b18)
+PATCH_CAP_BANK, PATCH_CAP_HI = 126, 24                           # b12: the records slots 1..128 and slots 129..178 take, apart
+PATCH_SLOTS_OLD, PATCH_SLOTS, PATCH_PAGES_OLD, PATCH_PAGES = 128, 178, 4, 6   # (a unit without the bit has 128 slots and LIST pages 1..4)
 
 
 def patch_wire(slot: int) -> tuple[int, int]:
@@ -70,7 +70,7 @@ def slot_bytes(slot: int) -> list[int]:
     return [slot & 127]
 REC_FIX, REC_WORST = 20, 580   # (PT_VER 4: the unit's PT_WORST 577 + TIDE's 3)
 CAPS_MULTI_PATTERN, CAPS_WAVETABLES, CAPS_PATCH16, CAPS_PATCH_RECORDS, CAPS_MULTI_MORE = 4, 8, 16, 32, 64
-FORMAT, VERSION = "duell-backup", 7   # (7: the patches of slots 129..175, id 47, b12; 6: the multis M17..M26, ids 42..46, caps bit 6; duellbackup.js)
+FORMAT, VERSION = "duell-backup", 7   # (7: the patches of slots 129..178, id 47, b12; 6: the multis M17..M26, ids 42..46, caps bit 6; duellbackup.js)
 MULTI2_IDS = [42, 43, 44, 45, 46]
 DUELL_IDS = [0, 1, *range(13, 27), *MULTI2_IDS]
 RESTORE_ORDER = [*range(13, 21), *MULTI2_IDS, *range(21, 27), 1, 0]
@@ -352,7 +352,7 @@ class Info:
 
     @property
     def slots175(self) -> bool:
-        """The unit has 175 patch slots (INFO tag 44 01, bit 2: TIDE b12)."""
+        """The unit has the wide patch list (INFO tag 44 01, bit 2: TIDE b12, 178 slots since b18)."""
         return bool(self.tags.get(0x44, [0])[0] & CAPS_SLOTS175)
 
     @property
@@ -936,7 +936,7 @@ def _check_versions(version: int, items: list) -> None:
     if version < 5 and PATCH_ID in ids:
         raise DuellError(f"This backup is version {version}, which has no patch records (id {PATCH_ID}): it is damaged.")
     if version < 7 and PATCH_ID2 in ids:
-        raise DuellError(f"This backup is version {version}, which has no patches of slots 129 to 175 (id {PATCH_ID2}): it is damaged.")
+        raise DuellError(f"This backup is version {version}, which has no patches of slots 129 to 178 (id {PATCH_ID2}): it is damaged.")
     if version < 6 and any(i in MULTI2_IDS for i in ids):
         raise DuellError(f"This backup is version {version}, which has no multis M17 and up (ids 42 to 46): it is damaged.")
 
@@ -1060,7 +1060,7 @@ def parse_list(a: list[int]) -> dict[int, Listed]:
 
 def parse_page(a: list[int], page: int) -> dict[int, Listed]:
     """A LIST page (1..6): the saved patches of 32 slots, in slot order, under their keys (1000 + slot). The slot byte is 7 bits: pages 5 and 6
-    (slots 128..174, b12) give slot - 128."""
+    (slots 128..177, b12) give slot - 128."""
     if not a or a[0] != 1:
         raise DuellError("Unexpected answer from the unit")
     if len(a) < 3:
@@ -1085,7 +1085,7 @@ def parse_page(a: list[int], page: int) -> dict[int, Listed]:
 
 def list_unit(t: Transport, caps: Optional[int], slots175: bool = False) -> dict[int, Listed]:
     """The plain LIST (it stops the transport and takes the snapshot), then with caps bit 5 the patch pages, merged by key: four, and pages 5 and 6
-    only on a unit with INFO 44 01 bit 2 (b12, 175 slots)."""
+    only on a unit with INFO 44 01 bit 2 (b12; 178 slots since b18)."""
     out = parse_list(t.request(CMD_LIST, [], T_LIST))
     if (caps or 0) & CAPS_PATCH_RECORDS:
         for page in range(1, (PATCH_PAGES if slots175 else PATCH_PAGES_OLD) + 1):
@@ -1210,7 +1210,7 @@ def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, pa
         if not caps & g.caps:
             return "this unit's firmware cannot restore patches one at a time (update it first)"
         if wide and (lo > PATCH_CAP_BANK or hi > PATCH_CAP_HI):   # b12: two rooms, checked apart
-            return f"the file holds {lo} patches of slots 1..128 and {hi} of slots 129..175, and this unit stores at most {PATCH_CAP_BANK} and {PATCH_CAP_HI} (STORE FULL)"
+            return f"the file holds {lo} patches of slots 1..128 and {hi} of slots 129..178, and this unit stores at most {PATCH_CAP_BANK} and {PATCH_CAP_HI} (STORE FULL)"
         if not wide and patch_cap and lo > patch_cap:
             return f"the file holds {lo} patches and this unit stores at most {patch_cap} (STORE FULL)"
         return None
@@ -1226,12 +1226,12 @@ def _group_reason(g: Group, a: Archive, listed: dict[int, Listed], caps: int, pa
 
 
 def _patch_steps(a: Archive, listed: dict[int, Listed], include_raw: bool, plan: Plan, wide: bool = False) -> None:
-    """The patches made exactly the file's: a PUT where size or CRC differ, a size-0 PUT for a saved slot the file lacks. Slots 129..175 only on a
+    """The patches made exactly the file's: a PUT where size or CRC differ, a size-0 PUT for a saved slot the file lacks. Slots 129..178 only on a
     unit with the bit (b12): a file's patches there are otherwise left out with a note; the removals there only when the file has slots175."""
     low = lambda k: k - PATCH_KEY0 < PATCH_SLOTS_OLD
     hidden = sum(1 for k in a.objects if is_patch_key(k) and not low(k)) if not wide else 0
     if hidden:
-        plan.excluded.append(("Patches in slots 129 to 175", f"{hidden} {'patch of slots 129..175 needs' if hidden == 1 else 'patches of slots 129..175 need'} TIDE b12 or newer; {'it is' if hidden == 1 else 'they are'} not restored"))
+        plan.excluded.append(("Patches in slots 129 to 178", f"{hidden} {'patch of slots 129..178 needs' if hidden == 1 else 'patches of slots 129..178 need'} TIDE b12 or newer; {'it is' if hidden == 1 else 'they are'} not restored"))
     for key in sorted(k for k in a.objects if is_patch_key(k) and (wide or low(k))):
         o = a.objects[key]
         if o.raw and (not include_raw or not o.size):
