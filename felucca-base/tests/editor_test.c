@@ -70,7 +70,7 @@ static int st_erase(uint32_t off) { (void)off; return -1; }
 static int card_hidden_vp(const int16_t *vp) { (void)vp; return 0; }
 #include "../firmware/src/editor.c"
 
-#define PCAP ED_PCAP                                     /* the patch records the store takes (INFO 58 01): b12 150 of the 175 slots */
+#define PCAP ED_PCAP                                     /* the patch records the store takes (INFO 58 01): b12 150 of the 178 slots */
 static int check(const char *what, int ok)
 {
     printf("editor: %-70s %s\n", what, ok ? "ok" : "FAIL");
@@ -222,7 +222,7 @@ static int preferences(void)
         host_wire[e - 7] == 0x4B && host_wire[e - 6] == 1 && host_wire[e - 5] == 1 &&
         host_wire[e - 10] == 0x5B && host_wire[e - 9] == 1 && host_wire[e - 8] == 1 &&   /* 1.1: BYPASS (cmd 89) */
         host_wire[e - 4] == 0x4F && host_wire[e - 3] == 1 && host_wire[e - 2] == 1);   /* DUELL: the MIDI MAP (cmds 85..88) */   /* DUELL 0.2.19: PATCH_RAW */   /* DUELL 0.2.15: the patch capacity, 128 as two 7-bit bytes */   /* 1.5: MIDI LEARN */
-    bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 7 (bit 0 TIDE, bit 1 the voice bank object, b12 bit 2 the 175 slots); plain DUELL sends none",
+    bad += check("INFO of a TIDE build ends with the TIDE tag 44 01 7 (bit 0 TIDE, bit 1 the voice bank object, b12 bit 2 the 178 slots); plain DUELL sends none",
         host_wire[n - 4] == 0x44 && host_wire[n - 3] == 1 && host_wire[n - 2] == 7);
     request(ED_UI_SET, a, 2);
     bad += check("UI_SET updates the actual palette and reports RAM-only saving",
@@ -655,7 +655,7 @@ static int user_preset_roundtrip(void)
                 up_put(s, 0);
         for (s = 0; s < TIDE_PT_END; s = TIDE_PT_NEXT(s))
             up_store(s, nm);
-        a[0] = UP_SLOTS - 1u - 128u;                      /* (b12: slot 175 = SLOT_HI + 46) */
+        a[0] = UP_SLOTS - 1u - 128u;                      /* (slot 178 = SLOT_HI + 49) */
         a[k - 1u] = CAT_PAD;
         { uint8_t hi = 1; request(ED_SLOT_HI, &hi, 1); }
         request(ED_UP_PUT, a, k);

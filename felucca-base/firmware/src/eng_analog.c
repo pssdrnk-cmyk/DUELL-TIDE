@@ -12,7 +12,7 @@
  *   SUB   OSC 1 a saw, OSC 2 a square an octave below it (detuned by DTN in cents as before): MIX (shown SUB) is the
  *         sub oscillator's level */
 static const char *const N_ANALOG_WAVE[] = {"SAW", "SQR", "TRI", "SIN", "PWM", "SYNC", "SUB", "ACID", "ACSQ"};
-enum { AW_SYNC = 5, AW_SUB = 6, AW_ACSQ = 8 };   /* WAVE 7 ACID / 8 ACSQ: a saw / a square that play as a 303 (voice.c acid_on); the oscillator is OSC 1 as SAW / SQR */
+enum { AW_SYNC = 5, AW_SUB = 6, AW_ACSQ = 8 };   /* WAVE 7 ACID / 8 ACSQ: a saw / the 303 square (osc_acsq) that play as a 303 (voice.c acid_on) */
 static const param_desc_t ANALOG_SYNC = {"SYNC", F_INT, 0, 0, 127, 10, 0};   /* DTN's range and default */
 static const param_desc_t ANALOG_SUB = {"SUB", F_PCT, 0, 0, 127, 64, 0};      /* MIX's */
 
@@ -27,7 +27,9 @@ static const param_desc_t *analog_desc(const track_t *t, uint32_t k)
 
 static void analog_note_on(track_t *t, voice_t *v)
 {
-    (void)t;
+    if (!v->uft && t->p[P_E0] >= (int16_t)ACID_WAVE)   /* ACID from silence: the wave starts where it crosses zero (a 303's oscillator runs on and its VCA comes after the
+                                                         * filter; a start mid-ramp is a step the diode ladder's full bass under 150 Hz turns into a thump) */
+        v->ph[0] = t->p[P_E0] == AW_ACSQ ? 0x87AE0000u : 0x80000000u;
     v->ph[1] = v->ph[0] + 0x40000000u;
     if (!v->s[2])
         v->s[2] = 0x1234567 + (int32_t)v->age;        /* noise state */
@@ -121,14 +123,22 @@ static __attribute__((noinline)) void analog_render_x(track_t *t, voice_t *v, in
     v->s[3] = jl;
 }
 
-/* WAVE 0..4 (the loop as it always was, less its filter) */
+/* WAVE ACSQ: the 303's square, made from its saw as the 303 makes it (a transistor shaper): the falling saw driven hard (x 40) into tanh about a small offset
+ * gives a pulse a little over half high (53 %) with one sharp edge (the saw's jump, band-limited) and one quick soft one; a sixteenth of the saw left in makes
+ * its tops droop */
+static inline int32_t osc_acsq(uint32_t ph, uint32_t inc)
+{
+    int32_t r = -osc_saw(ph, inc);
+    return ((softclip(r * 40 + 78643) * 15) >> 4) + (r >> 4);
+}
+static __attribute__((noinline)) int32_t osc_acsq_n(uint32_t ph, uint32_t inc) { return osc_acsq(ph, inc); }   /* (one copy, in range Z: analog_osc's loop keeps its size) */
+
+/* WAVE 0..4, ACID and ACSQ (the loop as it always was, less its filter) */
 static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t *v, int32_t *out, uint32_t n,
                                                              const vmod_t *m)
 {
     const int16_t *p = t->p;
     uint32_t wave = (uint32_t)p[P_E0], i;
-    if (wave == AW_ACSQ)
-        wave = 1;                                                /* (ACID: the default case, the saw) */
     int32_t det = p[P_E1], mix = p[P_E2], noise = p[P_E3];
     int32_t drive = 32768 + p[P_E6] * 512;                       /* 1x .. 3x */
     uint32_t inc1 = m->inc;
@@ -160,6 +170,10 @@ static inline __attribute__((always_inline)) void analog_osc(track_t *t, voice_t
         case 4:
             a = osc_pulse(ph0, inc1, pw);
             b = osc_pulse(ph1, inc2, pw);
+            break;
+        case AW_ACSQ:
+            a = osc_acsq_n(ph0, inc1);
+            b = m2 ? osc_acsq_n(ph1, inc2) : 0;              /* (a 303 sound's OSC 2 is silent, MIX 0: not worked out) */
             break;
         default:
             a = osc_saw(ph0, inc1);
@@ -193,7 +207,7 @@ static inline int32_t analog_wave(uint32_t wave, uint32_t ph, uint32_t inc, uint
         return osc_sine(ph);
     case 4:
         return osc_pulse(ph, inc, pw);
-    default:
+    default:                                                     /* (ACID; ACSQ's 303 square is analog_osc's: during a fade, the saw) */
         return osc_saw(ph, inc);
     }
 }

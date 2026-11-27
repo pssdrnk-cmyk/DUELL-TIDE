@@ -79,6 +79,17 @@ def main(path):
     db = [None] + [(v - 112) / 2 for v in range(1, 128)]
     L += arr("LEVEL_Q12", "uint16_t", [0] + [int(round(4096 * 10 ** (d / 20))) for d in db[1:]])
     L += arr("LEVEL_DB_X10", "int16_t", [-999] + [int(round(d * 10)) for d in db[1:]])
+    # ACID's diode ladder (voice.c acid_coef): Open303's TB_303 coefficient fits (Robin Schmidt, MIT; mystran and kunn) at filter 1's cut index 512 j (j 0..63, 64 = the top again for
+    # the interpolation): fx = fc x 0.7071 / FS, fc on the cut law of voice.c (16 kHz at the top, 9.06 octaves down to the bottom), capped at 5 kHz (the 303's top);
+    # ACID_B0: b0, Q16; ACID_K: the loop gain k, Q10 (16.998792 at fx 0, the diode ladder's 17; 37.6 at 5 kHz)
+    def acid_fx(j):
+        return min(16000.0 * 0.7071 / FS * 2.0 ** (-(32512 - min(512 * j, 32512)) * 74795 / 2.0 ** 28), 5000.0 * 0.7071 / FS)
+    def acid_b0(x):
+        return (0.00045522346 + 6.1922189 * x) / (1.0 + 12.358354 * x + 4.4156345 * x * x)
+    def acid_k(x):
+        return ((((((x + 7198.6997) * x - 5837.7917) * x - 476.47308) * x + 614.95611) * x + 213.87126) * x + 16.998792)
+    L += arr("ACID_B0", "uint16_t", [int(round(65536 * acid_b0(acid_fx(j)))) for j in range(65)])
+    L += arr("ACID_K", "uint16_t", [int(round(1024 * acid_k(acid_fx(j)))) for j in range(65)])
     # per-sample exponential decay for drum voices: 5 ms .. 4 s to -60 dB, Q16
     dms = [5.0 * (800 ** (v / 127)) for v in range(128)]
     L += arr("DECAY_K", "uint16_t", [min(65535, int(65536 * math.exp(-6.9 / (m / 1000 * FS)))) for m in dms])

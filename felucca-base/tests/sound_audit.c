@@ -109,6 +109,9 @@ static int au_riser(const ds_sound_t *s)
 static int au_keep(const ds_sound_t *s)
 {
     uint32_t i;
+    if (s->cat == CAT_ACID)                             /* a 303 (WAVE ACID / ACSQ): a held note settles to its VCA's floor once ENV 2's sweep is over (voice.c ACID_BASE),
+                                                         * by design; its loudness is set by the line it plays (the acid multis), not by a held note */
+        return 1;
     for (i = 0; i < sizeof AUDIT_KEEP / sizeof *AUDIT_KEEP; i++)
         if (AUDIT_KEEP[i] && str_eq(s->name, AUDIT_KEEP[i]))
             return 1;
@@ -126,7 +129,7 @@ static int au_known(const ds_sound_t *s)
     return 0;
 }
 /* one aftertouch convention per category (audit T09, 2026-11-05): a sound of the 128 that routes AT routes it to SATURATION (BASS) or to a filter / the
- * engine's timbre (CUT, TWIN CUTOFF, SHAPE: LEAD PAD PLUCK KEYS); FX and PERC are free. 1 = keeps it */
+ * engine's timbre (CUT, TWIN CUTOFF, SHAPE: LEAD PAD PLUCK KEYS), ACID to either (the 303 player's SAT or cutoff); FX and PERC are free. 1 = keeps it */
 static int au_at_ok(const ds_sound_t *s, uint32_t n)
 {
     uint32_t i;
@@ -135,7 +138,7 @@ static int au_at_ok(const ds_sound_t *s, uint32_t n)
     for (i = 0; i < 8u; i++)
         if (ds_value(s, MSLOT_ID(i), 0) == MS_AT) {
             int32_t d = ds_value(s, MSLOT_ID(i) + 1u, 0);
-            return s->cat == CAT_BASS ? d == MD_DIST : d == MD_CUT || d == MD_CUT2 || d == MD_SHP;
+            return s->cat == CAT_BASS ? d == MD_DIST : s->cat == CAT_ACID ? d == MD_DIST || d == MD_CUT : d == MD_CUT || d == MD_CUT2 || d == MD_SHP;
         }
     return 1;
 }

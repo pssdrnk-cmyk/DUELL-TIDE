@@ -1559,6 +1559,8 @@ static void graph_filt(const track_t *t, uint16_t c)
         kb = -1;
         fc = gf_cut_hz(40 + 396 * cut);
         flat = cut >= UF_STEPS && md <= 0;           /* (the bypass: the filter is not run) */
+        if (uf_pic(t, &wl, &wb, &wh, &k1, &fc))            /* (ACID's diode ladder, voice.c) */
+            s24 = 1;
     }
     cv_rect(PANEL_X0, z, PANEL_W, 1, T_RAISE);       /* 0 dB */
     if (!flat)

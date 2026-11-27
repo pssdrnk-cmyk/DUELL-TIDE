@@ -56,6 +56,8 @@
  * CHAIN_ALL every note whose filter 1 runs goes through the voice chain (voice_chain.c), and the calibration measured them together */
 #define BD_F12 89u              /* MULTI 12 dB a note, the chain path included (cal: the dearest paired difference, all engines 83 .. 89) */
 #define BD_F24 123u             /* .. 24 dB (cal: 115 .. 123) */
+#define BD_FACID 135u           /* .. WAVE ACID / ACSQ's diode ladder (voice.c acid_lad) in its place: its loop is 171 instructions a sample in the unit's build against filter 1's
+                                 * 24 dB loop's ~168, charged as the 24 dB slope + 10 % (the block's coefficients, ACSQ's square); not on the unit's counter yet (K9) */
 /* COST-CAL (bench_runs/cost_merged/cost_fit/report.txt, 625 + 124 runs on the unit's own counter): per engine the DEARER of the one-core row and the two-core
  * critical-path row, rounded up (the model charges one row on both paths; only WAVE differs by more than 3 %: 93 one core, 119 on the critical path) */
 static const struct { const engine_t *e; uint16_t c; } BD_ENG[] = {   /* (cal) */
@@ -124,7 +126,7 @@ _Static_assert(NLIVE >= BD_N, "budget.c: two parts");
 _Static_assert(BUDGET_LIMIT + BUDGET_PEAK == 90u, "budget.c: the limit and the peak allowance make 90 %");
 #include "budget_feat.h"        /* the new features' items: TWIN FILTER, SUB, CYCLE (budget_feat.c) */
 
-static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the multimode filter, on every engine: 0 bypassed or none, 1 12 dB, 2 24 dB */
+static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the multimode filter, on every engine: 0 bypassed or none, 1 12 dB, 2 24 dB, 3 ACID's diode ladder */
 {
     uint32_t i, mc = 0;
     for (i = 0; i < NMSLOT; i++)
@@ -132,7 +134,7 @@ static uint32_t bd_slope(const engine_t *e, const int16_t *p)  /* filter 1, the 
     if (!e->ufilt || (p[P_FREEA] >= (int16_t)UF_STEPS && p[P_FREEC] <= 0 && !p[P_KTRK] &&   /* (as voice.c's real bypass, the effective cut at the open end: */
                       !p[P_LD_FLT] && !p[P_E2FLT] && !p[P_ED_FLT] && !p[P_L2FLT] && !mc && e != &ENG_NOISE))   /* no depth or route that moves the cut; NOISE's DRFT moves it) */
         return 0;
-    return p[P_FREED] == 2 ? 2u : 1u;
+    return e == &ENG_ANALOG && p[P_E0] >= (int16_t)ACID_WAVE ? 3u : p[P_FREED] == 2 ? 2u : 1u;
 }
 /* end e (0 = A, 1 = B) of the part's MORPH as it SOUNDS: morph.c morph_apply on a copy of the live values with the fader at that end
  * and no ramp (= morph_effective_x). A continuous value is live + (end - Original); a choice the player changed (live != Original, not pinned at End B) stays the player's and is never
@@ -221,7 +223,7 @@ static void bd_part(const track_t *t, bd_part_t *r)
                    : (morph_wlvl ? BD_TIDE_WASH_REST : 0u);   /* (the part's fixed cost below; at rest only the wash's meter runs: bd_where) */
         r->ext += tide_v;
     }
-    r->filt = sl == 2u ? BD_F24 : sl ? BD_F12 : 0;
+    r->filt = sl == 3u ? BD_FACID : sl == 2u ? BD_F24 : sl ? BD_F12 : 0;
     if (mods_off & MODS_PFX)                            /* (GLO > MODULES, PART FX OFF: the part's DIST, INSERT, EQ and DUCK are skipped, fx.c: they cost nothing) */
         by |= BY_INS | BY_SAT | BY_EQ;
     i = (uint32_t)p[P_ITYPE];
@@ -394,7 +396,7 @@ static uint8_t part_notes_reason(int part)
         uint32_t cost = 0;
         q = b;
         switch (k) {
-        case 0: cost = q.p[part].filt > BD_F12 ? q.p[part].filt - BD_F12 : 0, q.p[part].filt = BD_F12 * (q.p[part].filt != 0); break;   /* (the 24 dB slope: down to 12 dB) */
+        case 0: cost = q.p[part].filt > BD_F12 && q.p[part].filt != BD_FACID ? q.p[part].filt - BD_F12 : 0, q.p[part].filt = cost ? BD_F12 : q.p[part].filt; break;   /* (the 24 dB slope: down to 12 dB; ACID's ladder has none) */
         case 1: cost = q.p[part].ins, q.p[part].ins = 0; break;
         case 2: cost = q.p[part].sat, q.p[part].sat = 0; break;
         case 3: cost = q.p[part].eq, q.p[part].eq = 0; break;

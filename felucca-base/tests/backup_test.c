@@ -40,7 +40,7 @@ static void fl_plain_window_init(void) {}
 #include "../firmware/src/project.c"
 #include "old_pack.h"
 #include "endb_store.h"
-#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store takes: b12 150 of the 175 slots */
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store takes: b12 150 of the 178 slots */
 #define BK_PID(slot) ((slot) >= 128u ? ED_BK_PATCH2 : ED_BK_PATCH)   /* b12: slots 128.. travel as id 47 + (slot - 128) */
 #define BK_PSB(slot) ((uint8_t)((slot) >= 128u ? (slot) - 128u : (slot)))
 
@@ -527,7 +527,7 @@ int BACKUP_TEST_MAIN(void)
             bytes += rlen[k];
         }
         bad += check("150 patches saved (b12: slots 1..126 and 129..152, one per slot, every 5th with the 16 slots off default, every 7th with End B values set by hand, every 14th with 32 of them)", ok && up_count() == NSAVE);
-        bad += check("LIST pages: before the capture LIST a page is stale (5); page 0 and 7 are invalid (1), page 6 (slots 161..175, none saved) is empty",
+        bad += check("LIST pages: before the capture LIST a page is stale (5); page 0 and 7 are invalid (1), page 6 (slots 161..178, none saved) is empty",
                      (ed_bk_valid = 0, list_page(1) == 5u) && (call(ED_BACKUP_LIST, 0, 0), list_page(0) == 1u && list_page(7) == 1u && list_page(6) == 0u && rep[2] == 0u));
         for (pg = 1; pg <= 5u; pg++) {
             ok = list_page(pg) == 0 && rep[2] == ({ uint32_t q, c2 = 0; for (q = (pg - 1u) * ED_BK_PPAGE; q < pg * ED_BK_PPAGE; q++) c2 += q < 126u || (q >= UP_BANK && q < TIDE_PT_END); c2; });   /* (b12: 1..126 and 129..152) */   /* (TIDE: the last page 30) */
@@ -550,7 +550,7 @@ int BACKUP_TEST_MAIN(void)
         }
         bad += check("GET: every record read in pieces equals the stored record (slot and revision bytes zero), CRC as listed", ok);
         printf("backup: %u patches: %u bytes of logical records (the physical chunks held %u)\n", bytes, pt_bytes_total());
-        bad += check("GET of a slot with no record, a slot past the last (175), a bad count, a missing slot byte: refused (1)",
+        bad += check("GET of a slot with no record, a slot past the last (178), a bad count, a missing slot byte: refused (1)",
                      (up_put(9, 0), get_patch(9, 0, 16)) == 1u && get_patch(UP_SLOTS, 0, 16) == 1u && get_patch(UP_SLOTS - 1u, 0, 16) == 1u && get_patch(140u, 0, 16) == 0u && get_patch(3, 0, 0) == 1u && get_patch(3, rlen[3] - 1u, 2) == 1u && get_patch(3, 0, 16) == 0u);
         up_store_trk(&trk[0], 9, "B09", 0);
         {   /* the patches not in a page: a slot that holds its factory sound is not listed */

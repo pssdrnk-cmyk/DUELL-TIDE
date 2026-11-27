@@ -50,8 +50,8 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define NENG_RETIRED 5
 #define NENG_SHOWN (NENGINES - NENG_RETIRED)   /* the engines one can pick: PRESETS, the EDIT layer, the editor, in the display order of engines.c ENGINE_ORDER */
 #define UP_BANK 128u             /* the bank of 128 (program change bank 0 / 1, the favorites' slot bits): #1..#124 and the USER slots U1..U4 (tide.h) */
-#define UP_SLOTS 175u            /* the patch slots (upreset.c), one per place of the PATCHES list: the bank's 128, then the
-                                 * factory sounds the USER slots displaced and the ones past the 128 (#125..#171); each holds its saved record, else its factory sound */
+#define UP_SLOTS 178u            /* the patch slots (upreset.c), one per place of the PATCHES list: the bank's 128, then the
+                                 * factory sounds the USER slots displaced and the ones past the 128 (#125..#174); each holds its saved record, else its factory sound */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 /* The velocity ACCENT LIFT (release_drafts/VELOCITY_AFTERTOUCH_V1.md): above velocity ACCENT_V0 the envelope opens the filter / the engine's tone
  * (cutoff += envq15 x ACCENT_MAX >> 7). A step lift made sounds QUIETER at a harder key (up to 5 dB), so it grows
@@ -69,11 +69,14 @@ _Static_assert(NSHOWN <= NPART, "core.h: NSHOWN parts are shown, NPART parts exi
 #define ACCENT_V0 110
 #define ACID_WAVE 7u             /* ACID: ANALOG WAVE 7 (saw) and 8 (square) play like a 303 (voice.c acid_on, trk_vmode, the accent in track_render); work/b8/acid/DESIGN.md */
 #ifndef ACID_BASE
-#define ACID_BASE 10836         /* Q15 = Q15_FROM_127(42): an ACID note's level whatever its velocity; an accent bursts from it up to unity (32767) with ENV 2: +9.6 dB at the peak. Above unity the amp ramp's multiplies overflow (dsp.c mulq15) */
+#define ACID_BASE 9495          /* Q15: an ACID note's level whatever its velocity. ENV 2 adds 0.45 of it on a plain note and bursts an accent up to unity (32767): an accent
+                                 * peaks 7.5 dB over a plain note, as Open303's VCA (amp + 0.45 x MEG + 4 x accent x MEG at its middle ACCENT). Above unity the amp ramp's multiplies overflow (dsp.c mulq15) */
 #endif
 #ifndef ACID_PUSH
-#define ACID_PUSH 7500          /* Q8 dial steps at a full capacitor (one accent at RES 100 charges it to 0.32: ~9 of the 82 steps (12000 x 0.2); stacked accents to 0.6); the 303 probe's accent centroid 1.0 .. 1.34 x a plain note's (Open303 1.0 .. 1.3) */
+#define ACID_PUSH 2048          /* Q8 dial steps of the accent sweep at full charge: 8 steps, 0.88 octave (Open303's accent path adds up to an octave at full ACCENT) */
 #endif
+#define ACID_CHG 237             /* the accent capacitor's charge per control tick (0.726 ms), Q15: a time constant of 100 ms */
+#define ACID_DRN 158             /* .. its run-down: 150 ms */
 #define ACID_ACCDEC 94           /* ENV_EXP index of the accent's forced ENV 2 decay: 10000^(94/127) = 916 ms to 99 %, a time constant of 199 ms: Open303's accent decay (tau 200 ms, the 303's shortest decay) */
 #define ACCENT_V1 127
 static inline int32_t accent_lift(uint32_t vel, int32_t envq15)

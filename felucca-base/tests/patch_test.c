@@ -17,7 +17,7 @@
 #define FELUCCA_FLASH 1
 #include "ui_test.c"
 #include "endb_store.h"
-#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store always takes: b12 150 of the 175 slots (25 chunks; object 48 stays the old TIDE settings') */
+#define NSAVE (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)   /* records the store always takes: b12 150 of the 178 slots (25 chunks; object 48 stays the old TIDE settings') */
 
 static uint8_t nor[0x100000];
 static long cut_bytes = -1;
@@ -665,8 +665,8 @@ int PATCH_TEST_MAIN(void)
         printf("patch: PT_WORST %u bytes (SEQ-arp FM6 record %u, plain %u), PT_K %u per chunk, %u chunks, PT_MAX %u, chunk payload %u (ends at 0x%X)\n",
                (unsigned)PT_WORST, (unsigned)PT_W_SEQ, (unsigned)PT_W_PLAIN, (unsigned)PT_K, (unsigned)PT_NCH, (unsigned)PT_MAX, (unsigned)PT_CAP,
                (unsigned)(PT_CAP + ST_PAYLOAD_OFF));
-        ck("PT_MAX = chunks x records per chunk (b12: 25 x 6 = 150 of the 175 slots), a chunk of PT_K worst records fits its payload",
-           PT_MAX == PT_NCH * PT_K && UP_SLOTS == 175u && UP_SLOTS == UP_VSLOTS && PT_K * PT_WORST + PT_HDR <= PT_CAP && PT_K == 6u &&
+        ck("PT_MAX = chunks x records per chunk (b12: 25 x 6 = 150 of the 178 slots), a chunk of PT_K worst records fits its payload",
+           PT_MAX == PT_NCH * PT_K && UP_SLOTS == 178u && UP_SLOTS == UP_VSLOTS && PT_K * PT_WORST + PT_HDR <= PT_CAP && PT_K == 6u &&
            PT_NCH == 25u && NSAVE == 150u);
         ck("  the payload ends at sector offset 0xF00 (the updater's scan), 16 more A/B pairs at 0xA6000..0xC5FFF (the last one the old TIDE settings'), b12: chunks 21..24 at 0xF4000..0xFBFFF",
            PT_CAP + ST_PAYLOAD_OFF == 0xF00u && pt_obj(20u) == OBJ_PATCHX0 + 14u && pt_obj(21u) == OBJ_PATCHY0 && st_sector(pt_obj(21u), 0) == 0xF4000u &&
@@ -1120,9 +1120,9 @@ int PATCH_TEST_MAIN(void)
                 memset(nor, 0xFF, sizeof nor);
                 power_cycle();
                 song.sel = 0;
-                for (k = 0; k < UP_SLOTS; k += 11u) {   /* the saved ones: slots 1, 12, 23 .. (k % 11 == 0), REL = 20 + k */
+                for (k = 0; k < UP_SLOTS; k += 11u) {   /* the saved ones: slots 1, 12, 23 .. (k % 11 == 0), REL = 20 + k % 100 (inside REL's range: 20 + k went past it from slot 110 on) */
                     sl_load(k);
-                    trk[0].p[P_REL] = (int16_t)(20 + k);
+                    trk[0].p[P_REL] = (int16_t)(20 + k % 100u);
                     up_patch_save_part(0, k);
                 }
                 had = up_count();
@@ -1145,7 +1145,7 @@ int PATCH_TEST_MAIN(void)
                     if (up_used(k)) {
                         nrec++;
                         if (k % 11u == 0u)
-                            base_ok &= vfit_eq(up_rec(k)->engine, P_REL, up_value(up_rec(k), P_REL), (int)(20 + k));   /* (PT_VER 4: as REL's range keeps it) */
+                            base_ok &= vfit_eq(up_rec(k)->engine, P_REL, up_value(up_rec(k), P_REL), (int)(20 + k % 100u));   /* (PT_VER 4: as REL's range keeps it) */
                     }
                 if (a == 0u) {                          /* SAVE: slot 64 is its factory sound or the new record, all the saved ones intact */
                     int is_new = up_used(sl);

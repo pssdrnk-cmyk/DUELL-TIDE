@@ -494,8 +494,8 @@ static int tide_taken(uint32_t k, uint32_t e, uint32_t j)   /* 1: the other part
 enum { FAM_HARM, FAM_BASS, FAM_LEAD, FAM_PERC, FAM_TEXT, FAM_NOISE, FAM_N };
 static const uint8_t JFAM[CAT_N] = {
     [CAT_NONE] = FAM_HARM, [CAT_BASS] = FAM_BASS, [CAT_LEAD] = FAM_LEAD, [CAT_PAD] = FAM_HARM, [CAT_PLUCK] = FAM_LEAD,
-    [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_NOISE, [CAT_OTHER] = FAM_TEXT};
-typedef char jfam_covers_every_category[CAT_N == 9 ? 1 : -1];
+    [CAT_KEYS] = FAM_HARM, [CAT_PERC] = FAM_PERC, [CAT_FX] = FAM_NOISE, [CAT_OTHER] = FAM_TEXT, [CAT_ACID] = FAM_BASS};   /* (a 303 plays the bass line) */
+typedef char jfam_covers_every_category[CAT_N == 10 ? 1 : -1];
 static uint32_t fam_of(uint32_t cat) { return cat < CAT_N ? JFAM[cat] : FAM_HARM; }
 /* the family of factory sound k of engine e: its category's, except an FX sound with the TEXT flag, which is a texture or drone */
 static uint32_t fam_of_sound(uint32_t e, uint32_t k)

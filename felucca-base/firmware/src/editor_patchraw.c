@@ -14,7 +14,7 @@
  * (BEGIN, DATA and COMMIT stop the sequencer themselves, as the backup's writes do, and answer 3 if it does not stop in 100 ms: nothing is written while it plays),
  * 4 flash write failed (the slot is as it was), 5 stale (no begin, the USB bus was reset, 15 s with no request, or a backup / wavetable transfer used the staging).
  * The record is staged in the backup's staging RAM (ED_BK_RAW), like a wavetable. */
-/* (every factory sound editable; INFO 44 01 bit 2): the patch slots are 175, a data byte holds 127. SLOT_HI (90, one byte, 0 or 1, no reply) says that the
+/* (every factory sound editable; INFO 44 01 bit 2): the patch slots are 178, a data byte holds 127. SLOT_HI (90, one byte, 0 or 1, no reply) says that the
  * NEXT command's slot byte counts from 128: UP_LIST's start, UP_GET, UP_PUT, UP_STORE, UP_LOAD, UP_ERASE, PATCH_RAW and FM6_GET / FM6_PUT's USER index. It
  * applies to that one command only (any command clears it), so an editor that never sends it (absent = 0) works on slots 1..128. The replies
  * echo the slot byte as sent (its low 7 bits). The backup has its own id for these slots (47, editor_backup.c) */

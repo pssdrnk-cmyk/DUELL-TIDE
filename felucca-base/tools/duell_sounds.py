@@ -83,26 +83,26 @@ SOUNDS = [
             'LFO2 MMODE': 2,
          }),
     # b13-acid (2026-11-15, owner: "make the acid real"): was SQUELCH (a plain SAW: the 303 path never ran in the sound itself). The classic Chicago saw 303 on WAVE ACID:
-    # one oscillator, 24 dB low-pass resting at ~300 Hz (a 303 knob of ~500 Hz less its envelope offset), RES 90 (~70 %), ENV MOD ~50 % (E2FLT 24 = 2.6 octaves), filter decay tau ~270 ms
+    # one oscillator into ACID's diode ladder (voice.c acid_lad; b18: CUT 37 and E2FLT 26 put its harmonics within 2.5 dB of Open303's at the same 303 knobs), RES 90 (~70 %), ENV MOD ~50 %, filter decay tau ~270 ms
     # (E2DEC 98), 3 ms envelope attack, flat amp, short release, LEGATO + glide for the slides, dry (the echo comes from the multi). Open303 (Robin Schmidt, MIT) as ported in fm1-x0x bass303.c: cutoff knob 314 .. 2394 Hz, ENV MOD sweep 0.8 .. 4.6 octaves (Open303's measured mapping), filter decay a time constant of 200 .. 2000 ms, accent = the shortest decay, amp flat (tau 1230 ms), 1 ms release; no key tracking; work/b13/acid/NOTES.md.
     # End B is the hand on the knobs: cutoff, resonance, env mod and decay up (the "Acid Tracks" ride).
-    dict(engine='ANALOG', idx=4, name='SAW 303', cat='BASS', bseed=57877,  # #5 (b13-acid: was SQUELCH; the name keeps every browse number)
+    dict(engine='ANALOG', idx=4, name='SAW 303', cat='ACID', lcat='BASS', bseed=57877,  # #5 (b13-acid: was SQUELCH; the name keeps every browse number)
          p={
             'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'TRANS': -12, 'DIST': 0, 'DLY': 30, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
-            'FREEA': 30, 'FREEB': 90, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 98, 'E2SUS': 0, 'E2REL': 98, 'TRIM': 100, 'E2FLT': 24,
+            'FREEA': 37, 'FREEB': 90, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 98, 'E2SUS': 0, 'E2REL': 98, 'TRIM': 104, 'E2FLT': 26,
             'E1': 7, 'E2': 0, 'E3': 0, 'E7': 0, 'MOD1': ('AT', 'SAT', 14), 'LTRIG': 1, 'L2TRIG': 1,
          },
-         bend={'FREEA': 44, 'FREEB': 104, 'E2FLT': 30, 'E2DEC': 108}),
-    # b13-acid (2026-11-15): was TIDAL SUB (a sine sub, no filter envelope). The deep, rubbery square 303 on WAVE ACSQ (Plastikman / hypnotic acid): the filter resting low
-    # (~210 Hz), RES 84, little env mod (E2FLT 20 = 2.2 octaves, a 303 at ~35 %), the shortest decay (E2DEC 94 = tau 200 ms, the 303's minimum), flat amp, LEGATO + glide, dry. Open303 (Robin Schmidt, MIT) as ported in fm1-x0x bass303.c: cutoff knob 314 .. 2394 Hz, ENV MOD sweep 0.8 .. 4.6 octaves (Open303's measured mapping), filter decay a time constant of 200 .. 2000 ms, accent = the shortest decay, amp flat (tau 1230 ms), 1 ms release; no key tracking; work/b13/acid/NOTES.md.
+         bend={'FREEA': 51, 'FREEB': 104, 'E2FLT': 32, 'E2DEC': 108}),
+    # b13-acid (2026-11-15): was TIDAL SUB (a sine sub, no filter envelope). The deep, rubbery square 303 on WAVE ACSQ (Plastikman / hypnotic acid): the 303 square (eng_analog.c osc_acsq) into
+    # ACID's diode ladder resting low (b18: CUT 34, within 2.5 dB of Open303's square), RES 84, little env mod (E2FLT 20, a 303 at ~35 %), the shortest decay (E2DEC 94 = tau 200 ms, the 303's minimum), flat amp, LEGATO + glide, dry. Open303 (Robin Schmidt, MIT) as ported in fm1-x0x bass303.c: cutoff knob 314 .. 2394 Hz, ENV MOD sweep 0.8 .. 4.6 octaves (Open303's measured mapping), filter decay a time constant of 200 .. 2000 ms, accent = the shortest decay, amp flat (tau 1230 ms), 1 ms release; no key tracking; work/b13/acid/NOTES.md.
     # End B: cutoff, env mod and decay up (MORPH); TIDE rolls it from seed 19222 (x1.6 brighter, +1.2 dB, inside the audit's window).
-    dict(engine='ANALOG', idx=1, name='SQUARE 303', cat='BASS', bseed=19222,  # #6 (b13-acid: was TIDAL SUB; the name keeps every browse number)
+    dict(engine='ANALOG', idx=1, name='SQUARE 303', cat='ACID', lcat='BASS', bseed=19222,  # #6 (b13-acid: was TIDAL SUB; the name keeps every browse number)
          p={
             'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'TRANS': -12, 'DIST': 0, 'DLY': 25, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
-            'FREEA': 26, 'FREEB': 84, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 94, 'E2SUS': 0, 'E2REL': 94, 'TRIM': 106, 'E2FLT': 20,
+            'FREEA': 34, 'FREEB': 84, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 94, 'E2SUS': 0, 'E2REL': 94, 'TRIM': 103, 'E2FLT': 20,
             'E1': 8, 'E2': 0, 'E3': 0, 'E7': 0, 'MOD1': ('AT', 'SAT', 14), 'LTRIG': 1, 'L2TRIG': 1,
          },
-         bend={'FREEA': 36, 'FREEB': 96, 'E2FLT': 26, 'E2DEC': 104}),
+         bend={'FREEA': 44, 'FREEB': 96, 'E2FLT': 26, 'E2DEC': 104}),
     dict(engine='FM6', idx=12, name='FM BASS 2', cat='BASS', bseed=13225,  # #7
          p={
             'LRATE': 30, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 21, 'KTRK': 0, 'TRANS': -12, 'REV': 6, 'VOICE': 2, 'TWTYPE': 1, 'FREEA': 51, 'FREEB': 4,
@@ -394,15 +394,15 @@ SOUNDS = [
             'AMPENV SATN': -3, 'FILTERENV MRES': -4, 'CYCLE PAN': 20, 'LFO2 MMODE': 6,
          }),
     # b13-acid (2026-11-15): was RAZORWIRE (a sync lead, one of four flat ANALOG leads). The screaming saw 303 (the Hardfloor / Josh Wink squelch): WAVE ACID, RES 118 (near the top,
-    # never self-oscillating), ENV MOD at the 303's maximum (E2FLT 40 = 4.4 octaves), a little drive into the filter (DRV 24) and an overdrive after it (DIST 45: the pedal), decay tau ~300 ms,
+    # never self-oscillating), ENV MOD at the 303's maximum (E2FLT 40; b18: CUT 34 on ACID's diode ladder, within 2 dB of Open303 dry), a little drive into the filter (DRV 24) and an overdrive after it (DIST 45: the pedal), decay tau ~300 ms,
     # flat amp, LEGATO + glide. Played where it sounds (TRANS 0): a 303 line an octave over the bass. Open303 (Robin Schmidt, MIT) as ported in fm1-x0x bass303.c: cutoff knob 314 .. 2394 Hz, ENV MOD sweep 0.8 .. 4.6 octaves (Open303's measured mapping), filter decay a time constant of 200 .. 2000 ms, accent = the shortest decay, amp flat (tau 1230 ms), 1 ms release; no key tracking; work/b13/acid/NOTES.md. End B (TIDE rolls it from the seed): seed 45205, the one that opens it (x1.3 brighter, -1.2 dB) inside the audit's window.
-    dict(engine='ANALOG', idx=6, name='SCREAM 303', cat='LEAD', bseed=45205,  # #27 (b13-acid: was RAZORWIRE; the name keeps every browse number)
+    dict(engine='ANALOG', idx=6, name='SCREAM 303', cat='ACID', lcat='LEAD', bseed=45205,  # #27 (b13-acid: was RAZORWIRE; the name keeps every browse number)
          p={
             'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'DIST': 45, 'DLY': 35, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
-            'FREEA': 28, 'FREEB': 118, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 100, 'E2SUS': 0, 'E2REL': 100, 'TRIM': 86, 'E2FLT': 40,
+            'FREEA': 34, 'FREEB': 118, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 100, 'E2SUS': 0, 'E2REL': 100, 'TRIM': 88, 'E2FLT': 40,
             'E1': 7, 'E2': 0, 'E3': 0, 'E7': 24, 'MOD1': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
          },
-         bend={'FREEA': 40, 'E2FLT': 44, 'E2DEC': 110, 'DIST': 60}),
+         bend={'FREEA': 46, 'E2FLT': 44, 'E2DEC': 110, 'DIST': 60}),
     dict(engine='ANALOG', idx=17, name='SQUARE LEAD', cat='LEAD', bseed=64088,  # #28
          p={
             'ATK': 22, 'SUS': 57, 'REL': 73, 'LRATE': 40, 'LWAVE': 1, 'LD_FLT': 4, 'RES2': 107, 'DLY': 23, 'REV': 19, 'VOICE': 2, 'GLIDE': 61,
@@ -2237,4 +2237,35 @@ SOUNDS = [
          bend={
             'FREEA': 58, 'FREEB': 72, 'FREEC': 44, 'LRATE': 44, 'M1AMT': 24, 'E3': 19, 'IA': 50, 'DLY': 90,
          }),
+    # ACID library (b18): three more 303s beside SAW 303, SQUARE 303 and SCREAM 303 (work/research/acid-2026-11-27/RESEARCH_303.md: the 303 gives the squelch,
+    # an overdrive after it the loudness and grit, the player's slow ride of cutoff, env mod and decay the arc). All WAVE ACID / ACSQ: the diode ladder, the accent
+    # sweep and level, the RC slide; one voice, LEGATO + glide, flat amp, short release, dry (the echo comes from the multi). End B is the knob ride; TIDE rolls each
+    # from its seed (the sound audit's search: one that opens it, x1.5 .. x1.8 brighter, within 0.6 dB).
+    # The London / acid techno 303 (the TD-3's DS-1-style distortion, MusicRadar's Tube Screamer): the saw a little driven into the ladder (DRV 30), RES 100, ENV MOD
+    # a little past half, then a hard overdrive (DIST 62). End B: cutoff and resonance up, the drive harder.
+    dict(engine='ANALOG', idx=36, name='DIRTY 303', cat='ACID', lcat='BASS', bseed=20637,  # #172
+         p={
+            'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'TRANS': -12, 'DIST': 62, 'DLY': 30, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
+            'FREEA': 36, 'FREEB': 100, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 100, 'E2SUS': 0, 'E2REL': 100, 'TRIM': 96, 'E2FLT': 30,
+            'E1': 7, 'E2': 0, 'E3': 0, 'E7': 30, 'MOD1': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={'FREEA': 46, 'FREEB': 112, 'E2FLT': 36, 'DIST': 76}),
+    # The talking 303 (the cutoff and resonance ride of Phuture's Acid Tracks): RES high (112, short of the whistle), little ENV MOD (14) and a long decay (E2DEC 112),
+    # the cutoff in the vowel range (CUT 44): each note says "ow", the accents "yow". A touch of drive (DRV 8). End B: the cutoff opens and the decay grows.
+    dict(engine='ANALOG', idx=37, name='TALK 303', cat='ACID', lcat='BASS', bseed=41926,  # #173
+         p={
+            'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'TRANS': -12, 'DIST': 0, 'DLY': 30, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
+            'FREEA': 44, 'FREEB': 112, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 112, 'E2SUS': 0, 'E2REL': 112, 'TRIM': 100, 'E2FLT': 14,
+            'E1': 7, 'E2': 0, 'E3': 0, 'E7': 8, 'MOD1': ('AT', 'CUT', 12), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={'FREEA': 50, 'FREEB': 116, 'E2FLT': 17, 'E2DEC': 118}),
+    # The deep 303 (dub / deep acid under the pads): the square (ACSQ), the cutoff low (CUT 26), RES 60 (round, no squelch), some ENV MOD (18) and a medium decay:
+    # the body of the bass line with the 303's accent bump and slide. A touch of drive (DRV 8). End B: opens to a mild squelch.
+    dict(engine='ANALOG', idx=38, name='DEEP 303', cat='ACID', lcat='BASS', bseed=46856,  # #174
+         p={
+            'ATK': 0, 'DEC': 110, 'SUS': 110, 'REL': 28, 'KTRK': 0, 'TRANS': -12, 'DIST': 0, 'DLY': 25, 'VOICE': 2, 'GLIDE': 61, 'GLMODE': 1,
+            'FREEA': 26, 'FREEB': 60, 'FREED': 2, 'E2ATK': 15, 'E2DEC': 104, 'E2SUS': 0, 'E2REL': 104, 'TRIM': 100, 'E2FLT': 18,
+            'E1': 8, 'E2': 0, 'E3': 0, 'E7': 8, 'MOD1': ('AT', 'SAT', 14), 'LTRIG': 1, 'L2TRIG': 1,
+         },
+         bend={'FREEA': 30, 'FREEB': 70, 'E2FLT': 20}),
 ]

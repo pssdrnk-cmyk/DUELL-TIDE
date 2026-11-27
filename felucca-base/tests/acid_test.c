@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* ACID (b8, work/b8/acid/DESIGN.md): ANALOG WAVE 7 ACID / 8 ACSQ play their accents like a 303; same sources as the firmware (hostsim.c).
  * build/host/acid_test (host_tests.sh acid):
- *   EXACT   a plain note with WAVE ACID renders bit for bit as WAVE SAW at velocity 42 (ACID_BASE), ACSQ as SQR; whatever its own velocity
+ *   LADDER  ACID's filter, the 303's diode ladder: RES 127 rings and stays bounded, a low note keeps its body at RES 127; ACSQ's square is high 51 .. 56 % of the cycle
  *   NONACID the same accent on WAVE SAW: ENV 2 keeps its Decay, the capacitor stays empty, the level step is the velocity's alone
  *   DECAY   an accented ACID note's ENV 2 falls to a half in about 140 ms (b13-acid: Open303's accent decay, a time constant of 200 ms, the 303's shortest) whatever a
  *           long Decay says (a plain note keeps the Decay's time); a Decay shorter than that stays (the accent never makes it longer)
- *   LEVEL   the accent's level burst: +8 .. 11 dB over a plain note at the start (up to unity, no more: above it the amp ramp overflows), falling with the accent's ENV 2
- *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; two accents in a row stack, more at high RES than at low
+ *   LEVEL   the accent's level burst: +6 .. 9 dB over a plain note at the start (Open303's VCA, ~+7 dB) (up to unity, no more: above it the amp ramp overflows), falling with the accent's ENV 2
+ *   PUSH    the capacitor: one accent charges it, a plain note leaves it empty; accents in a row stack; it charges the same at any RES (RES mixes it with the
+ *           accent's own sweep in the cutoff, voice.c)
  *   SLIDE   a slid step (LEGATO, slide_glide as the sequencer sets it) does not retrigger and is an RC lag: 90 % of a semitone and of an
  *           octave in 45 .. 60 ms, 99 % in 90 .. 120 ms
  *   PLAIN   a plain note slid into after an accent takes its own velocity: it is not accented
@@ -113,30 +114,51 @@ static uint32_t env2_half(track_t *t, uint32_t vel, uint32_t max)
     return n;
 }
 
-static void exact(void)
+/* ACID's filter is the 303's diode ladder (voice.c acid_lad), not filter 1's SVF: a plain note at RES 127 rings without running away; the 303's bass stays
+ * (the loop's 150 Hz high-pass: RES 127 takes little of a low note's body); the 303 square (eng_analog.c osc_acsq) is high a little over half the cycle */
+static double band_db(const int32_t *d, uint32_t b0, uint32_t b1, double f)   /* the level of one frequency (dB), left channel, blocks b0 .. b1 - 1 */
 {
-    static const int W[2][2] = {{7, 0}, {8, 1}};
-    uint32_t w, same, i;
-    static int32_t ref[400 * 2 * CTL];
-    for (w = 0; w < 2u; w++) {
-        track_t *t = fresh(W[w][1], 80, 100);
-        char s[128];
-        trk_note_on(t, 45, 42);                         /* (ACID plays every plain note at ACID_BASE = Q15_FROM_127(42), whatever its velocity) */
-        render(60, ref);
-        trk_note_off(t, 45);
-        render(40, ref + 60 * 2 * CTL);
-        t = fresh(W[w][0], 80, 100);
-        trk_note_on(t, 45, 90);
-        render(60, rec);
-        trk_note_off(t, 45);
-        render(40, rec + 60 * 2 * CTL);
-        same = 1;
-        for (i = 0; i < 100u * 2u * CTL; i++)
-            same &= rec[i] == ref[i];
-        snprintf(s, sizeof s, "a plain note with WAVE %s is bit for bit WAVE %s (100 blocks, filter open)", ENGINES[0]->edit[0].names[W[w][0]], ENGINES[0]->edit[0].names[W[w][1]]);
-        check(s, same);
+    double re = 0, im = 0, w = 2.0 * M_PI * f / FS;
+    uint32_t i, n = (b1 - b0) * CTL;
+    for (i = 0; i < n; i++) {
+        double x = d[(b0 * CTL + i) * 2];
+        re += x * cos(w * i);
+        im += x * sin(w * i);
     }
+    return 20.0 * log10(2.0 * sqrt(re * re + im * im) / n + 1e-9);
 }
+static void ladder(void)
+{
+    int32_t pk = 0;
+    uint32_t i, hi = 0, n = 0, ph;
+    double b0, b127;
+    char s[200];
+    track_t *t = fresh(7, 100, 127);
+    t->p[P_FREEA] = 40;
+    trk_note_on(t, 45, 96);
+    render(300, rec);
+    for (i = 0; i < 300u * 2u * CTL; i++)
+        pk = rec[i] > pk ? rec[i] : -rec[i] > pk ? -rec[i] : pk;
+    snprintf(s, sizeof s, "ACID: RES 127 at CUT 40 rings and stays bounded (peak %d, under full scale)", pk);
+    check(s, pk > 1000 && pk < 32767);
+    t = fresh(7, 100, 0);
+    t->p[P_FREEA] = 40;
+    trk_note_on(t, 33, 96);                             /* A1, 55 Hz */
+    render(200, rec);
+    b0 = band_db(rec, 100, 200, 55.0);
+    t = fresh(7, 100, 127);
+    t->p[P_FREEA] = 40;
+    trk_note_on(t, 33, 96);
+    render(200, rec);
+    b127 = band_db(rec, 100, 200, 55.0);
+    snprintf(s, sizeof s, "ACID: a low note keeps its body at RES 127: the fundamental %+.1f dB against RES 0 (no more than 6 dB lost)", b127 - b0);
+    check(s, b127 > b0 - 6.0);
+    for (ph = 0; ph < 0xFFFF0000u; ph += 0x10000u, n++)
+        hi += osc_acsq(ph, 0x10000u) > 0;
+    snprintf(s, sizeof s, "ACSQ: the 303 square is high for %.1f %% of the cycle (51 .. 56 %%)", 100.0 * hi / n);
+    check(s, hi > n * 51u / 100u && hi < n * 56u / 100u);
+}
+
 
 static void nonacid(void)
 {
@@ -203,8 +225,8 @@ static void level(void)
     e1 = energy(rec, 250, 290);
     {
         char s[160];
-        snprintf(s, sizeof s, "ACID: the accent's level over a plain note's: start +%.1f dB, 250 ms later %+.1f dB (+8 .. 11 dB, then falling with the accent's ENV 2: +1 .. 4 dB)", 20.0 * log10(e0 / l0), 20.0 * log10(e1 / l1));
-        check(s, 20.0 * log10(e0 / l0) > 8.0 && 20.0 * log10(e0 / l0) < 11.0 && 20.0 * log10(e1 / l1) > 1.0 && 20.0 * log10(e1 / l1) < 4.0);
+        snprintf(s, sizeof s, "ACID: the accent's level over a plain note's: start +%.1f dB, 250 ms later %+.1f dB (+6 .. 9 dB, then falling with the accent's ENV 2: +1 .. 4 dB)", 20.0 * log10(e0 / l0), 20.0 * log10(e1 / l1));
+        check(s, 20.0 * log10(e0 / l0) > 6.0 && 20.0 * log10(e0 / l0) < 9.0 && 20.0 * log10(e1 / l1) > 1.0 && 20.0 * log10(e1 / l1) < 4.0);
     }
 }
 
@@ -239,9 +261,9 @@ static void push(void)
     check(s, a[0] > 0.25 * 32768 && a[0] < 0.40 * 32768 && p[0] == 0 && p[3] == 0);
     snprintf(s, sizeof s, "ACID: four accents in a row at RES 100 stack: %.2f %.2f %.2f %.2f (each higher)", hi[0] / 32768.0, hi[1] / 32768.0, hi[2] / 32768.0, hi[3] / 32768.0);
     check(s, hi[1] > hi[0] * 1.2 && hi[2] > hi[1] && hi[3] > hi[2]);
-    snprintf(s, sizeof s, "ACID: stacking grows with RES: second / first accent x%.2f at RES 0, x%.2f at RES 100; the first push is rounder (lower) at high RES (%.2f < %.2f)",
-             lo[1] / (double)lo[0], hi[1] / (double)hi[0], hi[0] / 32768.0, lo[0] / 32768.0);
-    check(s, hi[1] / (double)hi[0] > lo[1] / (double)lo[0] + 0.1 && hi[0] < lo[0]);
+    snprintf(s, sizeof s, "ACID: the capacitor charges the same at RES 0 and RES 100 (%.2f %.2f / %.2f %.2f): RES mixes it into the cutoff, it does not change it",
+             lo[0] / 32768.0, lo[1] / 32768.0, hi[0] / 32768.0, hi[1] / 32768.0);
+    check(s, lo[0] == hi[0] && lo[1] == hi[1] && lo[3] == hi[3]);
     run4(100, 1, a);
     snprintf(s, sizeof s, "ACID: the capacitor runs down through the plain notes after the accent (%.2f -> %.2f -> %.2f -> %.2f)", a[0] / 32768.0, a[1] / 32768.0, a[2] / 32768.0, a[3] / 32768.0);
     check(s, a[1] < a[0] && a[2] < a[1] && a[3] < a[2]);
@@ -317,7 +339,7 @@ static void wave(void)
 int main(void)
 {
     setvbuf(stdout, 0, _IONBF, 0);
-    exact();
+    ladder();
     nonacid();
     decay();
     level();
