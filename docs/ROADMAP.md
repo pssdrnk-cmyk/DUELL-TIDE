@@ -19,9 +19,9 @@ On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step 
 
 | What | State |
 |---|---|
-| WAVE ACID and ACSQ as a TB-303: the 303's diode ladder (full bass at high RES, 5 kHz top), its accent (sharp at low RES, a swell that stacks at high RES, +7 dB), ENV MOD that lowers the resting cutoff, the 303 square; an ACID category with six 303s (#5, #6, #27, new #172 DIRTY 303, #173 TALK 303, #174 DEEP 303); M09 to M11 retuned (owner, 27 November: the acid sounded thin and sharp) | Ready (PR 177 merged into jam11 `d382d4f2`, full CI green); measured within 1.4 to 2.6 dB of Open303's harmonics, as loud as 1.2.0. Flash on the owner's word |
-| The owner hears the 303s on the unit (M09, M10, M11 and the six ACID sounds) | Waiting on you, after the flash |
-| ACID's filter cost on the unit: the host model counts it at 135 a sample (the 24 dB filter 123); read the unit's counter on M10 TWO 303 (K9) | Planned: with the first flash of b18 |
+| WAVE ACID and ACSQ as a TB-303: the 303's diode ladder (full bass at high RES, 5 kHz top), its accent (sharp at low RES, a swell that stacks at high RES, +7 dB), ENV MOD that lowers the resting cutoff, the 303 square; an ACID category with six 303s (#5, #6, #27, new #172 DIRTY 303, #173 TALK 303, #174 DEEP 303); M09 to M11 retuned (owner, 27 November: the acid sounded thin and sharp) | On the unit: 1.3.0-b1 (jam11 `a7ec17cb`) flashed 27 November 12:56, his patches restored; the backup tool counts 178 slots since PR 178. Measured within 1.4 to 2.6 dB of Open303's harmonics, as loud as 1.2.0 |
+| The owner hears the 303s on the unit (M09, M10, M11 and the six ACID sounds) | Waiting on you: the unit has it since 27 November |
+| ACID's filter cost on the unit: the host model counts it at 135 a sample (the 24 dB filter 123); read the unit's counter on M10 TWO 303 (K9) | Open: the measuring build (DUELL_MEASURE) does not fit any more: 624 B over the slot, and with USB audio off still 48 B short of the 8192 B pool headroom (27 November, one try each, nothing flashed). Needs flash room found first (the row below) |
 | Flash room: 224 bytes left in the image after b18 (581340 of 581564) | Note: the next feature that adds code needs room found first |
 
 ## B13: done (13 to 15 November)
