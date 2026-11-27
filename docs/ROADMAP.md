@@ -19,10 +19,10 @@ On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step 
 
 | What | State |
 |---|---|
-| WAVE ACID and ACSQ as a TB-303: the 303's diode ladder (full bass at high RES, 5 kHz top), its accent (sharp at low RES, a swell that stacks at high RES, +7 dB), ENV MOD that lowers the resting cutoff, the 303 square; an ACID category with six 303s (#5, #6, #27, new #172 DIRTY 303, #173 TALK 303, #174 DEEP 303); M09 to M11 retuned (owner, 27 November: the acid sounded thin and sharp) | In progress: PR 177 (branch `b18/acid`); measured within 1.4 to 2.6 dB of Open303's harmonics, as loud as 1.2.0. Flash on the owner's word |
+| WAVE ACID and ACSQ as a TB-303: the 303's diode ladder (full bass at high RES, 5 kHz top), its accent (sharp at low RES, a swell that stacks at high RES, +7 dB), ENV MOD that lowers the resting cutoff, the 303 square; an ACID category with six 303s (#5, #6, #27, new #172 DIRTY 303, #173 TALK 303, #174 DEEP 303); M09 to M11 retuned (owner, 27 November: the acid sounded thin and sharp) | Ready (PR 177 merged into jam11 `d382d4f2`, full CI green); measured within 1.4 to 2.6 dB of Open303's harmonics, as loud as 1.2.0. Flash on the owner's word |
 | The owner hears the 303s on the unit (M09, M10, M11 and the six ACID sounds) | Waiting on you, after the flash |
 | ACID's filter cost on the unit: the host model counts it at 135 a sample (the 24 dB filter 123); read the unit's counter on M10 TWO 303 (K9) | Planned: with the first flash of b18 |
-| Flash room: 264 bytes left in the image after b18 (581300 of 581564) | Note: the next feature that adds code needs room found first |
+| Flash room: 224 bytes left in the image after b18 (581340 of 581564) | Note: the next feature that adds code needs room found first |
 
 ## B13: done (13 to 15 November)
 
