@@ -464,7 +464,7 @@ class RestoreTests(Base):
 
 
 class B12Tests(Base):
-    """TIDE b12: 175 patch slots (INFO 44 01 bit 2), slots 129..175 as id 47, file version 7 with slots175."""
+    """TIDE b12: the wide patch list (178 slots since b18) (INFO 44 01 bit 2), slots 129..178 as id 47, file version 7 with slots175."""
     MOCK = {}
 
     def test_info(self):
@@ -473,7 +473,7 @@ class B12Tests(Base):
         self.assertEqual(i.patch_cap, 150)
         rc, out, _ = run_main(["info"])
         self.assertEqual(rc, 0)
-        self.assertIn("175 slots", out)
+        self.assertIn("178 slots", out)
         self.assertIn("150", out)
 
     def test_backup_byte_identical_with_id47(self):
@@ -526,11 +526,11 @@ class B12Tests(Base):
 
     def test_store_rooms_apart(self):
         a = jd.read_archive(ctl("captureJs")["text"])
-        for k in range(1100 + 1, 1100 + 26):                       # 25 records in slots 129..175 are one over the room
+        for k in range(1100 + 1, 1100 + 26):                       # 25 records in slots 129..178 are one over the room
             a.objects[1000 + 128 + (k - 1101)] = a.objects[1000]
         plan = jd.plan_restore(a, {}, 63, patch_cap=150, slots175=True)
         why = dict(plan.excluded)["Patches"]
-        self.assertEqual(why, "the file holds 4 patches of slots 1..128 and 25 of slots 129..175, and this unit stores at most 126 and 24 (STORE FULL)")
+        self.assertEqual(why, "the file holds 4 patches of slots 1..128 and 25 of slots 129..178, and this unit stores at most 126 and 24 (STORE FULL)")
 
     def test_v7_file_to_old_unit_skips_high_slots(self):
         ctl("setPatch", slot=130, name="HI A")
@@ -539,7 +539,7 @@ class B12Tests(Base):
         ctl("reset", options={"slots175": False})
         rc, out, err = run_main(["restore", str(p), "--yes", "--out", str(self.dir)])
         self.assertEqual(rc, 0, err)
-        self.assertIn("2 patches of slots 129..175 need TIDE b12 or newer; they are not restored", out)
+        self.assertIn("2 patches of slots 129..178 need TIDE b12 or newer; they are not restored", out)
         st = state()
         self.assertEqual(sorted(st["patches"]), ["0", "1", "5", "64"])
         self.assertNotIn(47, [a[1] for a in st["sent"] if a[0] == 0])
