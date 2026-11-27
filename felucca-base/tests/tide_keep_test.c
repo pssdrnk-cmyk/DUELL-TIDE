@@ -369,7 +369,7 @@ static void t_limit(void)
     up_ui_named(2, TIDE_PT_END, "FULL", CAT_PAD);
     CHECK("limit: named save reports STORE FULL", msg_is("STORE FULL") && !up_used(TIDE_PT_END));
     CHECK("  .. an overwrite still fits", up_store(10, "AGAIN") == 0 && up_used(10));
-    CHECK("limit: 175 slots to browse (b12: every factory sound and the 4 USER slots)", UP_SLOTS == 175u);
+    CHECK("limit: 178 slots to browse (b12: every factory sound and the 4 USER slots)", UP_SLOTS == 178u);
 }
 
 static void t_keep_macros(void)

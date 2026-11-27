@@ -30,7 +30,7 @@ GROUPS = {
     "WAVE": ["wv_speed", "wave_block", "wv_dmix"],
     "WHEEL": ["wheel_render", "wheel_block", "drw_tilt", "drw_level"],
     "VOICE LOOP": ["part_voice", "lfo_tick", "uf_edge", "esync_one", "atg_voice", "lfo_wave_of", "esync_coefs", "atgt_bits",
-                   "lfo_sync_inc", "esync_coef", "esync2_coef", "spread_sum"],
+                   "lfo_sync_inc", "esync_coef", "esync2_coef", "spread_sum", "acid_lad", "acid_coef", "osc_acsq_n"],
     "MOD": ["mod_begin", "mod_tsrc", "mod_depth", "mod_part_put", "mod_gain", "mod_end"],
     "MORPH": ["morph_apply", "morph_begin", "morph_dip"],
     "HELPERS": ["__udivdi3", "memcpy", "div_divlu", "memset", "div_samples", "beat_samples", "part_rand", "div_nlz32", "isqrt32", "isqrt64",

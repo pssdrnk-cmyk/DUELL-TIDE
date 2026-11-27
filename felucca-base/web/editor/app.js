@@ -613,7 +613,7 @@ function buildColumn(p) {
   const sel = h("span", { class: "seldot", title: "This is the part the unit has selected (ALGORITHM)" });
   const snd = h("span", { class: "pname" }), cat = h("span", { class: "pcat" });
   // the CURRENT patch in a box of its own (DUELL 1.1, owner item 11): arrows step the slots, the NUMBER can be typed (click, write 5, Enter), the NAME next to it
-  const num = h("button", { type: "button", class: "pnum", title: "Patch number: click, type its place in the list (1 to 128, or 1 to 175 with TIDE b12), press Enter", onclick: () => typePatch(p) });
+  const num = h("button", { type: "button", class: "pnum", title: "Patch number: click, type its place in the list (1 to 128, or 1 to 178 with TIDE b12), press Enter", onclick: () => typePatch(p) });
   const stepB = (d) => h("button", { type: "button", class: "step " + (d < 0 ? "prev" : "next"), "aria-label": d < 0 ? "Previous patch" : "Next patch", title: d < 0 ? "Previous patch (the slot before)" : "Next patch (the slot after)", onclick: () => stepPatch(p, d) });
   const curPatch = h("div", { class: "curpatch", "aria-label": `PART ${p + 1} current patch` }, stepB(-1), num, snd, stepB(1));
   const undoBtn = h("button", { class: "ghost small", text: "Undo", title: `Undo the last edit of PART ${p + 1} (Ctrl+Z or Cmd+Z: the last edit of any part)`, onclick: () => doUndo(p) });
@@ -623,7 +623,7 @@ function buildColumn(p) {
   const patch = h("section", { class: "block patchblock", "aria-label": `Part ${p + 1} patch` }, h("h3", {}, h("span", { class: "ttl", text: "PATCH" }), h("span", { class: "grow" }), cat),
     h("div", { class: "hgrid pgrid2" }, curPatch,
       btnCell(
-        h("button", { class: "ghost small", text: "Browse...", title: "Browse the unit's patch slots (128; 175 with TIDE b12) and recall one into this part (the PATCHES tab of the GLOBAL column)", onclick: () => { app.target = p; setGlobalTab("patches", true); } }),
+        h("button", { class: "ghost small", text: "Browse...", title: "Browse the unit's patch slots (128; 178 with TIDE b12) and recall one into this part (the PATCHES tab of the GLOBAL column)", onclick: () => { app.target = p; setGlobalTab("patches", true); } }),
         h("button", { class: "ghost small", text: "Init...", title: "Init patch: the engine's basic sound, every common setting at its default (on the unit: SAVE > TOOLS > INIT SOUND)", onclick: () => initPatch(p) })),
       partCell(p, ID.P_TRIM).el));
   building = prev;

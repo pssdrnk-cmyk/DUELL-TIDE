@@ -1913,7 +1913,7 @@ static void sound_name(const track_t *t, char *b)
 /* the same for the footer: "#12 FOLD BASS" (b holds 20): the number of the slot the sound is in, then its name; a sound in no slot: the name alone */
 static void sound_label(const track_t *t, char *b)
 {
-    uint32_t sl = slot_place(t);                       /* (TIDE: the read-only places past the slots have their number too, #125 .. #171: up_slot_label) */
+    uint32_t sl = slot_place(t);                       /* (TIDE: the read-only places past the slots have their number too, #125 .. #174: up_slot_label) */
     b[0] = 0;
     if (sl < UP_VSLOTS) {
         up_slot_label(b, sl);

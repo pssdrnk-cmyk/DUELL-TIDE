@@ -1798,12 +1798,12 @@ static void select_engine(uint32_t e)
  * to the first / last entry) */
 
 /* PATCHES > TYPE (KNOB 2): ALL, FAV (favorites.filter), one category (BASS ..
- * OTHER, category.c) or one engine (a filter only; the part's engine is not changed): the list mode 0 ALL, 1 FAV,
+ * ACID, category.c) or one engine (a filter only; the part's engine is not changed): the list mode 0 ALL, 1 FAV,
  * 1 + CAT_* a category, 1 + CAT_N + n the engine at place n of ENGINE_ORDER. The category is kept with the settings in a
  * byte no engine uses (ui_lcat: 0 = none; older firmware reads ALL there, and favorites.filter stays 0 / 1 for it, the
  * editor and backups); the PRESETS knob and page browse that list. The filters look at what the slots hold now */
 #define ui_lcat (favorites.factory[15][11])
-#define LIST_N (1u + CAT_N + NENG_SHOWN)                 /* ALL FAV BASS LEAD PAD PLUCK KEYS PERC FX OTHER, then one per engine */
+#define LIST_N (1u + CAT_N + NENG_SHOWN)                 /* ALL FAV BASS LEAD PAD PLUCK KEYS PERC FX OTHER ACID, then one per engine */
 static uint32_t list_mode(void) { return favorites.filter ? 1u : ui_lcat && ui_lcat < LIST_N - 1u ? 1u + ui_lcat : 0u; }
 static void list_set(uint32_t m)
 {

@@ -400,14 +400,16 @@ static void lv_filt_draw(const track_t *t)           /* MULTI FILTER: graph_filt
     int32_t md = clamp(t->p[P_FREEC], 0, UF_HP), res = clamp(t->p[P_FREEB], 0, 127);
     int32_t wb = md <= 64 ? md << 4 : ((UF_HP - md) * 65) >> 2, wl = md < 64 ? 1024 - wb : 0, wh = md > 64 ? 1024 - wb : 0;
     int32_t s24 = t->p[P_FREED] == 2, k1 = s24 ? UF_K24A : UF_K(t, res), k2 = UF_K24B(t, res), px = 0, py = 0;
-    uint32_t i, f = GF_F0;
+    uint32_t i, f = GF_F0, fc = lv.fc;
     if (clamp(t->p[P_FREEA], 0, UF_STEPS) >= UF_STEPS && md <= 0)   /* (the bypass: graph_filt draws a flat line and no cutoff) */
         return;
-    cv_rect(PANEL_X0 + gf_x(lv.fc << 8), 4, 1, 92, T_ACCENT);
+    if (uf_pic(t, &wl, &wb, &wh, &k1, &fc))            /* (ACID's diode ladder, voice.c) */
+        s24 = 1;
+    cv_rect(PANEL_X0 + gf_x(fc << 8), 4, 1, 92, T_ACCENT);
     for (i = 0; i < GF_N; i++, f = (uint32_t)(((uint64_t)f * GF_STEP) >> 16)) {
-        int32_t db = svf_db10(f, lv.fc, wl, wb, wh, k1, k1), x = PANEL_X0 + 4 * (int32_t)i, y;
+        int32_t db = svf_db10(f, fc, wl, wb, wh, k1, k1), x = PANEL_X0 + 4 * (int32_t)i, y;
         if (s24)
-            db += svf_db10(f, lv.fc, wl, wb, wh, k2, k2);
+            db += svf_db10(f, fc, wl, wb, wh, k2, k2);
         y = 30 - clamp(db, -420, 180) * 3 / 20;
         if (i)
             cv_line_t(px, py, x, y, T_ACCENT, 1);

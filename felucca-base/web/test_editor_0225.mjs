@@ -57,7 +57,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let lenOk = true; for (const [k, m] of Object.entries(VALUE_NAMES)) { const d = /^\d+$/.test(k) ? L.TP[+k] : null; if (d?.names) lenOk = lenOk && longDesc(d, +k).names.length === d.names.length; }
   ok(lenOk, "labels: a long value list keeps the firmware list's length and order");
   ok(engineLong("FM6", "SLOT") === "SOURCE" && engineLong("ANALOG", "DTN") === "DETUNE" && engineLong("WAVE", "POS") === "POSITION" && engineLong("WAVE", "TABLE") === "TABLE" && engineLong("FM6", "MLVL") === "MOD LEVEL" && /factory voice/.test(tipOf("e:FM6", { short: "SLOT" })), "labels: engine controls by the engine's short label (WAVETABLE: TABLE, POSITION; MACROS: SOURCE, MOD LEVEL; with what F / OWN / B mean)");
-  ok(CATEGORY_NAMES.length === 9 && CATEGORY_NAMES[6] === "PERCUSSION", "labels: the nine categories in the unit's order (6 is PERC on the unit, not DRUM)");
+  ok(CATEGORY_NAMES.length === 10 && CATEGORY_NAMES[6] === "PERCUSSION" && CATEGORY_NAMES[9] === "ACID", "labels: the ten categories in the unit's order (6 is PERC on the unit, not DRUM; 9 ACID since b18)");
   ok(L.TP[48].names.join() === "12dB,24dB", "layout: SLOPE's value names fixed (the dump wrote them from index 0: '-' for 12 dB)");
   ok(whyText("UNUSED") === "" && whyText("INSERT OFF").length > 5 && Object.values(WHY).every((t) => t.length <= 60), "labels: every hide reason is a short plain line (none for an unused engine slot)");
 }

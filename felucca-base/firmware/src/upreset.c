@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
-/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS patch slots (175, every factory sound
+/* DUELL's PATCH store (SAVE > PATCHES, SPEC 3.6; editor protocol v2, cmds 16-21): ONE list of UP_SLOTS patch slots (178, every factory sound
  * and the USER slots, the store holds 150 records: see below).
  * Slot k holds a SAVED record if one was written (SAVE overwrites the slot it is told to), else the FACTORY sound at browse position k
  * (sounds.c DS_LIST: category, engine, name = the #NN numbers): a virtual fallback, nothing is written at first boot, a fresh or erased
@@ -84,7 +84,7 @@ _Static_assert(P_COUNT <= UP_MB_AT, "user preset record: P_COUNT leaves the morp
 #define UP_SH_AT (UP_MB_AT - 2u)
 _Static_assert(P_COUNT <= UP_SH_AT, "user preset record: P_COUNT leaves the shadow marker its room");
 #include "category.c"
-static void up_set_cat(up_rec_t *r, uint32_t c)  /* c CAT_BASS..CAT_OTHER */
+static void up_set_cat(up_rec_t *r, uint32_t c)  /* c CAT_BASS..CAT_ACID */
 {
     if (c && c < CAT_N)
         r->packed[UP_CAT_AT] = (uint8_t)c;
@@ -219,7 +219,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #define PT_VER 4u                                /* the chunk image's version (byte 2 after "PT"): 4 = ROLL CHAINED storage (the values by wide id in the bits of their ranges, End B as values (morph.c MBV), the AK block's steps in 7 bytes; 6 records a chunk, 22 chunks); 3 and before are refused (no backward compatibility before the alpha) */
 #define PT_NONE 0xFFFFu
 #define PT_NOCH 0xFFu                            /* a directory entry with no record */
-#define PT_FULL 4                                /* up_put: no chunk takes a new record (the 127th of slots 1..128, the 25th of 129..175: STORE FULL) */
+#define PT_FULL 4                                /* up_put: no chunk takes a new record (the 127th of slots 1..128, the 25th of 129..178: STORE FULL) */
 #define PT_VB 20u                                /* PT_VER 4: the values' bitmap, a bit per wide id (0..126 the ids, 127 never, 128..155 the extension slots) */
 #define PTF_PAT 1u
 #define PTF_TR 2u                                /* the TRIM form: the loudness is the pair of P_TRIM (the PATCH TRIM) and the record carries no MIXER LEVEL (P_LEVEL is never written). A record
@@ -256,7 +256,7 @@ static void up_values(const up_rec_t *r, int16_t *v)   /* the record's values cl
 #if FELUCCA_FLASH
 _Static_assert(PT_CAP + ST_PAYLOAD_OFF == ST_PAYLOAD_END && PT_CAP <= ST_PAYLOAD_MAX, "a patch chunk is one storage object whose payload ends at 0xF00");
 #endif
-_Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX == 150u && PT_MAX <= UP_SLOTS && AK_WORST <= AK_MAX, "the store's limit: 6 records of the worst size fit a chunk; b12: 25 chunks, 150 records for the 175 slots");
+_Static_assert(PT_WORST == 577u + TIDE_MBV_FMT_N && PT_K == 6u && PT_WORST * PT_K + PT_HDR <= PT_CAP && PT_MAX == 150u && PT_MAX <= UP_SLOTS && AK_WORST <= AK_MAX, "the store's limit: 6 records of the worst size fit a chunk; b12: 25 chunks, 150 records for the 178 slots");
 _Static_assert(TIDE_PT_NOLD * PT_K == 126u && (PT_NCH - TIDE_PT_NOLD) * PT_K == 24u, "b12: the two rooms, 126 records for slots 1..128 and 24 for 129..175 (editor duellbackup.js PATCH_CAP_*)");
 _Static_assert(UP_SLOTS <= UP_VSLOTS && UP_SLOTS <= 255u && TIDE_PT_NOLD < PT_NCH, "b12: a slot per place (the record's slot byte, pt_dir; UP_SLOTS itself is pt_write's 'no slot to cut'); the shipped"
                " list has exactly 175 places (patch_test), a test list with more (xvalues' extra sound) has read-only places past the slots, as before b12");

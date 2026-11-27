@@ -10,6 +10,8 @@ Not an OSCILL/R release: pssdrnk's fork of DUELL 1.1 (<https://github.com/pssdrn
 ## Next (in progress)
 
 - (new lines for the next beta go here; TIDE_VERSION is set only when the beta is cut)
+- **Changed (owner, 2026-11-27: the acid sounded thin and sharp):** WAVE ACID and ACSQ are a reasonable TB-303 now. The filter is the 303's diode ladder (Open303's model, in integers): it keeps the bass at high RES, its resonance builds the 303 way and it tops out at 5 kHz. An accent kicks the cutoff sharply at low RES and swells and stacks at high RES, and it is about 7 dB louder than a plain note. ENV MOD lowers where the sweep rests as it raises the peak. ACSQ plays the 303's own square (made from the saw, a little over half high, the tops drooping). Notes that start from silence no longer thump. MODE and SLOPE do nothing on ACID / ACSQ (a 303 has neither); the filter pictures show its low-pass. Measured against Open303 at the same knobs: the harmonics of SAW 303, SQUARE 303 and SCREAM 303 within 1.5 .. 2.5 dB (1.2.0: 2.5 .. 7.8), the multis as loud as in 1.2.0 (within 0.6 dB).
+- **New (owner, 2026-11-27):** an ACID category: PATCHES > TYPE has ACID after OTHER, and a saved sound can be filed under it. SAW 303, SQUARE 303 and SCREAM 303 are in it (same numbers), with three new 303s: #172 DIRTY 303 (overdriven, the acid techno sound), #173 TALK 303 (high resonance, slow vowel sweep) and #174 DEEP 303 (dark, round square). TIDE plays an ACID sound as a bass line. M09 ACID HYPNO, M10 ACID TWO 303 and M11 ACID LINES are retuned to the new filter.
 
 ## 1.2.0
 

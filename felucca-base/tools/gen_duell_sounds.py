@@ -65,11 +65,11 @@ ALIAS = {
 TRACK_ONLY = {"LEVEL", "PAN", "MUTE", "QUANT", "SLEN", "SDIV", "SSWING", "SGATE", "SQNT"}   # (DUELL 1.1, owner 2026-10-27: TRANS, the TRANSPOSE, is the sound's now: a sound may set it; ROOT and SCALE are the instrument's, no ids: 25 and 26 are the TWIN FILTER's RES 2 and DRIVE)
 KEY_IDS = ["CHRD", "VOIC"]               # lent like the arp (ui.c ds_keys): a pad may set chord keys. No SCALE: the scale is the instrument's (core.h)
 ARP_IDS = ["AMODE", "ARATE", "AOCT", "AGATE", "ASWING", "APROB", "AHOLD", "AORDER"]
-CATS = ["BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER"]
+CATS = ["BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER", "ACID"]
 MAX_PAIRS = 64
 # a factory sound's End B AMOUNT (%) by category (owner, 2026-10-11): conventional sounds move a little, pads (drones too)
 # and effects more. A sound's own 'bamt' overrides it (by a small step, the reason in its recipe comment)
-CAT_BAMT = {"BASS": 7, "KEYS": 11, "PLUCK": 11, "PERC": 11, "LEAD": 17, "PAD": 27, "FX": 31, "OTHER": 17}
+CAT_BAMT = {"BASS": 7, "KEYS": 11, "PLUCK": 11, "PERC": 11, "LEAD": 17, "PAD": 27, "FX": 31, "OTHER": 17, "ACID": 7}
 NENG_TABLE = 16                   # DS_ENG_AT covers engine numbers 0..15 (favorites.c: 16 engines)
 
 

@@ -337,9 +337,9 @@ function storeDefault0() { const d = storeDefaults(0); return d[45] === 0 && d[4
   ok(items.map((x) => x.number).join() === "1,151,161,175" && items[0].kind === "record" && items[1].kind === "record" && items[2].kind === "record" && items[3].kind === "approx", "b12: export reads slots past 127 (a saved slot as its record, a factory slot as a copy); their numbers are 151, 161, 175");
   const fileTxt = stringifyFile(buildFile(items, { firmware: u.info.version, source: "unit" })), pf = parseFile(fileTxt);
   ok(pf.ok && pf.items.map((x) => x.number).join() === "1,151,161,175" && same(pf.items[1].record, rec), "b12: the patch file keeps the numbers past 128 and the record");
-  // plans: running past the end is 175 now; the label of a slot in a plan
+  // plans: running past the end is 178 since b18 (175 in b12); the label of a slot in a plan
   const four = [items[0], items[1], items[2], items[3]];
-  ok(same(LIB.chooseTargets(u, four, { mode: "from", start: 172 }), [172, 173, 174, null]), "b12: targets: running past the last slot (175) leaves the rest without a place");
+  ok(same(LIB.chooseTargets(u, four, { mode: "from", start: 175 }), [175, 176, 177, null]), "b18: targets: running past the last slot (178) leaves the rest without a place");
   ok(same(LIB.chooseTargets(u, four, { mode: "same" }), [0, 150, 160, 174]), "b12: targets: the same slot numbers as the file reach slots past 127");
   ok(same(LIB.chooseTargets(o.u, four.slice(0, 3), { mode: "same" }).map((t) => t), [0, 150, 160]) && LIB.makePlan(o.u, four.slice(0, 3), [0, 150, 160]).problems.length === 2, "b12: a unit with 128 slots reports a slot past 127 as not existing");
   const plan = LIB.makePlan(u, [items[1], items[3]], [170, 128]);

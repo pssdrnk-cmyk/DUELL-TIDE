@@ -260,7 +260,7 @@ static uint32_t tide_page_sig(uint32_t h);             /* (tide_ui.c) ui_graph.c
 /* U1 (upreset.c, patslot.c, ui*.c): the last UP_NUSER voice slots of the bank and PS_NUSER pattern slots are USER slots, empty until saved. The factory
  * sounds / patterns they displace stay listed after them (voice places UP_BANK.., pattern places PS_SLOTS.., read-only). No record moves.
  * The factory sounds past the 128 of the bank (sounds.c DS_N, tools/duell_sounds.py N_BASE) follow the displaced ones (UP_NXTRA). Every voice place is a
- * slot (UP_SLOTS = UP_VSLOTS): the displaced #125..#128 and #129..#171 are slots 128..174, saved over and restored as any other */
+ * slot (UP_SLOTS = UP_VSLOTS): the displaced #125..#128 and #129..#174 are slots 128..177, saved over and restored as any other */
 #define UP_NXTRA (DS_N > UP_BANK ? DS_N - UP_BANK : 0u)
 #define UP_USER0 (UP_BANK - UP_NUSER)
 #define UP_VSLOTS (UP_BANK + UP_NUSER + UP_NXTRA)

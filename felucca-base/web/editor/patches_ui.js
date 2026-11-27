@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// DUELL editor: the PATCHES tab, the patch LIBRARIAN. Every slot the unit has (128; 175 with TIDE b12) as a compact list that fits the global column and a wide grid (an overlay over the page, for dragging
+// DUELL editor: the PATCHES tab, the patch LIBRARIAN. Every slot the unit has (128; 178 with TIDE b12) as a compact list that fits the global column and a wide grid (an overlay over the page, for dragging
 // between slots); patch files and DX7 sysex files dropped on the tab (or chosen with a button) open a preview with the target slots; a slot dragged onto another is copied
 // (the list) or swapped (the wide grid); a file or a slot dropped on a part loads there without saving (app.js). Every write is listed before it is made; the work is in
 // librarian.js. Rules of the owner's UI: no counts of free places (every slot is always writable), a control that does not apply is not drawn, one text style.
@@ -11,7 +11,7 @@ import { parseFile, sniff, fileName, itemFromRecord } from "./patchfile.js";
 import { parseDx7File, voiceToPatch, SOURCE_LABEL } from "./dx7import.js";
 import { dropZone, hasFiles, hasSlot, slotOf, filesOf, readBytes, saveText, SLOT_TYPE } from "./dropzone.js";
 
-let LU = null;                                                   // the unit the tab shows: its slot labels (#1..#124, U1..U4, #125..#171 with 175 slots) and count
+let LU = null;                                                   // the unit the tab shows: its slot labels (#1..#124, U1..U4, #125..#174 with 178 slots) and count
 const label = (slot) => (LU ? LU.label(slot) : `#${slot + 1}`);
 const pad3 = (n) => String(n + 1).padStart(3, " ");
 const partSel = (app, name = "Part") => {
@@ -483,7 +483,7 @@ export function buildPatches(app, wrap) {
     try { app.say("Restoring ..."); await u.restoreAll((i, n) => app.say(`Restoring ... ${i} of ${n}`)); await load(); app.say("Every slot holds its factory sound.", "good"); } catch (e) { app.fail(e); await load(); }
   }
 
-  // ---- the wide view: all the slots (175 with TIDE b12: 11 rows of 16) on the full width, an overlay under the header. Drag: swap (Alt: copy)
+  // ---- the wide view: all the slots (178 with TIDE b18: 12 rows of 16) on the full width, an overlay under the header. Drag: swap (Alt: copy)
   function openWide() {
     if (st.wide) { st.wide.querySelector(".tile[tabindex='0']")?.focus(); return; }
     const top = Math.round(document.getElementById("top")?.getBoundingClientRect().bottom ?? 0);

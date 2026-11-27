@@ -42,7 +42,7 @@
 #define ED_BK_PAT0 21u
 #define ED_BK_WT0 24u
 #define ED_BK_PATCH 40u                         /* a patch record, with its slot (see the top) */
-#define ED_BK_PATCH2 47u                        /* (INFO 44 01 bit 2, archive version 7): the same for the slots 128..174 (#129..#175 of the list), slot byte = slot - 128 */
+#define ED_BK_PATCH2 47u                        /* (INFO 44 01 bit 2, archive version 7): the same for the slots 128..177 (#129..#178 of the list), slot byte = slot - 128 */
 static uint32_t ed_bk_pslot(uint32_t id, uint32_t b) { return id == ED_BK_PATCH ? b : id == ED_BK_PATCH2 ? 128u + b : UP_SLOTS; }   /* (UP_SLOTS: no patch id) */
 #define ED_BK_ISP(id) ((id) == ED_BK_PATCH || (id) == ED_BK_PATCH2)
 #define ED_BK_MULX0 42u                         /* ids 42..46: the multi objects 8..12 (M17..M26, b10 U4, INFO 42 01 caps bit 6): always all five, the flash has room for M26 (MU_OBJ_ALL); the ones past MU_SLOTS read empty; 41 is the voice bank */

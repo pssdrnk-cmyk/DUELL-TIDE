@@ -13,7 +13,7 @@ static int sqm_thin_build(void)                          /* 1: a mask changed */
         const track_t *t = &trk[pi];
         uint32_t len = sqm_len(t);
         uint32_t c = UP_REC_USER(t) ? sl_cat((uint32_t)t->user - 1u) : ds_cat_of(t->eng_req, t->preset);   /* (the Original's category) */
-        uint32_t keep = c == 1u || c == 3u;              /* (a BASS or a PAD sound, category.c's numbers: included later; stored, append-only) */
+        uint32_t keep = c == 1u || c == 3u || c == 9u;   /* (a BASS, PAD or ACID sound, category.c's numbers: included later; stored, append-only) */
         if (!keep)
             lead |= 1u << pi;                            /* (it listens, and its chords thin to two voices) */
         if (((sqm_auto == 3u && !keep) || (((tarc_lev | tarc_lev >> 3) >> pi) & 1u)) && sqm[pi].ok && len > 4u) {

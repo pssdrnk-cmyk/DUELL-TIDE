@@ -19,6 +19,8 @@ static int32_t tg_f1(const track_t *t, uint32_t hz)
     uint32_t fc = gf_cut_hz(40 + 396 * cut);
     if (cut >= UF_STEPS && md <= 0)                      /* (the bypass: the filter is not run) */
         return 0;
+    if (uf_pic(t, &wl, &wb, &wh, &k1, &fc))            /* (ACID's diode ladder, voice.c) */
+        s24 = 1;
     db = svf_db10(hz << 8, fc, wl, wb, wh, k1, k1);
     if (s24)
         db += svf_db10(hz << 8, fc, wl, wb, wh, UF_K24B(t, res), UF_K24B(t, res));

@@ -232,7 +232,7 @@ MULTIS = [
          g=dict(G_BPM=130, G_DTIME="8D", G_DFDBK=66, G_DMIX=84, G_DMODE="PING", G_DCOLOR=40, G_RTYPE="HALL", G_RSIZE=90, G_RDAMP=64),
          parts=[dict(sound="SCREAM 303", set={"P_AMODE": "OFF", "P_SGATE": 74, "P_PAN": -24, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 40, "P_REV": 10, "P_LEVEL": 114},
                      steps=". n38 n50S n48A . n38 n38 n50A . n38 n41S n43A . n38 n50S n38A", bseed=20216, amt=0, b={"P_FREEA": 38, "P_E2DEC": 108}),
-                dict(sound="SQUARE 303", set={"P_AMODE": "OFF", "P_SGATE": 74, "P_FREEA": 32, "P_E2FLT": 24, "P_DIST": 20, "P_PAN": 24, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 55, "P_REV": 15, "P_LEVEL": 104},
+                dict(sound="SQUARE 303", set={"P_AMODE": "OFF", "P_SGATE": 74, "P_FREEA": 40, "P_E2FLT": 24, "P_DIST": 20, "P_PAN": 24, "P_CHOR": 0, "P_SPRD": 0, "P_DLY": 55, "P_REV": 15, "P_LEVEL": 104},
                      steps=". . . . n50 n62S n60A n50 . . . . n53 n55 n57A n50", bseed=26818, amt=0, b={"P_FREEA": 36, "P_FREEB": 100})]),
     dict(slot=11, name="ACID LINES", mode="LAYER",
          what="Chicago acid house, E minor (b13-acid): the classic saw 303 (SAW 303), clean, sixteen 16ths around E2: root and octave, accents off the beat (4, 7, 11, 15), three slides into accents (E up to G, the octave drop E3 to E2: the bend, B down to A), F as the chromatic neighbour, rests on 3, 8, 13 and 16 for the bounce; the filter ride in End B; under it a slow dark pad holding A minor 7, F major 7 and G 6, its sends feeding the dotted echo (122 BPM, straight, gate 58 %)",

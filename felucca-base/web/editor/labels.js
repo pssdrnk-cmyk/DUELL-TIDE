@@ -353,4 +353,4 @@ export const MATRIX_GROUPS = {
 // DAMPING); PITCH, FILTER, AMP, ENGINE, LFO, PART FX and SPACE keep their items' own names (owner, change list section H). The stored numbers are unchanged
 export const GROUP_WORD = { 32: "FILTER ENV ", 33: "FILTER ENV ", 34: "FILTER ENV ", 35: "FILTER ENV ", 36: "FILTER ENV ", 37: "FILTER ENV ", 47: "AMP ENV ", 48: "AMP ENV ", 49: "AMP ENV ", 50: "AMP ENV ",
   24: "INSERT ", 25: "INSERT ", 26: "INSERT ", 27: "INSERT ", 31: "DUCK ", 7: "CHORUS ", 39: "CHORUS ", 40: "CHORUS ", 8: "DELAY ", 41: "DELAY ", 42: "DELAY ", 43: "DELAY ", 9: "REVERB ", 44: "REVERB ", 45: "REVERB " };
-export const CATEGORY_NAMES = ["NONE", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERCUSSION", "EFFECTS", "OTHER"];   // the unit's CAT_NAME (category.c: -, BASS .. PERC, FX, OTHER), spelled out
+export const CATEGORY_NAMES = ["NONE", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERCUSSION", "EFFECTS", "OTHER", "ACID"];   // the unit's CAT_NAME (category.c: -, BASS .. PERC, FX, OTHER, ACID), spelled out

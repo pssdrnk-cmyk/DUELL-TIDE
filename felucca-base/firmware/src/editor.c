@@ -84,7 +84,7 @@ static uint32_t ed_eng(const track_t *t) { return t->eng_req % NENGINES; }
  * compares and pushes CHANGED / STEP_CHANGED, or RELOAD after a load or when another
  * track was selected (v3: RELOAD and STEP_CHANGED carry the selected track). Pushes
  * go out only into a half-empty SysEx ring, so they never wait. */
-#define ED_PCAP (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)    /* INFO 58 01: the patch records the store takes (150 of the 175 slots) */
+#define ED_PCAP (PT_MAX < UP_SLOTS ? PT_MAX : UP_SLOTS)    /* INFO 58 01: the patch records the store takes (150 of the 178 slots) */
 #define ED_PUSH_MAX 4u                                   /* frames per pass */
 #define ED_NV (P_COUNT + G_COUNT + NX)                   /* the track's parameters, the globals, then (scope 2) the track's extension slots */
 /* v4: the parameters of the tracks that are not selected which TRACK_CHANGED follows (the mixer) */
@@ -602,7 +602,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_b(0x4F); ed_b(1); ed_b(1);   /* bit 0 = a part's values are read AS SHOWN at the MORPH fader (morph_view) and written as the knob writes (ed_put);
                                          * TRACK_DUMP's byte 1 and TRACK_PARAM's scope + 4 = the stored Original; WATCH bit 2 = TRACK_CHANGED for the other shown part */
         ed_b(0x44); ed_b(1); ed_b(7);   /* DUELL with TIDE: bit 0 = this firmware is the TIDE fork (the version string stays "DUELL 1.1"; plain DUELL sends no 44 tag); bit 1 = the backup can GET object 41, FM6's voice bank (editor_backup.c);
-                                         * bit 2 = 175 patch slots, one per factory sound and USER slot: SLOT_HI (cmd 90) and the backup's id 47 (slots 129..175), LIST pages 5 and 6 */
+                                         * bit 2 = 178 patch slots, one per factory sound and USER slot: SLOT_HI (cmd 90) and the backup's id 47 (slots 129..178), LIST pages 5 and 6 */
         break;
     case ED_GET:
     case ED_SET:
@@ -758,7 +758,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             cnt = UP_SLOTS - s0;
         ed_b(s0 & 127u);
         ed_b(cnt);
-        ed_b(UP_SLOTS > 127u ? 127u : UP_SLOTS);            /* (a data byte holds 127 at most: 128 and more slots say 127; INFO 44 01 bit 2 says 175) */
+        ed_b(UP_SLOTS > 127u ? 127u : UP_SLOTS);            /* (a data byte holds 127 at most: 128 and more slots say 127; INFO 44 01 bit 2 says 178) */
         for (i = s0; i < s0 + cnt; i++) {                  /* every slot holds a sound: its saved record, else its factory sound */
             char nm[13] = {0};
             sl_name(i, nm);

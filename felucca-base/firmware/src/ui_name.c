@@ -49,7 +49,7 @@ static struct {
     uint8_t tap;                                       /* .. that letter's index in its group */
     uint8_t rep;                                       /* the key (+ 1) of a held arrow / DELETE, 0 none */
     uint32_t t, rep_t;                                 /* fm1_ms of the last tap; of the next repeat */
-    uint8_t cat;                                       /* USER: the category (CAT_BASS..CAT_OTHER) KNOB 3 sets */
+    uint8_t cat;                                       /* USER: the category (CAT_BASS..CAT_ACID) KNOB 3 sets */
     uint32_t rnd;                                      /* PROJECT: KNOB 3's random names (xorshift; 0 = not seeded) */
     uint32_t sig;                                      /* drawn-state cache */
     char s[NM_LEN + 1u];
@@ -249,7 +249,7 @@ static void nm_knob(uint32_t k, int32_t s)             /* KNOB 1 the cursor, KNO
     }
     if (k == 2u) {                                     /* USER: the category (no wrap); else a random name as well */
         if (NM_USER())
-            nm.cat = (uint8_t)clamp((int32_t)nm.cat + s, CAT_BASS, CAT_OTHER);
+            nm.cat = (uint8_t)clamp((int32_t)nm.cat + s, CAT_BASS, CAT_N - 1);
         else
             nm_random();
         return;

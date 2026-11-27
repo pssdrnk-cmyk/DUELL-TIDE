@@ -1093,24 +1093,111 @@ static uint32_t exp2_neg(uint32_t x);                 /* (fx.c: 2^-x, x Q16, Q15
  * a linear law, 8192 - res * 7600 / 127, would give no peak at all below RES 48 and spend its resonance in the top 30 steps). The ends: 2.0 down to
  * 0.145 (Q 0.5 .. 6.9); the factory sounds' RES are set to the step of the same damping (tools/duell_sounds.py) */
 #define UF_ACID(t) (!(t)->engine && (t)->p[P_E0] >= ACID_WAVE)   /* (acid_on, written out: the pictures do not make the audio path's inline copy a call) */
-#define UF_K(t, res) UF_KM(res, UF_ACID(t) ? UF_KA : 1956u)   /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145); the pictures of a part on WAVE ACID / ACSQ with its own law (UF_KA, below) */
+#define UF_K(t, res) UF_KM(res, 1956u)                /* damping, Q12: 12 dB, 8192 (2.0) down to 592 (0.145) (t: a part on WAVE ACID / ACSQ is pictured as 24 dB, uf_pic) */
 #define UF_KM(res, m) ((int32_t)(exp2_neg((uint32_t)(res) * (m)) >> 2))
-/* WAVE ACID / ACSQ (voice.c acid_on) take RES on to the edge of self-oscillation, as a 303 does (Open303's TeeBee filter at full RES): the same
- * exponential law over a wider span, 12 dB 2.0 down to 0.010 (UF_KA 3943: 2^-7.64), the 24 dB second stage 0.765 down to 0.0070 (UF_K24BA 3500: 2^-6.78): a peak of
- * about +38 dB at RES 127 in 24 dB (+40 in 12 dB). Every other sound keeps its law bit for bit */
-#define UF_KA 3943u
+/* The pictures of WAVE ACID / ACSQ (ui_graph.c, twin_graph.c, ui_live.c): the diode ladder (acid_lad) drawn as a 24 dB low-pass with this law, whatever MODE and SLOPE say
+ * (a 303 has neither), its cutoff at most UF_PIC_TOP. The law takes RES on to the edge of self-oscillation, as a 303 does (Open303's TeeBee filter at full RES): the same
+ * exponential law over a wider span, the 24 dB second stage 0.765 down to 0.0070 (UF_K24BA 3500: 2^-6.78): a peak of about +38 dB at RES 127. Every other sound
+ * keeps its law bit for bit */
 #define UF_K24BA 3500u
 #define UF_K24A 7568                                    /* 24 dB: the first stage's (1.848), the second's from 0.765 down with RES */
 #define UF_K24B(t, res) UF_K24BM(res, UF_ACID(t) ? UF_K24BA : 1486u)   /* (0.765 down to 0.104, 3135 .. 425, the same way: 2^-(RES x 2.88 / 127); ACID: UF_K24BA) */
+#define UF_PIC_TOP 5000u                              /* ACID's pictures: its cutoff's top in Hz (acid_coef's cap) */
+/* a picture's MULTI FILTER on WAVE ACID / ACSQ: the weights of a low-pass, the 24 dB first stage, the cutoff at most UF_PIC_TOP; 1 = ACID (the picture is 24 dB), 0 = left as it was */
+static __attribute__((noinline, unused)) int uf_pic(const track_t *t, int32_t *wl, int32_t *wb, int32_t *wh, int32_t *k1, uint32_t *fc)
+{
+    if (!UF_ACID(t))
+        return 0;
+    *wl = 1024, *wb = *wh = 0, *k1 = UF_K24A;
+    *fc = *fc > UF_PIC_TOP ? UF_PIC_TOP : *fc;
+    return 1;
+}
 #define UF_K24BM(res, m) ((int32_t)((exp2_neg((uint32_t)(res) * (m)) * 3135u) >> 15))
 #define UF_KNEE 48000
 static __attribute__((noinline)) void uf_coef(tsvf_t *f, int32_t idx, int32_t k) { tsvf_coef_k(f, idx, k); }   /* (one copy: a divide) */
-/* one voice's block through the filter, in place: uc the effective cut (Q8 dial steps), p the part's values (RES MODE SLOPE), acid: the part plays WAVE ACID / ACSQ (its RES law) */
-static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t n, int32_t uc, const int16_t *p, uint32_t acid)
+/* ACID's filter (WAVE ACID / ACSQ, voice.c acid_on): the TB-303's diode ladder as Open303 models it (Robin Schmidt, MIT: TeeBeeFilter in its TB_303 mode, the
+ * coefficient fits by mystran and kunn; work/fm1-x0x-upstream bass303.c is the same path in float), in integers:
+ *   x -> a 44.5 Hz high-pass -> minus k times the output fed back through a 150 Hz high-pass (the 303's coupling in the loop: low notes keep their weight at
+ *   high RES and the resonance is weaker at low cutoffs) -> a guard clip far above a note's level -> four coupled one-pole stages
+ *   (each stage's current depends on its neighbours, unlike a Moog ladder: the resonance builds steeply and its peak sits below the stages' cutoff) -> times g2
+ *   (the level make-up that grows with RES) -> a 24 Hz high-pass (Open303's after the VCA). The cutoff tops out at 5 kHz (the Devil Fish's top, inside the fits' range; tools/gen_tables.py ACID_B0 / ACID_K); RES is skewed as the
+ *   303's pot, 1 - e^(-3 r). The coefficients are worked out once a block and ramped over it. State: v->uf[0..3] the stages, v->s[4..7] the two
+ *   high-passes and v->s[0..1] the output's (Q8 of the signal), v->ufw[0..2] the last block's b0 (Q16), k (Q9) and g2 (Q9) */
+#define AL_HP1_B 65329                                  /* the input high-pass, 44.486 Hz: b0 = (1 + a1) / 2 and a1, Q16 */
+#define AL_HP1_A 65122
+#define AL_FB_B 64843                                   /* the feedback high-pass, 150 Hz */
+#define AL_FB_A 64150
+#define AL_OUT_B 65423                                  /* the output high-pass, 24.2 Hz (Open303's after the VCA) */
+#define AL_OUT_A 65310
+#define AL_GAIN 22                                      /* x 5.5: the ladder's level (g2 passes RES 0 at unity) up to the part's, as the filter before it */
+static inline int64_t al_mul(int64_t a, int64_t b, int sh) { return (a * b) >> sh; }
+static inline int32_t al_sat(int32_t t)                 /* a guard on the ladder's input, Q8 of the signal: tanh at 8 x 32768, far above a note's level (Open303 has none: it would
+                                                         * add a low thump of its own); the bits below a unit added back */
+{
+    int32_t h = t >> 11;
+    if (h <= -65536 || h >= 65536)
+        return softclip(h < 0 ? -65536 : 65536) * 2048;
+    return softclip(h) * 2048 + (t - h * 2048);   /* (x 2048, not << 11: h is signed) */
+}
+/* the block's coefficients (once a block, out of line in the flash: the per-sample loop below is what runs in RAM): cf[0] b0 (Q16), cf[1] k r (Q12), cf[2] g2 (Q12) */
+static __attribute__((noinline)) void acid_coef(int32_t uc, const int16_t *p, int32_t *cf)
+{
+    int32_t idx = clamp(40 + ((clamp(uc, 0, UF_TOP) * 99) >> 6), 0, 127 * 256), j = idx >> 9, f = (idx >> 1) & 255;
+    int32_t r = (int32_t)(((32768 - (int32_t)exp2_neg((uint32_t)clamp(p[P_FREEB], 0, 127) * 2233u)) * 34485) >> 15);   /* the skewed RES, Q15 */
+    int32_t b0 = ACID_B0[j] + (((ACID_B0[j + 1] - ACID_B0[j]) * f) >> 8);   /* (tools/gen_tables.py: Open303's fits at the cut index, Q16 and Q10) */
+    int32_t kq = (ACID_K[j] + (((ACID_K[j + 1] - ACID_K[j]) * f) >> 8)) << 2;   /* Q12 */
+    int32_t a = (int32_t)(((((int64_t)kq * 3855 >> 16) - 4096) * r) >> 15) + 4096;   /* g2 = 2 ((k / 17 - 1) r + 1) (1 + r), Q12 (3855 / 65536: 1 / 17) */
+    int32_t g2 = (int32_t)(((int64_t)2 * a * (32768 + r)) >> 15);
+    int32_t kr = (int32_t)(((int64_t)kq * r) >> 15);   /* k r, Q12 */
+    g2 = (g2 * AL_GAIN) >> 2;                           /* .. and the voice's level into the part (AL_GAIN / 4) */
+    cf[0] = b0; cf[1] = kr; cf[2] = g2;
+}
+#define UF_LAD 4u                                       /* v->uft: last ran the diode ladder */
+static __attribute__((noinline)) void acid_lad(voice_t *v, int32_t *buf, uint32_t n, int32_t uc, const int16_t *p)
+{
+    int32_t cf[3], b0, kr, g2, i;
+    int32_t y1 = v->uf[0], y2 = v->uf[1], y3 = v->uf[2], y4 = v->uf[3], hx = v->s[4], hy = v->s[5], fx1 = v->s[6], fy = v->s[7], ox = v->s[0], oy = v->s[1];
+    int32_t b0a, ka, g2a, db0, dk, dg2;
+    acid_coef(uc, p, cf);
+    b0 = cf[0]; kr = cf[1]; g2 = cf[2];
+    if (v->uft != UF_LAD) {                             /* from rest (or from the multimode filter, whose state is not the ladder's) */
+        y1 = y2 = y3 = y4 = hy = fx1 = fy = ox = oy = 0;
+        hx = buf[0] * 256;                              /* (the high-pass starts at the first sample: no step) */
+        v->ufw[0] = (int16_t)b0; v->ufw[1] = (int16_t)(kr >> 3); v->ufw[2] = (int16_t)(g2 >> 3);
+    }
+    v->uft = UF_LAD;
+    b0a = v->ufw[0] << 16; ka = (v->ufw[1] << 3) << 12; g2a = (v->ufw[2] << 3) << 12;   /* (the ramps: 16, 12, 12 more bits) */
+    db0 = ((b0 << 16) - b0a) / (int32_t)n; dk = ((kr << 12) - ka) / (int32_t)n; dg2 = ((g2 << 12) - g2a) / (int32_t)n;
+    for (i = 0; i < (int32_t)n; i++) {
+        int32_t xin = buf[i] * 256, u, fbt, bq, kk, t;
+        b0a += db0; ka += dk; g2a += dg2;
+        bq = b0a >> 16; kk = ka >> 12;
+        u = (int32_t)al_mul(AL_HP1_B, xin - hx, 16) + (int32_t)al_mul(AL_HP1_A, hy, 16);
+        hx = xin; hy = u;
+        fbt = (int32_t)al_mul(kk, y4, 12);
+        fy = (int32_t)al_mul(AL_FB_B, fbt - fx1, 16) + (int32_t)al_mul(AL_FB_A, fy, 16);
+        fx1 = fbt;
+        t = al_sat(u - fy);
+        y1 += (int32_t)al_mul(2 * bq, t - y1 + y2, 16);
+        y2 += (int32_t)al_mul(bq, y1 - 2 * y2 + y3, 16);
+        y3 += (int32_t)al_mul(bq, y2 - 2 * y3 + y4, 16);
+        y4 += (int32_t)al_mul(bq, y3 - 2 * y4, 16);
+        y1 = clamp(y1, -(1 << 29), 1 << 29); y4 = clamp(y4, -(1 << 29), 1 << 29);
+        t = (int32_t)(al_mul(y4, g2a >> 12, 12) >> 1);  /* (x g2 / 2, Q8) */
+        u = (int32_t)al_mul(AL_OUT_B, t - ox, 16) + (int32_t)al_mul(AL_OUT_A, oy, 16);
+        ox = t; oy = u;
+        buf[i] = soft_knee(u >> 8, UF_KNEE);
+    }
+    v->uf[0] = y1; v->uf[1] = y2; v->uf[2] = y3; v->uf[3] = y4;
+    v->s[4] = hx; v->s[5] = hy; v->s[6] = fx1; v->s[7] = fy; v->s[0] = ox; v->s[1] = oy;
+    v->ufw[0] = (int16_t)b0; v->ufw[1] = (int16_t)(kr >> 3); v->ufw[2] = (int16_t)(g2 >> 3);
+}
+/* one voice's block through the filter, in place: uc the effective cut (Q8 dial steps), p the part's values (RES MODE SLOPE); WAVE ACID / ACSQ take acid_lad instead (uf_filt) */
+static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t n, int32_t uc, const int16_t *p)
 {
     tsvf_t f, g;
-    uint32_t i, s24 = p[P_FREED] == 2, run2, lp, m1 = acid ? UF_KA : 1956u;
-    int32_t md = clamp(p[P_FREEC], 0, UF_HP), res = clamp(p[P_FREEB], 0, 127), k1 = s24 ? UF_K24A : UF_KM(res, m1), k2 = UF_K24BM(res, acid ? UF_K24BA : 1486u);
+    uint32_t i, s24 = p[P_FREED] == 2, run2, lp;
+    int32_t md = clamp(p[P_FREEC], 0, UF_HP), res = clamp(p[P_FREEB], 0, 127), k1 = s24 ? UF_K24A : UF_KM(res, 1956u), k2 = UF_K24BM(res, 1486u);
     int32_t bl = 0, blend = 0;                           /* MORPH: the two ends' SLOPEs cross-faded, 0 (12 dB) .. 32 (24 dB) */
     int32_t wb = md <= 64 ? md << 4 : ((UF_HP - md) * 65) >> 2, wl = md < 64 ? 1024 - wb : 0, wh = md > 64 ? 1024 - wb : 0;   /* MODE: LP .. BP
                                                          * .. HP (Q10; 1024 / 63 a step above BP, no divide) */
@@ -1125,7 +1212,7 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
         s24 = bl >= 32;
         blend = bl > 0 && bl < 32;
         if (blend)
-            k1 = UF_KM(res, m1) + (((UF_K24A - UF_KM(res, m1)) * bl) >> 5);   /* (the first stage's damping between the two) */
+            k1 = UF_KM(res, 1956u) + (((UF_K24A - UF_KM(res, 1956u)) * bl) >> 5);   /* (the first stage's damping between the two) */
     }
     if (!v->uft) {                                      /* from rest: no ramp */
         a1 = a2 = 0;
@@ -1175,6 +1262,17 @@ static __attribute__((noinline)) void uf_run(voice_t *v, int32_t *buf, uint32_t 
     v->ufw[0] = (int16_t)cx; v->ufw[1] = (int16_t)cb; v->ufw[2] = (int16_t)cl;
     v->uf[0] = a1; v->uf[1] = a2; v->uf[2] = b1; v->uf[3] = b2;
 }
+/* filter 1 on a voice's block: ACID's diode ladder on WAVE ACID / ACSQ, else the multimode filter */
+static inline __attribute__((always_inline)) void uf_filt(voice_t *v, int32_t *buf, uint32_t n, int32_t uc, const int16_t *p, uint32_t acid)
+{
+    if (acid)
+        acid_lad(v, buf, n, uc, p);
+    else {
+        if (v->uft == UF_LAD)                           /* (off the ladder: its state is not the multimode filter's, so from rest) */
+            v->uft = 0;
+        uf_run(v, buf, n, uc, p);
+    }
+}
 /* one voice of a ufilt engine with the filter on: the engine into a cleared scratch block, filtered, added to dst */
 static __attribute__((noinline)) void uf_voice(const engine_t *e, track_t *t, voice_t *v, int32_t *dst, uint32_t n,
                                                const vmod_t *m, int32_t uc)
@@ -1186,7 +1284,7 @@ static __attribute__((noinline)) void uf_voice(const engine_t *e, track_t *t, vo
     for (i = 0; i < n; i++)
         tmp[i] = 0;
     e->render(t, v, tmp, n, m);
-    uf_run(v, tmp, n, uc, t->p, acid_on(t));
+    uf_filt(v, tmp, n, uc, t->p, acid_on(t));
     for (i = 0; i < n; i++)
         dst[i] += tmp[i];
 }
@@ -1209,7 +1307,7 @@ static __attribute__((noinline)) void uf_edge(const engine_t *e, track_t *t, voi
     e->render(t, v, tmp, n, m);
     for (i = 0; i < n; i++)
         dry[i] = tmp[i];
-    uf_run(v, tmp, n, uc, t->p, acid_on(t));
+    uf_filt(v, tmp, n, uc, t->p, acid_on(t));
     for (i = 0; i < n; i++) {
         int32_t w = (int32_t)(in ? i + 1u : n - 1u - i);  /* (the filter's share, of n) */
         dst[i] += dry[i] + (tmp[i] - dry[i]) * w / (int32_t)n;   /* (32-bit: |a difference| < 2^18, x 32) */
@@ -1307,15 +1405,14 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     esync_coef(t);                                      /* this block's envelope steps for env_tick (ENV SYNC) */
     if (e2on)                                           /* DUELL: ENV 2, read by the matrix or ENV 2 DEST */
         esync2_coef(t);
-    if (acid) {                                         /* ACID: the accent push's capacitor y (Q15): charged from the accented note's ENV 2 through a lag that grows with RES (47 .. 147 ms), run down 4 x slower (acid.md in DESIGN.md) */
+    if (acid) {                                         /* ACID: the 303's accent sweep capacitor y (Q15): charged from the accented note's ENV 2 with a time constant of 100 ms, run down
+                                                         * in 150 ms; it keeps its charge across notes, so accents in a row climb (track_render blends it with the direct pulse by RES) */
         const voice_t *v0 = &t->v[0];
         int32_t x = v0->gate && v0->vel > ACCENT_V0 ? v0->env2 >> 9 : 0, y = t->acid_y;
-        int32_t c = 449 - 40 * (p[P_FREEB] >> 4);       /* the charge per tick, Q15, 449 .. 169 over RES (tau 53 .. 140 ms): tau = 0.726 ms / c */
-        if (x > y) {
-            y += ((x - y) * c) >> 15;
-        } else {
-            y -= ((y * (c >> 2)) >> 15) + (y > 0);
-        }
+        if (x > y)
+            y += ((x - y) * ACID_CHG) >> 15;
+        else
+            y -= ((y * ACID_DRN) >> 15) + (y > 0);
         t->acid_y = (int16_t)y;
         if (v0->vel > ACCENT_V0 && ENV_EXP[ACID_ACCDEC] > t->esk2[1])   /* an accented note: ENV 2 decays in ACID's short fixed time (~200 ms), or in the sound's own Decay when that is shorter */
             t->esk2[1] = ENV_EXP[ACID_ACCDEC];
@@ -1355,8 +1452,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
             m.amp1 = e->ownenv ? env : mulq15(env, Q15_FROM_127(v->vel));
-            if (acid)                                   /* ACID: the level is fixed (ACID_BASE); an accent bursts from it up to unity with the (short) ENV 2 */
-                m.amp1 = mulq15(env, ACID_BASE + (v->vel > ACCENT_V0 ? mulq15(32767 - ACID_BASE, v->env2 >> 9) : 0));
+            if (acid)                                   /* ACID: the level is fixed (ACID_BASE) and ENV 2 adds a bump: 0.45 of it on a plain note, up to unity on an accent (Open303's VCA) */
+                m.amp1 = mulq15(env, ACID_BASE + mulq15(v->vel > ACCENT_V0 ? 32767 - ACID_BASE : ACID_BASE * 45 / 100, v->env2 >> 9));
             if (v->xg)                                  /* LAYER XFADE (core.h mix_xf): the note's share between the parts */
                 m.amp1 = mulq15(m.amp1, v->xg);
             if (p[P_LD_AMP] && !BYP(t, BY_LFO1))
@@ -1394,8 +1491,12 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (e == &ENG_NOISE)                            /* NOISE's DRFT wander of the cutoff, worked out by the block before (eng_noise.c): filter 1's, one block late */
             m.cutoff += v->s[0];
         m.acc1 = 0;
-        if (acid) {                                     /* ACID: the push is the capacitor's (a 303 is a low-pass: it opens upward) */
-            m.cutoff += m.acc1 = (t->acid_y * ACID_PUSH) >> 15;
+        if (acid) {                                     /* ACID: the accent sweep, the 303's RES pot gang: the accented note's own ENV 2 (a sharp pulse) at RES 0, the capacitor (rounder,
+                                                         * later, stacking) at RES 127, mixed between (a 303 is a low-pass: it opens upward) */
+            int32_t res = clamp(p[P_FREEB], 0, 127), dir = v->vel > ACCENT_V0 ? v->env2 >> 9 : 0;
+            m.cutoff += m.acc1 = ((((127 - res) * dir + res * t->acid_y) / 127) * ACID_PUSH) >> 15;
+            if (p[P_E2FLT] > 0)                         /* .. and the 303's ENV MOD: more of it lowers where the sweep rests as it raises the peak (0.3 of the sweep below the knob, Open303) */
+                m.cutoff -= (DEP_AMT(p[P_E2FLT]) * 9830) >> 7;
         } else if (ACCENT_VEL(v) > 110 && (uf != 1u || ACCENT_BOTH(e)))   /* accent opens the filter with the env: filter 1 on the three engines whose own filter went (ACCENT_BOTH), the engine's own tone control on the others (below) */
         {
             int32_t al = accent_lift(ACCENT_VEL(v), m.envq15);

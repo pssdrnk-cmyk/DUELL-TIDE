@@ -526,7 +526,7 @@ static double uf_gain(int32_t cq8, int32_t mode, int32_t res, int32_t slope, dou
     for (i = 0; i < N; i += CTL) {
         for (j = 0; j < CTL; j++)
             in[j] = b[j] = (int32_t)lround(TAMP * sin(2 * M_PI * f * (i + j) / FS));
-        uf_run(&v, b, CTL, cq8, p, 0);
+        uf_run(&v, b, CTL, cq8, p);
         if (i >= from)
             for (j = 0; j < CTL; j++) {
                 double ph = 2 * M_PI * f * (i + j) / FS, s_ = sin(ph), c_ = cos(ph);
@@ -693,7 +693,7 @@ static int32_t uf_saw_peak(int32_t cq8, int32_t res, int32_t slope, double f, in
             double ph = fmod(f * (i + j) / FS, 1.0);
             b[j] = (int32_t)lround(amp * (2 * ph - 1));
         }
-        uf_run(&v, b, CTL, cq8, p, 0);
+        uf_run(&v, b, CTL, cq8, p);
         if (i >= (uint32_t)(0.5 * FS))
             for (j = 0; j < CTL; j++)
                 if (abs(b[j]) > pk)
@@ -717,7 +717,7 @@ static double uf_dc(int32_t cq8, int32_t res, double f)
     for (i = 0; i < N; i += CTL) {
         for (j = 0; j < CTL; j++)
             b[j] = (int32_t)lround(TAMP * sin(2 * M_PI * f * (i + j) / FS));
-        uf_run(&v, b, CTL, cq8, p, 0);
+        uf_run(&v, b, CTL, cq8, p);
         if (i >= from)
             for (j = 0; j < CTL; j++)
                 sum += b[j], n++;
@@ -852,7 +852,7 @@ static void t_exact(void)
                     a[j] = b[j] = (int32_t)(ph >> 17) - 16384 + (int32_t)(rs >> 22) - 512;
                 }
                 ref_uf_run(&rv, a, CTL, cq, UF_KM(res, 1956u));
-                uf_run(&v, b, CTL, hp ? cq : (UF_STEPS << 8) + cq, p, 0);
+                uf_run(&v, b, CTL, hp ? cq : (UF_STEPS << 8) + cq, p);
                 if (!hp)
                     nsame += !memcmp(a, b, sizeof a);
                 for (j = 0; j < CTL; j++) {

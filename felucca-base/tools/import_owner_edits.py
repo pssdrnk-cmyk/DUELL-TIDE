@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
 sys.path.insert(0, str(TOOLS))
 import endb                                                          # the End B block (the firmware's format), shared with gen_duell_sounds.py / convert_endb.py
-CATS = ["", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER"]        # category.c (record byte; 0: none)
+CATS = ["", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER", "ACID"]        # category.c (record byte; 0: none)
 PTF = dict(PAT=1, TR=2, FM6=4, MB=8, XB=16, AK=32, W4=64, BM=64, CB=128)   # MB (PT_VER 4): End B as values; XB (16) is PT_VER 3's and is refused; W4 (b9, upreset.c PTF_W4; PT_VER 3's BM is the same bit, kept for tools/convert_twin.py and import_bank.py): ANALOG's WAVE takes 4 bits in the record (without: saved before b8, 3 bits)
 AK_NAMES = ["P_AMODE", "P_ARATE", "P_AOCT", "P_AGATE", "P_ASWING", "P_APROB", "P_AHOLD", "P_AORDER", "P_SCALE", "P_CHRD", "P_VOIC", "P_SLEN", "P_SDIV", "P_SSWING", "P_SGATE", "P_SQNT"]
 STORE_ZERO = ["P_KTRK", "P_FREEA", "P_FREED", "P_L2TRIG", "P_LTRIG", "P_DKCRV", "P_DKSRC"]       # upreset.c up_def: the stored default is 0 (0.2.24: DUCK SRC too, its stored default stays PUMP)

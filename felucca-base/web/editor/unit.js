@@ -26,10 +26,10 @@ export class Unit {
   off(type, fn) { const l = this.listeners.get(type); if (l) { const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); } return this; }
   emit(type, d) { for (const fn of this.listeners.get(type) || []) fn(d); }
   req(cmd, args = [], timeout) { return this.link.request([cmd, args], { timeout }); }
-  // b12 (INFO 44 01 bit 2): 175 slots, ids 0..174; a slot k >= 128 is addressed by SLOT_HI [1] (cmd 90, no reply) right before the command and k - 128 in the slot byte
+  // b12 (INFO 44 01 bit 2): 178 slots, ids 0..177; a slot k >= 128 is addressed by SLOT_HI [1] (cmd 90, no reply) right before the command and k - 128 in the slot byte
   get wide() { return !!this.info?.slots175; }
   get nslots() { return this.wide ? SLOTS_WIDE : SLOTS_OLD; }
-  label(slot) { return slotLabel(slot, this.wide); }                     // #1..#124, U1..U4, #125..#171 (a 128 slot unit: #1..#128 as before)
+  label(slot) { return slotLabel(slot, this.wide); }                     // #1..#124, U1..U4, #125..#174 (a 128 slot unit: #1..#128 as before)
   // a request whose argument `at` is a slot: the link sends SLOT_HI first for k >= 128 (one turn, so nothing comes between), the byte is k & 127. The reply echoes the byte as sent.
   sreq(cmd, args, timeout, at = 0) {
     const k = args[at];
@@ -316,7 +316,7 @@ export class Unit {
     if (a[2]) throw new UnitError("The unit refused the FM6 voice.", a[2]);
   }
 
-  // ---- patch slots (DUELL 0.2.17: ONE list of 128 slots, b12: 175; slot i is its saved record, or else the factory sound at browse position i, #NN = i + 1)
+  // ---- patch slots (DUELL 0.2.17: ONE list of 128 slots, b12: 175, b18: 178; slot i is its saved record, or else the factory sound at browse position i, #NN = i + 1)
   async factoryNames(eng) {
     if (this.names.has(eng)) return this.names.get(eng);
     const n = parseNames(await this.req(CMD.NAMES, [eng])).names; this.names.set(eng, n); return n;
@@ -326,7 +326,7 @@ export class Unit {
     await this.req(CMD.PRESET, [eng, idx]);
     await this.readPart(part);
   }
-  // the 128 (b12: 175) slots: [{slot, eng, name, cat, saved}] (saved: it holds a saved record; false: it holds its factory sound)
+  // the 128 (b12: 175, b18: 178) slots: [{slot, eng, name, cat, saved}] (saved: it holds a saved record; false: it holds its factory sound)
   async listSlots(onProgress) {
     const all = [];
     const n = this.nslots;
