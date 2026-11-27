@@ -15,6 +15,15 @@ On 13 November jam11 was squashed into one commit (`512f97d`); the step-by-step 
 | Keep the current patterns when a MULTI loads (owner idea, b13) | Idea: needs flash room (see above) |
 | Reverb on the second core, to free CPU (K4) | Ready (B14 core2, branch `b14/core2`): ported onto jam11 with USB 48 kHz off. The reverb sounds the same (33 of 33 host renders bit for bit: the 26 multis, the STRESS TEST, every REVERB TYPE switched and BYPASSED mid-render), with no added latency. On the unit (17 November, TRAVEL 32): core 0's bus stage 25 to 34 % shorter (about 3.5 % of a half), M04 median 64.6 -> 61.0 %, M22 3 -> 0 missed; about 1.3 million reverb jobs, none silent or refused. M07 / M19 TRAVEL still skip (FM6 cost, lane skips2). The NOTES raise that spends the saving is Later 39 |
 
+## B18: a reasonable 303 (27 November)
+
+| What | State |
+|---|---|
+| WAVE ACID and ACSQ as a TB-303: the 303's diode ladder (full bass at high RES, 5 kHz top), its accent (sharp at low RES, a swell that stacks at high RES, +7 dB), ENV MOD that lowers the resting cutoff, the 303 square; an ACID category with six 303s (#5, #6, #27, new #172 DIRTY 303, #173 TALK 303, #174 DEEP 303); M09 to M11 retuned (owner, 27 November: the acid sounded thin and sharp) | In progress: PR 177 (branch `b18/acid`); measured within 1.4 to 2.6 dB of Open303's harmonics, as loud as 1.2.0. Flash on the owner's word |
+| The owner hears the 303s on the unit (M09, M10, M11 and the six ACID sounds) | Waiting on you, after the flash |
+| ACID's filter cost on the unit: the host model counts it at 135 a sample (the 24 dB filter 123); read the unit's counter on M10 TWO 303 (K9) | Planned: with the first flash of b18 |
+| Flash room: 264 bytes left in the image after b18 (581300 of 581564) | Note: the next feature that adds code needs room found first |
+
 ## B13: done (13 to 15 November)
 
 Housekeeping and bug hunting, plus the owner's CHORDS idea, a sound review against his own sample libraries, and the acid. State: Released in 1.0.0-b13 (PRs 104 to 119); on the unit since 15 November, and in the stable 1.0.0 with the fixes of PRs 129 to 137 (multis on one step grid, no screen blink, MORPH TO keeps its ducking, VOICE 2/2's "54ms", the ACID filter pictures).
