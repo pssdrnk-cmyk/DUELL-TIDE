@@ -1085,6 +1085,8 @@ its number only (TABLE 26..28); an EMPTY slot plays a sine.
 
 ## b12: 175 slots (SLOT_HI 90, backup id 47; INFO 44 01 bit 2)
 
+**b18: 178 slots.** The same bit, the same commands: the three new factory sounds #172..#174 are ids 175..177 (LIST page 6 lists 160..177, id 47 takes slot bytes 0..49). An editor of b12..b17 shows the first 175. Category 9 is ACID.
+
 TIDE b12 ("every factory sound editable") gives the factory sounds #125..#171 a slot of their own. A unit announces it with **bit 2 (value 4) of INFO's `44 01 flags`** (flags 7 on a b12 unit: TIDE, FM6 voice bank, 175 slots). **A unit without the bit has 128 slots exactly as before and an editor must behave exactly as before with it** (it never sends `SLOT_HI`; LIST pages 5 and 6 answer rc 1).
 
 - **175 slots, ids 0..174.** 0..123 = #1..#124, 124..127 = U1..U4 (the USER slots, empty until saved), **128..174 = #125..#171** (the label is `#` + (id − 3)). Every slot holds its saved record or else its factory sound; `UP_ERASE` (Restore) brings the factory sound back. Nothing moved: the ids 0..127 are as they were. `UP_LIST`'s "total" byte still says 127; with the bit the editor knows there are 175.

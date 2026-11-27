@@ -329,4 +329,4 @@ export function matrixSlots(pg) { const base = pg.ids[1]; return [0, 1, 2, 3].ma
 export const engineLabel = (e) => engineShown(L.ENG[e]?.name ?? "?");   // (owner 2026-10-25: PHYS is shown PHYSICAL, labels.js ENGINE_SHOWN; the stored name stays the key in L.ENG)
 // the engines one can pick, in the unit's order; a part that already plays another (DRUM, a retired one) lists it too
 export const pickable = (cur) => (L.ORDER.includes(cur) ? L.ORDER : [...L.ORDER, cur]);
-export const CATEGORIES = ["-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "DRUM", "FX", "OTHER"];
+export const CATEGORIES = ["-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "DRUM", "FX", "OTHER", "ACID"];

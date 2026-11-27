@@ -136,10 +136,10 @@ const twRound = (x) => (x < 0 ? -Math.floor(-x + 0.5) : Math.floor(x + 0.5));   
 export class MockUnit {
   constructor({ plainTag = false, caps = 63, playing = false, version = "FELUCCA DUELL 0.2.25 bet", seed = true, savedFlags = true, patchRaw = true, scope2 = true, pat32 = false, bypassCap = true, locksCap = true, morphView = false, storeMax = null, tide = false, fvBank = false, slots175 = true } = {}) {
     this.plainTag = plainTag;                      // INFO 44 01 with bit 0 clear: the unit says it is plain DUELL (no firmware sends it yet)
-    this.slots175 = slots175;                      // b12 (INFO 44 01 bit 2): 175 slots, SLOT_HI (cmd 90), the patch store takes 150, backup id 47 and LIST pages 5 / 6; false: the unit of before, 128 slots, a store of 128 (the default mock is the b12 unit)
+    this.slots175 = slots175;                      // b12 (INFO 44 01 bit 2): 178 slots, SLOT_HI (cmd 90), the patch store takes 150, backup id 47 and LIST pages 5 / 6; false: the unit of before, 128 slots, a store of 128 (the default mock is the b12 unit)
     this.fvBank = fvBank; this.bank = null; this.bankTx = null;   // INFO 44 01 bit 1: GET 41 and FM6B_BEGIN / WRITE / END (the FM6 voice bank, this.bank: the object as the unit stores it, or null)
     this.tide = tide || fvBank || slots175;                    // INFO 44 01 bit 0: the unit is TIDE
-    this.rooms = storeMax == null && slots175;          // b12: two rooms as the unit's store (upreset.c pt_put_enc): slots 1..128 take 126 records, slots 129..175 take 24
+    this.rooms = storeMax == null && slots175;          // b12: two rooms as the unit's store (upreset.c pt_put_enc): slots 1..128 take 126 records, slots 129..178 take 24
     this.storeMax = storeMax ?? (slots175 ? 150 : 128);   // the patch records the store takes (INFO 58 01): 150 on b12, 126 on TIDE before; a new record past it is rc 6 (STORE FULL), a saved slot can always be rewritten
     this.morphView = morphView; this.shift = [new Map(), new Map()];   // item 159 (INFO 4F 01): the values read AS SHOWN at the MORPH fader; shift: a part's fader offset per id (shown = stored + offset)
     this.locksCap = locksCap; this.motion = []; this.bypassCap = bypassCap; this.pat32 = pat32; this.scope2 = scope2; this.savedFlags = savedFlags; this.patchRaw = patchRaw; this.prStage = null; this.version = version; this.caps = caps; this.playing = playing;
@@ -689,7 +689,7 @@ export class MockUnit {
 }
 const RETIRED_IDS = [2, 3, 4, 5, 8];
 const SLOT_AT = { [CMD.UP_LIST]: 0, [CMD.UP_GET]: 0, [CMD.UP_PUT]: 0, [CMD.UP_STORE]: 0, [CMD.UP_LOAD]: 0, [CMD.UP_ERASE]: 0, [CMD.PATCH_RAW]: 1, [CMD.FM6_GET]: 1, [CMD.FM6_PUT]: 1 };   // where the slot byte is (b12 SLOT_HI)
-const CATS = ["-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER"];
+const CATS = ["-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER", "ACID"];
 
 // A link to a MockUnit with the real link's interface (editor/?mock=1 and the tests): request(), keepAlive(), close(), onpush.
 export class MockLink {

@@ -516,8 +516,8 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   const cB = async (opt = {}) => { const m = new MockB12(opt), u = new Unit(new MockLink(m)); await u.connect(); return { m, u }; };
   const b = await cB(), o = await connect();                       // b: the b12 mock (the default); o: the unit of before
   const slots = await b.u.listSlots(), old = await o.u.listSlots();
-  ok(b.u.info.slots175 && b.u.nslots === 175 && slots.length === 175 && slots.every((s, i) => s.slot === i) && parseInfo(await b.m.request([1, []])).tags[0x44][0] === 5 && (await cB({ fvBank: true })).u.info.tags[0x44][0] === 7,
-     "b12: INFO 44 01 bit 2 (flags 5, 7 with the voice bank): the unit has 175 slots, the list holds 175 with their ids");
+  ok(b.u.info.slots175 && b.u.nslots === 178 && slots.length === 178 && slots.every((s, i) => s.slot === i) && parseInfo(await b.m.request([1, []])).tags[0x44][0] === 5 && (await cB({ fvBank: true })).u.info.tags[0x44][0] === 7,
+     "b12: INFO 44 01 bit 2 (flags 5, 7 with the voice bank): the unit has 178 slots (175 in b12), the list holds 178 with their ids");
   ok(!o.u.info.slots175 && o.u.nslots === 128 && old.length === 128 && !o.m.log.includes("cmd 90"), "b12: a unit without the bit lists 128 slots exactly as before and never sends SLOT_HI");
   const br = factoryBrowse();
   ok(slots.slice(124, 128).every((s) => !s.saved && s.name === "USER EMPTY") && [128, 150, 174].every((k) => !slots[k].saved && slots[k].name === br[k].name && slots[k].eng === br[k].eng) && slots[128].name !== slots[0].name,
@@ -526,7 +526,7 @@ async function connect(opt = {}) { const m = new MockUnit(opt), u = new Unit(new
   b.m.log.length = 0; await b.u.sreq(CMD.UP_LIST, [160, 16]);
   ok(b.m.log.join() === "cmd 90,cmd 16", "b12: a slot command for a slot past 127 is sent with SLOT_HI right before it");
   const r128 = parseUpList(await b.u.sreq(CMD.UP_LIST, [128, 16]), 128), r170 = parseUpList(await b.u.sreq(CMD.UP_LIST, [170, 16]), 170);
-  ok(r128.count === 16 && r128.slots[0].name === br[128].name && r170.count === 5 && r170.slots.at(-1).name === br[174].name, "b12: UP_LIST from 128 gives 16 slots, from 170 it is clipped at 174 (5 slots)");
+  ok(r128.count === 16 && r128.slots[0].name === br[128].name && r170.count === 8 && r170.slots.at(-1).name === br[177].name, "b12: UP_LIST from 128 gives 16 slots, from 170 it is clipped at 177 (8 slots)");
   b.m.log.length = 0; await b.u.sreq(CMD.UP_LIST, [32, 16]);
   ok(b.m.log.join() === "cmd 16", "b12: a slot under 128 goes without SLOT_HI");
   ok(await rejects(() => o.u.sreq(CMD.UP_GET, [140]), /no slot 141/), "b12: a unit without the bit refuses a slot past 127 in the editor (nothing is sent)");

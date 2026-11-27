@@ -19,7 +19,7 @@ const rcError = (rc, what = "") => new UnitError(`${what}${RC[rc] || `The unit a
 
 export const hasRaw = (u) => !!u.info?.patchRaw;
 
-// ---- one slot, whole. A slot k >= 128 (b12, 175 slots): every PATCH_RAW message of a transfer goes with its own SLOT_HI (u.sreq), the slot byte is k - 128
+// ---- one slot, whole. A slot k >= 128 (b12, 178 slots): every PATCH_RAW message of a transfer goes with its own SLOT_HI (u.sreq), the slot byte is k - 128
 export async function rawInfo(u, slot) {                         // -> { saved, len, crc }
   const a = await u.sreq(CMD.PATCH_RAW, [0, slot], 3000, 1);
   if (a[2]) throw rcError(a[2]);

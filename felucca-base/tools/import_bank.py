@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
 DEFAULT_FILE = TOOLS / "factory_bank.duell-patches.json"
 TRIMS_FILE = TOOLS / "factory_bank_trims.json"           # {"NN": TRIM}: the level balance (BANK_LEVELS.md): the only thing changed on top of the bank, the patch TRIM
-CATS = ["", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER"]       # category.c (the record's byte 6; the editor says DRUM for PERC)
+CATS = ["", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "PERC", "FX", "OTHER", "ACID"]       # category.c (the record's byte 6; the editor says DRUM for PERC)
 PTF = dict(PAT=1, TR=2, FM6=4, MB=8, XB=16, AK=32, BM=64, CB=128)
 AK_IDS = ["P_AMODE", "P_ARATE", "P_AOCT", "P_AGATE", "P_ASWING", "P_APROB", "P_AHOLD", "P_AORDER", None, "P_CHRD", "P_VOIC", "P_SLEN", "P_SDIV", "P_SSWING", "P_SGATE", "P_SQNT"]
 STORE_ZERO = ["P_KTRK", "P_FREEA", "P_FREED", "P_L2TRIG", "P_LTRIG", "P_DKCRV", "P_DKSRC"]     # upreset.c up_def

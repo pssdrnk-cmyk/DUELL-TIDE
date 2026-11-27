@@ -18,7 +18,7 @@ export const XB_DEFS = [64, 65, 64, 64, 64, 64, 64, 65, 64, 64, 64, 74, 134, 64,
 export const XB_NAMES = ["TWIN ROUTE", "TWIN LINK", "TWIN KEY TRACK", "TWIN FILTER ENV DEPTH", "TWIN LFO 1 DEPTH", "TWIN LFO 2 DEPTH", "SUB LEVEL", "SUB OCTAVE", "SUB WAVE", "SUB HARMONICS",
   "CYCLE MODE", "CYCLE RISE", "CYCLE FALL", "CYCLE CURVE", "CYCLE SYNC",
   "AMP ENV SATURATION", "FILTER ENV FILTER BLEND", "FILTER ENV FILTER DRIVE", "FILTER ENV MULTI RES", "CYCLE TWIN CUTOFF", "CYCLE PAN", "CYCLE PITCH", "LFO 2 TWIN RES", "LFO 2 MULTI MODE", "LFO 2 FILTER BLEND", "LFO 1 LEVEL", "LFO 2 LEVEL", "SPARE"];
-export const CATEGORIES = ["-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "DRUM", "FX", "OTHER"];
+export const CATEGORIES = ["-", "BASS", "LEAD", "PAD", "PLUCK", "KEYS", "DRUM", "FX", "OTHER", "ACID"];
 const STORE_ZERO = new Set([27, 45, 48, 84, 92, 105, 111]);   // KEY TRK (0.2.22: the editor default is 32), CUT, SLOPE, LFO 2 TRIG, LFO 1 TRIG, DUCK CURVE, DUCK SRC (0.2.24: the editor default is OFF, 3; the store keeps PUMP, 0): 0 in the store (the editor defaults are 32, 82, 1, 1, 1, 1, 3)
 const AK_IDS = [17, 18, 19, 20, 21, 22, 23, 24, 127, 81, 82, 29, 30, 31, 32, 94];   // the ordinals 0..15: ARP x8, SCALE (retired: no id, 127), CHRD, VOIC, LEN DIV SWG GATE QNT
 const AK_GROUP = (o) => (o < 8 ? 1 : o < 11 ? 2 : 4);

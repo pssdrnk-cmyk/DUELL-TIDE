@@ -1152,6 +1152,7 @@ static __attribute__((noinline)) void acid_coef(int32_t uc, const int16_t *p, in
     g2 = (g2 * AL_GAIN) >> 2;                           /* .. and the voice's level into the part (AL_GAIN / 4) */
     cf[0] = b0; cf[1] = kr; cf[2] = g2;
 }
+#define UF_LAD 4u                                       /* v->uft: last ran the diode ladder */
 static __attribute__((noinline)) void acid_lad(voice_t *v, int32_t *buf, uint32_t n, int32_t uc, const int16_t *p)
 {
     int32_t cf[3], b0, kr, g2, i;
@@ -1159,12 +1160,12 @@ static __attribute__((noinline)) void acid_lad(voice_t *v, int32_t *buf, uint32_
     int32_t b0a, ka, g2a, db0, dk, dg2;
     acid_coef(uc, p, cf);
     b0 = cf[0]; kr = cf[1]; g2 = cf[2];
-    if (!v->uft) {                                      /* from rest */
+    if (v->uft != UF_LAD) {                             /* from rest (or from the multimode filter, whose state is not the ladder's) */
         y1 = y2 = y3 = y4 = hy = fx1 = fy = ox = oy = 0;
         hx = buf[0] * 256;                              /* (the high-pass starts at the first sample: no step) */
         v->ufw[0] = (int16_t)b0; v->ufw[1] = (int16_t)(kr >> 3); v->ufw[2] = (int16_t)(g2 >> 3);
     }
-    v->uft = 2u;
+    v->uft = UF_LAD;
     b0a = v->ufw[0] << 16; ka = (v->ufw[1] << 3) << 12; g2a = (v->ufw[2] << 3) << 12;   /* (the ramps: 16, 12, 12 more bits) */
     db0 = ((b0 << 16) - b0a) / (int32_t)n; dk = ((kr << 12) - ka) / (int32_t)n; dg2 = ((g2 << 12) - g2a) / (int32_t)n;
     for (i = 0; i < (int32_t)n; i++) {
@@ -1266,8 +1267,11 @@ static inline __attribute__((always_inline)) void uf_filt(voice_t *v, int32_t *b
 {
     if (acid)
         acid_lad(v, buf, n, uc, p);
-    else
+    else {
+        if (v->uft == UF_LAD)                           /* (off the ladder: its state is not the multimode filter's, so from rest) */
+            v->uft = 0;
         uf_run(v, buf, n, uc, p);
+    }
 }
 /* one voice of a ufilt engine with the filter on: the engine into a cleared scratch block, filtered, added to dst */
 static __attribute__((noinline)) void uf_voice(const engine_t *e, track_t *t, voice_t *v, int32_t *dst, uint32_t n,

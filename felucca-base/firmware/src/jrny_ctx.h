@@ -4,14 +4,14 @@
  * (B = log2 Hz - 6, 0..7) in its class's pattern (tests/jrny_ctx.c): what TIDE JOURNEY reads to stay near the Original (tide_ui.c jctx_near). */
 #ifndef JRNY_CTX_H
 #define JRNY_CTX_H
-static const uint8_t JRNY_CTX[171] = {
+static const uint8_t JRNY_CTX[174] = {
     113,   /* 0 0 LADDER BASS: -22.9 dB, 137 Hz */
-    147,   /* 0 1 SQUARE 303: -19.4 dB, 383 Hz */
+    155,   /* 0 1 SQUARE 303: -18.2 dB, 527 Hz */
     114,   /* 0 2 BEHIVE: -23.2 dB, 316 Hz */
     154,   /* 0 3 RUBBER BAND: -18.2 dB, 197 Hz */
-    131,   /* 0 4 SAW 303: -21.1 dB, 714 Hz */
+    140,   /* 0 4 SAW 303: -20.3 dB, 1002 Hz */
     178,   /* 0 5 TORCH SONG: -14.9 dB, 187 Hz */
-    118,   /* 0 6 SCREAM 303: -22.9 dB, 2997 Hz */
+    117,   /* 0 6 SCREAM 303: -22.7 dB, 1614 Hz */
     211,   /* 0 7 FUNFARE: -11.4 dB, 657 Hz */
     147,   /* 0 8 WALL OF SAW: -19.0 dB, 619 Hz */
     203,   /* 0 9 SILK CHORUS: -11.7 dB, 485 Hz */
@@ -41,6 +41,9 @@ static const uint8_t JRNY_CTX[171] = {
     202,   /* 0 33 NIGHT DRONE: -12.4 dB, 338 Hz */
     227,   /* 0 34 NEON BRASS: -9.0 dB, 443 Hz */
     251,   /* 0 35 SOLAR WIND: -6.0 dB, 368 Hz */
+    148,   /* 0 36 DIRTY 303: -18.9 dB, 1166 Hz */
+    116,   /* 0 37 TALK 303: -22.8 dB, 1035 Hz */
+    130,   /* 0 38 DEEP 303: -21.4 dB, 303 Hz */
     122,   /* 2 0 ELASTIC BASS: -21.7 dB, 293 Hz */
     146,   /* 2 1 BRAZEN: -19.4 dB, 205 Hz */
     179,   /* 2 2 LAMPLIGHT: -15.2 dB, 438 Hz */
@@ -180,5 +183,5 @@ static const uint8_t JRNY_CTX[171] = {
 /* the list it was measured on: engine e's rows are JRNY_CTX_AT[e] .. JRNY_CTX_AT[e + 1] - 1 (tide_ui.c jctx_of: a sound past them,
  * as in a test build with a sound added, has no row and is treated as unmeasured; host_tests.sh jrnyctx checks them against DS_ENG_AT) */
 #define JRNY_CTX_NE 15u
-static const uint16_t JRNY_CTX_AT[JRNY_CTX_NE + 1u] = {0, 36, 36, 54, 64, 64, 72, 87, 100, 100, 112, 112, 125, 143, 143, 171};
+static const uint16_t JRNY_CTX_AT[JRNY_CTX_NE + 1u] = {0, 39, 39, 57, 67, 67, 75, 90, 103, 103, 115, 115, 128, 146, 146, 174};
 #endif

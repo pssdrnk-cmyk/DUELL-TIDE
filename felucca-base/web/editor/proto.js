@@ -36,7 +36,7 @@ export function parseInfo(a) {
            morphView: !!((tags[0x4f]?.[0] ?? 0) & 1),
            // tide: tag 44 01 bit 0: the firmware is TIDE (the version string stays "DUELL 1.1"); a plain DUELL unit sends no 44 tag
            tide: !!((tags[0x44]?.[0] ?? 0) & 1),
-           // slots175: tag 44 01 bit 2 (b12): 175 patch slots, ids 0..174 (128..174 are addressed with SLOT_HI, cmd 90, before the command); a unit without the bit has 128 slots
+           // slots175: tag 44 01 bit 2 (b12): the wide patch list (175 slots in b12, 178 since b18), ids 0..177 (128..177 are addressed with SLOT_HI, cmd 90, before the command); a unit without the bit has 128 slots
            slots175: !!((tags[0x44]?.[0] ?? 0) & 4),
            // locks: tag 4C 01 caps (the sequencer's parameter locks, MOTION ops 5..7; bit 1 = targets past 127, ops 9..11); motionMax: tag 41 01 lo hi (the motion capacity, 128: op 8 lists them all), else 64
            locks: tags[0x4c] ? tags[0x4c][0] & 127 : null, lockWide: !!((tags[0x4c]?.[0] ?? 0) & 2), motionMax: tags[0x41] ? tags[0x41][0] | tags[0x41][1] << 7 : 64 };
@@ -133,6 +133,6 @@ export function parseMotion(a, op8 = true, wide = true) {
   return { track: a[0], rc: a[1], on: a[2], count, max, rows };
 }
 
-// b12: 175 slots. #1..#124 (ids 0..123), U1..U4 (124..127), #125..#171 (128..174). `wide`: the unit has the 175 (a unit with 128 shows #1..#128 as it always did).
-export const SLOTS_OLD = 128, SLOTS_WIDE = 175;
+// b12: 178 slots, b18: 178. #1..#124 (ids 0..123), U1..U4 (124..127), #125..#174 (128..177). `wide`: the unit has the 178 (a unit with 128 shows #1..#128 as it always did).
+export const SLOTS_OLD = 128, SLOTS_WIDE = 178;
 export const slotLabel = (slot, wide = true) => (!wide || slot < 124 ? `#${slot + 1}` : slot < 128 ? `U${slot - 123}` : `#${slot - 3}`);

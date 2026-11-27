@@ -359,7 +359,7 @@ typedef struct {
     int32_t s[8];                /* engine state (filters, envs) */
     int32_t uf[4];               /* the multimode filter's integrators, its two stages (voice.c uf_run; engine_t.ufilt engines only) */
     int16_t ufw[3];              /* .. its output's weights of the last block (input, band-pass, low-pass; Q10): the next one ramps from them */
-    uint8_t uft;                 /* .. how it last ran: 0 not (from rest next time), 1 12 dB, 2 24 dB, 3 bypassed while sounding (voice.c uf_edge) */
+    uint8_t uft;                 /* .. how it last ran: 0 not (from rest next time), 1 12 dB, 2 24 dB, 3 bypassed while sounding (voice.c uf_edge), 4 the diode ladder (acid_lad) */
     int32_t apitch;              /* ARP TARGET (SPEC 2.3, voice.c atg_voice): the arp pitch of the masked units, 1/16
                                   * semitone << 16, with glide */
     int32_t again;               /* .. their level (the arp's gate and accent), Q15, smoothed */
